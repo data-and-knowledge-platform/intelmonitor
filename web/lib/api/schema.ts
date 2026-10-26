@@ -4128,7 +4128,7 @@ export interface components {
              * Source
              * @enum {string}
              */
-            source: "mas" | "fred" | "coingecko" | "defillama" | "yahoo" | "manual" | "derived";
+            source: "mas" | "fred" | "coingecko" | "defillama" | "yahoo" | "x" | "manual" | "derived";
             /**
              * Source Label
              * @description Where its values come from: "MAS I.18", "FRED DFF"

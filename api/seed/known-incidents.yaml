@@ -1,0 +1,10 @@
+# Incidents we already know of, with their social posts backfilled through X full-archive search
+# (`im ingest --social-only --incidents`, x-api-plan.md, X2) as a record for baselines and eval
+# gold. `day` is the day it happened and the backfill's T0, which covers the 7 days ending on it;
+# subjects must be X targets (ingest/sources/social.py).
+
+incidents:
+  - day: 2026-08-21
+    subjects: [dbs]
+    title: DBS and POSB digital payment services disrupted
+    source: https://www.straitstimes.com/singapore/dbs-posb-digital-payment-services-restored-after-short-disruption

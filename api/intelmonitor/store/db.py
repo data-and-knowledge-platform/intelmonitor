@@ -508,6 +508,7 @@ CREATE TABLE IF NOT EXISTS social_posts (
     quotes INTEGER,
     impressions INTEGER,
     fetched_at TEXT NOT NULL
+    -- and the ADDED_COLUMNS for X authors, official accounts and links
 );
 
 -- Search trends (ingest/sources/trends.py), one snapshot per ingest T0. Google trending searches
@@ -554,6 +555,16 @@ CREATE VIRTUAL TABLE IF NOT EXISTS developments_fts USING fts5(
 
 # Columns added to tables after stores were created. connect() adds any a store lacks, in place.
 ADDED_COLUMNS = [
+    # X authors, official accounts and links in posts (x-api-plan.md, X3, X4 and X6).
+    ("social_posts", "author_username", "TEXT"),
+    ("social_posts", "author_name", "TEXT"),
+    ("social_posts", "author_verified_type", "TEXT"),  # blue, business, government or none
+    ("social_posts", "author_followers", "INTEGER"),
+    ("social_posts", "official", "INTEGER NOT NULL DEFAULT 0"),  # the subject's own account
+    ("social_posts", "urls", "TEXT NOT NULL DEFAULT '[]'"),  # JSON, links expanded
+    ("social_posts", "referenced", "TEXT NOT NULL DEFAULT '[]'"),  # JSON, "quoted:<id>" etc.
+    # The first link that is a stored document: the news article a post shares.
+    ("social_posts", "cites_document_id", "TEXT"),
     ("dashboards", "deleted_at", "TEXT"),
     # The profile that made the dashboard; null for starter and older ones, listed for every
     # profile (phase1-plan.md, item U3).

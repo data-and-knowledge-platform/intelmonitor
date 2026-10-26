@@ -3,10 +3,12 @@ new and revised observations, then recompute the derived series.
 
 MAS tables, FRED, DefiLlama and Yahoo Finance return full history in one call, so every fetch
 rereads history from the floor and picks up revisions anywhere in it. CoinGecko returns the last
-365 days. MAS exchange and interest rates are the per-day sources: a fetch asks for each weekday
-since the oldest of the series' latest periods (at least the last RECENT_DAYS days); a longer span,
-as in a backfill or for a series with no data yet, takes the whole table in one call. Manual series
-reread api/seed/collected/market-figures.yaml, with no network call, and store each figure's source.
+365 days. X post counts run from September 2026 and only their latest page is new each day
+(ingest/series/x_counts.py). MAS exchange and interest rates are the per-day sources: a fetch asks
+for each weekday since the oldest of the series' latest periods (at least the last RECENT_DAYS
+days); a longer span, as in a backfill or for a series with no data yet, takes the whole table in
+one call. Manual series reread api/seed/collected/market-figures.yaml, with no network call, and
+store each figure's source.
 """
 
 import sqlite3
@@ -19,7 +21,15 @@ from pydantic import BaseModel
 
 from intelmonitor.config import get_settings
 from intelmonitor.ingest.http import CachedHttp
-from intelmonitor.ingest.series import coingecko, defillama, fred, manual, mas_stats, yahoo
+from intelmonitor.ingest.series import (
+    coingecko,
+    defillama,
+    fred,
+    manual,
+    mas_stats,
+    x_counts,
+    yahoo,
+)
 from intelmonitor.ingest.series.derive import derive
 from intelmonitor.ingest.series.models import Fetched, Window
 from intelmonitor.seed import (
@@ -29,6 +39,7 @@ from intelmonitor.seed import (
     FredSource,
     ManualSource,
     MasSource,
+    XSource,
     YahooSource,
     derived_inputs,
     load_series,
@@ -134,12 +145,15 @@ def fetch_series(
             log(f"{name}: {n} series failed: {reason}")
         added = sum(result.added[s] for s in fetched.observations)
         log(f"{name}: {len(fetched.observations)} series, {added} rows added")
+        for note in fetched.notes:
+            log(f"{name}: {note}")
 
     mas = {s.id: s.source for s in seed.series if isinstance(s.source, MasSource)}
     fred_sources = {s.id: s.source for s in seed.series if isinstance(s.source, FredSource)}
     cg = {s.id: s.source for s in seed.series if isinstance(s.source, CoinGeckoSource)}
     llama = {s.id: s.source for s in seed.series if isinstance(s.source, DefiLlamaSource)}
     stocks = {s.id: s.source for s in seed.series if isinstance(s.source, YahooSource)}
+    posts = {s.id: s.source for s in seed.series if isinstance(s.source, XSource)}
     collected = [s for s in seed.series if isinstance(s.source, ManualSource)]
 
     # MAS daily tables from the oldest daily series' latest period, or the floor when one is empty.
@@ -164,6 +178,8 @@ def fetch_series(
         store("defillama", defillama.fetch(http, settings, llama, window))
     if stocks:
         store("yahoo", yahoo.fetch(http, settings, stocks, window))
+    if posts:
+        store("x", x_counts.fetch(http, settings, posts, window))
     if collected:
         store("manual", manual.fetch(collected, window))
 

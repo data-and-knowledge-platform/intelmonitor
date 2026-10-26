@@ -6,7 +6,7 @@
 - Google interest over time for tracked subjects in Singapore over the 90 days ending at T0, up
   to 5 terms per call (SerpApi). Values are relative within a call, so a term is compared with its
   own baseline; peers share a call so their levels are comparable too.
-- X trends for Singapore (one X trends call).
+- X trends for the same five geos (one X trends call each).
 
 Each trending term is flagged with the tracked subjects it names. Requests are keyed by T0, so a
 rerun of the same ingest is served from the cache. Trending searches and X trends are skipped for
@@ -38,7 +38,8 @@ TRENDING_GEOS = ["SG", "MY", "ID", "TH", "HK"]
 BUSINESS_AND_FINANCE = "3"
 TRENDING_DAYS = 7  # trending searches cover the 7 days before the fetch
 INTEREST_DAYS = 90
-SINGAPORE_WOEID = 23424948
+# X trends locations (Yahoo WOEIDs) for TRENDING_GEOS: countries, and Hong Kong as a town.
+X_WOEIDS = {"SG": 23424948, "MY": 23424901, "ID": 23424846, "TH": 23424960, "HK": 24865698}
 # Interest over time: one call per group of peers, each term with the subject it stands for.
 # Terms are what people type; an ambiguous name gets a qualifier ("FAST transfer").
 INTEREST_CALLS: list[list[tuple[str, str]]] = [
@@ -302,15 +303,15 @@ class _XTrends(BaseModel):
     data: list[_XTrend] = Field(default_factory=list[_XTrend])
 
 
-def x_trends(http: CachedHttp, token: str, t0: date, spend: XSpend) -> list[TrendRow]:
-    """X trends for Singapore now, as a snapshot dated T0."""
-    if spend.usd + X_TRENDS_USD > spend.cap_usd:
-        spend.skipped.append("trends (spend cap)")
+def x_trends(http: CachedHttp, token: str, geo: str, t0: date, spend: XSpend) -> list[TrendRow]:
+    """X trends for a geo now, as a snapshot dated T0."""
+    if not spend.allows(X_TRENDS_USD):
+        spend.skipped.append(f"trends {geo} (spend cap)")
         return []
     cached_before = http.cached["x"]
     response = http.get(
         "x",
-        X_TRENDS.format(woeid=SINGAPORE_WOEID),
+        X_TRENDS.format(woeid=X_WOEIDS[geo]),
         params={"max_trends": "50", "trend.fields": "trend_name,tweet_count"},
         headers={"Authorization": f"Bearer {token}"},
         expect_json=True,
@@ -318,14 +319,14 @@ def x_trends(http: CachedHttp, token: str, t0: date, spend: XSpend) -> list[Tren
         cache_errors=False,
     )
     if not response.ok:
-        raise FetchError(f"X trends: HTTP {response.status} {response.text()[:300]}")
+        raise FetchError(f"X trends {geo}: HTTP {response.status} {response.text()[:300]}")
     if http.cached["x"] == cached_before:
         spend.trend_calls += 1
     return [
         TrendRow(
             "x",
             "trending",
-            "SG",
+            geo,
             t.trend_name,
             t0.isoformat(),
             t.tweet_count,
@@ -382,8 +383,8 @@ def fetch_trends(
             if subject_ids is None or any(s in subject_ids for s, _ in call):
                 label = f"interest {', '.join(t for _, t in call)}"
                 attempt(label, lambda call=call: google_interest(http, serpapi_key, call, t0))
-    if x_token and current:
-        attempt("x trends", lambda: x_trends(http, x_token, t0, spend))
+    for geo in TRENDING_GEOS if x_token and current else []:
+        attempt(f"x trends {geo}", lambda geo=geo: x_trends(http, x_token, geo, t0, spend))
     store_trends(conn, t0, rows)
     result.rows.update(f"{r.source} {r.kind}" for r in rows)
     result.serpapi_searches = http.network["serpapi"] - serpapi_before

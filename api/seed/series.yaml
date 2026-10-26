@@ -1127,3 +1127,424 @@ series:
     subjects:
       primary: [fixed-income-fx]
       context: [singapore]
+
+  # Posts a day on X matching each X target's search query (ingest/series/x_counts.py); the source
+  # URL is the X search for that query, filled in when the seed loads.
+  - id: x.posts.dbs
+    name: DBS posts on X
+    short_name: DBS
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: dbs}
+    subjects:
+      primary: [dbs]
+  - id: x.posts.ocbc
+    name: OCBC posts on X
+    short_name: OCBC
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: ocbc}
+    subjects:
+      primary: [ocbc]
+  - id: x.posts.uob
+    name: UOB posts on X
+    short_name: UOB
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: uob}
+    subjects:
+      primary: [uob]
+  - id: x.posts.standard-chartered
+    name: Standard Chartered posts on X
+    short_name: Standard Chartered
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: standard-chartered}
+    subjects:
+      primary: [standard-chartered]
+  - id: x.posts.maybank
+    name: Maybank posts on X
+    short_name: Maybank
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: maybank}
+    subjects:
+      primary: [maybank]
+  - id: x.posts.citigroup
+    name: Citigroup posts on X
+    short_name: Citigroup
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: citigroup}
+    subjects:
+      primary: [citigroup]
+  - id: x.posts.hsbc
+    name: HSBC posts on X
+    short_name: HSBC
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: hsbc}
+    subjects:
+      primary: [hsbc]
+  - id: x.posts.gxs-bank
+    name: GXS Bank posts on X
+    short_name: GXS Bank
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: gxs-bank}
+    subjects:
+      primary: [gxs-bank]
+  - id: x.posts.trust-bank
+    name: Trust Bank posts on X
+    short_name: Trust Bank
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: trust-bank}
+    subjects:
+      primary: [trust-bank]
+  - id: x.posts.seamoney
+    name: SeaMoney posts on X
+    short_name: SeaMoney
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: seamoney}
+    subjects:
+      primary: [seamoney]
+  - id: x.posts.grab
+    name: Grab posts on X
+    short_name: Grab
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: grab}
+    subjects:
+      primary: [grab]
+  - id: x.posts.singlife
+    name: Singlife posts on X
+    short_name: Singlife
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: singlife}
+    subjects:
+      primary: [singlife]
+  - id: x.posts.income-insurance
+    name: Income Insurance posts on X
+    short_name: Income Insurance
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: income-insurance}
+    subjects:
+      primary: [income-insurance]
+  - id: x.posts.mas
+    name: MAS posts on X
+    short_name: MAS
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: mas}
+    subjects:
+      primary: [mas]
+  - id: x.posts.sgx
+    name: SGX posts on X
+    short_name: SGX
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: sgx}
+    subjects:
+      primary: [sgx]
+  - id: x.posts.hkex
+    name: HKEX posts on X
+    short_name: HKEX
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: hkex}
+    subjects:
+      primary: [hkex]
+  - id: x.posts.paynow
+    name: PayNow posts on X
+    short_name: PayNow
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: paynow}
+    subjects:
+      primary: [paynow]
+  - id: x.posts.fast
+    name: FAST posts on X
+    short_name: FAST
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: fast}
+    subjects:
+      primary: [fast]
+  - id: x.posts.nets
+    name: NETS posts on X
+    short_name: NETS
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: nets}
+    subjects:
+      primary: [nets]
+  - id: x.posts.swift
+    name: SWIFT posts on X
+    short_name: SWIFT
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: swift}
+    subjects:
+      primary: [swift]
+  - id: x.posts.visa
+    name: Visa posts on X
+    short_name: Visa
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: visa}
+    subjects:
+      primary: [visa]
+  - id: x.posts.mastercard
+    name: Mastercard posts on X
+    short_name: Mastercard
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: mastercard}
+    subjects:
+      primary: [mastercard]
+  - id: x.posts.wise
+    name: Wise posts on X
+    short_name: Wise
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: wise}
+    subjects:
+      primary: [wise]
+  - id: x.posts.stripe
+    name: Stripe posts on X
+    short_name: Stripe
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: stripe}
+    subjects:
+      primary: [stripe]
+  - id: x.posts.aws
+    name: AWS posts on X
+    short_name: AWS
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: aws}
+    subjects:
+      primary: [aws]
+  - id: x.posts.microsoft-azure
+    name: Microsoft Azure posts on X
+    short_name: Microsoft Azure
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: microsoft-azure}
+    subjects:
+      primary: [microsoft-azure]
+  - id: x.posts.microsoft-365
+    name: Microsoft 365 posts on X
+    short_name: Microsoft 365
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: microsoft-365}
+    subjects:
+      primary: [microsoft-365]
+  - id: x.posts.google-cloud
+    name: Google Cloud posts on X
+    short_name: Google Cloud
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: google-cloud}
+    subjects:
+      primary: [google-cloud]
+  - id: x.posts.oracle-cloud
+    name: Oracle Cloud posts on X
+    short_name: Oracle Cloud
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: oracle-cloud}
+    subjects:
+      primary: [oracle-cloud]
+  - id: x.posts.crowdstrike
+    name: CrowdStrike posts on X
+    short_name: CrowdStrike
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: crowdstrike}
+    subjects:
+      primary: [crowdstrike]
+  - id: x.posts.singtel
+    name: Singtel posts on X
+    short_name: Singtel
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: singtel}
+    subjects:
+      primary: [singtel]
+  - id: x.posts.equinix
+    name: Equinix posts on X
+    short_name: Equinix
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: equinix}
+    subjects:
+      primary: [equinix]
+  - id: x.posts.circle
+    name: Circle posts on X
+    short_name: Circle
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: circle}
+    subjects:
+      primary: [circle]
+  - id: x.posts.straitsx
+    name: StraitsX posts on X
+    short_name: StraitsX
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: straitsx}
+    subjects:
+      primary: [straitsx]
+  - id: x.posts.okx
+    name: OKX posts on X
+    short_name: OKX
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: okx}
+    subjects:
+      primary: [okx]
+  - id: x.posts.coinbase
+    name: Coinbase posts on X
+    short_name: Coinbase
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: coinbase}
+    subjects:
+      primary: [coinbase]
+  - id: x.posts.crypto-com
+    name: Crypto.com posts on X
+    short_name: Crypto.com
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: crypto-com}
+    subjects:
+      primary: [crypto-com]
+  - id: x.posts.cyber-threats
+    name: Cyber threats posts on X
+    short_name: Cyber threats
+    group: Posts on X
+    unit: posts
+    frequency: daily
+    decimals: 0
+    bad_direction: up
+    source: {kind: x, target: cyber-threats}
+    subjects:
+      primary: [cyber-threats]

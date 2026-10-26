@@ -34,7 +34,7 @@ from intelmonitor.pipeline.developments import build_developments
 from intelmonitor.pipeline.inference import Inference, JevAnswers, JevQuestion
 from intelmonitor.pipeline.params import MATERIALITY_LEVELS
 from intelmonitor.pipeline.run import compute_run, run_dates
-from intelmonitor.seed import load_series
+from intelmonitor.seed import XSource, load_series
 from intelmonitor.store.db import connect, set_meta
 from intelmonitor.store.series import (
     Observation,
@@ -221,13 +221,16 @@ class SeriesCheck(BaseModel):
 
 
 def _replay(result: SeriesFetchResult, http: CachedHttp) -> FetchReplay:
+    """The replay's outcome. X post counts are left out: they start after REPLAY_TODAY, so the
+    replay has no cached counts to read."""
+    x_series = {s.id for s in load_series().series if isinstance(s.source, XSource)}
     return FetchReplay(
         added=sum(result.added.values()),
         revised=sum(result.revised.values()),
-        failures=result.failures,
+        failures={k: v for k, v in result.failures.items() if k not in x_series},
         network=sum(http.network.values()),
         cached=sum(http.cached.values()),
-        missed=sum(http.missed.values()),
+        missed=sum(n for namespace, n in http.missed.items() if namespace != "x"),
     )
 
 

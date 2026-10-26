@@ -38,6 +38,8 @@ class Fetched:
         default_factory=dict[str, list[ObservationSource]]
     )
 
+    notes: list[str] = field(default_factory=list[str])  # lines for the fetch log, such as spend
+
     def fail(self, series_ids: Iterable[str], reason: str) -> None:
         for series_id in series_ids:
             self.failures[series_id] = reason

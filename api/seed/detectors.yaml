@@ -155,3 +155,17 @@ detectors:
     above: 30
     category: market
     materiality: notable
+
+  # Post volume on X (x-api-plan.md, X1, decision D-X2): a jump in posts about a target is a
+  # development of its own, merged with news about the same subject and day. A quiet target going
+  # from 1 post to 4 never fires.
+  - id: x-posts-spike
+    name: Posts on X jump more than 3 standard deviations in a day
+    kind: move
+    series: "x.posts.*"
+    window: previous
+    sigmas: 3
+    direction: up
+    when: {at_least: 20}
+    category: incident
+    materiality: notable

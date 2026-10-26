@@ -1,6 +1,7 @@
 """Typed loaders for api/seed/subjects.yaml, questions.yaml, series.yaml and detectors.yaml."""
 
 import re
+from datetime import date
 from fnmatch import fnmatchcase
 from functools import lru_cache
 from typing import Annotated, Literal, Self
@@ -166,6 +167,21 @@ def load_subjects() -> SubjectsSeed:
     return SubjectsSeed.model_validate(yaml.safe_load((SEED_DIR / "subjects.yaml").read_text()))
 
 
+class KnownIncident(BaseModel):
+    """A past incident whose social posts are backfilled (`im ingest --social-only --incidents`)
+    as a record for baselines and eval gold (api/seed/known-incidents.yaml)."""
+
+    day: date  # the day it happened, the backfill's T0
+    subjects: list[str]
+    title: str
+    source: str  # one report of it
+
+
+def load_known_incidents() -> list[KnownIncident]:
+    raw = yaml.safe_load((SEED_DIR / "known-incidents.yaml").read_text())
+    return [KnownIncident.model_validate(i) for i in raw["incidents"]]
+
+
 @lru_cache
 def load_questions() -> QuestionsSeed:
     return QuestionsSeed.model_validate(yaml.safe_load((SEED_DIR / "questions.yaml").read_text()))
@@ -183,7 +199,7 @@ def linked_series(q: QuestionDef, mapped: list[str]) -> list[str]:
 MasTable = Literal["i18", "i12a", "i5b", "fx", "sora"]
 Frequency = Literal["daily", "monthly", "quarterly", "yearly"]
 BadDirection = Literal["up", "down", "none"]
-SourceName = Literal["mas", "fred", "coingecko", "defillama", "yahoo", "manual", "derived"]
+SourceName = Literal["mas", "fred", "coingecko", "defillama", "yahoo", "x", "manual", "derived"]
 
 
 class MasSource(BaseModel):
@@ -221,6 +237,13 @@ class YahooSource(BaseModel):
     symbol: str  # Yahoo's ticker, e.g. U11.SI or ^STI
 
 
+class XSource(BaseModel):
+    """Posts a day on X matching an X target's search query (ingest/series/x_counts.py)."""
+
+    kind: Literal["x"]
+    target: str  # the subject id of a target in ingest/sources/social.py TARGETS
+
+
 class ManualSource(BaseModel):
     """Figures collected by hand into api/seed/collected/market-figures.yaml under the series' own
     id, read with no network call (ingest/series/manual.py). Each figure keeps its source."""
@@ -250,7 +273,13 @@ class Share(BaseModel):
 
 
 FetchSource = (
-    MasSource | FredSource | CoinGeckoSource | DefiLlamaSource | YahooSource | ManualSource
+    MasSource
+    | FredSource
+    | CoinGeckoSource
+    | DefiLlamaSource
+    | YahooSource
+    | XSource
+    | ManualSource
 )
 DerivedSource = Deviation | Product | Share
 SeriesSource = Annotated[FetchSource | DerivedSource, Field(discriminator="kind")]
@@ -289,9 +318,20 @@ class SeriesDef(BaseModel):
     year_to_date: bool = False
     decimals: int
     bad_direction: BadDirection
-    source_url: str
+    # Required, except for X counts: their URL is the X search for the target's query.
+    source_url: str = ""
     source: SeriesSource
     subjects: SeriesSubjects
+
+    @model_validator(mode="after")
+    def _source_url(self) -> Self:
+        if isinstance(self.source, XSource):
+            from intelmonitor.ingest.sources.social import x_search_url  # imports this module
+
+            self.source_url = x_search_url(self.source.target)
+        elif not self.source_url:
+            raise ValueError(f"series {self.id} needs a source_url")
+        return self
 
     @property
     def source_name(self) -> SourceName:
@@ -312,6 +352,7 @@ _PROVIDER: dict[str, str] = {
     "coingecko": "CoinGecko",
     "defillama": "DefiLlama",
     "yahoo": "Yahoo Finance",
+    "x": "X",
 }
 
 
@@ -327,6 +368,8 @@ def source_label(s: SeriesDef, by_id: dict[str, SeriesDef]) -> str:
             return _PROVIDER[s.source.kind]
         case YahooSource():
             return f"Yahoo Finance {s.source.symbol}"
+        case XSource():
+            return "X post counts"
         case ManualSource():
             return s.source.label
         case Deviation() | Product() | Share():
@@ -391,7 +434,7 @@ def load_series() -> SeriesSeed:
 # (pipeline/detectors.py). Each detector applies to every series its pattern matches.
 
 MaterialityName = Literal["trivial", "minor", "notable", "significant", "critical"]
-DetectorCategory = Literal["market", "financial"]
+DetectorCategory = Literal["market", "financial", "incident"]
 MoveWindow = Literal["previous", "1w", "1m", "3m", "1y"]
 MoveDirection = Literal["up", "down", "either"]
 # Windows a series' frequency can answer: a weekly move on a monthly series says nothing.

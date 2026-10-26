@@ -5,7 +5,8 @@ searches, then gap searches for subjects that still have fewer than GAP_TARGET c
 social posts and search trends. T0 is fixed on the first run and stored in the meta table, so
 reruns send the same requests and are served entirely from the cache.
 
-`im ingest --social-only` runs only the social and trends steps, for the stored T0.
+`im ingest --social-only` runs only the social and trends steps, for the stored T0; with `--t0`,
+it backfills one earlier week's social posts (x-api-plan.md, X2).
 `im redate` applies the URL-date rule to documents stored before it existed, removing those it
 dates before the window.
 """
@@ -179,20 +180,26 @@ def run_ingest(t0_override: date | None = None, log: Callable[[str], None] = pri
 
 
 def run_social_ingest(
-    subject_ids: set[str] | None = None, log: Callable[[str], None] = print
+    subject_ids: set[str] | None = None,
+    t0: date | None = None,
+    log: Callable[[str], None] = print,
 ) -> IngestResult:
-    """Only the social and trends steps, for the stored T0, which stays unchanged: adds social
-    documents and a trends snapshot to a store that already holds the news corpus. With
-    `subject_ids`, only those subjects are searched."""
+    """Only the social steps: adds social documents to a store that already holds the news
+    corpus. With `subject_ids`, only those subjects are searched.
+
+    For the stored T0, which stays unchanged, the trends snapshot is fetched too. With `t0`, the
+    social history of an earlier week is backfilled (X through full-archive search) and the stored
+    T0 is left alone; trends, which describe the fetch day, are skipped."""
     conn = connect()
     stored = get_meta(conn, "t0")
     if stored is None:
         raise RuntimeError("no T0 in the store: run a full `im ingest` first")
-    window = Window(date.fromisoformat(stored))
+    window = Window(t0 or date.fromisoformat(stored))
     result = IngestResult(t0=window.t0)
     http = CachedHttp()
-    log(f"T0 {window.t0} (stored), social and trends only")
-    _ingest_social(conn, http, window, result, subject_ids, log)
+    backfill = t0 is not None and t0.isoformat() != stored
+    log(f"T0 {window.t0} ({'backfill' if backfill else 'stored'}), social only")
+    _ingest_social(conn, http, window, result, subject_ids, log, trends=not backfill)
     log(f"external by source: {dict(sorted(http.network.items()))}")
     return result
 
@@ -204,9 +211,10 @@ def _ingest_social(
     result: IngestResult,
     subject_ids: set[str] | None,
     log: Callable[[str], None],
+    trends: bool = True,
 ) -> None:
-    """Store social posts with their metadata, then the trends snapshot, and log X reads and
-    estimated spend."""
+    """Store social posts with their metadata, then the trends snapshot unless `trends` is off,
+    and log X reads and estimated spend."""
     settings = get_settings()
     spend = XSpend(settings.x_spend_cap_usd)
 
@@ -237,22 +245,19 @@ def _ingest_social(
         store_social_meta(conn, document_id(canonical_url(item.doc.url)), item.meta)
     conn.commit()
     log(f"social: {len(found)} found, {social_added} stored")
-    trends = fetch_trends(
-        conn,
-        http,
-        window.t0,
-        settings.serpapi_api_key,
-        settings.x_bearer_token,
-        spend,
-        subject_ids,
-        log,
-    )
-    result.failures += trends.failures
-    log(
-        f"x: {spend.searches} searches and {spend.trend_calls} trends calls sent, "
-        f"{spend.posts} posts read, estimated {spend.usd:.3f} USD (cap {spend.cap_usd:.2f})"
-        + (f"; skipped {', '.join(spend.skipped)}" if spend.skipped else "")
-    )
+    if trends:
+        fetched = fetch_trends(
+            conn,
+            http,
+            window.t0,
+            settings.serpapi_api_key,
+            settings.x_bearer_token,
+            spend,
+            subject_ids,
+            log,
+        )
+        result.failures += fetched.failures
+    log(spend.line())
 
 
 def _store(conn: sqlite3.Connection, doc: RawDocument) -> bool:
