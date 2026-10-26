@@ -80,7 +80,7 @@ export function Sidebar() {
 
   const all = subjects.data ?? [];
   const byId = new Map(all.map((s) => [s.id, s]));
-  const groups = all.filter((s) => s.type === "group");
+  const groups = all.filter((s) => s.type === "group" && s.sidebar);
   const topics = all.filter((s) => s.type === "topic");
 
   // On arriving at an entity's page (any tab), open its section and group once; on a topic's page,

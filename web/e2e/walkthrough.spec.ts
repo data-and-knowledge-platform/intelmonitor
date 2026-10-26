@@ -373,11 +373,14 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
     await step(STEPS[7], async () => {
       const nav = page.getByRole("navigation", { name: "Main" });
       const groups = subjects.filter((s) => s.type === "group");
-      // Groups are headings under Entities, not a section of their own.
+      // Groups are headings under Entities, not a section of their own; only sidebar groups show.
       await expect(nav.getByText("Groups", { exact: true })).toHaveCount(0);
-      const banks = groups.find((g) => g.id === "singapore-banks");
-      if (!banks) throw new Error("the Singapore banks group is missing");
-      const heading = nav.getByRole("button", { name: `Singapore banks ${banks.members.length}`, exact: true });
+      for (const g of groups) {
+        await expect(nav.getByRole("button", { name: `${g.name} ${g.members.length}`, exact: true })).toHaveCount(g.sidebar ? 1 : 0);
+      }
+      const banks = groups.find((g) => g.id === "banking");
+      if (!banks) throw new Error("the Banking group is missing");
+      const heading = nav.getByRole("button", { name: `Banking ${banks.members.length}`, exact: true });
       await expect(heading).toHaveAttribute("aria-expanded", "false");
       await heading.click();
       await expect(heading).toHaveAttribute("aria-expanded", "true");

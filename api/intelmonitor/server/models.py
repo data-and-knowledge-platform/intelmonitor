@@ -75,6 +75,7 @@ class SubjectRef(BaseModel):
 class SubjectSummary(SubjectRef):
     aliases: list[str]
     members: list[str] = Field(description="Member entity ids, for a group; else empty")
+    sidebar: bool = Field(description="A group shown as a sidebar heading")
     new_developments: int = Field(
         description="Changed since the subject was last reviewed, and not read or dismissed"
     )

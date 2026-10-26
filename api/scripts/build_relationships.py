@@ -1,7 +1,7 @@
 """Build api/seed/relationships.yaml from the collected relationship files.
 
-Reads api/seed/collected/bank-exposures.yaml, tech-dependencies.yaml, entity-links.yaml and
-ftig-links.yaml (structural links, dependencies and exposures of the digital asset firms), puts
+Reads api/seed/collected/bank-exposures.yaml, tech-dependencies.yaml, entity-links.yaml and every
+links-*.yaml (one per sector: structural links, dependencies and participations), puts
 every link in one schema, decides subject or endpoint from api/seed/subjects.yaml, and prints a
 build report. The output is deterministic: a second run produces no diff. Rerun after any edit to
 the collected files or to the subject seed.
@@ -29,8 +29,6 @@ from intelmonitor.relationships import (
     Figure,
     FigureMeasure,
     FigureUnit,
-    HeadlineMeasure,
-    HeadlineUnit,
     Relationship,
     RelType,
     Service,
@@ -39,10 +37,9 @@ from intelmonitor.seed import load_subjects
 
 COLLECTED = SEED_DIR / "collected"
 OUT = RELATIONSHIPS_PATH
-# The bank, tech and entity-link files were checked against their sources on this date, the FTIG
-# file on the second.
+# The bank, tech and entity-link files were checked against their sources on this date; each
+# links-*.yaml file states its own.
 LAST_CONFIRMED = date(2026, 10, 7)
-FTIG_CONFIRMED = date(2026, 10, 19)
 
 # Ids the collected files spell differently from the subject seed.
 RENAME = {
@@ -187,51 +184,13 @@ class LinksFile(Row):
     new_entities: list[NewEntity]
 
 
-# Exposure measures as the FTIG file names them.
-FirmMeasure = Literal[
-    "fair_value",
-    "reserve_assets",
-    "deposits",
-    "repo_principal",
-    "reserve_income",
-    "stablecoin_revenue",
-    "transaction_revenue",
-    "revenue_by_geography",
-    "share_of_total_revenue",
-    "distribution_costs",
-    "token_supply_share",
-    "assets_on_platform",
-    "stablecoin_holdings",
-    "annualised_card_gtv",
-    "customer_transaction_volume",
-    "rate_sensitivity",
-]
+class TeamLinksFile(Row):
+    """A links-*.yaml file: structural links, dependencies and participations for one sector's
+    entities, checked against their sources on `collected`."""
 
-
-class FirmExposureRow(Row):
-    """One reported figure for a non-bank entity: a reserve asset, a counterparty, a revenue
-    line or a concentration."""
-
-    entity: str
-    dimension: Dimension
-    measure: FirmMeasure
-    segment: str
-    target: str
-    value: float
-    unit: Literal["USD m", "USD", "SGD", "XSGD", "XUSD", "USDC", "USDT", "%"]
-    share_of_total: float | None
-    period: date
-    source_url: str
-    source_title: str
-    page: int | None
-    quote: str
-    note: str | None = None
-
-
-class FtigFile(Row):
+    collected: date
     relationships: list[LinkRow]
     depends_on_participates: list[TechRow]
-    exposures: list[FirmExposureRow]
     groups: list[GroupRow]
     new_entities: list[NewEntity]
 
@@ -534,119 +493,6 @@ def build_links(build: Build, data: LinksFile, confirmed: date = LAST_CONFIRMED)
             )
 
 
-# FTIG exposure measures in the store's terms: what the headline share is a share of.
-FIRM_MEASURES: dict[FirmMeasure, HeadlineMeasure] = {
-    "fair_value": "reserve_assets",
-    "reserve_assets": "reserve_assets",
-    "deposits": "reserve_assets",
-    "repo_principal": "repo_principal",
-    "reserve_income": "revenue",
-    "stablecoin_revenue": "revenue",
-    "transaction_revenue": "revenue",
-    "revenue_by_geography": "revenue",
-    "share_of_total_revenue": "revenue",
-    "distribution_costs": "distribution_costs",
-    "token_supply_share": "token_supply",
-    "assets_on_platform": "assets_on_platform",
-    "stablecoin_holdings": "stablecoin_holdings",
-    "annualised_card_gtv": "card_volume",
-}
-# Measures with no store equivalent, and (entity, target) pairs that no longer hold, with why.
-DROPPED_MEASURES: dict[FirmMeasure, str] = {
-    "customer_transaction_volume": "past transaction volume, not a standing share or holding",
-    "rate_sensitivity": "a rate sensitivity, not a share of a total or a holding",
-}
-NOT_STANDING = {
-    ("circle", "silicon-valley-bank"): "historical: USDC reserves at SVB when it failed in 2023",
-}
-# Collected units as stored: raw amounts in millions, tokens counted in millions.
-FIRM_UNITS: dict[str, tuple[float, Literal[HeadlineUnit, "%"]]] = {
-    "USD m": (1, "USD m"),
-    "USD": (1e6, "USD m"),
-    "SGD": (1e6, "SGD m"),
-    "XSGD": (1e6, "m tokens"),
-    "XUSD": (1e6, "m tokens"),
-    "USDC": (1e6, "m tokens"),
-    "USDT": (1e6, "m tokens"),
-    "%": (1, "%"),
-}
-
-
-def amount(value: float, unit: HeadlineUnit) -> str:
-    """S$11.6m, US$62,317m, 1,875.4m tokens or 26%: one decimal under 100."""
-    n = f"{value:,.{0 if value >= 100 else 1}f}"
-    if unit.startswith("SGD "):
-        return f"S${n}{unit[4:]}"
-    if unit.startswith("USD "):
-        return f"US${n}{unit[4:]}"
-    return f"{n}m tokens"
-
-
-def firm_figure(row: FirmExposureRow) -> Figure:
-    divisor, unit = FIRM_UNITS[row.unit]
-    return Figure(
-        measure=FIRM_MEASURES[row.measure],
-        dimension=row.dimension,
-        segment=row.segment,
-        value=row.value / divisor,
-        unit=unit,
-        share=row.share_of_total,
-        period=row.period,
-        source_url=row.source_url,
-        source_title=row.source_title,
-        page=row.page,
-        quote=row.quote,
-        note=row.note,
-    )
-
-
-def build_firm_exposures(build: Build, rows: list[FirmExposureRow]) -> None:
-    """One exposed_to relationship per entity and target. The headline is the first row with a
-    share (the collected file lists the one to lead with first), else the first row; its share is
-    the weight. Every other row for the pair rides along in `figures`."""
-    pairs: dict[tuple[str, str], list[FirmExposureRow]] = {}
-    for row in rows:
-        label = f"{row.entity} {row.measure} {row.target} ({row.segment})"
-        if row.measure in DROPPED_MEASURES:
-            build.drop(label, DROPPED_MEASURES[row.measure])
-        elif (row.entity, row.target) in NOT_STANDING:
-            build.drop(label, NOT_STANDING[(row.entity, row.target)])
-        else:
-            pairs.setdefault((row.entity, RENAME.get(row.target, row.target)), []).append(row)
-    for (entity, target), group in pairs.items():
-        head = next((r for r in group if r.share_of_total is not None), group[0])
-        divisor, unit = FIRM_UNITS[head.unit]
-        assert unit != "%", f"{entity} {target}: a percentage cannot lead"
-        value = head.value / divisor
-        share = head.share_of_total
-        detail = (
-            f"{build.subjects.get(entity, entity)}, {head.segment}: {amount(value, unit)}"
-            f"{f', {share:.1%} of the total' if share is not None else ''} "
-            f"at {head.period:%d %b %Y}."
-        )
-        build.add(
-            Relationship(
-                id=rel_id(entity, "exposed_to", target),
-                from_=entity,
-                to=target,
-                type="exposed_to",
-                weight=share,
-                measure=FIRM_MEASURES[head.measure],
-                value=value,
-                unit=unit,
-                evidence="public",
-                as_of=head.period,
-                last_confirmed=FTIG_CONFIRMED,
-                source_url=head.source_url,
-                source_title=head.source_title,
-                page=head.page,
-                quote=head.quote,
-                detail=" ".join(filter(None, [detail, head.note])),
-                figures=[firm_figure(r) for r in group if r is not head],
-            )
-        )
-
-
 def endpoints_for(build: Build) -> tuple[list[Endpoint], list[str]]:
     """The endpoint entry for every id in use that is not an entity subject, and the ids that
     have neither (must be none)."""
@@ -761,7 +607,6 @@ def main() -> None:
     exposures = ExposuresFile.model_validate(read("bank-exposures.yaml"))
     tech = TechFile.model_validate(read("tech-dependencies.yaml"))
     links = LinksFile.model_validate(read("entity-links.yaml"))
-    ftig = FtigFile.model_validate(read("ftig-links.yaml"))
     seed = load_subjects()
     build = Build({e.id: e.name for e in seed.entities})
     for id_, (name, kind) in EXTRA_ENDPOINTS.items():
@@ -769,13 +614,20 @@ def main() -> None:
     build_links(build, links)  # first, so its ownership shares win over tech's repeats
     build_tech(build, tech)
     build_exposures(build, exposures)
-    ftig_links = LinksFile(
-        relationships=ftig.relationships, groups=ftig.groups, new_entities=ftig.new_entities
-    )
-    build_links(build, ftig_links, FTIG_CONFIRMED)
-    ftig_tech = TechFile(relationships=ftig.depends_on_participates, incidents=[], new_entities=[])
-    build_tech(build, ftig_tech, FTIG_CONFIRMED)
-    build_firm_exposures(build, ftig.exposures)
+    for path in sorted(COLLECTED.glob("links-*.yaml")):
+        team = TeamLinksFile.model_validate(read(path.name))
+        build_links(
+            build,
+            LinksFile(
+                relationships=team.relationships, groups=team.groups, new_entities=team.new_entities
+            ),
+            team.collected,
+        )
+        build_tech(
+            build,
+            TechFile(relationships=team.depends_on_participates, incidents=[], new_entities=[]),
+            team.collected,
+        )
     rels = list(build.rels.values())
     endpoints, unknown = endpoints_for(build)
     report(build, rels, endpoints)

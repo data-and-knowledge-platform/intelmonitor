@@ -1,0 +1,629 @@
+# Insurance team links (collected 2026-10-26): parent groups, MAS insurer licences, listings,
+# bancassurance ties with banks on the shared list, industry associations and major markets for
+# great-eastern, prudential-singapore, aia-singapore, income-insurance, singlife, manulife-singapore
+# and allianz. Sources: MAS Financial Institutions Directory (insurer licence lists), LIA and GIA
+# member lists, company sites and press releases, HKEX and SGX filings (AIA 2026 interim results,
+# HSBC and OCBC announcements), SEC filings (Manulife 2025 Form 40-F, Prudential plc HY2026 6-K,
+# PIMCO fund prospectus) and the MCCY ministerial statement on the Allianz-Income offer.
+# Links already in entity-links.yaml (ocbc owns great-eastern, great-eastern operates_in malaysia,
+# great-eastern and income-insurance supervised_by mas, great-eastern supervised_by bnm) and
+# tech-dependencies.yaml (great-eastern on oracle-cloud, singlife on aws) are not repeated.
+# Bancassurance ties are depends_on rows with service distribution (insurer depends on the bank's
+# distribution). Table quotes join the heading or row cells with " | " (cell text verbatim).
+# Licence and membership rows date from the day the register was read.
+collected: 2026-10-26
+
+relationships:
+  # ------------------------------------------------------------ Great Eastern
+  - from: great-eastern
+    to: great-eastern-general
+    type: owns
+    share: 1.0
+    detail: "Great Eastern underwrites its general insurance through wholly-owned Great Eastern General Insurance."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.greateasternlife.com/sg/en/about-us/company-profile/our-businesses.html
+    source_title: "Great Eastern, Our Businesses"
+    quote: "The Group's general insurance business is underwritten by its wholly-owned subsidiary, Great Eastern General Insurance Limited (GEG), formerly known as the Overseas Assurance Corporation Limited (OAC) founded in 1920."
+  - from: great-eastern
+    to: lion-global-investors
+    type: owns
+    share: 0.7
+    detail: "Great Eastern Holdings owns 70% of Lion Global Investors; Orient Holdings (OCBC group) owns the other 30%."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.ocbc.com/group/who-we-are/group-business-asset-management.html
+    source_title: "OCBC Group Business, Asset Management"
+    quote: "Lion Global Investors a wholly-owned subsidiary of OCBC Bank, is 70% owned by Great Eastern Holdings Limited and 30% owned by Orient Holdings Private Limited."
+  - from: great-eastern
+    to: sgx
+    type: listed_on
+    share: null
+    detail: "Great Eastern Holdings stays listed on SGX after independent shareholders rejected OCBC's delisting resolution in July 2025."
+    evidence: public
+    as_of: 2025-07-08
+    source_url: https://www.ocbc.com/iwov-resources/sg/ocbc/gbc/pdf/investors/major-regulatory/2025/lapse_of_exit_offer.pdf
+    source_title: "OCBC, Conditional Exit Offer for Great Eastern Holdings: Lapse of Exit Offer"
+    quote: "Accordingly, the condition to the Exit Offer has not been satisfied and as a result (i) the Delisting will not proceed and the Company will remain listed on the SGX-ST; and (ii) the Exit Offer has lapsed with effect from the date of this Announcement."
+  - from: great-eastern
+    to: indonesia
+    type: operates_in
+    share: null
+    detail: "Great Eastern operates in Indonesia."
+    evidence: public
+    as_of: 2026-05-06
+    source_url: https://links.sgx.com/1.0.0/corporate-announcements/K9A5S36K4BFEIDMG/887690_20260506%20GEH%20Media%20Release.pdf
+    source_title: "Great Eastern Reports Sustained Growth for 1Q-2026 (SGX media release)"
+    quote: "The Group also operates in Indonesia and Brunei."
+  - from: great-eastern
+    to: brunei
+    type: operates_in
+    share: null
+    detail: "Great Eastern operates in Brunei."
+    evidence: public
+    as_of: 2026-05-06
+    source_url: https://links.sgx.com/1.0.0/corporate-announcements/K9A5S36K4BFEIDMG/887690_20260506%20GEH%20Media%20Release.pdf
+    source_title: "Great Eastern Reports Sustained Growth for 1Q-2026 (SGX media release)"
+    quote: "The Group also operates in Indonesia and Brunei."
+  - from: great-eastern-general
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Great Eastern General Insurance is licensed by MAS as a direct insurer (composite)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: "https://eservices.mas.gov.sg/fid/institution?sector=Insurance&category=Direct%20Insurer%20(Composite)"
+    source_title: "MAS Financial Institutions Directory, Insurance: Direct Insurer (Composite)"
+    quote: "GREAT EASTERN GENERAL INSURANCE LIMITED | Direct Insurer (Composite)"
+  - from: great-eastern
+    to: lia
+    type: member_of
+    share: null
+    detail: "The Great Eastern Life Assurance Company is an ordinary member of the Life Insurance Association Singapore (Great Eastern General Insurance is also listed)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.lia.org.sg/about-us/member-companies/
+    source_title: "Life Insurance Association Singapore, Member Companies"
+    quote: "Ordinary Members | The Great Eastern Life Assurance Company Limited"
+  - from: great-eastern-general
+    to: gia
+    type: member_of
+    share: null
+    detail: "Great Eastern General Insurance is a member of the General Insurance Association of Singapore."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://gia.org.sg/consumers/about/member-directory.html
+    source_title: "General Insurance Association of Singapore, Member Directory"
+    quote: "GIA Members | Great Eastern General Insurance Limited"
+
+  # ------------------------------------------------------ Prudential Singapore
+  - from: prudential-plc
+    to: prudential-singapore
+    type: owns
+    share: 1.0
+    detail: "Prudential Assurance Company Singapore is an indirect wholly-owned subsidiary of Prudential plc."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.prudential.com.sg/company
+    source_title: "Prudential Singapore, Our Company"
+    quote: "Prudential Assurance Company Singapore, an indirect wholly-owned subsidiary of Prudential plc, is one of Singapore’s leading life and health insurance companies."
+  - from: prudential-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Prudential Assurance Company Singapore is licensed by MAS as a direct life insurer; MAS also designates it a D-SII."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: "https://eservices.mas.gov.sg/fid/institution?sector=Insurance&category=Direct%20Insurer%20(Life)"
+    source_title: "MAS Financial Institutions Directory, Insurance: Direct Insurer (Life)"
+    quote: "PRUDENTIAL ASSURANCE COMPANY SINGAPORE (PTE) LIMITED | Direct Insurer (Life)"
+  - from: prudential-singapore
+    to: lia
+    type: member_of
+    share: null
+    detail: "Prudential Assurance Company Singapore is an ordinary member of the Life Insurance Association Singapore."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.lia.org.sg/about-us/member-companies/
+    source_title: "Life Insurance Association Singapore, Member Companies"
+    quote: "Ordinary Members | Prudential Assurance Company Singapore (Pte) Limited"
+  - from: prudential-plc
+    to: hkex
+    type: listed_on
+    share: null
+    detail: "Prudential plc has a primary listing on the Stock Exchange of Hong Kong (2378)."
+    evidence: public
+    as_of: 2026-08-27
+    source_url: https://www.prudentialplc.com/en/newsroom/company-news/2026/Prudential-plc-executes-the-sale-of-a-2-0-per-cent-stake-of-ICICI-Prudential-Asset-Management/
+    source_title: "Prudential plc executes the sale of a 2.0 per cent stake of ICICI Prudential Asset Management"
+    quote: "The business has dual primary listings on the Stock Exchange of Hong Kong (HKEX: 2378) and the London Stock Exchange (LSE: PRU)."
+  - from: prudential-plc
+    to: lse
+    type: listed_on
+    share: null
+    detail: "Prudential plc has a primary listing on the London Stock Exchange (PRU)."
+    evidence: public
+    as_of: 2026-08-27
+    source_url: https://www.prudentialplc.com/en/newsroom/company-news/2026/Prudential-plc-executes-the-sale-of-a-2-0-per-cent-stake-of-ICICI-Prudential-Asset-Management/
+    source_title: "Prudential plc executes the sale of a 2.0 per cent stake of ICICI Prudential Asset Management"
+    quote: "The business has dual primary listings on the Stock Exchange of Hong Kong (HKEX: 2378) and the London Stock Exchange (LSE: PRU)."
+  - from: prudential-plc
+    to: sgx
+    type: listed_on
+    share: null
+    detail: "Prudential plc has a secondary listing on SGX (K6S)."
+    evidence: public
+    as_of: 2026-08-27
+    source_url: https://www.prudentialplc.com/en/newsroom/company-news/2026/Prudential-plc-executes-the-sale-of-a-2-0-per-cent-stake-of-ICICI-Prudential-Asset-Management/
+    source_title: "Prudential plc executes the sale of a 2.0 per cent stake of ICICI Prudential Asset Management"
+    quote: "It also has a secondary listing on the Singapore Stock Exchange (SGX: K6S) and a listing on the New York Stock Exchange (NYSE: PUK) in the form of American Depositary Receipts."
+  - from: prudential-plc
+    to: nyse
+    type: listed_on
+    share: null
+    detail: "Prudential plc ADRs are listed on the NYSE (PUK)."
+    evidence: public
+    as_of: 2026-08-27
+    source_url: https://www.prudentialplc.com/en/newsroom/company-news/2026/Prudential-plc-executes-the-sale-of-a-2-0-per-cent-stake-of-ICICI-Prudential-Asset-Management/
+    source_title: "Prudential plc executes the sale of a 2.0 per cent stake of ICICI Prudential Asset Management"
+    quote: "It also has a secondary listing on the Singapore Stock Exchange (SGX: K6S) and a listing on the New York Stock Exchange (NYSE: PUK) in the form of American Depositary Receipts."
+  - from: prudential-plc
+    to: hong-kong
+    type: operates_in
+    share: null
+    detail: "Hong Kong is one of Prudential plc's main markets."
+    evidence: public
+    as_of: 2026-06-30
+    source_url: https://www.sec.gov/Archives/edgar/data/1116578/0001628280-26-059164.txt
+    source_title: "Prudential plc Half Year 2026 Results (Form 6-K, 27 Aug 2026)"
+    quote: "Across our other markets, Hong Kong recorded new business profit growth of 8 per cent, against a strong prior period comparator, and we saw double-digit growth in both our Malaysia and growth market segments."
+  - from: prudential-plc
+    to: malaysia
+    type: operates_in
+    share: null
+    detail: "Prudential plc runs an insurance business in Malaysia."
+    evidence: public
+    as_of: 2026-06-30
+    source_url: https://www.sec.gov/Archives/edgar/data/1116578/0001628280-26-059164.txt
+    source_title: "Prudential plc Half Year 2026 Results (Form 6-K, 27 Aug 2026)"
+    quote: "Across our other markets, Hong Kong recorded new business profit growth of 8 per cent, against a strong prior period comparator, and we saw double-digit growth in both our Malaysia and growth market segments."
+
+  # ------------------------------------------------------------ AIA Singapore
+  - from: aia-group
+    to: aia-singapore
+    type: owns
+    share: 1.0
+    detail: "AIA Group's Singapore business is a wholly-owned subsidiary."
+    evidence: public
+    as_of: 2026-06-30
+    source_url: https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0820/2026082000001.pdf
+    source_title: "AIA Group Limited, Interim Results for the six months ended 30 June 2026 (HKEX announcement)"
+    quote: "It has a presence in 18 markets – wholly-owned branches and subsidiaries in the Chinese Mainland, Hong Kong SAR, Thailand, Singapore, Malaysia, Australia, Cambodia, Indonesia, Myanmar, New Zealand, the Philippines, South Korea, Sri Lanka, Taiwan (China), Vietnam, Brunei and Macau SAR, and a 49 per cent joint venture in India."
+  - from: aia-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "AIA Singapore is licensed by MAS as a direct insurer (composite); MAS also designates it a D-SII."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: "https://eservices.mas.gov.sg/fid/institution?sector=Insurance&category=Direct%20Insurer%20(Composite)"
+    source_title: "MAS Financial Institutions Directory, Insurance: Direct Insurer (Composite)"
+    quote: "AIA SINGAPORE PRIVATE LIMITED | Direct Insurer (Composite)"
+  - from: aia-singapore
+    to: lia
+    type: member_of
+    share: null
+    detail: "AIA Singapore is an ordinary member of the Life Insurance Association Singapore."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.lia.org.sg/about-us/member-companies/
+    source_title: "Life Insurance Association Singapore, Member Companies"
+    quote: "Ordinary Members | AIA Singapore Private Limited"
+  - from: aia-singapore
+    to: gia
+    type: member_of
+    share: null
+    detail: "AIA Singapore is a member of the General Insurance Association of Singapore."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://gia.org.sg/consumers/about/member-directory.html
+    source_title: "General Insurance Association of Singapore, Member Directory"
+    quote: "GIA Members | AIA Singapore Private Limited"
+  - from: aia-group
+    to: hkex
+    type: listed_on
+    share: null
+    detail: "AIA Group is listed on the HKEX Main Board (1299)."
+    evidence: public
+    as_of: 2026-08-20
+    source_url: https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0820/2026082000001.pdf
+    source_title: "AIA Group Limited, Interim Results for the six months ended 30 June 2026 (HKEX announcement)"
+    quote: "AIA Group Limited is listed on the Main Board of The Stock Exchange of Hong Kong Limited under the stock codes “1299” for HKD counter and “81299” for RMB counter with American Depositary Receipts (Level 1) traded on the over-the-counter market under the ticker symbol “AAGIY”."
+  - from: aia-group
+    to: mainland-china
+    type: operates_in
+    share: null
+    detail: "AIA Group has wholly-owned operations in the Chinese Mainland."
+    evidence: public
+    as_of: 2026-06-30
+    source_url: https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0820/2026082000001.pdf
+    source_title: "AIA Group Limited, Interim Results for the six months ended 30 June 2026 (HKEX announcement)"
+    quote: "It has a presence in 18 markets – wholly-owned branches and subsidiaries in the Chinese Mainland, Hong Kong SAR, Thailand, Singapore, Malaysia, Australia, Cambodia, Indonesia, Myanmar, New Zealand, the Philippines, South Korea, Sri Lanka, Taiwan (China), Vietnam, Brunei and Macau SAR, and a 49 per cent joint venture in India."
+  - from: aia-group
+    to: hong-kong
+    type: operates_in
+    share: null
+    detail: "AIA Group has wholly-owned operations in Hong Kong."
+    evidence: public
+    as_of: 2026-06-30
+    source_url: https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0820/2026082000001.pdf
+    source_title: "AIA Group Limited, Interim Results for the six months ended 30 June 2026 (HKEX announcement)"
+    quote: "It has a presence in 18 markets – wholly-owned branches and subsidiaries in the Chinese Mainland, Hong Kong SAR, Thailand, Singapore, Malaysia, Australia, Cambodia, Indonesia, Myanmar, New Zealand, the Philippines, South Korea, Sri Lanka, Taiwan (China), Vietnam, Brunei and Macau SAR, and a 49 per cent joint venture in India."
+  - from: aia-group
+    to: thailand
+    type: operates_in
+    share: null
+    detail: "AIA Group has wholly-owned operations in Thailand."
+    evidence: public
+    as_of: 2026-06-30
+    source_url: https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0820/2026082000001.pdf
+    source_title: "AIA Group Limited, Interim Results for the six months ended 30 June 2026 (HKEX announcement)"
+    quote: "It has a presence in 18 markets – wholly-owned branches and subsidiaries in the Chinese Mainland, Hong Kong SAR, Thailand, Singapore, Malaysia, Australia, Cambodia, Indonesia, Myanmar, New Zealand, the Philippines, South Korea, Sri Lanka, Taiwan (China), Vietnam, Brunei and Macau SAR, and a 49 per cent joint venture in India."
+  - from: aia-group
+    to: malaysia
+    type: operates_in
+    share: null
+    detail: "AIA Group has wholly-owned operations in Malaysia."
+    evidence: public
+    as_of: 2026-06-30
+    source_url: https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0820/2026082000001.pdf
+    source_title: "AIA Group Limited, Interim Results for the six months ended 30 June 2026 (HKEX announcement)"
+    quote: "It has a presence in 18 markets – wholly-owned branches and subsidiaries in the Chinese Mainland, Hong Kong SAR, Thailand, Singapore, Malaysia, Australia, Cambodia, Indonesia, Myanmar, New Zealand, the Philippines, South Korea, Sri Lanka, Taiwan (China), Vietnam, Brunei and Macau SAR, and a 49 per cent joint venture in India."
+  - from: aia-group
+    to: indonesia
+    type: operates_in
+    share: null
+    detail: "AIA Group has wholly-owned operations in Indonesia."
+    evidence: public
+    as_of: 2026-06-30
+    source_url: https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0820/2026082000001.pdf
+    source_title: "AIA Group Limited, Interim Results for the six months ended 30 June 2026 (HKEX announcement)"
+    quote: "It has a presence in 18 markets – wholly-owned branches and subsidiaries in the Chinese Mainland, Hong Kong SAR, Thailand, Singapore, Malaysia, Australia, Cambodia, Indonesia, Myanmar, New Zealand, the Philippines, South Korea, Sri Lanka, Taiwan (China), Vietnam, Brunei and Macau SAR, and a 49 per cent joint venture in India."
+
+  # --------------------------------------------------------- Income Insurance
+  - from: ntuc-enterprise
+    to: income-insurance
+    type: owns
+    share: 0.72
+    detail: "NTUC Enterprise holds about 72% of Income Insurance."
+    evidence: public
+    as_of: 2024-10-14
+    source_url: https://www.mccy.gov.sg/about-us/news-and-resources/pre-conditional-voluntary-general-offer-by-allianz-for-income-insurance/
+    source_title: "MCCY, Ministerial Statement: Pre-conditional voluntary general offer by Allianz for Income Insurance (14 Oct 2024)"
+    quote: "NE is also a Co-op and currently holds about 72% of the shares in Income."
+  - from: income-insurance
+    to: lia
+    type: member_of
+    share: null
+    detail: "Income Insurance is an ordinary member of the Life Insurance Association Singapore."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.lia.org.sg/about-us/member-companies/
+    source_title: "Life Insurance Association Singapore, Member Companies"
+    quote: "Ordinary Members | Income Insurance Limited"
+  - from: income-insurance
+    to: gia
+    type: member_of
+    share: null
+    detail: "Income Insurance is a member of the General Insurance Association of Singapore."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://gia.org.sg/consumers/about/member-directory.html
+    source_title: "General Insurance Association of Singapore, Member Directory"
+    quote: "GIA Members | Income Insurance Limited"
+  - from: allianz
+    to: income-insurance
+    type: partner_of
+    share: null
+    detail: "Deal counterparty: Allianz offered in July 2024 to buy at least 51% of Income Insurance and withdrew the offer on 16 December 2024 after the Government said the deal should not proceed as structured."
+    evidence: public
+    as_of: 2024-12-16
+    source_url: https://www.income.com.sg/pre-convgo
+    source_title: "Income Insurance, Updates on Proposed Income-Allianz Transaction"
+    quote: "On 17 July 2024, Allianz made a Pre-Conditional Voluntary Cash General Offer (“Offer”) to acquire at least 51% of the shares in Income Insurance, subject to the fulfilment of a pre-condition (regulatory approval). The Offer was withdrawn by Allianz on 16 December 2024."
+
+  # ------------------------------------------------------------------ Singlife
+  - from: sumitomo-life
+    to: singlife
+    type: owns
+    share: 1.0
+    detail: "Singlife has been a fully owned subsidiary of Japan's Sumitomo Life since March 2024."
+    evidence: public
+    as_of: 2024-03-18
+    source_url: https://singlife.com/en/about-us/newsroom/2024/singlife-becomes-fully-owned-subsidiary-of-sumitomo-life
+    source_title: "Singlife becomes fully owned subsidiary of Sumitomo Life"
+    quote: "Leading homegrown financial services company, Singapore Life Holdings Pte Ltd (“Singlife”), is pleased to announce that it has become a fully owned subsidiary of Sumitomo Life Insurance Company (“Sumitomo Life”)."
+  - from: singlife
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Singapore Life Ltd. is licensed by MAS as a direct insurer (composite) and a major payment institution."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: "https://eservices.mas.gov.sg/fid/institution?sector=Insurance&category=Direct%20Insurer%20(Composite)"
+    source_title: "MAS Financial Institutions Directory, Insurance: Direct Insurer (Composite)"
+    quote: "SINGAPORE LIFE LTD. | Major Payment Institution | Direct Insurer (Composite)"
+  - from: singlife
+    to: lia
+    type: member_of
+    share: null
+    detail: "Singapore Life Ltd. is an ordinary member of the Life Insurance Association Singapore."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.lia.org.sg/about-us/member-companies/
+    source_title: "Life Insurance Association Singapore, Member Companies"
+    quote: "Ordinary Members | Singapore Life Ltd."
+  - from: singlife
+    to: philippines
+    type: operates_in
+    share: null
+    detail: "Singlife operates in the Philippines through its subsidiary Singlife Philippines."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://singlife.com.ph/about-us
+    source_title: "Singlife Philippines, About Us"
+    quote: "Singlife Philippines is a subsidiary of Singlife Singapore."
+
+  # -------------------------------------------------------- Manulife Singapore
+  - from: manulife-financial
+    to: manulife-singapore
+    type: owns
+    share: 1.0
+    detail: "Manulife Financial Corporation lists Manulife (Singapore) Pte. Ltd. as a 100%-owned major operating subsidiary."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1086888/000108688826000003/mfc-20251231.htm
+    source_title: "Manulife Financial 2025 Form 40-F, Note 21 Subsidiaries (100% owned unless otherwise noted)"
+    quote: "Manulife (Singapore) Pte. Ltd. | Singapore | Life insurance company"
+  - from: manulife-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Manulife (Singapore) is licensed by MAS as a direct life insurer."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: "https://eservices.mas.gov.sg/fid/institution?sector=Insurance&category=Direct%20Insurer%20(Life)"
+    source_title: "MAS Financial Institutions Directory, Insurance: Direct Insurer (Life)"
+    quote: "MANULIFE (SINGAPORE) PTE. LTD. | Direct Insurer (Life)"
+  - from: manulife-singapore
+    to: lia
+    type: member_of
+    share: null
+    detail: "Manulife (Singapore) is an ordinary member of the Life Insurance Association Singapore."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.lia.org.sg/about-us/member-companies/
+    source_title: "Life Insurance Association Singapore, Member Companies"
+    quote: "Ordinary Members | Manulife (Singapore) Pte. Ltd."
+  - from: manulife-financial
+    to: tsx
+    type: listed_on
+    share: null
+    detail: "Manulife Financial trades as MFC on the Toronto Stock Exchange."
+    evidence: public
+    as_of: 2026-04-22
+    source_url: https://www.nasdaq.com/press-release/manulife-release-first-quarter-2026-results-2026-04-22
+    source_title: "Manulife to Release First Quarter 2026 Results (PRNewswire, 22 Apr 2026)"
+    quote: "TSX/NYSE/PSE: MFC SEHK: 945"
+  - from: manulife-financial
+    to: nyse
+    type: listed_on
+    share: null
+    detail: "Manulife Financial trades as MFC on the NYSE."
+    evidence: public
+    as_of: 2026-04-22
+    source_url: https://www.nasdaq.com/press-release/manulife-release-first-quarter-2026-results-2026-04-22
+    source_title: "Manulife to Release First Quarter 2026 Results (PRNewswire, 22 Apr 2026)"
+    quote: "TSX/NYSE/PSE: MFC SEHK: 945"
+  - from: manulife-financial
+    to: pse
+    type: listed_on
+    share: null
+    detail: "Manulife Financial trades as MFC on the Philippine Stock Exchange."
+    evidence: public
+    as_of: 2026-04-22
+    source_url: https://www.nasdaq.com/press-release/manulife-release-first-quarter-2026-results-2026-04-22
+    source_title: "Manulife to Release First Quarter 2026 Results (PRNewswire, 22 Apr 2026)"
+    quote: "TSX/NYSE/PSE: MFC SEHK: 945"
+  - from: manulife-financial
+    to: hkex
+    type: listed_on
+    share: null
+    detail: "Manulife Financial is listed on the Stock Exchange of Hong Kong (945)."
+    evidence: public
+    as_of: 2026-04-22
+    source_url: https://www.nasdaq.com/press-release/manulife-release-first-quarter-2026-results-2026-04-22
+    source_title: "Manulife to Release First Quarter 2026 Results (PRNewswire, 22 Apr 2026)"
+    quote: "TSX/NYSE/PSE: MFC SEHK: 945"
+  - from: manulife-financial
+    to: hong-kong
+    type: operates_in
+    share: null
+    detail: "Manulife's wholly-owned life insurer Manulife (International) Limited is based in Hong Kong."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1086888/000108688826000003/mfc-20251231.htm
+    source_title: "Manulife Financial 2025 Form 40-F, Note 21 Subsidiaries (100% owned unless otherwise noted)"
+    quote: "Manulife (International) Limited | Hong Kong, | China | Life insurance company"
+  - from: manulife-financial
+    to: mainland-china
+    type: operates_in
+    share: null
+    detail: "Manulife owns 51% of Manulife-Sinochem Life Insurance in Shanghai."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1086888/000108688826000003/mfc-20251231.htm
+    source_title: "Manulife Financial 2025 Form 40-F, Note 21 Subsidiaries (100% owned unless otherwise noted)"
+    quote: "Manulife-Sinochem Life Insurance Co. Ltd. ( | 51 | % | ) | Shanghai, | China | Life insurance company"
+  - from: manulife-financial
+    to: vietnam
+    type: operates_in
+    share: null
+    detail: "Manulife runs a wholly-owned life insurer in Vietnam."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1086888/000108688826000003/mfc-20251231.htm
+    source_title: "Manulife Financial 2025 Form 40-F, Note 21 Subsidiaries (100% owned unless otherwise noted)"
+    quote: "Manulife (Vietnam) Limited | Ho Chi Minh | City, | Vietnam | Life insurance company"
+  - from: manulife-financial
+    to: indonesia
+    type: operates_in
+    share: null
+    detail: "Manulife runs a wholly-owned life insurer in Indonesia."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1086888/000108688826000003/mfc-20251231.htm
+    source_title: "Manulife Financial 2025 Form 40-F, Note 21 Subsidiaries (100% owned unless otherwise noted)"
+    quote: "PT Asuransi Jiwa Manulife Indonesia | Jakarta, | Indonesia | Life insurance company"
+  - from: manulife-financial
+    to: malaysia
+    type: operates_in
+    share: null
+    detail: "Manulife owns 63.3% of Manulife Insurance Berhad in Malaysia."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1086888/000108688826000003/mfc-20251231.htm
+    source_title: "Manulife Financial 2025 Form 40-F, Note 21 Subsidiaries (100% owned unless otherwise noted)"
+    quote: "Manulife Insurance Berhad ( | 63.3 | % | ) | Kuala Lumpur, | Malaysia | Life insurance company"
+
+  # ------------------------------------------------------------------- Allianz
+  - from: allianz
+    to: pimco
+    type: owns
+    share: null
+    detail: "PIMCO is a majority-owned indirect subsidiary of Allianz SE (exact stake not stated)."
+    evidence: public
+    as_of: 2026-04-10
+    source_url: https://www.sec.gov/Archives/edgar/data/1244183/000119312526151272/d52384d424b5.htm
+    source_title: "PIMCO Income Strategy Fund, Prospectus Supplement (Form 424B5, 2026)"
+    quote: "PIMCO is a majority-owned indirect subsidiary of Allianz SE, a publicly traded European insurance and financial services company."
+  - from: allianz
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Allianz Insurance Singapore Pte. Ltd. is licensed by MAS as a direct insurer (composite); Allianz Global Corporate & Specialty SE's Singapore branch is a licensed direct general insurer."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: "https://eservices.mas.gov.sg/fid/institution?sector=Insurance&category=Direct%20Insurer%20(Composite)"
+    source_title: "MAS Financial Institutions Directory, Insurance: Direct Insurer (Composite)"
+    quote: "ALLIANZ INSURANCE SINGAPORE PTE. LTD. | Direct Insurer (Composite)"
+  - from: allianz
+    to: lia
+    type: member_of
+    share: null
+    detail: "Allianz Insurance Singapore Pte. Ltd. is an ordinary member of the Life Insurance Association Singapore."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.lia.org.sg/about-us/member-companies/
+    source_title: "Life Insurance Association Singapore, Member Companies"
+    quote: "Ordinary Members | Allianz Insurance Singapore Pte. Ltd."
+  - from: allianz
+    to: gia
+    type: member_of
+    share: null
+    detail: "Allianz Insurance Singapore and Allianz Global Corporate & Specialty SE (Singapore Branch) are members of the General Insurance Association of Singapore."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://gia.org.sg/consumers/about/member-directory.html
+    source_title: "General Insurance Association of Singapore, Member Directory"
+    quote: "GIA Members | Allianz Global Corporate & Specialty SE, Singapore Branch | Allianz Insurance Singapore Pte. Ltd."
+  - from: allianz
+    to: hsbc
+    type: partner_of
+    share: null
+    detail: "Deal counterparty: HSBC agreed in July 2026 to sell HSBC Life (Singapore) to Allianz Asia Holdings for S$2.7bn (completion expected 1H 2027), with a 15-year exclusive HSBC Bank (Singapore) bancassurance agreement on completion."
+    evidence: public
+    as_of: 2026-07-24
+    source_url: https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0724/2026072400051.pdf
+    source_title: "HSBC Holdings, Voluntary announcement: HSBC to sell its life and health insurance business in Singapore to Allianz (HKEX, 24 Jul 2026)"
+    quote: "HSBC Holdings announces that its indirect wholly-owned subsidiary, HSBC Insurance (Asia- Pacific) Holdings Limited (the “Seller”), has today entered into a share purchase agreement with Allianz Asia Holdings Pte. Ltd. (the “Purchaser”) for the sale of 100% of the issued share capital of HSBC Life (Singapore) Pte. Ltd. (“HSBC Life SG”) for a consideration of S$2.7billion (US$2.1 billion) (together, the “Disposal”)."
+
+depends_on_participates:
+  - from: great-eastern
+    to: ocbc
+    type: depends_on
+    detail: "Great Eastern sells through an exclusive bancassurance partnership with OCBC Bank, in place since 1992."
+    service: distribution
+    evidence: public
+    source_url: https://www.greateasternlife.com/sg/en/about-us/company-profile/our-businesses.html
+    source_title: "Great Eastern, Our Businesses"
+    published: null
+    quote: "Great Eastern became the first insurer to establish a bancassurance network in Singapore in an exclusive partnership with OCBC Bank in 1992."
+    as_of: 2026-10-26
+  - from: prudential-singapore
+    to: uob
+    type: depends_on
+    detail: "Prudential's regional bancassurance alliance with UOB, which includes Singapore, was renewed in 2019 to run until 2034."
+    service: distribution
+    evidence: public
+    source_url: https://www.prudentialplc.com/en/newsroom/company-news/2019/prudential-plc-and-uob-renew-and-expand-their-regional-strategic-bancassurance-alliance
+    source_title: "Prudential plc and UOB renew and expand their regional strategic bancassurance alliance"
+    published: 2019-01-10
+    quote: "The new agreement extends the original alliance which commenced in 2010 to 2034 and increases the geographical scope to include a fifth market, Vietnam, alongside our existing footprint across Singapore, Malaysia, Thailand and Indonesia."
+  - from: prudential-singapore
+    to: standard-chartered
+    type: depends_on
+    detail: "Standard Chartered is a major Prudential bancassurance partner, with growth in Hong Kong and Singapore (group-level partnership)."
+    service: distribution
+    evidence: public
+    source_url: https://www.sec.gov/Archives/edgar/data/1116578/0001628280-26-059164.txt
+    source_title: "Prudential plc Half Year 2026 Results (Form 6-K, 27 Aug 2026)"
+    published: 2026-08-27
+    quote: "our partnership with Standard Chartered Bank (SCB) continued to deliver robust growth, supported by favourable momentum in Hong Kong and Singapore and United Overseas Bank (UOB), our other major strategic partner, continued to contribute to our overall performance."
+  - from: aia-singapore
+    to: citibank
+    type: depends_on
+    detail: "Citibank is AIA Singapore's main bancassurance partner, part of AIA's exclusive regional partnership with Citi signed in 2013."
+    service: distribution
+    evidence: public
+    source_url: https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0820/2026082000001.pdf
+    source_title: "AIA Group Limited, Interim Results for the six months ended 30 June 2026 (HKEX announcement)"
+    published: 2026-08-20
+    quote: "Partnership distribution also maintained strong momentum, particularly through Citibank."
+  - from: manulife-singapore
+    to: dbs
+    type: depends_on
+    detail: "Manulife is DBS's exclusive life bancassurance partner in Singapore, Hong Kong, China and Indonesia under a 15-year agreement from 2016."
+    service: distribution
+    evidence: public
+    source_url: https://www.dbs.com/newsroom/DBS_and_Manulife_form_15_year_regional_life_bancassurance_partnership
+    source_title: "DBS and Manulife form 15-year regional life bancassurance partnership"
+    published: 2015-04-08
+    quote: "DBS Bank Ltd and Manulife Financial Asia Limited are pleased to announce that they have entered into a 15-year regional distribution agreement covering four mutually significant markets, namely Singapore, Hong Kong, China and Indonesia."
+
+groups: []
+
+new_entities:
+  # 50-list entities not yet subjects or declared elsewhere
+  - {id: prudential-singapore, name: Prudential Assurance Company Singapore (Pte) Limited, kind: insurer, country: singapore, aliases: [Prudential Singapore, Prudential Assurance Company Singapore]}
+  - {id: aia-singapore, name: AIA Singapore Private Limited, kind: insurer, country: singapore, aliases: [AIA Singapore]}
+  - {id: manulife-singapore, name: Manulife (Singapore) Pte. Ltd., kind: insurer, country: singapore, aliases: [Manulife Singapore]}
+  - {id: allianz, name: Allianz SE, kind: insurer, country: germany, aliases: [Allianz, Allianz Group, Allianz Insurance Singapore]}
+  - {id: lion-global-investors, name: Lion Global Investors Limited, kind: investor, country: singapore, aliases: [Lion Global Investors, LGI]}
+  - {id: pimco, name: Pacific Investment Management Company LLC, kind: investor, country: united-states, aliases: [PIMCO]}
+  # parents and subsidiaries
+  - {id: great-eastern-general, name: Great Eastern General Insurance Limited, kind: insurer, country: singapore, aliases: [GEG, Great Eastern General, Overseas Assurance Corporation]}
+  - {id: prudential-plc, name: Prudential plc, kind: insurer, country: united-kingdom, aliases: [Prudential, Prudential Group]}
+  - {id: aia-group, name: AIA Group Limited, kind: insurer, country: hong-kong, aliases: [AIA Group, AIA]}
+  - {id: manulife-financial, name: Manulife Financial Corporation, kind: insurer, country: canada, aliases: [Manulife, MFC, Manulife Financial, John Hancock]}
+  - {id: sumitomo-life, name: Sumitomo Life Insurance Company, kind: insurer, country: japan, aliases: [Sumitomo Life]}
+  - {id: ntuc-enterprise, name: NTUC Enterprise Co-operative Limited, kind: investor, country: singapore, aliases: [NTUC Enterprise, NE]}
+  # associations, exchanges, countries
+  - {id: lia, name: Life Insurance Association Singapore, kind: association, country: singapore, aliases: [LIA]}
+  - {id: gia, name: General Insurance Association of Singapore, kind: association, country: singapore, aliases: [GIA]}
+  - {id: lse, name: London Stock Exchange, kind: exchange, country: united-kingdom, aliases: [LSE]}
+  - {id: nyse, name: New York Stock Exchange, kind: exchange, country: united-states, aliases: [NYSE]}
+  - {id: tsx, name: Toronto Stock Exchange, kind: exchange, country: canada, aliases: [TSX]}
+  - {id: pse, name: Philippine Stock Exchange, kind: exchange, country: philippines, aliases: [PSE]}
+  - {id: brunei, name: Brunei Darussalam, kind: country, country: brunei, aliases: [Brunei]}
+  - {id: philippines, name: Philippines, kind: country, country: philippines, aliases: [The Philippines]}

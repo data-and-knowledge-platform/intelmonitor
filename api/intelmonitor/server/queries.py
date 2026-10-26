@@ -428,6 +428,7 @@ class Queries:
             **subject_ref(subject_id).model_dump(),
             aliases=aliases(subject_id),
             members=list(subject(subject_id).members),
+            sidebar=subject(subject_id).sidebar,
             new_developments=self.unread_count(subject_id),
             needs_attention=sum(d.needs_attention for d in devs),
             recent=len(recent),

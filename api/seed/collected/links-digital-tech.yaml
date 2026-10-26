@@ -1,0 +1,577 @@
+# Digital asset and technology team links (collected 2026-10-26): Circle, Coinbase, Crypto.com, Ripple,
+# Sygnum, Microsoft and Ant International, plus the corporate parents and listings of AWS and Google Cloud
+# (their Singapore regions and FI customers are in tech-dependencies.yaml and are not repeated).
+# General links only: group structure and Singapore licensed entities, MAS licences from the MAS Financial
+# Institutions Directory, home and foreign regulators, listings, stakes held by or in other tracked entities,
+# MAS BLOOM membership, and a few dependencies that tie these firms to each other or to tracked banks.
+# Reserve composition, revenue lines and dealer exposures are deliberately left out.
+# Sources: SEC filings (10-K, proxy statements, Exhibit 21), the MAS Financial Institutions Directory, the
+# FINMA list of authorised banks, MAS and company press releases, and press where no primary source was
+# reachable (marked reported). Quotes are verbatim with whitespace normalised; table cells joined with " | ".
+# Schema: see entity-links.yaml (relationships) and tech-dependencies.yaml (depends_on_participates).
+# Licences are supervised_by edges from the licensed entity; the subject owns that entity (share null when
+# no stake is published), so impact paths reach MAS in two hops (circle owns circle-singapore, ...).
+collected: 2026-10-26
+
+relationships:
+  # ---------------------------------------------------------------- Circle
+  - from: circle
+    to: nyse
+    type: listed_on
+    share: null
+    detail: "Circle Internet Group's Class A common stock trades on the New York Stock Exchange as CRCL."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1876042/000187604226000062/crcl-20251231.htm
+    source_title: "Circle Internet Group, Inc. Form 10-K for the year ended December 31, 2025, cover page"
+    quote: "Class A common stock, par value $0.0001 per share | CRCL | New York Stock Exchange"
+  - from: circle
+    to: circle-singapore
+    type: owns
+    share: null
+    detail: "Circle Internet Singapore Pte. Ltd., incorporated in Singapore, is a subsidiary of Circle Internet Group."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1876042/000187604226000062/exhibit211-listofsubsidiar.htm
+    source_title: "Circle Internet Group, Inc. Form 10-K FY2025, Exhibit 21.1 Subsidiaries"
+    quote: "Circle Internet Singapore Pte. Ltd. | Singapore"
+  - from: circle-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Major Payment Institution licensed by MAS for account issuance, domestic and cross-border money transfer and digital payment token services."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/412248-CIRCLE-INTERNET-SINGAPORE-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: Circle Internet Singapore Pte. Ltd."
+    quote: "CIRCLE INTERNET SINGAPORE PTE. LTD. | Major Payment Institution | Account Issuance Service | Domestic Money Transfer Service | Cross-border Money Transfer Service | Digital Payment Token Service"
+  - from: circle
+    to: nydfs
+    type: supervised_by
+    share: null
+    detail: "Circle Internet Financial, LLC holds a New York virtual currency licence (BitLicense) from NYDFS."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1876042/000187604226000062/crcl-20251231.htm
+    source_title: "Circle Internet Group, Inc. Form 10-K for the year ended December 31, 2025"
+    quote: "including those imposed by the New York Department of Financial Services (“NYDFS”) due to Circle Internet Financial, LLC’s holding of a virtual currency license (“BitLicense”)."
+  - from: circle
+    to: standard-chartered
+    type: partner_of
+    share: null
+    detail: "Standard Chartered is one of four banks advising Circle on the design of the Circle Payments Network (launched April 2025); partner_of is dropped by the build."
+    evidence: public
+    as_of: 2025-04-21
+    source_url: https://www.circle.com/pressroom/circle-announces-payments-network-to-transform-global-money-movement
+    source_title: "Circle announces payments network to transform global money movement"
+    quote: "Banco Santander, Deutsche Bank, Société Générale, and Standard Chartered Bank are contributing their deep expertise in global payments to assist Circle in designing a network that meets the needs of leading banks and financial institutions worldwide."
+  # ---------------------------------------------------------------- Coinbase
+  - from: coinbase
+    to: nasdaq
+    type: listed_on
+    share: null
+    detail: "Coinbase Global's Class A common stock trades on the Nasdaq Global Select Market as COIN."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1679788/000167978826000015/coin-20251231.htm
+    source_title: "Coinbase Global, Inc. Form 10-K for the year ended December 31, 2025"
+    quote: "Our Class A common stock began trading on the Nasdaq Global Select Market under the symbol “COIN” on April 14, 2021."
+  - from: coinbase
+    to: coinbase-singapore
+    type: owns
+    share: null
+    detail: "Coinbase holds its MAS major payment institution licence through Coinbase Singapore Pte. Ltd.; no stake is published (the Exhibit 21 list omits non-significant subsidiaries)."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1679788/000167978826000015/coin-20251231.htm
+    source_title: "Coinbase Global, Inc. Form 10-K for the year ended December 31, 2025"
+    quote: "In Singapore, we hold a major payment institution license issued by the Monetary Authority of Singapore."
+  - from: coinbase-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Major Payment Institution licensed by MAS for cross-border money transfer and digital payment token services."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/235467-COINBASE-SINGAPORE-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: Coinbase Singapore Pte. Ltd."
+    quote: "COINBASE SINGAPORE PTE. LTD. | Major Payment Institution | Cross-border Money Transfer Service | Digital Payment Token Service"
+  - from: coinbase
+    to: nydfs
+    type: supervised_by
+    share: null
+    detail: "Coinbase Custody Trust Company (CCTC) is a New York State-chartered limited purpose trust company supervised by NYDFS."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1679788/000167978826000015/coin-20251231.htm
+    source_title: "Coinbase Global, Inc. Form 10-K for the year ended December 31, 2025"
+    quote: "Our subsidiary, CCTC, operates as a New York State-chartered limited purpose trust company, which is subject to regulation, examination, and supervision by the NYDFS."
+  - from: coinbase
+    to: circle
+    type: shareholder_of
+    share: null
+    detail: "Coinbase received a minority equity stake in Circle under the 2023 Collaboration Agreement and sold part of it after Circle's June 2025 IPO; size not published."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1876042/000187604226000062/crcl-20251231.htm
+    source_title: "Circle Internet Group, Inc. Form 10-K for the year ended December 31, 2025"
+    quote: "Coinbase also received a minority equity stake in us, and we entered into an intellectual property license that permits Coinbase to perpetually use certain of our stablecoin trademarks (including USDC and EURC)"
+  - from: blackrock
+    to: coinbase
+    type: shareholder_of
+    share: 0.066
+    detail: "BlackRock beneficially owns 6.6% of Coinbase Class A common stock (1.4% of total voting power)."
+    evidence: public
+    as_of: 2026-03-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1679788/000167978826000045/coin-20260424.htm
+    source_title: "Coinbase Global, Inc. 2026 proxy statement, Security ownership of certain beneficial owners and management"
+    quote: "BlackRock, Inc. (2) | 14,618,089 | 6.6 | — | — | 1.4"
+  - from: coinbase
+    to: jpmorgan
+    type: partner_of
+    share: null
+    detail: "July 2025 strategic partnership: Chase bank-to-wallet link through JPMorgan's API, Chase card funding and Ultimate Rewards transfers to Coinbase; partner_of is dropped by the build."
+    evidence: public
+    as_of: 2025-07-30
+    source_url: https://www.jpmorganchase.com/newsroom/press-releases/2025/jpmc-coinbase-partnership
+    source_title: "JPMorganChase and Coinbase Launch Strategic Partnership to Make Buying Crypto Easier than Ever"
+    quote: "Today, JPMorganChase (NYSE: JPM) and Coinbase (NASDAQ: COIN) announced a strategic partnership that sets a new standard for customer choice and security in the innovation economy."
+  # ---------------------------------------------------------------- Crypto.com
+  - from: crypto-com
+    to: foris-dax-asia
+    type: owns
+    share: null
+    detail: "Foris DAX Asia Pte. Ltd. is the Singapore entity trading as Crypto.com, licensed by MAS for DPT services; no stake is published."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://crypto.com/sg/price/coti/sgd
+    source_title: "Crypto.com Singapore website, regulatory disclosures"
+    quote: "Foris DAX Asia Pte. Ltd. (trading under the brand name “Crypto.com”) may only be able to offer certain products, features and/or services on the Crypto.com App due to potential or actual regulatory restrictions."
+  - from: crypto-com
+    to: foris-asia
+    type: owns
+    share: null
+    detail: "Foris Asia Pte. Ltd. issues the Crypto.com Visa Card in Singapore under its own MAS Major Payment Institution licence; no stake is published."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://crypto.com/sg/price/coti/sgd
+    source_title: "Crypto.com Singapore website, regulatory disclosures"
+    quote: "The Crypto.com Visa Card is issued and distributed by Foris Asia Pte. Ltd. that holds a Major Payment Institution License approved by the Monetary Authority of Singapore (“MAS”), which allows it to provide e-money issuance services, account issuance services, cross border and domestic money transfer services."
+  - from: foris-dax-asia
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Major Payment Institution licensed by MAS for digital payment token services."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/250069-FORIS-DAX-ASIA-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: Foris DAX Asia Pte. Ltd."
+    quote: "FORIS DAX ASIA PTE. LTD. | Major Payment Institution | Digital Payment Token Service"
+  - from: foris-asia
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Major Payment Institution licensed by MAS for account issuance, money transfer and e-money issuance services."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/239767-FORIS-ASIA-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: Foris Asia Pte. Ltd."
+    quote: "FORIS ASIA PTE. LTD. | Major Payment Institution | Account Issuance Service | Domestic Money Transfer Service | Cross-border Money Transfer Service | E-money Issuance Service"
+  - from: crypto-com
+    to: mfsa
+    type: supervised_by
+    share: null
+    detail: "Crypto.com's Malta entity holds a MiCA crypto-asset service provider licence from the MFSA (January 2025), passported across the EEA."
+    evidence: public
+    as_of: 2025-01-27
+    source_url: https://crypto.com/au/company-news/crypto-com-receives-markets-in-crypto-assets-mica-licence
+    source_title: "Crypto.com Receives Markets in Crypto Assets (MiCA) Licence"
+    quote: "Crypto.com has today announced its Malta entity has received a MiCA licence from the Malta Financial Services Authority (MFSA)."
+  - from: crypto-com
+    to: dubai-vara
+    type: supervised_by
+    share: null
+    detail: "Crypto.com holds a Virtual Assets Service Provider licence from Dubai's VARA."
+    evidence: public
+    as_of: 2025-01-27
+    source_url: https://crypto.com/au/company-news/crypto-com-receives-markets-in-crypto-assets-mica-licence
+    source_title: "Crypto.com Receives Markets in Crypto Assets (MiCA) Licence"
+    quote: "a Virtual Assets Service Provider licence in Dubai (VARA)"
+  - from: crypto-com
+    to: uk-fca
+    type: supervised_by
+    share: null
+    detail: "Crypto.com holds a UK Electronic Money Institution licence from the FCA."
+    evidence: public
+    as_of: 2025-01-27
+    source_url: https://crypto.com/au/company-news/crypto-com-receives-markets-in-crypto-assets-mica-licence
+    source_title: "Crypto.com Receives Markets in Crypto Assets (MiCA) Licence"
+    quote: "The MiCA licence adds to Crypto.com’s expanding list of licences and registrations globally including, but not limited to, a UK Electronic Money Institution licence (FCA), a Major Payment Institution licence in Singapore (MAS)"
+  # ---------------------------------------------------------------- Ripple
+  - from: ripple
+    to: ripple-markets-apac
+    type: owns
+    share: null
+    detail: "Ripple Markets APAC Pte. Ltd. is Ripple's Singapore subsidiary and holds its MAS licence."
+    evidence: public
+    as_of: 2025-12-01
+    source_url: https://ripple.com/ripple-press/ripple-expands-scope-of-payment-activities-in-singapore-for-its-major-payment-institution-license/
+    source_title: "Ripple Expands Scope of Payment Activities in Singapore for its Major Payment Institution License"
+    quote: "approved an expanded scope of payment activities for the Major Payment Institution (MPI) license held by its Singapore subsidiary Ripple Markets APAC Pte. Ltd. (RMA)."
+  - from: ripple-markets-apac
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Major Payment Institution licensed by MAS for account issuance, money transfer, e-money issuance and digital payment token services (scope expanded December 2025)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/415143-RIPPLE-MARKETS-APAC-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: Ripple Markets APAC Pte. Ltd."
+    quote: "RIPPLE MARKETS APAC PTE. LTD. | Major Payment Institution | Account Issuance Service | Domestic Money Transfer Service | Cross-border Money Transfer Service | E-money Issuance Service | Digital Payment Token Service"
+  - from: ripple
+    to: nydfs
+    type: supervised_by
+    share: null
+    detail: "Ripple's RLUSD stablecoin is issued by a New York limited purpose trust company supervised by NYDFS."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://ripple.com/solutions/stablecoin/
+    source_title: "Ripple USD (RLUSD) stablecoin"
+    quote: "Issued by a New York trust supervised by NYDFS, and transparently backed."
+  - from: ripple
+    to: dbs
+    type: partner_of
+    share: null
+    detail: "September 2025 partnership with DBS and Franklin Templeton: DBS Digital Exchange to let clients buy Franklin's tokenised money market fund sgBENJI with RLUSD; partner_of is dropped by the build."
+    evidence: public
+    as_of: 2025-09-18
+    source_url: https://www.dbs.com/newsroom/DBS_and_Franklin_Templeton_to_launch_trading_and_lending_solutions_powered_by_tokenised_money_market_funds_and_Ripples_RLUSD_stablecoin
+    source_title: "DBS and Franklin Templeton to launch trading and lending solutions powered by tokenised money market funds and Ripple's RLUSD stablecoin"
+    quote: "Investors can earn yield by acquiring Franklin Templeton’s sgBENJI token on DBS Digital Exchange using Ripple’s RLUSD stablecoin"
+  # ---------------------------------------------------------------- Sygnum
+  - from: sygnum
+    to: sygnum-singapore
+    type: owns
+    share: null
+    detail: "Sygnum Pte. Ltd. (Sygnum Singapore) is the group's MAS-licensed Singapore entity; no stake is published."
+    evidence: public
+    as_of: 2026-10-05
+    source_url: https://www.theasianbanker.com/press-releases/sygnum-and-fidelity-international-bring-tokenised-liquidity-to-singapore
+    source_title: "Sygnum and Fidelity International bring tokenised liquidity to Singapore (press release, 5 October 2026)"
+    quote: "is now available to accredited and institutional investors in Singapore through Sygnum Pte. Ltd., a MAS-licensed Singapore entity."
+  - from: sygnum-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Holds a Capital Markets Services licence (fund management, dealing, custody, corporate finance advice) and a Major Payment Institution licence including DPT services."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/228260-SYGNUM-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: Sygnum Pte. Ltd."
+    quote: "SYGNUM PTE. LTD. | Capital Markets Services Licensee | Fund Management | Dealing In Capital Markets Products | Securities | Collective Investment Schemes | Providing Custodial Services | Advising on Corporate Finance | Major Payment Institution | Account Issuance Service | Domestic Money Transfer Service | Cross-border Money Transfer Service | E-money Issuance Service | Digital Payment Token Service"
+  - from: sygnum
+    to: finma
+    type: supervised_by
+    share: null
+    detail: "Sygnum Bank AG, Zurich, is on FINMA's list of authorised banks (category 5)."
+    evidence: public
+    as_of: 2026-10-25
+    source_url: https://www.finma.ch/en/~/media/finma/dokumente/bewilligungstraeger/pdf/beh.pdf
+    source_title: "FINMA, Authorised banks and securities firms"
+    quote: "Sygnum Bank AG | Zürich | Bank | 5"
+  - from: singtel
+    to: sygnum
+    type: shareholder_of
+    share: null
+    detail: "Singtel's venture arm Singtel Innov8 invested in Sygnum in 2018; size not published."
+    evidence: reported
+    as_of: 2018-11-09
+    source_url: https://startupticker.ch/en/news/sygnum-gains-swisscom-as-partner-and-singtel-innov8-as-investor
+    source_title: "Sygnum gains Swisscom as partner and Singtel Innov8 as investor (startupticker.ch)"
+    quote: "Furthermore, the venture capital arm of the Singtel Group, Singtel Innov8, supports Sygnum with an investment."
+  # ---------------------------------------------------------------- Microsoft
+  - from: microsoft
+    to: microsoft-azure
+    type: owns
+    share: 1.0
+    detail: "Azure is part of Microsoft's Intelligent Cloud segment (server products and cloud services)."
+    evidence: public
+    as_of: 2026-06-30
+    source_url: https://www.sec.gov/Archives/edgar/data/789019/000119312526323660/msft-20260630.htm
+    source_title: "Microsoft Corporation Form 10-K for the fiscal year ended June 30, 2026"
+    quote: "Server products and cloud services, including Azure and other cloud services, comprising cloud and AI consumption-based services"
+  - from: microsoft
+    to: microsoft-365
+    type: owns
+    share: 1.0
+    detail: "Microsoft 365 is part of Microsoft's Productivity and Business Processes segment."
+    evidence: public
+    as_of: 2026-06-30
+    source_url: https://www.sec.gov/Archives/edgar/data/789019/000119312526323660/msft-20260630.htm
+    source_title: "Microsoft Corporation Form 10-K for the fiscal year ended June 30, 2026"
+    quote: "Microsoft 365 Commercial products and cloud services, including Microsoft 365 Commercial cloud, comprising Microsoft 365 Commercial, Enterprise Mobility + Security"
+  - from: microsoft
+    to: nasdaq
+    type: listed_on
+    share: null
+    detail: "Microsoft common stock trades on Nasdaq as MSFT."
+    evidence: public
+    as_of: 2026-07-23
+    source_url: https://www.sec.gov/Archives/edgar/data/789019/000119312526323660/msft-20260630.htm
+    source_title: "Microsoft Corporation Form 10-K for the fiscal year ended June 30, 2026"
+    quote: "Our common stock is traded on the NASDAQ Stock Market under the symbol MSFT."
+  - from: microsoft
+    to: grab
+    type: shareholder_of
+    share: null
+    detail: "Microsoft made an undisclosed strategic investment in Grab in October 2018 as part of a five-year cloud partnership."
+    evidence: public
+    as_of: 2018-10-08
+    source_url: https://news.microsoft.com/source/2018/10/08/grab-forges-strategic-cloud-partnership-with-microsoft-to-drive-innovation-and-adoption-of-digital-services-across-southeast-asia/
+    source_title: "Grab forges strategic cloud partnership with Microsoft to drive innovation and adoption of digital services across Southeast Asia"
+    quote: "Grab will adopt Microsoft Azure as its preferred cloud platform. Microsoft will make a strategic investment in Grab."
+  # ---------------------------------------------------------------- AWS and Google Cloud parents
+  - from: amazon
+    to: aws
+    type: owns
+    share: 1.0
+    detail: "AWS is one of Amazon.com's three reporting segments."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1018724/000101872426000004/amzn-20251231.htm
+    source_title: "Amazon.com, Inc. Form 10-K for the year ended December 31, 2025"
+    quote: "We have organized our operations into three segments: North America, International, and Amazon Web Services (“AWS”)."
+  - from: amazon
+    to: nasdaq
+    type: listed_on
+    share: null
+    detail: "Amazon.com common stock trades on the Nasdaq Global Select Market as AMZN."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1018724/000101872426000004/amzn-20251231.htm
+    source_title: "Amazon.com, Inc. Form 10-K for the year ended December 31, 2025, cover page"
+    quote: "Common Stock, par value $.01 per share | AMZN | Nasdaq Global Select Market"
+  - from: alphabet
+    to: google-cloud
+    type: owns
+    share: 1.0
+    detail: "Google Cloud is a reporting segment of Alphabet."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1652044/000165204426000018/goog-20251231.htm
+    source_title: "Alphabet Inc. Form 10-K for the year ended December 31, 2025"
+    quote: "Google Cloud includes infrastructure and platform services, applications, and other services for enterprise customers."
+  - from: alphabet
+    to: nasdaq
+    type: listed_on
+    share: null
+    detail: "Alphabet Class A (GOOGL) and Class C (GOOG) shares trade on the Nasdaq Global Select Market."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1652044/000165204426000018/goog-20251231.htm
+    source_title: "Alphabet Inc. Form 10-K for the year ended December 31, 2025, cover page"
+    quote: "Class A Common Stock, $0.001 par value | GOOGL | Nasdaq Stock Market LLC (Nasdaq Global Select Market)"
+  # ---------------------------------------------------------------- Ant International
+  - from: ant-group
+    to: ant-international
+    type: shareholder_of
+    share: null
+    detail: "Ant International was spun out of Ant Group; Ant Group is an existing investor and joined its US$1.2 billion Series A in July 2026. Stake not published."
+    evidence: public
+    as_of: 2026-07-21
+    source_url: https://www.theasianbanker.com/press-releases/ant-international-completes-1-2-billion-series-a-financing-round
+    source_title: "Ant International completes $1.2 billion Series A financing round (press release)"
+    quote: "Existing investors including Ant Group and Alibaba Group participated in this round, as well as other renowned international investment institutions."
+  - from: alibaba-group
+    to: ant-international
+    type: shareholder_of
+    share: null
+    detail: "Alibaba Group is an existing investor in Ant International and joined its July 2026 Series A. Stake not published."
+    evidence: public
+    as_of: 2026-07-21
+    source_url: https://www.theasianbanker.com/press-releases/ant-international-completes-1-2-billion-series-a-financing-round
+    source_title: "Ant International completes $1.2 billion Series A financing round (press release)"
+    quote: "Existing investors including Ant Group and Alibaba Group participated in this round, as well as other renowned international investment institutions."
+  - from: ant-international
+    to: anext-bank
+    type: owns
+    share: 1.0
+    detail: "ANEXT Bank, a Singapore digital wholesale bank, is wholly owned by Ant International."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.anext.com.sg/
+    source_title: "ANEXT Bank website"
+    quote: "ANEXT Bank is a wholly-owned subsidiary of Ant International."
+  - from: anext-bank
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "ANEXT Bank Pte. Ltd. holds a MAS digital wholesale bank licence."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/248597-ANEXT-BANK-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: ANEXT Bank Pte. Ltd."
+    quote: "ANEXT BANK PTE. LTD. | Incorporated in Singapore | Wholesale Bank"
+  - from: ant-international
+    to: 2c2p
+    type: owns
+    share: null
+    detail: "Ant acquired 2C2P in 2022; Ant International lists it among its own milestones. Stake not published."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.ant-intl.com/about-us
+    source_title: "About Ant International"
+    quote: "Acquisition of 2C2P opens a new chapter for our payment and acquiring services."
+  - from: ant-international
+    to: worldfirst
+    type: owns
+    share: null
+    detail: "Ant acquired WorldFirst in 2019; it runs Ant International's cross-border account business. Stake not published."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.ant-intl.com/about-us
+    source_title: "About Ant International"
+    quote: "Acquisition of WorldFirst as foundation for building a cross-border funds management platform for SMEs."
+  - from: worldfirst
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "WorldFirst (Singapore) Merchant Services Pte. Ltd. is a MAS Major Payment Institution; World First Asia Pte. Ltd. also holds a CMS licence and an MPI licence."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/219756-WORLDFIRST-SINGAPORE-MERCHANT-SERVICES-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: WorldFirst (Singapore) Merchant Services Pte. Ltd."
+    quote: "WORLDFIRST (SINGAPORE) MERCHANT SERVICES PTE. LTD. | Major Payment Institution | Account Issuance Service | Domestic Money Transfer Service | Cross-border Money Transfer Service | E-money Issuance Service"
+
+depends_on_participates:
+  - from: circle
+    to: blackrock
+    type: depends_on
+    detail: "Most USDC reserves sit in the Circle Reserve Fund, a government money market fund managed by BlackRock."
+    service: reserve_management
+    evidence: public
+    source_url: https://www.sec.gov/Archives/edgar/data/1876042/000187604226000062/crcl-20251231.htm
+    source_title: "Circle Internet Group, Inc. Form 10-K for the year ended December 31, 2025"
+    published: 2026-03-09
+    quote: "approximately 88% of USDC reserves in the Circle Reserve Fund, a government money market fund pursuant to Rule 2a-7 under the 1940 Act managed by BlackRock"
+  - from: circle
+    to: coinbase
+    type: depends_on
+    detail: "Coinbase distributes USDC to its customers under the Collaboration Agreement; Circle pays Coinbase mainly out of USDC reserve income."
+    service: distribution
+    evidence: public
+    source_url: https://www.sec.gov/Archives/edgar/data/1876042/000187604226000062/crcl-20251231.htm
+    source_title: "Circle Internet Group, Inc. Form 10-K for the year ended December 31, 2025"
+    published: 2026-03-09
+    quote: "Under the Collaboration Agreement, Coinbase supports usage of our stablecoins by its customers across its key products (including on- and off-ramps), and we make payments to Coinbase tied principally to net reserve income from USDC."
+  - from: coinbase
+    to: circle
+    type: depends_on
+    detail: "Circle provides Coinbase with USDC creation and redemption services."
+    service: payments
+    evidence: public
+    source_url: https://www.sec.gov/Archives/edgar/data/1679788/000167978826000015/coin-20251231.htm
+    source_title: "Coinbase Global, Inc. Form 10-K for the year ended December 31, 2025"
+    published: 2026-02-12
+    quote: "For example, Circle provides us with creation and redemption services for USDC, including the operational capabilities required for our USDC customer-facing services."
+  - from: blackrock
+    to: coinbase
+    type: depends_on
+    detail: "Coinbase Custody Trust Company is the bitcoin custodian of BlackRock's iShares Bitcoin Trust."
+    service: custody
+    evidence: public
+    source_url: https://www.sec.gov/Archives/edgar/data/1980994/000143774926026004/bit20260630c_10q.htm
+    source_title: "iShares Bitcoin Trust ETF Form 10-Q for the quarter ended June 30, 2026"
+    published: 2026-08-06
+    quote: "Coinbase Custody Trust Company, LLC (the “Bitcoin Custodian”) is responsible for safekeeping the bitcoin owned by the Trust."
+  - from: coinbase
+    to: aws
+    type: depends_on
+    detail: "Coinbase International Exchange runs on AWS."
+    service: cloud
+    evidence: public
+    source_url: https://aws.amazon.com/solutions/case-studies/coinbase-cryptocurrency-exchange-case-study/
+    source_title: "Coinbase case study - AWS"
+    published: null
+    as_of: 2026-10-26
+    quote: "The Coinbase International Exchange was built on AWS from the ground up, using Cloud Native principles, powered by AWS managed services such as Amazon Aurora"
+  - from: coinbase-singapore
+    to: standard-chartered-singapore
+    type: depends_on
+    detail: "Coinbase Singapore's free SGD bank transfers are facilitated by Standard Chartered (launched March 2023)."
+    service: banking
+    evidence: reported
+    source_url: https://www.kitco.com/news/off-the-wire/2023-03-14/coinbase-opens-local-bank-transfers-singapore-users-no-cost
+    source_title: "Coinbase opens local bank transfers for Singapore users at no cost (Kitco, from CoinDesk)"
+    published: 2023-03-14
+    quote: "Transfers, in Singapore dollars, are facilitated by a traditional bank, Standard Chartered , and carry no fee, the company said in a statement."
+  - from: foris-asia
+    to: visa
+    type: participates_in
+    detail: "Foris Asia issues the Crypto.com Visa Card in Singapore."
+    service: payments
+    evidence: public
+    source_url: https://crypto.com/sg/price/coti/sgd
+    source_title: "Crypto.com Singapore website, regulatory disclosures"
+    published: null
+    as_of: 2026-10-26
+    quote: "The Crypto.com Visa Card is issued and distributed by Foris Asia Pte. Ltd."
+  - from: circle
+    to: bloom
+    type: participates_in
+    detail: "Initial BLOOM member working on distribution and clearing of settlement assets."
+    service: market_infrastructure
+    evidence: public
+    source_url: https://www.mas.gov.sg/news/media-releases/2025/mas-launches-bloom-initiative-to-extend-settlement-capabilities
+    source_title: "MAS Launches BLOOM Initiative to Extend Settlement Capabilities"
+    published: 2025-10-16
+    quote: "Members working on this include Circle, DBS, OCBC, Partior, Stripe and UOB."
+  - from: coinbase
+    to: bloom
+    type: participates_in
+    detail: "Initial BLOOM member working on agentic payments."
+    service: market_infrastructure
+    evidence: public
+    source_url: https://www.mas.gov.sg/news/media-releases/2025/mas-launches-bloom-initiative-to-extend-settlement-capabilities
+    source_title: "MAS Launches BLOOM Initiative to Extend Settlement Capabilities"
+    published: 2025-10-16
+    quote: "Members working on this include Coinbase and DBS."
+  - from: ant-international
+    to: bloom
+    type: participates_in
+    detail: "Initial BLOOM member working on cross-border wholesale settlement compliance."
+    service: market_infrastructure
+    evidence: public
+    source_url: https://www.mas.gov.sg/news/media-releases/2025/mas-launches-bloom-initiative-to-extend-settlement-capabilities
+    source_title: "MAS Launches BLOOM Initiative to Extend Settlement Capabilities"
+    published: 2025-10-16
+    quote: "Members working on this include Ant International and StraitsX."
+
+groups: []
+
+new_entities:
+  - {id: crypto-com, name: Crypto.com, kind: digital_asset_firm, country: singapore, aliases: [Crypto.com, Foris DAX, CRO]}
+  - {id: ripple, name: Ripple, kind: digital_asset_firm, country: united-states, aliases: [Ripple Labs, Ripple Labs Inc., RLUSD issuer]}
+  - {id: sygnum, name: Sygnum, kind: digital_asset_firm, country: null, aliases: [Sygnum Bank, Sygnum Bank AG, Sygnum Group]}
+  - {id: microsoft, name: Microsoft, kind: tech_provider, country: united-states, aliases: [Microsoft Corporation, MSFT]}
+  - {id: ant-international, name: Ant International, kind: payment_institution, country: singapore, aliases: [Alipay+, Antom, Ant International Holdings]}
+  - {id: blackrock, name: BlackRock, kind: investor, country: united-states, aliases: [BlackRock Inc, iShares]}
+  - {id: 2c2p, name: 2C2P, kind: payment_institution, country: singapore, aliases: [2C2P Pte. Ltd.]}
+  - {id: circle-singapore, name: Circle Internet Singapore Pte. Ltd., kind: stablecoin_issuer, country: singapore, aliases: [Circle Singapore]}
+  - {id: coinbase-singapore, name: Coinbase Singapore Pte. Ltd., kind: digital_asset_firm, country: singapore, aliases: [Coinbase Singapore]}
+  - {id: foris-dax-asia, name: Foris DAX Asia Pte. Ltd., kind: digital_asset_firm, country: singapore, aliases: [Crypto.com Singapore]}
+  - {id: foris-asia, name: Foris Asia Pte. Ltd., kind: payment_institution, country: singapore, aliases: [Crypto.com Visa Card issuer]}
+  - {id: ripple-markets-apac, name: Ripple Markets APAC Pte. Ltd., kind: digital_asset_firm, country: singapore, aliases: [RMA, Ripple Singapore]}
+  - {id: sygnum-singapore, name: Sygnum Pte. Ltd., kind: digital_asset_firm, country: singapore, aliases: [Sygnum Singapore]}
+  - {id: worldfirst, name: WorldFirst, kind: payment_institution, country: null, aliases: [World First, WorldFirst (Singapore) Merchant Services Pte. Ltd., World First Asia Pte. Ltd.]}
+  - {id: ant-group, name: Ant Group, kind: payment_institution, country: mainland-china, aliases: ["Ant Group Co., Ltd.", Ant Financial]}
+  - {id: alibaba-group, name: Alibaba Group, kind: tech_provider, country: mainland-china, aliases: [Alibaba Group Holding Limited, Alibaba]}
+  - {id: amazon, name: Amazon.com, kind: tech_provider, country: united-states, aliases: ["Amazon.com, Inc.", Amazon]}
+  - {id: alphabet, name: Alphabet, kind: tech_provider, country: united-states, aliases: [Alphabet Inc., Google]}
+  - {id: nyse, name: New York Stock Exchange, kind: exchange, country: united-states, aliases: [NYSE]}
+  - {id: nydfs, name: New York State Department of Financial Services, kind: regulator, country: united-states, aliases: [NYDFS, DFS]}
+  - {id: mfsa, name: Malta Financial Services Authority, kind: regulator, country: null, aliases: [MFSA]}
+  - {id: dubai-vara, name: Virtual Assets Regulatory Authority (Dubai), kind: regulator, country: null, aliases: [VARA]}
+  - {id: uk-fca, name: Financial Conduct Authority, kind: regulator, country: united-kingdom, aliases: [FCA, UK FCA]}
+  - {id: finma, name: Swiss Financial Market Supervisory Authority, kind: regulator, country: null, aliases: [FINMA]}
+  - {id: bloom, name: BLOOM (MAS settlement initiative), kind: platform, country: singapore, aliases: [MAS BLOOM, BLOOM initiative]}

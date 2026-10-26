@@ -20,7 +20,9 @@ _KIND_LABEL: dict[EntityKind, str] = {
     "payment_system": "payment system",
     "tech_provider": "technology and service provider to financial institutions",
     "asset_manager": "asset manager",
+    "investor": "investment company or sovereign wealth fund",
     "insurer": "insurer",
+    "payment_institution": "payments and fintech company",
     "stablecoin_issuer": "stablecoin issuer",
     "digital_asset_firm": (
         "crypto exchange, broker or custodian (digital payment token service provider)"
@@ -38,6 +40,7 @@ class Subject:
     kind: EntityKind | None
     description: str  # what counts as being about this subject; groups are never asked about
     members: tuple[str, ...]  # entity ids, for groups
+    sidebar: bool = False  # a group shown as a sidebar heading
 
 
 @lru_cache
@@ -56,6 +59,7 @@ def all_subjects() -> dict[str, Subject]:
             None,
             f"the group {g.name} ({members})",
             tuple(g.members),
+            g.sidebar,
         )
     for e in seed.entities:
         aliases = f", also {', '.join(e.aliases)}" if e.aliases else ""

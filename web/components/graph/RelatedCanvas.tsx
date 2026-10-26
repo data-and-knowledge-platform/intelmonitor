@@ -3,8 +3,8 @@
 // and stops (shared pieces in force.ts). A node's size grows with its developments, so one with 5
 // is three times one with 1; it is red when one could hurt the subject and blue otherwise. Each
 // node shows its count inside, following it on every frame. Nodes keep their places while the same
-// ones have news. Dragging a node reheats the layout, as in the graph view. The camera stays put,
-// so the page scrolls over the card. `data-layout` on the stage reads "running" while nodes move
+// ones have news. Dragging a node reheats the layout, as in the graph view; dragging the
+// background pans and the wheel zooms, and the fit button puts the frame back. `data-layout` on the stage reads "running" while nodes move
 // and "settled" once they stop.
 import { forceCollide, forceSimulation, type Simulation, type SimulationLinkDatum } from "d3-force";
 import type Graph from "graphology";
@@ -12,7 +12,9 @@ import { useMemo, useRef } from "react";
 
 import type { Schema } from "@/lib/api/client";
 
-import { tokenColors, useSigmaStage, type BaseNodeAttrs, type BBox, type SimNode } from "./force";
+import { FitIcon } from "@/components/ui/icons";
+
+import { fit, tokenColors, useSigmaStage, type BaseNodeAttrs, type BBox, type SimNode } from "./force";
 
 type LinkedNode = Schema<"RelatedNode">;
 type Subject = Schema<"SubjectRef">;
@@ -191,7 +193,7 @@ export function RelatedCanvas({ center, nodes, hovered, onHover, onOpen }: Props
   // The nodes the kept positions were laid out for.
   const layoutFor = useRef("");
   const data = useMemo(() => ({ center, nodes }), [center, nodes]);
-  const { stage } = useSigmaStage<NodeAttrs, EdgeAttrs, RNode, Palette, typeof data>({
+  const { renderer, stage } = useSigmaStage<NodeAttrs, EdgeAttrs, RNode, Palette, typeof data>({
     data,
     hovered,
     onHover,
@@ -204,8 +206,6 @@ export function RelatedCanvas({ center, nodes, hovered, onHover, onOpen }: Props
     settings: () => ({
       labelRenderedSizeThreshold: 0,
       stagePadding: 64,
-      enableCameraZooming: false,
-      enableCameraPanning: false,
     }),
     dim: (attrs, colors) => ({ ...attrs, color: colors.dim, borderColor: colors.dim }),
     setup: (r, view) => {
@@ -258,6 +258,16 @@ export function RelatedCanvas({ center, nodes, hovered, onHover, onOpen }: Props
           </span>
         ))}
       </div>
+      <button
+        type="button"
+        className="btn-icon lg rg-fit"
+        aria-label="Fit graph to view"
+        title="Fit to view"
+        disabled={!renderer}
+        onClick={() => renderer && void fit(renderer, centred)}
+      >
+        <FitIcon />
+      </button>
     </div>
   );
 }

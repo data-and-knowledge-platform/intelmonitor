@@ -19,7 +19,9 @@ EntityKind = Literal[
     "payment_system",
     "tech_provider",
     "asset_manager",
+    "investor",
     "insurer",
+    "payment_institution",
     "stablecoin_issuer",
     "digital_asset_firm",
     "country",
@@ -54,6 +56,8 @@ class Group(BaseModel):
     name: str
     topics: list[str]
     members: list[str]
+    # False keeps a group out of the sidebar; it still drives search queries and peer sets.
+    sidebar: bool = True
 
 
 class Entity(BaseModel):

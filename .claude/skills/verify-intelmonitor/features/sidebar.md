@@ -1,7 +1,7 @@
 # Sidebar
 
 The left navigation (`navigation "Main"`) opens with `link "Ask"` to the [Ask](ask.md) page, then lists dashboards in a saved order, each with an options popover for name, color, order and delete.
-Below it, `Entities` lists the groups (Singapore banks, Payment systems, ...) as collapsible headings with their member count, and `Topics` lists the topics. The `Entities` and `Topics` headings are buttons (`aria-expanded`) that collapse their whole list; which are closed is kept in localStorage `im.sidebar.closed`, and opening an entity's or topic's page opens its section again.
+Below it, `Entities` lists the sidebar groups (the MAS top 50 categories: Banking, Insurance, Asset management, Financial markets, Fintech, Digital assets, Technology, Investment) as collapsible headings with their member count; groups with `sidebar: false` in `subjects.yaml` (Singapore banks, Payment systems, countries, ...) are left out, and `Topics` lists the topics. The `Entities` and `Topics` headings are buttons (`aria-expanded`) that collapse their whole list; which are closed is kept in localStorage `im.sidebar.closed`, and opening an entity's or topic's page opens its section again.
 A dashboard shows `<n> new` in gray: its developments new since the last visit and unread, the same number as its feed head.
 An entity or topic with a High development new since the last visit shows `<n> High` in red, with a tooltip saying since when.
 Long names wrap; nothing is cut off.
@@ -38,7 +38,7 @@ Preconditions:
 - Save the order before any reorder: `pnpm -C web verify api /dashboards > /tmp/order-before.json`.
 - `pnpm -C web verify open home`, then drive with `agent-browser --session <session>`.
 
-- **Expand a group.** Run `agent-browser snapshot -i -s nav`, then click `button "Singapore banks 3"`. It reports `expanded=true` and member links appear, for example `link "OCBC 1 High"` or `link "DBS"`. The groups and members match `verify api /subjects` (`type: "group"`, `members`).
+- **Expand a group.** Run `agent-browser snapshot -i -s nav`, then click `button "Banking 12"`. It reports `expanded=true` and member links appear, for example `link "OCBC 1 High"` or `link "DBS"`. The groups and members match `verify api /subjects` (`type: "group"`, `sidebar: true`, `members`).
 - **Open an entity.** Click a member link. URL becomes `/monitors/<id>`, the H1 is its name, and `document.querySelector("nav [aria-current=page]")` is that link.
 - **Current group opens itself.** Reload an entity page. Only the group holding it reports `expanded=true`.
 - **Dashboard new count.** A dashboard row's `<n> new` equals `new_count` in `verify api /dashboards` and the `<n> new` in its dashboard's feed head; opening one of its New developments lowers both.

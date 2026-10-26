@@ -58,6 +58,11 @@
 .rg-stage[data-dragging] {
   cursor: grabbing;
 }
+.rg-fit {
+  position: absolute;
+  top: var(--s-3);
+  right: var(--s-3);
+}
 
 /* Each node's count, centred in it; RelatedCanvas positions them per frame. */
 .rg-badges {

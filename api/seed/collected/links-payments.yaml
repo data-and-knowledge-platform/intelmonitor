@@ -1,0 +1,636 @@
+# Payments team links (collected 2026-10-26): group structure, MAS licences, listings, investors,
+# payment system and card scheme participation, and cloud dependencies for CDP, CLS, NETS, BCS,
+# Grab, SeaMoney (Monee), Wise, Airwallex, Nium, Stripe and 2C2P.
+# Each fintech group owns its Singapore licensed entity and the MAS licence sits on that entity
+# (grab owns grabpay, wise owns wise-asia-pacific, airwallex owns airwallex-singapore, stripe owns
+# stripe-singapore). nium and 2c2p are single nodes: NIUM Pte. Ltd. and 2C2P Pte. Ltd. are the
+# Singapore-incorporated headquarters entities. SeaMoney was renamed Monee in May 2025; sea-limited
+# is the NYSE-listed parent.
+# MAS licences come from the MAS Financial Institutions Directory (FID), read on 2026-10-26; FID
+# quotes join the institution name, incorporation and licence cells with " | ".
+# CLS shareholder and settlement member rows come from the CLS lists read on 2026-10-26; quotes join
+# the list heading with the member's name and location cells.
+# Other sources: SEC 20-F filings (Grab FY2025, Sea FY2025, Wise FY2026), MAS payment systems page,
+# company websites and press releases, and trade press for funding rounds (marked reported where the
+# stake may since have changed).
+# Not repeated here: FAST, PayNow, MEPS+, GIRO and eGIRO participation, NETS debit scheme banks,
+# bank ownership of NETS, NETS ownership of BCS, BCS as operator of FAST, PayNow, GIRO and eGIRO,
+# SGX ownership of CDP, Grab and Singtel ownership of GXS Bank, MariBank card and SWIFT rows
+# (tech-dependencies.yaml and entity-links.yaml); GXS Bank's MAS licence (links-banking.yaml);
+# Temasek, GIC and Vertex stakes in Grab, Nium and Stripe (links-investment.yaml); Ant
+# International ownership of 2C2P (links-digital-tech.yaml).
+collected: 2026-10-26
+
+relationships:
+  # ------------------------------------------------------------ CDP
+  - from: cdp
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS lists The Central Depository (Pte) Limited, SGX's securities clearing house and depository, as an Approved Clearing House operating the Central Depository System."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/100611-THE-CENTRAL-DEPOSITORY-PTE-LIMITED
+    source_title: "MAS Financial Institutions Directory: The Central Depository (Pte) Limited"
+    quote: "THE CENTRAL DEPOSITORY (PTE) LIMITED | Incorporated in Singapore | Approved Clearing House | Central Depository System"
+
+  # ------------------------------------------------------------ CLS
+  - from: cls-bank
+    to: federal-reserve
+    type: supervised_by
+    share: null
+    detail: "CLS is regulated and supervised by the Federal Reserve Board and the Federal Reserve Bank of New York; the Fed chairs the CLS Oversight Committee."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.cls-group.com/about/
+    source_title: "About CLS (CLS Group)"
+    quote: "We are regulated and supervised by the Board of Governors of the Federal Reserve System and the Federal Reserve Bank of New York"
+  - from: cls-bank
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS oversees CLS, which has settled SGD since September 2003, through the Fed-led cooperative oversight arrangement; CLS is a designated system under the Finality and Netting Act."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.mas.gov.sg/regulation/payments/payment-systems
+    source_title: "Payment Systems (Monetary Authority of Singapore)"
+    quote: "The Continuous Linked Settlement (CLS) is a global payment system that MAS oversees via a cooperative oversight arrangement."
+  - from: dbs
+    to: cls-bank
+    type: shareholder_of
+    share: null
+    detail: "DBS is on the CLS shareholders list; CLS is mutually owned by its member institutions (stake held in CLS Group, CLS Bank's parent)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.cls-group.com/about/shareholders/
+    source_title: "Our Shareholders (CLS Group)"
+    quote: "Shareholders list | DBS Bank | Singapore"
+  - from: ocbc
+    to: cls-bank
+    type: shareholder_of
+    share: null
+    detail: "OCBC is on the CLS shareholders list; CLS is mutually owned by its member institutions (stake held in CLS Group, CLS Bank's parent)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.cls-group.com/about/shareholders/
+    source_title: "Our Shareholders (CLS Group)"
+    quote: "Shareholders list | Oversea-Chinese Banking Corporation | Singapore"
+  - from: uob
+    to: cls-bank
+    type: shareholder_of
+    share: null
+    detail: "UOB is on the CLS shareholders list (stake held in CLS Group, CLS Bank's parent); it is not on the CLS settlement member list."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.cls-group.com/about/shareholders/
+    source_title: "Our Shareholders (CLS Group)"
+    quote: "Shareholders list | United Overseas Bank | Singapore"
+  - from: citigroup
+    to: cls-bank
+    type: shareholder_of
+    share: null
+    detail: "Citibank (New York) is on the CLS shareholders list (stake held in CLS Group, CLS Bank's parent)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.cls-group.com/about/shareholders/
+    source_title: "Our Shareholders (CLS Group)"
+    quote: "Shareholders list | Citibank | New York, US"
+  - from: hsbc
+    to: cls-bank
+    type: shareholder_of
+    share: null
+    detail: "HSBC is on the CLS shareholders list (stake held in CLS Group, CLS Bank's parent)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.cls-group.com/about/shareholders/
+    source_title: "Our Shareholders (CLS Group)"
+    quote: "Shareholders list | HSBC | London, England"
+  - from: jpmorgan
+    to: cls-bank
+    type: shareholder_of
+    share: null
+    detail: "JPMorgan Chase is on the CLS shareholders list (stake held in CLS Group, CLS Bank's parent)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.cls-group.com/about/shareholders/
+    source_title: "Our Shareholders (CLS Group)"
+    quote: "Shareholders list | JPMorgan Chase | New York, US"
+  - from: standard-chartered
+    to: cls-bank
+    type: shareholder_of
+    share: null
+    detail: "Standard Chartered is on the CLS shareholders list (stake held in CLS Group, CLS Bank's parent)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.cls-group.com/about/shareholders/
+    source_title: "Our Shareholders (CLS Group)"
+    quote: "Shareholders list | Standard Chartered | London, UK"
+  - from: ubs
+    to: cls-bank
+    type: shareholder_of
+    share: null
+    detail: "UBS is on the CLS shareholders list (stake held in CLS Group, CLS Bank's parent)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.cls-group.com/about/shareholders/
+    source_title: "Our Shareholders (CLS Group)"
+    quote: "Shareholders list | UBS | Basel and Zurich, Switzerland"
+
+  # ------------------------------------------------------------ NETS and BCS
+  - from: nets
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS lists NETS as the operator of the designated NETS EFTPOS payment system and as a major payment institution (account issuance, money transfer, merchant acquisition, e-money)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/100331-NETWORK-FOR-ELECTRONIC-TRANSFERS-SINGAPORE-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: Network for Electronic Transfers (Singapore) Pte Ltd"
+    quote: "NETWORK FOR ELECTRONIC TRANSFERS (SINGAPORE) PTE LTD | Incorporated in Singapore | Designated Payment System Operator | NETS Electronic Fund Transfers at Point of Sale | Major Payment Institution"
+  - from: bcs
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS lists BCS as the designated payment system operator of FAST, Inter-bank GIRO and the SGD and USD Cheque Clearing Systems."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/100131-BANKING-COMPUTER-SERVICES-PRIVATE-LIMITED
+    source_title: "MAS Financial Institutions Directory: Banking Computer Services Private Limited"
+    quote: "BANKING COMPUTER SERVICES PRIVATE LIMITED | Incorporated in Singapore | Designated Payment System Operator | US Dollar Cheque Clearing System | Designated Payment System Operator | Inter-bank GIRO System | Designated Payment System Operator | Singapore Dollar Cheque Clearing System | Designated Payment System Operator | Fast And Secure Transfers"
+
+  # ------------------------------------------------------------ Grab
+  - from: grab
+    to: nasdaq
+    type: listed_on
+    share: null
+    detail: "Grab Holdings Limited's Class A ordinary shares trade on Nasdaq as GRAB."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1855612/000185561226000020/ck0001855612-20251231.htm
+    source_title: "Grab Holdings Limited, Form 20-F for FY2025, Item 9"
+    quote: "The Class A Ordinary Shares and Warrants are listed on NASDAQ under the symbols “GRAB” and “GRABW,” respectively."
+  - from: grab
+    to: grabpay
+    type: owns
+    share: null
+    detail: "GPay Network (S) Pte. Ltd., the GrabPay wallet entity in Singapore, is a significant subsidiary of Grab Holdings Limited."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1855612/000185561226000020/exhibit81-listofsubsidiari.htm
+    source_title: "Grab Holdings Limited, Form 20-F FY2025, Exhibit 8.1 Subsidiaries"
+    quote: "Subsidiaries of Grab Holdings Limited | GPay Network (S) Pte. Ltd. | Singapore"
+  - from: grabpay
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS licenses GPay Network (S) Pte. Ltd. as a major payment institution under the Payment Services Act."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/218776-GPAY-NETWORK-S-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: GPay Network (S) Pte. Ltd."
+    quote: "GPAY NETWORK (S) PTE. LTD. | Incorporated in Singapore | Major Payment Institution"
+  - from: uber
+    to: grab
+    type: shareholder_of
+    share: 0.131
+    detail: "Uber holds 13.1% of Grab's ordinary shares (5.5% of voting power), from the 2018 sale of its Southeast Asia business."
+    evidence: public
+    as_of: 2026-01-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1855612/000185561226000020/ck0001855612-20251231.htm
+    source_title: "Grab Holdings Limited, Form 20-F for FY2025, Item 7 Principal Shareholders"
+    quote: "Uber Technologies, Inc.(6) | 535,902,982 | — | 13.1% | 5.5%"
+  - from: softbank
+    to: grab
+    type: shareholder_of
+    share: 0.098
+    detail: "SB Investment Advisers (UK), SoftBank's Vision Fund manager, holds 9.8% of Grab's ordinary shares (4.1% of voting power)."
+    evidence: public
+    as_of: 2026-01-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1855612/000185561226000020/ck0001855612-20251231.htm
+    source_title: "Grab Holdings Limited, Form 20-F for FY2025, Item 7 Principal Shareholders"
+    quote: "SB Investment Advisers (UK) Limited(5) | 401,796,672 | — | 9.8% | 4.1%"
+  - from: toyota
+    to: grab
+    type: shareholder_of
+    share: 0.054
+    detail: "Toyota holds 5.4% of Grab's ordinary shares (2.3% of voting power) and has a collaboration agreement with Grab."
+    evidence: public
+    as_of: 2026-01-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1855612/000185561226000020/ck0001855612-20251231.htm
+    source_title: "Grab Holdings Limited, Form 20-F for FY2025, Item 7 Principal Shareholders"
+    quote: "Toyota Motor Corp | 222,906,079 | — | 5.4% | 2.3%"
+  - from: grab
+    to: singapore
+    type: operates_in
+    share: null
+    detail: "Singapore is one of Grab's eight Southeast Asian markets and its headquarters."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1855612/000185561226000020/ck0001855612-20251231.htm
+    source_title: "Grab Holdings Limited, Form 20-F for FY2025, Item 4.B Business Overview"
+    quote: "We are Southeast Asia’s leading superapp, operating primarily across the deliveries, mobility and digital financial services sectors in over 900 cities across eight countries in the region—Cambodia, Indonesia, Malaysia, Myanmar, the Philippines, Singapore, Thailand and Vietnam."
+  - from: grab
+    to: malaysia
+    type: operates_in
+    share: null
+    detail: "Malaysia is one of Grab's eight Southeast Asian markets."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1855612/000185561226000020/ck0001855612-20251231.htm
+    source_title: "Grab Holdings Limited, Form 20-F for FY2025, Item 4.B Business Overview"
+    quote: "We are Southeast Asia’s leading superapp, operating primarily across the deliveries, mobility and digital financial services sectors in over 900 cities across eight countries in the region—Cambodia, Indonesia, Malaysia, Myanmar, the Philippines, Singapore, Thailand and Vietnam."
+  - from: grab
+    to: indonesia
+    type: operates_in
+    share: null
+    detail: "Indonesia is one of Grab's eight Southeast Asian markets."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1855612/000185561226000020/ck0001855612-20251231.htm
+    source_title: "Grab Holdings Limited, Form 20-F for FY2025, Item 4.B Business Overview"
+    quote: "We are Southeast Asia’s leading superapp, operating primarily across the deliveries, mobility and digital financial services sectors in over 900 cities across eight countries in the region—Cambodia, Indonesia, Malaysia, Myanmar, the Philippines, Singapore, Thailand and Vietnam."
+  - from: grab
+    to: thailand
+    type: operates_in
+    share: null
+    detail: "Thailand is one of Grab's eight Southeast Asian markets."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1855612/000185561226000020/ck0001855612-20251231.htm
+    source_title: "Grab Holdings Limited, Form 20-F for FY2025, Item 4.B Business Overview"
+    quote: "We are Southeast Asia’s leading superapp, operating primarily across the deliveries, mobility and digital financial services sectors in over 900 cities across eight countries in the region—Cambodia, Indonesia, Malaysia, Myanmar, the Philippines, Singapore, Thailand and Vietnam."
+  - from: grab
+    to: vietnam
+    type: operates_in
+    share: null
+    detail: "Vietnam is one of Grab's eight Southeast Asian markets."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1855612/000185561226000020/ck0001855612-20251231.htm
+    source_title: "Grab Holdings Limited, Form 20-F for FY2025, Item 4.B Business Overview"
+    quote: "We are Southeast Asia’s leading superapp, operating primarily across the deliveries, mobility and digital financial services sectors in over 900 cities across eight countries in the region—Cambodia, Indonesia, Malaysia, Myanmar, the Philippines, Singapore, Thailand and Vietnam."
+
+  # ------------------------------------------------------------ SeaMoney (Monee) and Sea
+  - from: sea-limited
+    to: seamoney
+    type: owns
+    share: null
+    detail: "Sea Limited runs its digital financial services business as Monee, renamed from SeaMoney on 8 May 2025."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1703399/000114036126015366/ef20067274_20f.htm
+    source_title: "Sea Limited, Form 20-F for FY2025, notes to the financial statements"
+    quote: "The Company is principally engaged in the e-commerce (Shopee), digital financial services (Monee, formerly known as SeaMoney) and digital entertainment (Garena) businesses."
+  - from: sea-limited
+    to: nyse
+    type: listed_on
+    share: null
+    detail: "Sea Limited's ADSs have traded on the NYSE as SE since its October 2017 IPO."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1703399/000114036126015366/ef20067274_20f.htm
+    source_title: "Sea Limited, Form 20-F for FY2025, Item 9"
+    quote: "Our ADSs have been listed on the New York Stock Exchange since October 20, 2017 under the symbol “SE.”"
+  - from: tencent
+    to: sea-limited
+    type: shareholder_of
+    share: 0.17
+    detail: "Tencent entities hold 17.0% of Sea's ordinary shares; Tencent also licenses games to Sea's Garena."
+    evidence: public
+    as_of: 2026-03-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1703399/000114036126015366/ef20067274_20f.htm
+    source_title: "Sea Limited, Form 20-F for FY2025, Item 6.E Share Ownership"
+    quote: "Principal Shareholders: | Tencent entities(12) | 104,264,743 | — | 17.0 | —"
+  - from: seamoney
+    to: maribank
+    type: owns
+    share: null
+    detail: "Monee (formerly SeaMoney) oversees Sea's digital banks, MariBank in Singapore and SeaBank in Indonesia and the Philippines."
+    evidence: public
+    as_of: 2025-05-08
+    source_url: https://fortune.com/asia/2025/05/08/sea-rebrand-seamoney-to-monee-fintech
+    source_title: "Sea rebrands its fintech arm to Monee (Fortune, 8 May 2025)"
+    quote: "The rebranded division will oversee the tech company’s two digital banks—MariBank in Singapore and SeaBank in Indonesia and the Philippines—along with its payments and lending services."
+  - from: maribank
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS lists MariBank Singapore Private Limited under the Local Bank category; MariBank was licensed as a digital bank in 2020."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/248595-MARIBANK-SINGAPORE-PRIVATE-LIMITED
+    source_title: "MAS Financial Institutions Directory: MariBank Singapore Private Limited"
+    quote: "MARIBANK SINGAPORE PRIVATE LIMITED | Incorporated in Singapore | Exempt Capital Markets Services Entity | Local Bank"
+  - from: sea-limited
+    to: shopeepay-singapore
+    type: owns
+    share: null
+    detail: "ShopeePay Private Limited, Sea's Singapore e-wallet entity, is a principal subsidiary of Sea Limited."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1703399/000114036126015366/ef20067274_ex8-1.htm
+    source_title: "Sea Limited, Form 20-F FY2025, Exhibit 8.1 Principal Subsidiaries"
+    quote: "List of Principal Subsidiaries and Consolidated Affiliated Entities of Sea Limited | ShopeePay Private Limited | Singapore"
+  - from: shopeepay-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS licenses ShopeePay Private Limited as a major payment institution under the Payment Services Act."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/241134-SHOPEEPAY-PRIVATE-LIMITED
+    source_title: "MAS Financial Institutions Directory: ShopeePay Private Limited"
+    quote: "SHOPEEPAY PRIVATE LIMITED | Incorporated in Singapore | Major Payment Institution"
+
+  # ------------------------------------------------------------ Wise
+  - from: wise
+    to: nasdaq
+    type: listed_on
+    share: null
+    detail: "Wise Group plc moved its primary listing to Nasdaq (WSE) in May 2026."
+    evidence: public
+    as_of: 2026-03-31
+    source_url: https://www.sec.gov/Archives/edgar/data/2099039/000119312526282911/d17323d20f.htm
+    source_title: "Wise Group plc, Form 20-F for FY2026 (year ended 31 Mar 2026)"
+    quote: "Our Class A ordinary shares are listed for trading on Nasdaq under the symbol “WSE” and on the LSE under the symbol “WISE.”"
+  - from: wise
+    to: lse
+    type: listed_on
+    share: null
+    detail: "Wise keeps a secondary listing on the London Stock Exchange (WISE) after moving its primary listing to Nasdaq."
+    evidence: public
+    as_of: 2026-03-31
+    source_url: https://www.sec.gov/Archives/edgar/data/2099039/000119312526282911/d17323d20f.htm
+    source_title: "Wise Group plc, Form 20-F for FY2026 (year ended 31 Mar 2026)"
+    quote: "Our Class A ordinary shares are listed for trading on Nasdaq under the symbol “WSE” and on the LSE under the symbol “WISE.”"
+  - from: wise
+    to: wise-asia-pacific
+    type: owns
+    share: null
+    detail: "Wise Asia-Pacific Pte. Ltd. is the Wise Group entity in Singapore."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.wise.com/help/articles/2974131/what-are-the-wise-group-entities
+    source_title: "What are the Wise Group entities? (Wise Help Centre)"
+    quote: "Asia and Pacific | Singapore | Wise Asia-Pacific Pte. Ltd."
+  - from: wise-asia-pacific
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS licenses Wise Asia-Pacific as a major payment institution (licence PS20200413); it also holds a capital markets services licence."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://wise.com/sg/
+    source_title: "Wise Singapore website footer"
+    quote: "Wise Asia-Pacific Pte Ltd is regulated as a Major Payment Institution by The Monetary Authority of Singapore (MAS) license: PS20200413."
+
+  # ------------------------------------------------------------ Airwallex
+  - from: airwallex
+    to: airwallex-singapore
+    type: owns
+    share: null
+    detail: "Airwallex launched in Singapore in January 2022 after Airwallex (Singapore) Pte. Ltd. received its MAS major payment institution licence."
+    evidence: public
+    as_of: 2022-01-13
+    source_url: https://www.airwallex.com/newsroom/airwallex-launches-global-payment-services-in-singapore
+    source_title: "Airwallex launches global payment services in Singapore (Airwallex, 13 Jan 2022)"
+    quote: "Leading fintech platform Airwallex today announced its official launch in Singapore, following its grant of a Major Payment Institution (MPI) license by the Monetary Authority of Singapore and a beta launch in November last year."
+  - from: airwallex-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS licenses Airwallex (Singapore) Pte. Ltd. as a major payment institution under the Payment Services Act."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/230232-AIRWALLEX-SINGAPORE-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: Airwallex (Singapore) Pte. Ltd."
+    quote: "AIRWALLEX (SINGAPORE) PTE. LTD. | Incorporated in Singapore | Major Payment Institution"
+  - from: visa
+    to: airwallex
+    type: shareholder_of
+    share: null
+    detail: "Visa Ventures joined Airwallex's US$300m Series F in May 2025 as a strategic investor; stake not disclosed."
+    evidence: public
+    as_of: 2025-05-22
+    source_url: https://mrem.bernama.com/viewsm.php?idm=51069
+    source_title: "Airwallex Raises US$300 Million at a US$6.2 Billion Valuation (Business Wire via Bernama, 22 May 2025)"
+    quote: "Visa Ventures also joins as a strategic investor."
+
+  # ------------------------------------------------------------ Nium
+  - from: nium
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS licenses NIUM Pte. Ltd. as a major payment institution under the Payment Services Act."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/200939-NIUM-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: NIUM Pte. Ltd."
+    quote: "NIUM PTE. LTD. | Incorporated in Singapore | Major Payment Institution"
+  - from: visa
+    to: nium
+    type: shareholder_of
+    share: null
+    detail: "Visa invested in Nium's US$200m Series D in July 2021; stake not disclosed."
+    evidence: reported
+    as_of: 2021-07-27
+    source_url: https://globalventuring.com/corporate/nium-nets-200m-in-series-d-round
+    source_title: "Nium nets $200m in series D round (Global Venturing, 27 Jul 2021)"
+    quote: "Singapore-based cross-border payment platform developer Nium secured over $200m today in a series D round backed by payment services firm Visa at a valuation of more than $1bn."
+
+  # ------------------------------------------------------------ Stripe
+  - from: stripe
+    to: stripe-singapore
+    type: owns
+    share: null
+    detail: "Stripe Payments Singapore Pte. Ltd. is the Stripe contracting entity for Singapore users."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://stripe.com/en-sg/legal/ssa
+    source_title: "Stripe Services Agreement, Section 12 Stripe entities"
+    quote: "Singapore | Stripe Payments Singapore Pte. Ltd."
+  - from: stripe-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS licenses Stripe Payments Singapore Pte. Ltd. as a major payment institution under the Payment Services Act."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/219107-STRIPE-PAYMENTS-SINGAPORE-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: Stripe Payments Singapore Pte. Ltd."
+    quote: "STRIPE PAYMENTS SINGAPORE PTE. LTD. | Incorporated in Singapore | Major Payment Institution"
+  # ------------------------------------------------------------ 2C2P
+  - from: 2c2p
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS licenses 2C2P Pte. Ltd., 2C2P's Singapore headquarters entity, as a major payment institution (money transfer and merchant acquisition)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/431405-2C2P-Pte-Ltd
+    source_title: "MAS Financial Institutions Directory: 2C2P Pte. Ltd."
+    quote: "2C2P Pte. Ltd. | Incorporated in Singapore | Major Payment Institution"
+
+depends_on_participates:
+  # ------------------------------------------------------------ BCS-operated systems
+  - from: usd-cheque-clearing
+    to: bcs
+    type: depends_on
+    detail: "BCS is the MAS-designated operator of the US Dollar Cheque Clearing System."
+    service: payments
+    evidence: public
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/100131-BANKING-COMPUTER-SERVICES-PRIVATE-LIMITED
+    source_title: "MAS Financial Institutions Directory: Banking Computer Services Private Limited"
+    published: null
+    as_of: 2026-10-26
+    quote: "Designated Payment System Operator | US Dollar Cheque Clearing System"
+  - from: sgd-cheque-clearing
+    to: bcs
+    type: depends_on
+    detail: "BCS is the MAS-designated operator of the Singapore Dollar Cheque Clearing System."
+    service: payments
+    evidence: public
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/100131-BANKING-COMPUTER-SERVICES-PRIVATE-LIMITED
+    source_title: "MAS Financial Institutions Directory: Banking Computer Services Private Limited"
+    published: null
+    as_of: 2026-10-26
+    quote: "Designated Payment System Operator | Singapore Dollar Cheque Clearing System"
+
+  # ------------------------------------------------------------ CLS settlement members
+  - from: dbs
+    to: cls-bank
+    type: participates_in
+    detail: "DBS is a CLS settlement member, settling FX trades (including SGD) directly in CLS."
+    service: market_infrastructure
+    evidence: public
+    source_url: https://www.cls-group.com/communities/settlement-members/
+    source_title: "Settlement Members (CLS Group)"
+    published: null
+    as_of: 2026-10-26
+    quote: "Settlement member list | DBS Bank | Singapore"
+  - from: ocbc
+    to: cls-bank
+    type: participates_in
+    detail: "OCBC is a CLS settlement member, settling FX trades (including SGD) directly in CLS."
+    service: market_infrastructure
+    evidence: public
+    source_url: https://www.cls-group.com/communities/settlement-members/
+    source_title: "Settlement Members (CLS Group)"
+    published: null
+    as_of: 2026-10-26
+    quote: "Settlement member list | Oversea-Chinese Banking Corporation | Singapore"
+  - from: citigroup
+    to: cls-bank
+    type: participates_in
+    detail: "Citibank (New York) is a CLS settlement member."
+    service: market_infrastructure
+    evidence: public
+    source_url: https://www.cls-group.com/communities/settlement-members/
+    source_title: "Settlement Members (CLS Group)"
+    published: null
+    as_of: 2026-10-26
+    quote: "Settlement member list | Citibank | New York, US"
+  - from: hsbc
+    to: cls-bank
+    type: participates_in
+    detail: "HSBC is a CLS settlement member."
+    service: market_infrastructure
+    evidence: public
+    source_url: https://www.cls-group.com/communities/settlement-members/
+    source_title: "Settlement Members (CLS Group)"
+    published: null
+    as_of: 2026-10-26
+    quote: "Settlement member list | HSBC | London, England"
+  - from: jpmorgan
+    to: cls-bank
+    type: participates_in
+    detail: "JPMorgan Chase is a CLS settlement member."
+    service: market_infrastructure
+    evidence: public
+    source_url: https://www.cls-group.com/communities/settlement-members/
+    source_title: "Settlement Members (CLS Group)"
+    published: null
+    as_of: 2026-10-26
+    quote: "Settlement member list | JPMorgan Chase | New York, US"
+  - from: standard-chartered
+    to: cls-bank
+    type: participates_in
+    detail: "Standard Chartered is a CLS settlement member."
+    service: market_infrastructure
+    evidence: public
+    source_url: https://www.cls-group.com/communities/settlement-members/
+    source_title: "Settlement Members (CLS Group)"
+    published: null
+    as_of: 2026-10-26
+    quote: "Settlement member list | Standard Chartered | London, UK"
+
+  # ------------------------------------------------------------ Card schemes
+  - from: nium
+    to: visa
+    type: participates_in
+    detail: "Nium is a principal card issuer on Visa (group-level membership)."
+    service: payments
+    evidence: reported
+    source_url: https://nilsonreport.com/articles/nium-stablecoin-card-issuance-platform/
+    source_title: "Nium Stablecoin Card Issuance Platform (Nilson Report, Apr 2026)"
+    published: 2026-04-01
+    quote: "Nium is also a principal issuer of Visa, Mastercard, Discover and UATP payment cards."
+  - from: nium
+    to: mastercard
+    type: participates_in
+    detail: "Nium is a principal card issuer on Mastercard (group-level membership)."
+    service: payments
+    evidence: reported
+    source_url: https://nilsonreport.com/articles/nium-stablecoin-card-issuance-platform/
+    source_title: "Nium Stablecoin Card Issuance Platform (Nilson Report, Apr 2026)"
+    published: 2026-04-01
+    quote: "Nium is also a principal issuer of Visa, Mastercard, Discover and UATP payment cards."
+  - from: airwallex
+    to: visa
+    type: participates_in
+    detail: "Airwallex is a Visa principal member and issues multi-currency Visa cards (group-level membership)."
+    service: payments
+    evidence: public
+    source_url: https://www.airwallex.com/my/platform-api-and-embedded-finance/issuing
+    source_title: "Airwallex card issuing (Airwallex website)"
+    published: null
+    as_of: 2026-10-26
+    quote: "Airwallex is a principal member of Visa, allowing cardholders to transact securely in 170+ currencies worldwide."
+
+  # ------------------------------------------------------------ Cloud
+  - from: grab
+    to: aws
+    type: depends_on
+    detail: "Grab chose AWS as its preferred cloud provider in December 2024; AWS runs Grab's compute, storage, networking and databases (group-level)."
+    service: cloud
+    evidence: public
+    source_url: https://press.aboutamazon.com/2024/12/superapp-grab-selects-aws-as-its-preferred-cloud-provider-to-drive-technology-innovation-and-growth
+    source_title: "Superapp Grab Selects AWS as its Preferred Cloud Provider (Amazon press release, 4 Dec 2024)"
+    published: 2024-12-04
+    quote: "AWS powers Grab’s critical compute, storage, networking, and database functions."
+  - from: stripe
+    to: aws
+    type: depends_on
+    detail: "Stripe's core compute infrastructure runs on AWS, extended under a January 2023 agreement (group-level)."
+    service: cloud
+    evidence: public
+    source_url: https://stripe.com/newsroom/news/amazon-and-stripe
+    source_title: "Amazon-Stripe partnership accelerates ecommerce and streamlines online payments (Stripe, 23 Jan 2023)"
+    published: 2023-01-23
+    quote: "Stripe has long relied on AWS to provide the core compute infrastructure on which Stripe is built."
+
+groups: []
+
+new_entities:
+  - {id: seamoney, name: Monee (SeaMoney), kind: payment_institution, country: singapore, aliases: [SeaMoney, Monee, Sea Money]}
+  - {id: sea-limited, name: Sea Limited, kind: tech_provider, country: singapore, aliases: [Sea, Sea Ltd, Sea Group, Shopee, Garena]}
+  - {id: shopeepay-singapore, name: ShopeePay Singapore, kind: payment_institution, country: singapore, aliases: [ShopeePay Private Limited, ShopeePay]}
+  - {id: wise, name: Wise Group, kind: payment_institution, country: united-kingdom, aliases: [Wise Group plc, Wise plc, TransferWise]}
+  - {id: airwallex, name: Airwallex, kind: payment_institution, country: singapore, aliases: [Airwallex Group]}
+  - {id: airwallex-singapore, name: Airwallex Singapore, kind: payment_institution, country: singapore, aliases: [Airwallex (Singapore) Pte. Ltd.]}
+  - {id: stripe-singapore, name: Stripe Payments Singapore, kind: payment_institution, country: singapore, aliases: [Stripe Payments Singapore Pte. Ltd.]}
+  - {id: tencent, name: Tencent, kind: tech_provider, country: mainland-china, aliases: [Tencent Holdings Limited]}
+  - {id: uber, name: Uber, kind: investor, country: united-states, aliases: ["Uber Technologies, Inc."]}
+  - {id: softbank, name: SoftBank Vision Fund, kind: investor, aliases: [SoftBank Group, SB Investment Advisers (UK) Limited]}
+  - {id: toyota, name: Toyota, kind: investor, aliases: [Toyota Motor Corporation, Toyota Motor Corp]}
+  - {id: sgd-cheque-clearing, name: SGD Cheque Clearing System, kind: payment_system, country: singapore, aliases: [Singapore Dollar Cheque Clearing System, SGDCCS, Cheque Truncation System, CTS]}

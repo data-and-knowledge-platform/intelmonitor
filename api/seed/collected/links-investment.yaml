@@ -1,0 +1,774 @@
+# Investment team links (collected 2026-10-26): group structure, MAS licences, listings and
+# disclosed stakes for BlackRock, Vanguard, Schroders, PIMCO, GIC, Fullerton Fund Management,
+# Lion Global Investors, Temasek, EDBI and Vertex Ventures, with the stakes these investors hold
+# in other entities on the shared list.
+# Sources: MAS Financial Institutions Directory, SEC filings (BlackRock 10-K exhibit 21, proxy
+# statements of JPMorgan, Citigroup, Microsoft and Coinbase, HSBC and UBS 20-F, Circle 10-K),
+# HKEX TR-1 notices, company sites (Seviora, Fullerton, OCBC, Vertex, EDB, Stripe, Circle,
+# Allianz), SGX announcements and reputable trade press. Quotes are verbatim, whitespace
+# normalised; table rows join cells with " | ".
+# Notes
+#   - vertex-ventures is Vertex Ventures Southeast Asia & India (Singapore); its anchor investor
+#     Vertex Holdings is the separate node vertex-holdings, wholly owned by Temasek.
+#   - Schroders was taken private by Nuveen on 1 October 2026, so it has no listing row.
+#   - Temasek -> DBS, Partior and Climate Impact X are already in entity-links.yaml.
+#   - EDBI rows cover the financial-sector companies on edbi.com/portfolio (read in a headed
+#     browser on 2026-10-26; the site blocks scripted fetches); quotes are the card text.
+collected: 2026-10-26
+
+relationships:
+  # ---------------------------------------------------------------- Temasek
+  - from: temasek
+    to: seviora
+    type: owns
+    share: 1.0
+    detail: "Seviora Group, the Temasek asset management group that holds Fullerton, is wholly owned by Temasek."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.seviora.com/
+    source_title: "Seviora Group, About Seviora"
+    quote: "Seviora Group is a Singapore based asset manager and asset owner, wholly owned by Temasek."
+  - from: temasek
+    to: vertex-holdings
+    type: owns
+    share: 1.0
+    detail: "Vertex Venture Holdings, anchor of the Vertex venture funds, is a wholly owned subsidiary of Temasek."
+    evidence: public
+    as_of: 2023-07-12
+    source_url: https://www.marubeni.com/en/news/2023/release/00071.html
+    source_title: "Marubeni, Investment in Singaporean Vertex Master Fund III (12 Jul 2023)"
+    quote: "Vertex Holdings is a wholly-owned subsidiary of Temasek Holdings (Private) Ltd. (hereinafter, “Temasek”), a global investment company headquartered in Singapore, with VMF3 being the third round of this fund following Vertex Master Fund II (“VMF2”), which Marubeni also invested in 2019."
+  - from: temasek
+    to: standard-chartered
+    type: shareholder_of
+    share: 0.17002
+    detail: "Temasek is Standard Chartered's largest shareholder through Dover Investments, held via Fullerton Management; a notice of 4 March 2026 reported its stake rising to 18.01%."
+    evidence: public
+    as_of: 2024-03-13
+    source_url: https://www1.hkexnews.hk/listedco/listconews/sehk/2024/0318/2024031800160.pdf
+    source_title: "Standard Chartered PLC, TR-1 notification of major holdings (Temasek), HKEX, March 2024"
+    quote: "GB0004082847 | 111865458 | 17.002000"
+  - from: temasek
+    to: stripe
+    type: shareholder_of
+    share: null
+    detail: "Temasek was a new investor in Stripe's Series I raise of more than $6.5B at a $50B valuation."
+    evidence: public
+    as_of: 2023-03-15
+    source_url: https://stripe.com/newsroom/news/stripe-series-i
+    source_title: "Stripe newsroom, Stripe Series I fundraise"
+    quote: "Primary investors include existing Stripe shareholders—Andreessen Horowitz, Baillie Gifford, Founders Fund, General Catalyst, MSD Partners, and Thrive Capital—as well as new investors including GIC, Goldman Sachs Asset and Wealth Management, and Temasek."
+  - from: temasek
+    to: nium
+    type: shareholder_of
+    share: null
+    detail: "Temasek took part in Nium's $200M Series D led by Riverwood Capital."
+    evidence: public
+    as_of: 2021-07-27
+    source_url: https://www.cooley.com/news/coverage/2021/2021-08-04-riverwood-capital-leads-singapore-based-niums-latest-financing
+    source_title: "Cooley, Riverwood Capital Leads Singapore-Based Nium's Latest Financing"
+    quote: "Temasek, Visa, Vertex Ventures, Atinum Group of Funds, Beacon Venture Capital and Rocket Capital Investment participated in the round"
+
+  # ---------------------------------------------------------------- Fullerton (Seviora)
+  - from: seviora
+    to: fullerton-fund-management
+    type: owns
+    share: null
+    detail: "Fullerton Fund Management is part of Seviora, the Temasek-owned asset management group."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.fullertonfund.com/about-fullerton/
+    source_title: "Fullerton Fund Management, About Fullerton"
+    quote: "Fullerton is part of Seviora, an independent asset management group, owned by Temasek."
+  - from: income-insurance
+    to: fullerton-fund-management
+    type: shareholder_of
+    share: null
+    detail: "Income Insurance holds a minority stake in Fullerton Fund Management."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.fullertonfund.com/about-fullerton/
+    source_title: "Fullerton Fund Management, About Fullerton"
+    quote: "Income Insurance, a leading Singapore insurer, is a minority shareholder of Fullerton."
+  - from: fullerton-fund-management
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Fullerton Fund Management Company Ltd holds an MAS capital markets services licence for fund management."
+    evidence: public
+    as_of: 2026-09-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/1314-FULLERTON-FUND-MANAGEMENT-COMPANY-LTD
+    source_title: "MAS Financial Institutions Directory, Fullerton Fund Management Company Ltd."
+    quote: "FULLERTON FUND MANAGEMENT COMPANY LTD. | Capital Markets Services Licensee | Fund Management"
+  - from: fullerton-fund-management
+    to: mainland-china
+    type: operates_in
+    share: null
+    detail: "Fullerton has an associated office in Shanghai, Fullerton Investment Management (Shanghai)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.fullertonfund.com/about-fullerton/
+    source_title: "Fullerton Fund Management, About Fullerton"
+    quote: "Incorporated in 2003, Fullerton is headquartered in Singapore, and has associated offices in Shanghai, Jakarta and Brunei."
+  - from: fullerton-fund-management
+    to: indonesia
+    type: operates_in
+    share: null
+    detail: "Fullerton has an associated office in Jakarta."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.fullertonfund.com/about-fullerton/
+    source_title: "Fullerton Fund Management, About Fullerton"
+    quote: "Incorporated in 2003, Fullerton is headquartered in Singapore, and has associated offices in Shanghai, Jakarta and Brunei."
+
+  # ---------------------------------------------------------------- Lion Global Investors
+  - from: great-eastern
+    to: lion-global-investors
+    type: owns
+    share: 0.70
+    detail: "Great Eastern Holdings owns 70% of Lion Global Investors; OCBC holds the other 30%, making it a wholly owned OCBC group company."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.ocbc.com/group/who-we-are/group-business-asset-management.html
+    source_title: "OCBC Group, Group business: asset management"
+    quote: "a wholly-owned subsidiary of OCBC Bank, is 70% owned by Great Eastern Holdings Limited and 30% owned by Orient Holdings Private Limited."
+  - from: ocbc
+    to: lion-global-investors
+    type: shareholder_of
+    share: 0.30
+    detail: "OCBC holds the 30% of Lion Global Investors not held by Great Eastern (through Orient Holdings, per OCBC)."
+    evidence: public
+    as_of: 2021-10-12
+    source_url: "https://links.sgx.com/1.0.0/corporate-announcements/YM0IU9BH20PK2R6F/702937_20211012%20-%20Incorporation%20of%20VCC%20-%20LionGlobal%20Investment%20Series%20VCC.pdf"
+    source_title: "Great Eastern Holdings SGX announcement, Incorporation of VCC, LionGlobal Investment Series VCC (12 Oct 2021)"
+    quote: "GEH holds 70% of the shares in Lion Global Investors. The balance 30% is held by Oversea-Chinese Banking Corporation Limited, GEH’s holding company."
+  - from: lion-global-investors
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Lion Global Investors Limited holds an MAS capital markets services licence for fund management."
+    evidence: public
+    as_of: 2026-10-16
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/461-LION-GLOBAL-INVESTORS-LIMITED
+    source_title: "MAS Financial Institutions Directory, Lion Global Investors Limited"
+    quote: "LION GLOBAL INVESTORS LIMITED | Capital Markets Services Licensee | Fund Management"
+
+  # ---------------------------------------------------------------- Vertex
+  - from: vertex-ventures
+    to: vertex-holdings
+    type: subsidiary_of
+    share: null
+    detail: "Vertex Ventures Southeast Asia & India is one of the Vertex funds anchored by Vertex Holdings; each fund raises and manages its own capital."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.vertexventures.sg/
+    source_title: "Vertex Ventures Southeast Asia & India"
+    quote: "Vertex Ventures Southeast Asia and India is part of the Vertex global network of funds."
+  - from: vertex-ventures
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Vertex Ventures SEA Management Pte. Ltd. holds an MAS capital markets services licence for fund management."
+    evidence: public
+    as_of: 2026-10-22
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/200792-VERTEX-VENTURES-SEA-MANAGEMENT-PTE-LTD
+    source_title: "MAS Financial Institutions Directory, Vertex Ventures SEA Management Pte. Ltd."
+    quote: "VERTEX VENTURES SEA MANAGEMENT PTE. LTD. | Capital Markets Services Licensee | Fund Management"
+  - from: vertex-ventures
+    to: grab
+    type: shareholder_of
+    share: null
+    detail: "Vertex Ventures SEA & India is an early investor in Grab."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.vertexholdings.com/
+    source_title: "Vertex Holdings, home page portfolio highlights"
+    quote: "Vertex Ventures SEA & India invested in Grab, a technology company that ride hailing, food delivery and payment solutions through its intelligent online and smartphone platform."
+  - from: vertex-ventures
+    to: nium
+    type: shareholder_of
+    share: null
+    detail: "Vertex Ventures took part in Nium's $200M Series D led by Riverwood Capital."
+    evidence: public
+    as_of: 2021-07-27
+    source_url: https://www.cooley.com/news/coverage/2021/2021-08-04-riverwood-capital-leads-singapore-based-niums-latest-financing
+    source_title: "Cooley, Riverwood Capital Leads Singapore-Based Nium's Latest Financing"
+    quote: "Temasek, Visa, Vertex Ventures, Atinum Group of Funds, Beacon Venture Capital and Rocket Capital Investment participated in the round"
+
+  # ---------------------------------------------------------------- EDBI
+  - from: edb
+    to: edbi
+    type: owns
+    share: null
+    detail: "EDBI (EDB Investments) is the investment arm for global leaders under SG Growth Capital, the investment platform of the Economic Development Board."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edb.gov.sg/en/who-we-are
+    source_title: "Singapore Economic Development Board, Who we are"
+    quote: "Its investment arms, EDB Investments (EDBI) and SEEDS, back global leaders and early-stage local startups, respectively."
+
+  # ---------------------------------------------------------------- GIC
+  - from: gic
+    to: stripe
+    type: shareholder_of
+    share: null
+    detail: "GIC was a new investor in Stripe's Series I raise of more than $6.5B at a $50B valuation."
+    evidence: public
+    as_of: 2023-03-15
+    source_url: https://stripe.com/newsroom/news/stripe-series-i
+    source_title: "Stripe newsroom, Stripe Series I fundraise"
+    quote: "Primary investors include existing Stripe shareholders—Andreessen Horowitz, Baillie Gifford, Founders Fund, General Catalyst, MSD Partners, and Thrive Capital—as well as new investors including GIC, Goldman Sachs Asset and Wealth Management, and Temasek."
+  - from: gic
+    to: ant-group
+    type: shareholder_of
+    share: null
+    detail: "GIC joined the USD tranche of Ant Financial's ~US$14B Series C in June 2018, alongside Temasek (also a co-investor), Khazanah, Warburg Pincus, CPPIB, Silver Lake and General Atlantic. Old round; GIC's current holding after Ant's 2023 restructuring is not disclosed."
+    evidence: public
+    as_of: 2018-06-08
+    source_url: https://techcrunch.com/2018/06/07/ant-financial-raises-14-billion/
+    source_title: "TechCrunch, Alibaba's Ant Financial fintech affiliate raises $14 billion to continue its global expansion"
+    quote: "Those names include Singapore-based sovereign funds GIC and Temasek, Malaysian sovereign fund Khazanah Nasional Berhad, Warburg Pincus, Canada Pension Plan Investment Board, Silver Lake and General Atlantic."
+  - from: gic
+    to: nium
+    type: shareholder_of
+    share: null
+    detail: "GIC joined Nium's US$200M+ Series D (led by Riverwood) in July 2021 per an unnamed source; Temasek and Vertex Ventures were disclosed co-investors in the same round. Stake not disclosed; Bloomberg still called Nium GIC-backed in September 2024."
+    evidence: reported
+    as_of: 2021-07-27
+    source_url: https://news.bloomberglaw.com/private-equity/singapore-fintech-startup-nium-tops-1-billion-valuation
+    source_title: "Bloomberg, Singapore Fintech Startup Nium Tops $1 Billion Valuation"
+    quote: "Other backers included Temasek Holdings Pte , Visa Inc. , Vertex Ventures , Beacon Venture Capital and Rocket Capital. Singapore’s sovereign wealth fund GIC Pte also joined the round, according to a person familiar with the matter who asked not to be named."
+  - from: gic
+    to: coinbase
+    type: shareholder_of
+    share: null
+    detail: "GIC reportedly backed Coinbase's US$300M Series E (led by Tiger Global) in October 2018, per Bloomberg sources; neither party confirmed. Old pre-IPO round; whether GIC still holds Coinbase shares is unknown (it is not a 5% holder)."
+    evidence: reported
+    as_of: 2018-10-30
+    source_url: https://www.coindesk.com/markets/2019/02/28/singapore-state-owned-fund-backed-coinbases-300-million-raise-report
+    source_title: "CoinDesk, Singapore State-Owned Fund Backed Coinbase's $300 Million Raise: Report"
+    quote: "GIC Private Limited, a Singapore government-owned wealth fund, reportedly backed Coinbase’s $300 million funding round last year."
+  - from: gic
+    to: bank-jago
+    type: shareholder_of
+    share: 0.0902
+    detail: "GIC entered Indonesian digital bank Bank Jago through its 2021 rights issue and holds 9.02% per the September 2025 published statement; GoTo (via PT Dompet Karya Anak Bangsa) holds 21.40%."
+    evidence: public
+    as_of: 2025-09-30
+    source_url: https://assets.jago.com/web-assets/public/LK%20Bank%20Jago%20Sep2025_EN.pdf
+    source_title: "PT Bank Jago Tbk, published financial statements 30 September 2025"
+    quote: "Non Controlling Shareholder not through capital market (> 5%) : | GIC Private Limited | 9.02%"
+  - from: gic
+    to: coda-payments
+    type: shareholder_of
+    share: null
+    detail: "GIC, Smash Capital and Insight Partners acquired a minority stake in Singapore-based Coda Payments for US$690M in April 2022 (reported US$2.5B valuation); GIC's own share not disclosed."
+    evidence: public
+    as_of: 2022-04-14
+    source_url: https://www.newswire.ca/news-releases/leading-growth-investors-acquire-minority-stake-in-coda-payments-the-world-s-leading-independent-content-monetization-platform-831276577.html
+    source_title: "Coda Payments press release, Leading growth investors acquire minority stake in Coda Payments"
+    quote: "Smash Capital, New York -based global private equity and venture capital firm Insight Partners, and Singapore's sovereign-wealth fund GIC invested US$690 million to partner with the company during a period of rapid international expansion."
+  - from: gic
+    to: bibit
+    type: shareholder_of
+    share: null
+    detail: "GIC led Indonesian robo-advisor Bibit's US$80M+ round in May 2022, joined by Prosus Ventures; stake not disclosed."
+    evidence: public
+    as_of: 2022-05-25
+    source_url: https://fintechnews.sg/61473/indonesia/indonesian-robo-advisor-bibit-raises-us80-million-in-fundraise-led-by-gic/
+    source_title: "Fintech News Singapore, Indonesian Robo-Advisor Bibit Raises US$80 Million in Fundraise Led by GIC"
+    quote: "Indonesian digital investment app Bibit announced that it has raised more than US$80 million in a funding round led by GIC, joined by Prosus Ventures and other existing investors."
+  - from: gic
+    to: vnlife
+    type: shareholder_of
+    share: null
+    detail: "GIC backed VNLife (parent of Vietnam's VNPay) in a ~US$300M round with SoftBank Vision Fund 1 before 2021; in September 2025 Bloomberg reported GIC and SoftBank weighing a sale of their stakes, with no completed sale found as of October 2026."
+    evidence: reported
+    as_of: 2025-09-09
+    source_url: https://fintechnews.sg/117806/vietnam/gic-softbank-vnlife/
+    source_title: "Fintech News Singapore, Talks on GIC and SoftBank Stake Sale Could Value VNLife Above US$1 Billion"
+    quote: "GIC and SoftBank Vision Fund are considering selling their stakes in VNLife in a move that could value the Vietnamese fintech at more than US$1 billion, according to Bloomberg ."
+
+  # ---------------------------------------------------------------- BlackRock
+  - from: blackrock
+    to: blackrock-singapore
+    type: owns
+    share: null
+    detail: "BlackRock (Singapore) Limited is a BlackRock subsidiary incorporated in Singapore."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/2012383/000119312526071966/blk-ex21_1.htm
+    source_title: "BlackRock, Inc. 10-K 2025, Exhibit 21.1 Subsidiaries of registrant"
+    quote: "BlackRock (Singapore) Limited | Singapore"
+  - from: blackrock-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "BlackRock (Singapore) Limited holds an MAS capital markets services licence for fund management and dealing."
+    evidence: public
+    as_of: 2026-10-09
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/1139-BLACKROCK-SINGAPORE-LIMITED
+    source_title: "MAS Financial Institutions Directory, BlackRock (Singapore) Limited"
+    quote: "BLACKROCK (SINGAPORE) LIMITED | Capital Markets Services Licensee | Fund Management"
+  - from: blackrock
+    to: nyse
+    type: listed_on
+    share: null
+    detail: "BlackRock common stock trades on the New York Stock Exchange as BLK."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/2012383/000119312526071966/blk-20251231.htm
+    source_title: "BlackRock, Inc. Form 10-K for 2025, cover page"
+    quote: "Common Stock, $.01 par value | BLK | New York Stock Exchange"
+  - from: blackrock
+    to: jpmorgan
+    type: shareholder_of
+    share: 0.0715
+    detail: "BlackRock beneficially owns 7.15% of JPMorgan Chase common stock."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/19617/000001961726000096/jpm-20260402.htm
+    source_title: "JPMorgan Chase 2026 proxy statement, Security ownership"
+    quote: "BlackRock, Inc. | 50 Hudson Yards, New York, NY 10001 | 192,831,104 | 7.15"
+  - from: blackrock
+    to: citigroup
+    type: shareholder_of
+    share: 0.069
+    detail: "BlackRock beneficially owns 6.9% of Citigroup common stock."
+    evidence: public
+    as_of: 2025-04-24
+    source_url: https://www.sec.gov/Archives/edgar/data/831001/000120677426000185/citi4583461-def14a.htm
+    source_title: "Citigroup 2026 proxy statement, Owners of more than 5% of Citi's common stock"
+    quote: "50 Hudson Yards, New York, NY 10001 | 129,265,958 | 6.9%"
+  - from: blackrock
+    to: microsoft
+    type: shareholder_of
+    share: 0.0730
+    detail: "BlackRock beneficially owns 7.30% of Microsoft common stock."
+    evidence: public
+    as_of: 2026-09-30
+    source_url: https://www.sec.gov/Archives/edgar/data/789019/000119312526427849/d61756ddef14a.htm
+    source_title: "Microsoft 2026 proxy statement, Principal shareholders"
+    quote: "BlackRock, Inc. | 50 Hudson Yards, New York, NY 10001 | 540,020,228 | 7.30%"
+  - from: blackrock
+    to: coinbase
+    type: shareholder_of
+    share: 0.066
+    detail: "BlackRock beneficially owns 6.6% of Coinbase Class A common stock (1.4% of total voting power)."
+    evidence: public
+    as_of: 2025-06-30
+    source_url: https://www.sec.gov/Archives/edgar/data/1679788/000167978826000045/coin-20260424.htm
+    source_title: "Coinbase 2026 proxy statement, Security ownership"
+    quote: "BlackRock, Inc. | 14,618,089 | 6.6 | — | — | 1.4"
+  - from: blackrock
+    to: hsbc
+    type: shareholder_of
+    share: 0.0909
+    detail: "BlackRock notified a long position of 9.09% of HSBC Holdings ordinary shares."
+    evidence: public
+    as_of: 2025-07-11
+    source_url: https://www.sec.gov/Archives/edgar/data/1089113/000108911326000010/hsbc-20251231.htm
+    source_title: "HSBC Holdings 2025 Form 20-F, Notifiable interests in share capital"
+    quote: "BlackRock, Inc. gave notice on 16 July 2025 that on 11 July 2025 it had the following interests in HSBC Holdings ordinary shares: a long position of 1,586,341,122 shares and a short position of 6,856,029 shares, representing 9.09% and 0.04%, respectively, of the ordinary shares in issue 11 July 2025."
+  - from: blackrock
+    to: ubs
+    type: shareholder_of
+    share: 0.0501
+    detail: "BlackRock holds 5.01% of UBS Group AG voting rights per its last FMIA notification."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/1610520/000161052026000023/ubs-20251231.htm
+    source_title: "UBS Group AG 2025 Form 20-F, Major shareholders"
+    quote: "BlackRock Inc., New York | 5.01 | 5.01 | 5.01"
+  - from: blackrock
+    to: circle
+    type: shareholder_of
+    share: null
+    detail: "BlackRock made a strategic investment in Circle in its $400M round of April 2022."
+    evidence: public
+    as_of: 2022-04-12
+    source_url: https://www.circle.com/pressroom/circle-announces-400m-funding-round
+    source_title: "Circle press release, Circle announces $400M funding round (12 Apr 2022)"
+    quote: "In addition to its corporate strategic investment and role as a primary asset manager of USDC cash reserves, BlackRock has entered into a broader strategic partnership with Circle, which includes exploring capital market applications for USDC."
+
+  # ---------------------------------------------------------------- Vanguard
+  - from: vanguard
+    to: jpmorgan
+    type: shareholder_of
+    share: 0.0986
+    detail: "Vanguard beneficially owns 9.86% of JPMorgan Chase common stock, its largest holder."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/19617/000001961726000096/jpm-20260402.htm
+    source_title: "JPMorgan Chase 2026 proxy statement, Security ownership"
+    quote: "The Vanguard Group | 100 Vanguard Blvd, Malvern, PA 19355 | 265,758,185 | 9.86"
+  - from: vanguard
+    to: citigroup
+    type: shareholder_of
+    share: 0.087
+    detail: "Vanguard beneficially owns 8.7% of Citigroup common stock."
+    evidence: public
+    as_of: 2024-02-13
+    source_url: https://www.sec.gov/Archives/edgar/data/831001/000120677426000185/citi4583461-def14a.htm
+    source_title: "Citigroup 2026 proxy statement, Owners of more than 5% of Citi's common stock"
+    quote: "100 Vanguard Blvd., Malvern, PA 19355 | 166,504,200 | 8.7%"
+  - from: vanguard
+    to: microsoft
+    type: shareholder_of
+    share: 0.0748
+    detail: "Vanguard Capital Management beneficially owns 7.48% of Microsoft common stock."
+    evidence: public
+    as_of: 2026-09-30
+    source_url: https://www.sec.gov/Archives/edgar/data/789019/000119312526427849/d61756ddef14a.htm
+    source_title: "Microsoft 2026 proxy statement, Principal shareholders"
+    quote: "Vanguard Capital Management LLC | 100 Vanguard Blvd., Malvern, PA 19355 | 555,988,240 | 7.48%"
+
+  # ---------------------------------------------------------------- Schroders
+  - from: nuveen
+    to: schroders
+    type: owns
+    share: 1.0
+    detail: "Nuveen, TIAA's investment arm, completed its £9.9bn acquisition of Schroders on 1 October 2026; Schroders shares were delisted from the LSE."
+    evidence: public
+    as_of: 2026-10-01
+    source_url: https://www.investmentweek.co.uk/news/4536620/nuveen-completes-schroders-acquisition-create-usd26trn-mega-manager
+    source_title: "Investment Week, Nuveen completes Schroders acquisition to create $2.6trn mega-manager"
+    quote: "Nuveen has completed its acquisition of Schroders, creating a combined public-to-private asset and wealth manager with $2.6trn in AUM."
+  - from: schroders
+    to: schroders-singapore
+    type: owns
+    share: 1.0
+    detail: "Schroders holds 100% of Schroder Investment Management (Singapore) Ltd."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://reports.ticker.app/2138001YYBULX5SZ2H24/2026-03-06/report_mistral.md
+    source_title: "Schroders plc Annual Report and Accounts 2025, subsidiary undertakings (text copy of the filed report)"
+    quote: "Schroder Investment Management (Singapore) Ltd. | OS | 100%"
+  - from: schroders-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "Schroder Investment Management (Singapore) Ltd. holds an MAS capital markets services licence for fund management."
+    evidence: public
+    as_of: 2026-10-21
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/715-SCHRODER-INVESTMENT-MANAGEMENT-SINGAPORE-LTD
+    source_title: "MAS Financial Institutions Directory, Schroder Investment Management (Singapore) Ltd."
+    quote: "SCHRODER INVESTMENT MANAGEMENT (SINGAPORE) LTD. | Capital Markets Services Licensee | Fund Management"
+
+  # ---------------------------------------------------------------- PIMCO
+  - from: allianz
+    to: pimco
+    type: owns
+    share: null
+    detail: "PIMCO is one of Allianz's two asset managers, alongside Allianz Global Investors."
+    evidence: public
+    as_of: 2026-06-30
+    source_url: https://www.allianz.com/en/about-us/company/at-a-glance.html
+    source_title: "Allianz, At a glance"
+    quote: "Furthermore, our asset managers PIMCO and Allianz Global Investors manage about 2.2 trillion euros of third-party assets."
+  - from: pimco
+    to: pimco-asia
+    type: owns
+    share: null
+    detail: "PIMCO Asia Pte Ltd, PIMCO's Singapore entity, sits among PIMCO's operating companies in the Allianz group organisation chart."
+    evidence: public
+    as_of: 2021-12-31
+    source_url: https://sec.gov/Archives/edgar/data/836346/000083634622000031/exhibit29.htm
+    source_title: "Allianz group organisation chart as of 12/31/2021 (SEC filing exhibit 29)"
+    quote: "PIMCO Australia Pty Limited [Australia] PIMCO Asia Pte Ltd [Singapore] PIMCO Europe Ltd [UK] Pacific Investment Management Company"
+  - from: pimco-asia
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "PIMCO Asia Pte Ltd holds an MAS capital markets services licence for fund management."
+    evidence: public
+    as_of: 2026-10-08
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/1004-PIMCO-ASIA-PTE-LTD
+    source_title: "MAS Financial Institutions Directory, PIMCO Asia Pte Ltd"
+    quote: "PIMCO ASIA PTE LTD | Capital Markets Services Licensee | Fund Management"
+  # ---------------------------------------------------------------- EDBI portfolio (financial sector)
+  - from: edbi
+    to: addepar
+    type: shareholder_of
+    share: null
+    detail: "Addepar is listed in EDBI's portfolio (Digital Economy, USA); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Addepar is a global technology and data company that helps investment professionals provide the most informed, precise guidance for their clients."
+  - from: edbi
+    to: advance-intelligence-group
+    type: shareholder_of
+    share: null
+    detail: "Advance Intelligence Group is listed in EDBI's portfolio (Digital Economy, Indonesia); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "An AI-driven SaaS tech company in Asia-Pacific, offering a diverse ecosystem of products and services, including AI-based digital identity verification, risk solutions, omni-channel merchant services, BNPL, and digital lending products, with a strong presence across South and Southeast Asia, Greater China, and Latin America."
+  - from: edbi
+    to: arta-finance
+    type: shareholder_of
+    share: null
+    detail: "Arta Finance is listed in EDBI's portfolio (Digital Economy, Singapore & USA); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Founded by ex-Google executives, Arta Finance is a digital wealth platform for the savvy that enables more people to access the financial advantages of the ultra-wealthy."
+  - from: edbi
+    to: bank-jago
+    type: shareholder_of
+    share: null
+    detail: "Bank Jago is listed in EDBI's portfolio (Digital Economy, Indonesia); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Through its financial products and services that optimizes technology, Bank Jago aspire to be an innovative strong tech-based bank embedded in digital ecosystems, to fulfill the needs of consumers (retail), Small and Medium Enterprises (SMEs), and mass market segments."
+  - from: edbi
+    to: bolttech
+    type: shareholder_of
+    share: null
+    detail: "bolttech is listed in EDBI's portfolio (Digital Economy, HK (SG office)); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "With an international footprint of over 30 markets in three continents, Bolttech is a global insurtech that connects insurers, distributors, and customers to make insurance easier and more efficient."
+  - from: edbi
+    to: carta
+    type: shareholder_of
+    share: null
+    detail: "Carta is listed in EDBI's portfolio (Digital Economy, USA); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Carta helps thousands of private companies and investors manage their cap tables, valuations, investments, and equity plans."
+  - from: edbi
+    to: convera
+    type: shareholder_of
+    share: null
+    detail: "Convera is listed in EDBI's portfolio (Digital Economy, US); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "The world’s largest non-bank B2B cross-border payments company serving more than 30,000 customers."
+  - from: edbi
+    to: endowus
+    type: shareholder_of
+    share: null
+    detail: "Endowus is listed in EDBI's portfolio (Digital Economy, Singapore); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Endowus is a fee-only digital wealth platform that helps investors grow their money with expert advice and access to institutional financial solutions at low and fair fees."
+  - from: edbi
+    to: fazz
+    type: shareholder_of
+    share: null
+    detail: "Fazz is listed in EDBI's portfolio (Digital Economy, Indonesia); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Fazz is a financial technology (fintech) company that provides a one-stop shop for financial services in Southeast Asia."
+  - from: edbi
+    to: feedzai
+    type: shareholder_of
+    share: null
+    detail: "Feedzai is listed in EDBI's portfolio (Digital Economy, Portugal); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Feedzai is the world’s first RiskOps platform that uses AI to protect people and payments from fraud and financial crime."
+  - from: edbi
+    to: funding-societies
+    type: shareholder_of
+    share: null
+    detail: "Funding Societies is listed in EDBI's portfolio (Digital Economy, Singapore); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Founded by Kelvin Teo and Reynold Wijaya in 2015, Funding Societies | Modalku advances financing, software, and neobanking to MSMEs in Southeast Asia."
+  - from: edbi
+    to: goto
+    type: shareholder_of
+    share: null
+    detail: "GoTo Group is listed in EDBI's portfolio (Digital Economy, Indonesia); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "GoTo Group is the largest digital ecosystem in Indonesia, with a mission to “empower progress” by offering technology infrastructure and solutions that help everyone to access and thrive in the digital economy."
+  - from: edbi
+    to: icapital
+    type: shareholder_of
+    share: null
+    detail: "iCapital is listed in EDBI's portfolio (Digital Economy, USA); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "iCapital is a global leader shaping the future of investing for financial advisors, wealth managers, asset managers, and other industry participants."
+  - from: edbi
+    to: linklogis
+    type: shareholder_of
+    share: null
+    detail: "Linklogis is listed in EDBI's portfolio (Digital Economy, China); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Linklogis is a leading supply chain finance technology SaaS enterprise in China that was founded in 2016 and is backed by Tencent and other major investors."
+  - from: edbi
+    to: oaknorth
+    type: shareholder_of
+    share: null
+    detail: "OakNorth Bank is listed in EDBI's portfolio (Digital Economy, UK); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Founded by entrepreneurs in September 2015, OakNorth Bank provides fast, flexible, and accessible debt finance to the UK’s entrepreneurs and small business owners, having lent over £6.5B, created 20,300 new homes, 23,700 new jobs, raised deposits from c.160,000 savers, and supported hundreds of businesses in pursuing growth ambitions."
+  - from: edbi
+    to: pico
+    type: shareholder_of
+    share: null
+    detail: "Pico is listed in EDBI's portfolio (Digital Economy, USA); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Pico provides technology services to financial markets clients who demand cutting-edge solutions delivered quickly and accurately but also need flexibility and agility to respond to ever-changing market conditions."
+  - from: edbi
+    to: proxtera
+    type: shareholder_of
+    share: null
+    detail: "Proxtera is listed in EDBI's portfolio (Digital Economy, Singapore); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Proxtera is a global open digital ecosystem for MSMEs with trusted credentials to help them gain access to trade opportunities and financial services."
+  - from: edbi
+    to: revolut
+    type: shareholder_of
+    share: null
+    detail: "Revolut is listed in EDBI's portfolio (Digital Economy, UK); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Revolut is a global fintech, helping people get more from their money."
+  - from: edbi
+    to: thunes
+    type: shareholder_of
+    share: null
+    detail: "Thunes is listed in EDBI's portfolio (Digital Economy, Singapore); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Thunes is a global B2B payment infrastructure platform that enables seamless payments worldwide for leading businesses like Uber, Deliveroo, Grab, PayPal, Remitly, Finastra, and Revolut."
+  - from: edbi
+    to: validus
+    type: shareholder_of
+    share: null
+    detail: "Validus Group is listed in EDBI's portfolio (Digital Economy, Singapore); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "Founded in 2015 and head-quartered in Singapore, Validus Group is the leading all-in-one SME financing platform in Southeast Asia today, changing the way small businesses grow through effortless access to the finance solutions they need."
+  - from: edbi
+    to: vnlife
+    type: shareholder_of
+    share: null
+    detail: "VNLIFE is listed in EDBI's portfolio (Digital Economy, Vietnam); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "VNLIFE is a Vietnamese holding company that aims to create a digital ecosystem for people’s daily needs."
+  - from: edbi
+    to: wefox
+    type: shareholder_of
+    share: null
+    detail: "wefox is listed in EDBI's portfolio (Digital Economy, Germany); EDBI does not publish stake sizes."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.edbi.com/portfolio/
+    source_title: "EDBI, Portfolio"
+    quote: "wefox was founded in 2015 by Julian Teicke, Fabian Wesemann, and Dario Fazlic. wefox is a full-stack digital insurance company driven by a single purpose: to make people safe and prevent risk by reinventing insurance at scale through technology. wefox is the parent company of wefox Insurance, which is the in-house regulated insurance carrier."
+
+depends_on_participates:
+  - from: circle
+    to: blackrock
+    type: depends_on
+    detail: "About 88% of USDC reserves sit in the Circle Reserve Fund, a government money market fund managed by BlackRock; Circle treats BlackRock as its preferred reserve manager."
+    service: reserve_management
+    evidence: public
+    source_url: https://www.sec.gov/Archives/edgar/data/1876042/000187604226000062/crcl-20251231.htm
+    source_title: "Circle Internet Group, Form 10-K for 2025"
+    published: 2026-03-09
+    quote: "As of December 31, 2025, we held approximately 88% of USDC reserves in the Circle Reserve Fund, a government money market fund pursuant to Rule 2a-7 under the 1940 Act managed by BlackRock and available only to us."
+    as_of: 2025-12-31
+
+groups: []
+
+new_entities:
+  # entities on the shared list of 50
+  - {id: blackrock, name: "BlackRock, Inc.", kind: investor, country: united-states, aliases: [BlackRock, BLK, iShares]}
+  - {id: vanguard, name: The Vanguard Group, kind: investor, country: united-states, aliases: [Vanguard, "The Vanguard Group, Inc.", Vanguard Capital Management]}
+  - {id: schroders, name: Schroders, kind: investor, country: united-kingdom, aliases: [Schroders plc, Schroder]}
+  - {id: pimco, name: PIMCO, kind: investor, country: united-states, aliases: [Pacific Investment Management Company, Pacific Investment Management Company LLC]}
+  - {id: gic, name: GIC Private Limited, kind: investor, country: singapore, aliases: [GIC, Government of Singapore Investment Corporation]}
+  - {id: fullerton-fund-management, name: Fullerton Fund Management Company Ltd., kind: investor, country: singapore, aliases: [Fullerton, Fullerton Fund Management, FFMC]}
+  - {id: lion-global-investors, name: Lion Global Investors Limited, kind: investor, country: singapore, aliases: [Lion Global Investors, LionGlobal, LGI]}
+  - {id: edbi, name: EDB Investments Pte Ltd, kind: investor, country: singapore, aliases: [EDBI, EDB Investments]}
+  - {id: vertex-ventures, name: Vertex Ventures Southeast Asia & India, kind: investor, country: singapore, aliases: [Vertex Ventures, Vertex Ventures SEA & India, Vertex Ventures SEA Management Pte. Ltd.]}
+  - {id: allianz, name: Allianz SE, kind: insurer, country: germany, aliases: [Allianz]}
+  - {id: citigroup, name: Citigroup Inc., kind: bank, country: united-states, aliases: [Citigroup, Citi]}
+  - {id: ubs, name: UBS Group AG, kind: bank, aliases: [UBS, UBS Group]}
+  - {id: microsoft, name: Microsoft Corporation, kind: tech_provider, country: united-states, aliases: [Microsoft, MSFT]}
+  - {id: stripe, name: Stripe, kind: payment_institution, country: united-states, aliases: ["Stripe, Inc."]}
+  # group companies and owners introduced here
+  - {id: seviora, name: Seviora Holdings, kind: investor, country: singapore, aliases: [Seviora, Seviora Group]}
+  - {id: vertex-holdings, name: Vertex Venture Holdings Ltd, kind: investor, country: singapore, aliases: [Vertex Holdings, Vertex Venture Holdings]}
+  - {id: edb, name: Singapore Economic Development Board, kind: regulator, country: singapore, aliases: [EDB, Economic Development Board, SG Growth Capital]}
+  - {id: nuveen, name: Nuveen, kind: investor, country: united-states, aliases: [Nuveen LLC, TIAA]}
+  - {id: blackrock-singapore, name: BlackRock (Singapore) Limited, kind: investor, country: singapore, aliases: [BlackRock Singapore]}
+  - {id: schroders-singapore, name: Schroder Investment Management (Singapore) Ltd., kind: investor, country: singapore, aliases: [Schroders Singapore]}
+  - {id: pimco-asia, name: PIMCO Asia Pte Ltd, kind: investor, country: singapore, aliases: [PIMCO Singapore]}
+  # GIC investees outside the graph
+  - {id: bank-jago, name: PT Bank Jago Tbk, kind: bank, country: indonesia, aliases: [Bank Jago, Jago, ARTO]}
+  - {id: coda-payments, name: Coda Payments, kind: payment_institution, country: singapore, aliases: [Coda, Codashop, "Coda Payments Pte. Ltd."]}
+  - {id: bibit, name: Bibit, kind: investor, country: indonesia, aliases: [Bibit.id, PT Bibit Tumbuh Bersama]}
+  - {id: vnlife, name: VNLife, kind: payment_institution, country: vietnam, aliases: [VNLife Joint Stock Company, VNPay, VNPAY]}
+  - {id: addepar, name: Addepar, kind: tech_provider, country: united-states, aliases: [Addepar]}
+  - {id: advance-intelligence-group, name: Advance Intelligence Group, kind: tech_provider, country: indonesia, aliases: [Advance Intelligence Group, ADVANCE.AI, Atome]}
+  - {id: arta-finance, name: Arta Finance, kind: broker, country: singapore, aliases: [Arta Finance, Arta]}
+  - {id: bolttech, name: bolttech, kind: insurer, country: hong-kong, aliases: [bolttech]}
+  - {id: carta, name: Carta, kind: tech_provider, country: united-states, aliases: [Carta]}
+  - {id: convera, name: Convera, kind: payment_institution, country: united-states, aliases: [Convera]}
+  - {id: endowus, name: Endowus, kind: broker, country: singapore, aliases: [Endowus]}
+  - {id: fazz, name: Fazz, kind: payment_institution, country: indonesia, aliases: [Fazz, Fazz Financial Group]}
+  - {id: feedzai, name: Feedzai, kind: tech_provider, aliases: [Feedzai]}
+  - {id: funding-societies, name: Funding Societies, kind: tech_provider, country: singapore, aliases: [Funding Societies, Modalku]}
+  - {id: goto, name: GoTo Group, kind: tech_provider, country: indonesia, aliases: [GoTo, GoTo Group, Gojek, Tokopedia, GoTo Financial]}
+  - {id: icapital, name: iCapital, kind: tech_provider, country: united-states, aliases: [iCapital]}
+  - {id: linklogis, name: Linklogis, kind: tech_provider, country: mainland-china, aliases: [Linklogis]}
+  - {id: oaknorth, name: OakNorth Bank, kind: bank, country: united-kingdom, aliases: [OakNorth, OakNorth Bank]}
+  - {id: pico, name: Pico, kind: tech_provider, country: united-states, aliases: [Pico]}
+  - {id: proxtera, name: Proxtera, kind: tech_provider, country: singapore, aliases: [Proxtera]}
+  - {id: revolut, name: Revolut, kind: payment_institution, country: united-kingdom, aliases: [Revolut]}
+  - {id: thunes, name: Thunes, kind: payment_institution, country: singapore, aliases: [Thunes]}
+  - {id: validus, name: Validus Group, kind: tech_provider, country: singapore, aliases: [Validus, Validus Group]}
+  - {id: wefox, name: wefox, kind: insurer, aliases: [wefox]}

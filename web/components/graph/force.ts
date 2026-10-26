@@ -116,6 +116,8 @@ export function focusReducers<A extends BaseNodeAttrs, E extends Attributes>(
 
 type Box = { x: number; y: number; w: number; h: number };
 type Disc = { x: number; y: number; r: number };
+// The share of a label its kept side may cover before the label moves to a clearer one.
+const STICKY = 0.1;
 
 function overlap(a: Box, b: Box): number {
   const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
@@ -125,15 +127,19 @@ function overlap(a: Box, b: Box): number {
 
 /** Draws each label beside its node on the first side (right, left, below, above) where it covers
  *  no other node, no label drawn before it this frame and no edge of the stage; failing that, on
- *  the side that covers least. Forced labels always draw; any other label with no clear side is
- *  left out. A node's `detail` goes on a second line under its label. Labels get a halo in the
- *  canvas colour so edges never run through the text. */
+ *  the side that covers least. A label keeps last frame's side while that side stays nearly clear
+ *  (a forced one also while no other side is much clearer), so labels do not jump between sides
+ *  as nodes move. Forced labels always draw; any other label
+ *  with no clear side is left out. A node's `detail` goes on a second line under its label. Labels
+ *  get a halo in the canvas colour so edges never run through the text. */
 export function labelPlacer<A extends BaseNodeAttrs, E extends Attributes>(
   renderer: Sigma<A, E>,
   colors: { label: string; gap: string; detail?: string },
 ): NodeLabelDrawingFunction<A, E> {
   let discs: Disc[] | null = null;
   let placed: Box[] = [];
+  // Each label's side last frame, by node key.
+  const lastSide = new Map<string, number>();
   renderer.on("beforeRender", () => {
     discs = null;
     placed = [];
@@ -179,9 +185,20 @@ export function labelPlacer<A extends BaseNodeAttrs, E extends Attributes>(
         0,
       ) + placed.reduce((sum, b) => sum + 2 * overlap(box, b), 0);
     const costs = sides.map(cost);
-    const best = costs.findIndex((c) => c === 0);
-    if (best < 0 && !data.forceLabel) return;
+    const kept = key === null ? undefined : lastSide.get(key);
+    // Covering up to a tenth of the label is not worth a jump. A forced label, drawn even when no
+    // side is clear, also stays unless another side is twice as clear; any other label with no
+    // nearly clear side is left out as before.
+    const keep =
+      kept !== undefined &&
+      (costs[kept] <= STICKY * w * h || (!!data.forceLabel && costs[kept] <= 2 * Math.min(...costs)));
+    const best = keep ? kept : costs.findIndex((c) => c === 0);
+    if (best < 0 && !data.forceLabel) {
+      if (key !== null) lastSide.delete(key);
+      return;
+    }
     const side = best >= 0 ? best : costs.indexOf(Math.min(...costs));
+    if (key !== null) lastSide.set(key, side);
     const box = sides[side];
     placed.push(box);
     // Left of the node the lines align right, above and below they centre.

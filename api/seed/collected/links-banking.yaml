@@ -1,0 +1,479 @@
+# Banking team links (collected 2026-10-26): group structure, MAS licences, home regulators,
+# listings and Singapore market roles for Standard Chartered, HSBC, Citigroup, J.P. Morgan,
+# Bank of China, Maybank, UBS, GXS Bank and Trust Bank.
+# Each foreign group owns its Singapore node (standard-chartered-singapore, hsbc-singapore,
+# citibank, jpmorgan-singapore, ubs-singapore) and the licence sits on that node. bank-of-china
+# and maybank are single nodes: Bank of China's Singapore operation is a branch of the same legal
+# entity, and existing rows already map Maybank Singapore Limited to `maybank`.
+# MAS licences come from the MAS Financial Institutions Directory (FID), read on 2026-10-26; FID
+# quotes join the institution name, incorporation and licence cells with " | ".
+# Other sources: company filings and annual reports (SEC 10-K, HKEX announcements, Maybank AR
+# 2025), company websites, the PRA and FINMA.
+# Not repeated here: FAST, PayNow, MEPS+, GIRO, eGIRO, NETS, SWIFT, card scheme and cloud rows
+# (tech-dependencies.yaml); D-SIB designations, COSMIC, Project Guardian, Partior and Climate
+# Impact X (entity-links.yaml); citibank and maybank MAS licence rows (an existing
+# supervised_by mas row from another source would make them repeats); Grab and Singtel
+# ownership of GXS Bank (tech-dependencies.yaml).
+collected: 2026-10-26
+
+relationships:
+  # ------------------------------------------------------------ Standard Chartered
+  - from: standard-chartered
+    to: standard-chartered-singapore
+    type: owns
+    share: 1.0
+    detail: "Standard Chartered Bank (Singapore) Limited is an indirect wholly owned subsidiary of Standard Chartered Bank, whose ultimate parent is Standard Chartered PLC."
+    evidence: public
+    as_of: 2016-03-31
+    source_url: https://www.sc.com/global/av/sg-corporate-governance-report.pdf
+    source_title: "Standard Chartered Bank (Singapore) Limited, Corporate Governance Report"
+    quote: "The Company is an indirect wholly-owned subsidiary of Standard Chartered Bank (“SCB”) and its ultimate parent is Standard Chartered PLC"
+  - from: standard-chartered-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS licenses Standard Chartered Bank (Singapore) Limited as a qualifying full bank; it is also an SGS primary dealer."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/2623-STANDARD-CHARTERED-BANK-SINGAPORE-LIMITED
+    source_title: "MAS Financial Institutions Directory: Standard Chartered Bank (Singapore) Limited"
+    quote: "STANDARD CHARTERED BANK (SINGAPORE) LIMITED | Incorporated in Singapore | Qualifying Full Bank | SGS Primary Dealer"
+  - from: standard-chartered-singapore
+    to: trust-bank
+    type: owns
+    share: 0.6
+    detail: "Standard Chartered Bank (Singapore) holds 60% of Trust Bank per the 2022 launch release; in July 2026 Standard Chartered announced a further investment in Trust and the transfer of part of its card and personal loan book to it, with no new stake disclosed."
+    evidence: public
+    as_of: 2022-09-01
+    source_url: https://trustbank.sg/newsroom/trust-bank-launches-as-the-digital-bank-for-singapore
+    source_title: "Trust Bank launches as the digital bank for Singapore (Trust Bank newsroom)"
+    quote: "SCBSL and BetaPlus respectively hold 60 per cent and 40 per cent of the issued and paid-up share capital of Trust."
+  - from: standard-chartered
+    to: lse
+    type: listed_on
+    share: null
+    detail: "Standard Chartered PLC ordinary shares are listed in London (STAN)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.sc.com/en/investors/shareholder-information/
+    source_title: "Standard Chartered, Shareholder information"
+    quote: "Standard Chartered ordinary shares are listed on the London Stock Exchange and Hong Kong Stock Exchange."
+  - from: standard-chartered
+    to: hkex
+    type: listed_on
+    share: null
+    detail: "Standard Chartered PLC ordinary shares are listed in Hong Kong (2888)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.sc.com/en/investors/shareholder-information/
+    source_title: "Standard Chartered, Shareholder information"
+    quote: "Standard Chartered ordinary shares are listed on the London Stock Exchange and Hong Kong Stock Exchange."
+  - from: standard-chartered
+    to: pra
+    type: supervised_by
+    share: null
+    detail: "Standard Chartered Bank, the group's UK-incorporated bank, is authorised by the PRA and regulated by the FCA and PRA."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.sc.com/en/banking/banking-for-individuals/private-banking/contact-us/
+    source_title: "Standard Chartered Private Bank, Contact us (legal notice)"
+    quote: "Standard Chartered Bank is authorised by the Prudential Regulation Authority and regulated by the Financial Conduct Authority and Prudential Regulation Authority."
+
+  # ------------------------------------------------------------ Trust Bank
+  - from: trust-bank
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS lists Trust Bank Singapore Limited as a full bank incorporated in Singapore."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/237846-TRUST-BANK-SINGAPORE-LIMITED
+    source_title: "MAS Financial Institutions Directory: Trust Bank Singapore Limited"
+    quote: "TRUST BANK SINGAPORE LIMITED | Incorporated in Singapore | Full Bank"
+  - from: ntuc-enterprise
+    to: trust-bank
+    type: shareholder_of
+    share: null
+    detail: "NTUC Enterprise and FairPrice Group own BetaPlus, the holding company with 40% of Trust Bank; the split between them is not given."
+    evidence: public
+    as_of: 2022-09-01
+    source_url: https://trustbank.sg/newsroom/trust-bank-launches-as-the-digital-bank-for-singapore
+    source_title: "Trust Bank launches as the digital bank for Singapore (Trust Bank newsroom)"
+    quote: "Trust’s shareholders are Standard Chartered Bank (Singapore) Limited (“SCBSL”) and BetaPlus, a holding company owned by NTUC Enterprise and FairPrice Group."
+  - from: fairprice-group
+    to: trust-bank
+    type: shareholder_of
+    share: null
+    detail: "FairPrice Group and NTUC Enterprise own BetaPlus, the holding company with 40% of Trust Bank; Trust rewards are integrated with FairPrice purchases."
+    evidence: public
+    as_of: 2022-09-01
+    source_url: https://trustbank.sg/newsroom/trust-bank-launches-as-the-digital-bank-for-singapore
+    source_title: "Trust Bank launches as the digital bank for Singapore (Trust Bank newsroom)"
+    quote: "Trust’s shareholders are Standard Chartered Bank (Singapore) Limited (“SCBSL”) and BetaPlus, a holding company owned by NTUC Enterprise and FairPrice Group."
+
+  # ------------------------------------------------------------ GXS Bank
+  - from: gxs-bank
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS lists GXS Bank Pte. Ltd. under the Local Bank category."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/247573-GXS-BANK-PTE-LTD
+    source_title: "MAS Financial Institutions Directory: GXS Bank Pte. Ltd."
+    quote: "GXS BANK PTE. LTD. | Incorporated in Singapore | Local Bank"
+
+  # ------------------------------------------------------------ HSBC
+  - from: hsbc
+    to: hsbc-singapore
+    type: owns
+    share: 1.0
+    detail: "HSBC Bank (Singapore) Limited is an indirect wholly owned subsidiary of HSBC Holdings, held through The Hongkong and Shanghai Banking Corporation."
+    evidence: public
+    as_of: 2026-07-24
+    source_url: https://www.hsbc.com/-/files/hsbc/investors/results-and-announcements/stock-exchange-announcements/2026/july/sea-240726-hsbc-to-sell-its-life-and-health-insurance-business-in-singapore-to-allianz-english.pdf
+    source_title: "HSBC Holdings plc, HSBC to sell its life and health insurance business in Singapore to Allianz (24 Jul 2026)"
+    quote: "HSBC Holdings’ indirect wholly-owned subsidiary, HSBC Bank (Singapore) Limited (“HSBC Bank SG”)"
+  - from: hsbc
+    to: allianz
+    type: partner_of
+    share: null
+    detail: "Deal counterparty: HSBC agreed in July 2026 to sell HSBC Life (Singapore) to Allianz for S$2.7bn (completion expected 1H 2027), followed by a 15-year exclusive bancassurance deal under which HSBC Bank (Singapore) distributes its products."
+    evidence: public
+    as_of: 2026-07-24
+    source_url: https://www.hsbc.com/-/files/hsbc/investors/results-and-announcements/stock-exchange-announcements/2026/july/sea-240726-hsbc-to-sell-its-life-and-health-insurance-business-in-singapore-to-allianz-english.pdf
+    source_title: "HSBC Holdings plc, HSBC to sell its life and health insurance business in Singapore to Allianz (24 Jul 2026)"
+    quote: "HSBC Group has agreed to sell HSBC Life (Singapore) Pte. Ltd. to Allianz for a consideration of S$2.7 billion (US$2.1 billion) with completion expected in the first half of 2027, subject to regulatory approval."
+  - from: hsbc-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS licenses The Hongkong and Shanghai Banking Corporation's Singapore branch as a full bank and SGS primary dealer; its retail subsidiary HSBC Bank (Singapore) Limited is a qualifying full bank."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution?sector=Banking&category=SGS%20Primary%20Dealer&count=100
+    source_title: "MAS Financial Institutions Directory: Banking, SGS Primary Dealer"
+    quote: "THE HONGKONG AND SHANGHAI BANKING CORPORATION LIMITED | Full Bank | SGS Primary Dealer"
+  - from: hsbc
+    to: lse
+    type: listed_on
+    share: null
+    detail: "HSBC Holdings has its primary listing in London."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.hsbc.com/investors/shareholder-information
+    source_title: "HSBC, Shareholder information"
+    quote: "HSBC has a primary share listing on the UK’s London Stock Exchange and branch listings on the Hong Kong Stock Exchange and Bermuda Stock Exchange."
+  - from: hsbc
+    to: hkex
+    type: listed_on
+    share: null
+    detail: "HSBC Holdings has a branch listing in Hong Kong (stock code 5)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.hsbc.com/investors/shareholder-information
+    source_title: "HSBC, Shareholder information"
+    quote: "HSBC has a primary share listing on the UK’s London Stock Exchange and branch listings on the Hong Kong Stock Exchange and Bermuda Stock Exchange."
+  - from: hsbc
+    to: nyse
+    type: listed_on
+    share: null
+    detail: "HSBC Holdings shares are also listed in New York."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.hsbc.com/investors/shareholder-information
+    source_title: "HSBC, Shareholder information"
+    quote: "Its shares are also listed on the New York Stock Exchange."
+  - from: hsbc
+    to: pra
+    type: supervised_by
+    share: null
+    detail: "The PRA supervises HSBC's UK banks and fined HSBC Bank plc and HSBC UK Bank plc £57.4m (after discount) in January 2024 over depositor protection rules."
+    evidence: public
+    as_of: 2024-01-29
+    source_url: https://www.bankofengland.co.uk/-/media/boe/files/prudential-regulation/regulatory-action/final-notice-from-pra-to-hsbc.pdf
+    source_title: "PRA Final Notice to HSBC Bank plc and HSBC UK Bank plc (29 Jan 2024)"
+    quote: "the Prudential Regulation Authority (“PRA”) imposes a financial penalty on HSBC Bank plc (“HBEU”) and HSBC UK Bank plc (“HBUK”) (together, the “Firms”) of £82,025,000"
+
+  # ------------------------------------------------------------ Citigroup
+  - from: citigroup
+    to: citibank
+    type: owns
+    share: null
+    detail: "Citigroup counts Citibank Singapore Ltd. within its Citibank bank entities; Citibank N.A. Singapore branch is part of the same node."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/831001/000083100126000011/c-20251231.htm
+    source_title: "Citigroup Inc. Form 10-K for 2025"
+    quote: "Citibank (including Citibank Europe plc, Citibank Singapore Ltd. and Citibank (Hong Kong) Ltd.)"
+  - from: citigroup
+    to: nyse
+    type: listed_on
+    share: null
+    detail: "Citigroup common stock is listed on the NYSE (C)."
+    evidence: public
+    as_of: 2026-01-31
+    source_url: https://www.sec.gov/Archives/edgar/data/831001/000083100126000011/c-20251231.htm
+    source_title: "Citigroup Inc. Form 10-K for 2025"
+    quote: "Citigroup’s common stock is listed on the NYSE under the ticker symbol “C”"
+  - from: citigroup
+    to: federal-reserve
+    type: supervised_by
+    share: null
+    detail: "Citigroup is a bank holding company and financial holding company supervised by the Federal Reserve Board."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/831001/000083100126000011/c-20251231.htm
+    source_title: "Citigroup Inc. Form 10-K for 2025"
+    quote: "Citigroup is a registered bank holding company and financial holding company and is regulated and supervised by the Federal Reserve Board (FRB)."
+  - from: citibank
+    to: occ
+    type: supervised_by
+    share: null
+    detail: "Citibank N.A., including its overseas branches such as Singapore, is supervised by the OCC and the Federal Reserve."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/831001/000083100126000011/c-20251231.htm
+    source_title: "Citigroup Inc. Form 10-K for 2025"
+    quote: "Overseas branches of Citibank are regulated and supervised by the FRB and OCC and overseas subsidiary banks by the FRB."
+
+  # ------------------------------------------------------------ J.P. Morgan
+  - from: jpmorgan
+    to: jpmorgan-singapore
+    type: owns
+    share: null
+    detail: "JPMorgan Chase Bank, N.A., whose Singapore branch is the jpmorgan-singapore node, is JPMorganChase's principal bank subsidiary."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/19617/000162828026008131/jpm-20251231.htm
+    source_title: "JPMorgan Chase & Co. Form 10-K for 2025"
+    quote: "JPMorganChase’s principal bank subsidiary is JPMorgan Chase Bank, National Association (“JPMorgan Chase Bank, N.A.”)"
+  - from: jpmorgan-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS licenses JPMorgan Chase Bank, N.A. in Singapore as a full bank."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/3080-JPMORGAN-CHASE-BANK-N-A
+    source_title: "MAS Financial Institutions Directory: JPMorgan Chase Bank, N.A."
+    quote: "JPMORGAN CHASE BANK, N.A. | Incorporated in United States | Full Bank"
+  - from: jpmorgan-singapore
+    to: occ
+    type: supervised_by
+    share: null
+    detail: "JPMorgan Chase Bank, N.A. is supervised by the OCC."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/19617/000162828026008131/jpm-20251231.htm
+    source_title: "JPMorgan Chase & Co. Form 10-K for 2025"
+    quote: "JPMorganChase’s national bank subsidiary, JPMorgan Chase Bank, N.A., is supervised and regulated by the Office of the Comptroller of the Currency (“OCC”)"
+  - from: jpmorgan
+    to: federal-reserve
+    type: supervised_by
+    share: null
+    detail: "The Federal Reserve sets capital requirements for JPMorganChase as a consolidated financial holding company."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/19617/000162828026008131/jpm-20251231.htm
+    source_title: "JPMorgan Chase & Co. Form 10-K for 2025"
+    quote: "The Federal Reserve establishes capital requirements, including well-capitalized standards, for the Firm as a consolidated financial holding company."
+  - from: jpmorgan
+    to: nyse
+    type: listed_on
+    share: null
+    detail: "JPMorganChase common stock is registered on the NYSE (JPM)."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.sec.gov/Archives/edgar/data/19617/000162828026008131/jpm-20251231.htm
+    source_title: "JPMorgan Chase & Co. Form 10-K for 2025"
+    quote: "Title of each class | Trading Symbol(s) | Name of each exchange on which registered | Common stock | JPM | The New York Stock Exchange"
+
+  # ------------------------------------------------------------ Bank of China
+  - from: central-huijin
+    to: bank-of-china
+    type: owns
+    share: 0.5859
+    detail: "Central Huijin Investment holds 58.59% of Bank of China (A shares); the Ministry of Finance held 8.64% after the 2025 recapitalisation."
+    evidence: public
+    as_of: 2025-09-30
+    source_url: https://www1.hkexnews.hk/listedco/listconews/sehk/2025/1028/2025102800599.pdf
+    source_title: "Bank of China Limited, Report for the Third Quarter ended 30 September 2025 (HKEX)"
+    quote: "Central Huijin Investment Ltd. | 188,791,906,533 | 58.59% | – | None | State | A"
+  - from: bank-of-china
+    to: hkex
+    type: listed_on
+    share: null
+    detail: "Bank of China H shares are listed in Hong Kong (3988)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.boc.cn/en/aboutboc/ab1/200809/t20080901_1601737.html
+    source_title: "Bank of China Introduction"
+    quote: "The Bank was listed on the Hong Kong Stock Exchange and the Shanghai Stock Exchange in 2006, becoming the first Chinese bank to launch an A-Share and H-Share initial public offering and achieve a dual listing in both markets."
+  - from: bank-of-china
+    to: shanghai-stock-exchange
+    type: listed_on
+    share: null
+    detail: "Bank of China A shares are listed in Shanghai."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.boc.cn/en/aboutboc/ab1/200809/t20080901_1601737.html
+    source_title: "Bank of China Introduction"
+    quote: "The Bank was listed on the Hong Kong Stock Exchange and the Shanghai Stock Exchange in 2006, becoming the first Chinese bank to launch an A-Share and H-Share initial public offering and achieve a dual listing in both markets."
+  - from: bank-of-china
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS licenses Bank of China Limited's Singapore branch as a qualifying full bank."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/3026-BANK-OF-CHINA-LIMITED
+    source_title: "MAS Financial Institutions Directory: Bank of China Limited"
+    quote: "BANK OF CHINA LIMITED | Incorporated in China | Qualifying Full Bank"
+
+  # ------------------------------------------------------------ Maybank
+  - from: maybank
+    to: bursa-malaysia
+    type: listed_on
+    share: null
+    detail: "Malayan Banking Berhad is listed on the Main Market of Bursa Malaysia."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.jpx.co.jp/equities/products/tpbm/announcement/detail/nlsgeu000002bk1b-att/t13vrt0000016tkj.pdf
+    source_title: "Malayan Banking Berhad Annual Report 2025, Financial Statements"
+    quote: "Malayan Banking Berhad (“Maybank” or the “Bank”) is a public limited liability company, incorporated and domiciled in Malaysia and is listed on the Main Market of Bursa Malaysia Securities Berhad."
+  - from: pnb
+    to: maybank
+    type: shareholder_of
+    share: 0.3429
+    detail: "Permodalan Nasional Berhad holds 6.43% of Maybank directly and 27.86% indirectly through Amanah Saham Bumiputera (34.29% combined)."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.jpx.co.jp/equities/products/tpbm/announcement/detail/nlsgeu000002bk1b-att/t13vrt0000016tkj.pdf
+    source_title: "Malayan Banking Berhad Annual Report 2025, Financial Statements"
+    quote: "Permodalan Nasional Berhad (“PNB”), is a government-linked entity and a shareholder with significant influence on the Bank, with direct shareholding of 6.43% (2024: 6.52%) and indirect shareholding of 27.86% (2024: 30.51%) via Amanah Raya Trustee Berhad (Skim Amanah Saham Bumiputera) as at 31 December 2025."
+  - from: maybank
+    to: maybank-indonesia
+    type: owns
+    share: 0.9852
+    detail: "Maybank holds 98.52% of PT Bank Maybank Indonesia Tbk."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.jpx.co.jp/equities/products/tpbm/announcement/detail/nlsgeu000002bk1b-att/t13vrt0000016tkj.pdf
+    source_title: "Malayan Banking Berhad Annual Report 2025, Financial Statements, Note 64 Details of subsidiaries"
+    quote: "PT Bank Maybank Indonesia Tbk | Banking | Indonesia | 10,213,284,063,018 | 10,213,284,063,018 | 98.52 | 98.52 | 1.48 | 1.48 | 100.00 | 100.00"
+  - from: maybank
+    to: singapore
+    type: operates_in
+    share: null
+    detail: "Maybank's Singapore retail subsidiary, Maybank Singapore Limited, is 100% owned; it is a qualifying full bank alongside the Malayan Banking Berhad full-bank branch."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://www.jpx.co.jp/equities/products/tpbm/announcement/detail/nlsgeu000002bk1b-att/t13vrt0000016tkj.pdf
+    source_title: "Malayan Banking Berhad Annual Report 2025, Financial Statements, Note 64 Details of subsidiaries"
+    quote: "Maybank Singapore Limited | Banking | Singapore | 2,000,000,100 | 2,000,000,100 | 100.00 | 100.00 | – | – | 100.00 | 100.00"
+
+  # ------------------------------------------------------------ UBS
+  - from: ubs
+    to: ubs-singapore
+    type: owns
+    share: 1.0
+    detail: "UBS Group AG owns all of UBS AG, which operates in Singapore as a branch (the ubs-singapore node)."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.ubs.com/global/en/our-firm/governance/ubs-group-ag.html
+    source_title: "UBS Group AG (UBS governance page)"
+    quote: "UBS Group AG owns 100% of the outstanding shares in UBS AG."
+  - from: ubs-singapore
+    to: mas
+    type: supervised_by
+    share: null
+    detail: "MAS licenses UBS AG in Singapore as a wholesale bank."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/3324-UBS-AG
+    source_title: "MAS Financial Institutions Directory: UBS AG"
+    quote: "UBS AG | Incorporated in Switzerland | Wholesale Bank"
+  - from: ubs
+    to: six-swiss-exchange
+    type: listed_on
+    share: null
+    detail: "UBS Group AG shares are listed on SIX Swiss Exchange."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.ubs.com/global/en/our-firm/governance/ubs-group-ag.html
+    source_title: "UBS Group AG (UBS governance page)"
+    quote: "UBS Group AG shares are listed on the SIX Swiss Exchange and on the New York Stock Exchange"
+  - from: ubs
+    to: nyse
+    type: listed_on
+    share: null
+    detail: "UBS Group AG shares are also listed on the NYSE."
+    evidence: public
+    as_of: 2026-10-26
+    source_url: https://www.ubs.com/global/en/our-firm/governance/ubs-group-ag.html
+    source_title: "UBS Group AG (UBS governance page)"
+    quote: "UBS Group AG shares are listed on the SIX Swiss Exchange and on the New York Stock Exchange"
+  - from: ubs
+    to: finma
+    type: supervised_by
+    share: null
+    detail: "FINMA supervises UBS; in 2025 its supervision focused on integrating Credit Suisse."
+    evidence: public
+    as_of: 2025-12-31
+    source_url: https://report.finma.ch/2025/en/finmas-core-tasks/supervisory-activity-by-sector
+    source_title: "FINMA Annual Report 2025, Supervisory activity by sector"
+    quote: "In 2025, the ongoing supervision of UBS was again dominated by the integration of the former Credit Suisse (CS)."
+
+depends_on_participates:
+  - from: citibank
+    to: usd-cheque-clearing
+    type: participates_in
+    detail: "Citibank N.A. Singapore is MAS's designated settlement institution for the US Dollar Cheque Clearing System."
+    service: payments
+    evidence: public
+    source_url: https://eservices.mas.gov.sg/fid/institution/detail/3022-CITIBANK-N-A
+    source_title: "MAS Financial Institutions Directory: Citibank N.A."
+    published: null
+    as_of: 2026-10-26
+    quote: "Designated Payment System Settlement Institution Designated payment system settlement institutions settle transactions processed by payment systems designated under the Payment Services Act. US Dollar Cheque Clearing System"
+  - from: bank-of-china
+    to: sgx
+    type: participates_in
+    detail: "Bank of China Singapore became SGX's pioneer RMB futures market maker and first Chinese settlement bank in September 2014."
+    service: market_infrastructure
+    evidence: public
+    source_url: https://www.bankofchina.com/sg/aboutus/ab1/201001/t20100122_955882.html
+    source_title: "Milestones of Bank of China Singapore Branch"
+    published: null
+    as_of: 2026-10-26
+    quote: "Bank of China Singapore Branch was appointed as Singapore Exchange’s pioneer Market Maker of RMB Futures & the first Chinese settlement bank in 19 Sept 2014."
+
+groups:
+  - id: sgs-primary-dealers
+    name: SGS primary dealers
+    kind: group
+    members: [dbs, ocbc, uob, citibank, hsbc-singapore, maybank, standard-chartered-singapore, deutsche-bank-singapore, bnp-paribas-singapore, barclays-singapore, bank-of-america-singapore, anz-singapore]
+    detail: "Banks MAS lists as Singapore Government Securities primary dealers (12 at 26 Oct 2026); they make markets in and bid at auctions of SGS."
+    source_url: https://eservices.mas.gov.sg/fid/institution?sector=Banking&category=SGS%20Primary%20Dealer&count=100
+    quote: "12 result(s) | AUSTRALIA AND NEW ZEALAND BANKING GROUP LIMITED Wholesale Bank SGS Primary Dealer | BANK OF AMERICA,NATIONAL ASSOCIATION Full Bank SGS Primary Dealer | BARCLAYS BANK PLC Wholesale Bank SGS Primary Dealer | BNP PARIBAS Qualifying Full Bank SGS Primary Dealer | CITIBANK N.A. Full Bank Designated Payment System Settlement Institution SGS Primary Dealer | DBS BANK LTD. Local Bank Designated Payment System Settlement Institution SGS Primary Dealer | DEUTSCHE BANK AKTIENGESELLSCHAFT Wholesale Bank SGS Primary Dealer | MALAYAN BANKING BERHAD Full Bank SGS Primary Dealer | OVERSEA-CHINESE BANKING CORPORATION LIMITED Local Bank SGS Primary Dealer | STANDARD CHARTERED BANK (SINGAPORE) LIMITED Qualifying Full Bank SGS Primary Dealer | THE HONGKONG AND SHANGHAI BANKING CORPORATION LIMITED Full Bank SGS Primary Dealer | UNITED OVERSEAS BANK LIMITED Local Bank SGS Primary Dealer"
+
+new_entities:
+  - {id: citigroup, name: Citigroup, kind: bank, country: united-states, aliases: [Citigroup Inc., Citi]}
+  - {id: ubs, name: UBS Group, kind: bank, aliases: [UBS Group AG, UBS]}
+  - {id: allianz, name: Allianz, kind: insurer, aliases: [Allianz SE, Allianz Asia Holdings]}
+  - {id: ntuc-enterprise, name: NTUC Enterprise, kind: investor, country: singapore, aliases: [NTUC Enterprise Co-operative]}
+  - {id: fairprice-group, name: FairPrice Group, kind: investor, country: singapore, aliases: [NTUC FairPrice, FairPrice]}
+  - {id: central-huijin, name: Central Huijin Investment, kind: investor, country: mainland-china, aliases: [Central Huijin Investment Ltd., Huijin]}
+  - {id: pnb, name: Permodalan Nasional Berhad, kind: investor, country: malaysia, aliases: [PNB, Amanah Saham Bumiputera, ASB]}
+  - {id: maybank-indonesia, name: Maybank Indonesia, kind: bank, country: indonesia, aliases: [PT Bank Maybank Indonesia Tbk]}
+  - {id: lse, name: London Stock Exchange, kind: exchange, country: united-kingdom, aliases: [LSE]}
+  - {id: nyse, name: New York Stock Exchange, kind: exchange, country: united-states, aliases: [NYSE]}
+  - {id: six-swiss-exchange, name: SIX Swiss Exchange, kind: exchange, aliases: [SIX]}
+  - {id: bursa-malaysia, name: Bursa Malaysia, kind: exchange, country: malaysia, aliases: [Bursa Malaysia Securities Berhad]}
+  - {id: shanghai-stock-exchange, name: Shanghai Stock Exchange, kind: exchange, country: mainland-china, aliases: [SSE]}
+  - {id: pra, name: Prudential Regulation Authority, kind: regulator, country: united-kingdom, aliases: [PRA, Bank of England PRA]}
+  - {id: finma, name: FINMA, kind: regulator, aliases: [Swiss Financial Market Supervisory Authority]}
+  - {id: federal-reserve, name: Federal Reserve, kind: central-bank, country: united-states, aliases: [Federal Reserve Board, FRB, Fed]}
+  - {id: occ, name: Office of the Comptroller of the Currency, kind: regulator, country: united-states, aliases: [OCC]}
+  - {id: usd-cheque-clearing, name: US Dollar Cheque Clearing System, kind: payment_system, country: singapore, aliases: [USD Cheque Clearing System, USDCCS]}

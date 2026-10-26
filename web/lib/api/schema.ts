@@ -2729,7 +2729,7 @@ export interface components {
             /** Label */
             label: string;
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "insurer" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group") | null;
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group") | null;
             /** Hop */
             hop: number;
             /**
@@ -3034,7 +3034,7 @@ export interface components {
             /** Name */
             name: string;
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "insurer" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
             /** @description None when the institution is not tracked */
             subject: components["schemas"]["SubjectRef"] | null;
             /**
@@ -3594,7 +3594,7 @@ export interface components {
             /** Name */
             name: string;
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "insurer" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
             /** @description None when the node is not tracked */
             subject: components["schemas"]["SubjectRef"] | null;
             /**
@@ -4202,7 +4202,7 @@ export interface components {
             /** Name */
             name: string;
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "insurer" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
             /**
              * Subject
              * @description A tracked subject; otherwise a relationship endpoint
@@ -4325,7 +4325,7 @@ export interface components {
              */
             type: "topic" | "group" | "entity";
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "insurer" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | null;
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | null;
             /**
              * Logo
              * @description Entity icon path in the web app, if one exists
@@ -4348,6 +4348,11 @@ export interface components {
              * @description Member entity ids, for a group; else empty
              */
             members: string[];
+            /**
+             * Sidebar
+             * @description A group shown as a sidebar heading
+             */
+            sidebar: boolean;
             /**
              * New Developments
              * @description Changed since the subject was last reviewed, and not read or dismissed
@@ -4561,7 +4566,7 @@ export interface components {
              */
             type: "topic" | "group" | "entity";
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "insurer" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | null;
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | null;
             /**
              * Logo
              * @description Entity icon path in the web app, if one exists
@@ -4590,7 +4595,7 @@ export interface components {
              */
             type: "topic" | "group" | "entity";
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "insurer" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | null;
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | null;
             /**
              * Logo
              * @description Entity icon path in the web app, if one exists
@@ -4613,6 +4618,11 @@ export interface components {
              * @description Member entity ids, for a group; else empty
              */
             members: string[];
+            /**
+             * Sidebar
+             * @description A group shown as a sidebar heading
+             */
+            sidebar: boolean;
             /**
              * New Developments
              * @description Changed since the subject was last reviewed, and not read or dismissed
