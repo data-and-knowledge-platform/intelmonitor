@@ -212,7 +212,9 @@ class SeriesCheck(BaseModel):
     fetched_at: datetime
     backfill: FetchReplay = Field(description="Every series from the floor, into an empty store")
     fetch: FetchReplay = Field(description="The daily fetch that follows the backfill")
-    catalogue: int = Field(description="Series in api/seed/series.yaml")
+    catalogue: int = Field(
+        description="Series in api/seed/series.yaml, less X post counts, which start after today"
+    )
     series: int = Field(description="Series with observations after the backfill")
     observations: int
     per_100: list[CheckedValue] = Field(description="SGD per one unit, from quotes per 100")
@@ -282,7 +284,7 @@ def _series_check(conn: sqlite3.Connection, store: sqlite3.Connection) -> Series
         fetched_at=REPLAY_AT,
         backfill=runs[0],
         fetch=runs[1],
-        catalogue=len(seed.series),
+        catalogue=sum(not isinstance(s.source, XSource) for s in seed.series),
         series=series,
         observations=observations,
         per_100=per_100,
