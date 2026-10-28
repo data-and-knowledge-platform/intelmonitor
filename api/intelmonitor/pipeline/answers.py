@@ -19,7 +19,7 @@ from intelmonitor.pipeline.diff import DevelopmentChange
 from intelmonitor.pipeline.facts import SubjectFacts, subject_facts
 from intelmonitor.pipeline.feedback import AnswerCorrection, answer_corrections
 from intelmonitor.pipeline.inference import Inference, StepFailed
-from intelmonitor.pipeline.params import MATERIALITY_LEVELS
+from intelmonitor.pipeline.params import PRIORITY_LABELS
 from intelmonitor.pipeline.subjects import Subject, all_subjects, monitored_subjects, questions_for
 from intelmonitor.pipeline.wording import fx_currency
 from intelmonitor.seed import QuestionDef, load_series
@@ -195,7 +195,7 @@ def answer_prompt(
     names = all_subjects()
 
     def line(d: RunDevelopment) -> str:
-        flags = [MATERIALITY_LEVELS[d.level]]
+        flags = [PRIORITY_LABELS[d.level]]
         if d.stage:
             flags.append(f"stage {d.stage}")
         if d.adverse:
@@ -273,8 +273,7 @@ def answer_prompt(
 - state, calm by default. A question with a fixed state takes that state, and its summary says
   why:
   - needs_attention: something could hurt a tracked subject or needs supervisory follow-up now,
-    such as enforcement, an incident, stress, a depeg or escalation, and it is Significant or
-    Critical.
+    such as enforcement, an incident, stress, a depeg or escalation, and it is High priority.
   - watch: something adverse or uncertain is developing that could become material.
   - new: relevant new items that are routine, neutral or positive, however significant.
   - stable: nothing relevant happened in the lookback.

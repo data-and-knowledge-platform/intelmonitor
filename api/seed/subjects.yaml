@@ -184,6 +184,7 @@ entities:
     domains: [mas.gov.sg]
     logo: /logos/mas.svg
     logo_full: /logos/full/mas.svg
+    home: singapore
   - id: hkma
     name: HKMA
     kind: central_bank
@@ -216,6 +217,7 @@ entities:
     domains: [sgx.com]
     logo: /logos/sgx.svg
     logo_full: /logos/full/sgx.svg
+    home: singapore
   - id: hkex
     name: HKEX
     kind: market_infrastructure
@@ -228,24 +230,28 @@ entities:
     aliases: [MAS Electronic Payment System, MEPS Plus, MEPS]
     covers: Singapore's real-time gross settlement system for interbank Singapore dollar payments and government securities, run by MAS
     domains: []
+    home: singapore
   - id: fast
     name: FAST
     kind: payment_system
     aliases: [Fast And Secure Transfers]
     covers: Singapore's real-time interbank funds transfer system, which also carries PayNow
     domains: [abs.org.sg]
+    home: singapore
   - id: paynow
     name: PayNow
     kind: payment_system
     aliases: [PayNow Corporate, PayNow QR]
     covers: Singapore's instant transfer service addressed by mobile number, NRIC or UEN, and its links with other countries' fast payment systems
     domains: [abs.org.sg]
+    home: singapore
   - id: giro
     name: GIRO
     kind: payment_system
     aliases: [Interbank GIRO, IBG, Inter-bank GIRO]
     covers: Singapore's interbank direct debit and credit system, including eGIRO
     domains: [abs.org.sg]
+    home: singapore
   - id: nets
     name: NETS
     kind: payment_system
@@ -254,12 +260,14 @@ entities:
     domains: [nets.com.sg]
     logo: /logos/nets.png
     logo_full: /logos/full/nets.svg
+    home: singapore
   - id: bcs
     name: Banking Computer Services
     kind: payment_system
     aliases: [BCS, Banking Computer Services Pte Ltd]
     covers: the Singapore company that runs the interbank clearing house behind cheque clearing, GIRO and FAST
     domains: []
+    home: singapore
   - id: swift
     name: SWIFT
     kind: payment_system
@@ -324,6 +332,7 @@ entities:
     kind: tech_provider
     aliases: [Singapore Telecommunications]
     domains: [singtel.com]
+    home: singapore
   - id: thought-machine
     name: Thought Machine
     kind: tech_provider
@@ -582,6 +591,7 @@ entities:
     domains: [manulife.com.sg, manulife.com]
     logo: /logos/manulife-singapore.svg
     logo_full: /logos/full/manulife-singapore.svg
+    home: singapore
   - id: allianz
     name: Allianz
     kind: insurer
@@ -652,6 +662,7 @@ entities:
     aliases: [Central Depository, SGX CDP, SGX-CDP, The Central Depository (Pte) Limited]
     covers: "The Central Depository, SGX's securities depository and clearing house; not other uses of CDP such as the Carbon Disclosure Project"
     domains: []
+    home: singapore
   - id: cls-bank
     name: CLS
     kind: market_infrastructure
@@ -726,6 +737,7 @@ entities:
     domains: [crypto.com]
     logo: /logos/crypto-com.svg
     logo_full: /logos/full/crypto-com.svg
+    home: singapore
   - id: ripple
     name: Ripple
     kind: digital_asset_firm

@@ -1428,8 +1428,21 @@ export interface components {
         ChangedDevelopment: {
             /** Id */
             id: string;
-            /** Title */
+            /**
+             * Title
+             * @description Its lead finding's full statement
+             */
             title: string;
+            /**
+             * Headline
+             * @description A short news headline; the title when none was written
+             */
+            headline: string;
+            /**
+             * Points
+             * @description 2 or 3 key points; empty when none were written
+             */
+            points: string[];
             /** Category */
             category: string;
             /** Stage */
@@ -1457,7 +1470,7 @@ export interface components {
              * @description High, Medium or Low for the subjects in scope
              * @enum {string}
              */
-            priority: "High" | "Medium" | "Low";
+            priority: "Low" | "Medium" | "High";
             /**
              * Priority For
              * @description The subjects in scope at that priority, when others in scope rank lower; empty when they all agree
@@ -1897,8 +1910,21 @@ export interface components {
         DevelopmentDetail: {
             /** Id */
             id: string;
-            /** Title */
+            /**
+             * Title
+             * @description Its lead finding's full statement
+             */
             title: string;
+            /**
+             * Headline
+             * @description A short news headline; the title when none was written
+             */
+            headline: string;
+            /**
+             * Points
+             * @description 2 or 3 key points; empty when none were written
+             */
+            points: string[];
             /** Category */
             category: string;
             /** Stage */
@@ -1926,7 +1952,7 @@ export interface components {
              * @description High, Medium or Low for the subjects in scope
              * @enum {string}
              */
-            priority: "High" | "Medium" | "Low";
+            priority: "Low" | "Medium" | "High";
             /**
              * Priority For
              * @description The subjects in scope at that priority, when others in scope rank lower; empty when they all agree
@@ -2125,7 +2151,7 @@ export interface components {
             unconfirmed: number;
             /**
              * Developments
-             * @description High adverse first, then other High, Medium adverse, other Medium and the rest; most recent first within each
+             * @description By priority, High first, adverse first within each priority above Low; most recent first within each
              */
             developments: components["schemas"]["ChangedDevelopment"][];
             facets: components["schemas"]["DevelopmentFacets"];
@@ -2138,8 +2164,21 @@ export interface components {
         DevelopmentSummary: {
             /** Id */
             id: string;
-            /** Title */
+            /**
+             * Title
+             * @description Its lead finding's full statement
+             */
             title: string;
+            /**
+             * Headline
+             * @description A short news headline; the title when none was written
+             */
+            headline: string;
+            /**
+             * Points
+             * @description 2 or 3 key points; empty when none were written
+             */
+            points: string[];
             /** Category */
             category: string;
             /** Stage */
@@ -2167,7 +2206,7 @@ export interface components {
              * @description High, Medium or Low for the subjects in scope
              * @enum {string}
              */
-            priority: "High" | "Medium" | "Low";
+            priority: "Low" | "Medium" | "High";
             /**
              * Priority For
              * @description The subjects in scope at that priority, when others in scope rank lower; empty when they all agree
@@ -2324,7 +2363,7 @@ export interface components {
              * Priority
              * @enum {string}
              */
-            priority: "High" | "Medium" | "Low";
+            priority: "Low" | "Medium" | "High";
             /** Adverse */
             adverse: boolean;
             /**
@@ -2856,9 +2895,10 @@ export interface components {
             statement: string;
             /**
              * Materiality Label
-             * @description Its rule's level, e.g. Notable
+             * @description Its rule's priority, e.g. Medium
+             * @enum {string}
              */
-            materiality_label: string;
+            materiality_label: "Low" | "Medium" | "High";
             /**
              * Known On
              * Format: date
@@ -5695,12 +5735,12 @@ export interface operations {
                 /** @description true: list unconfirmed developments too, and count them */
                 unconfirmed?: boolean;
                 limit?: number | null;
-                priority?: ("High" | "Medium" | "Low")[];
+                priority?: ("Low" | "Medium" | "High")[];
                 /** @description Adverse to a subject in scope or not */
                 adverse?: boolean | null;
                 tone?: ("positive" | "negative" | "neutral")[];
                 category?: ("incident" | "regulatory" | "financial" | "management" | "strategy" | "policy" | "security" | "market" | "other")[];
-                /** @description Materiality levels, 0 Trivial to 4 Critical */
+                /** @description Priority levels, 0 Low to 2 High */
                 materiality?: number[];
                 jurisdiction?: ("sg" | "my" | "id" | "th" | "vn" | "hk" | "cn" | "tw" | "in" | "au" | "kr" | "us" | "eu" | "uk" | "jp" | "intl")[];
                 /** @description Last published in the last this many days of the run */

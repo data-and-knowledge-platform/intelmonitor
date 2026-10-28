@@ -164,7 +164,7 @@ function DevelopmentList({
               <li key={d.id}>
                 <Link {...developmentLink(d.id, { subject: subject.id })} className="rg-row">
                   <PriorityBadge priority={d.priority} />
-                  <span className="rg-title">{d.title}</span>
+                  <span className="rg-title">{d.headline}</span>
                   <span className="num">{shortDate(d.last_published)}</span>
                 </Link>
               </li>

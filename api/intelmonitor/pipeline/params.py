@@ -25,48 +25,53 @@ MERGE_MAX_NEIGHBOURS = 5
 SAME_EVENT_THRESHOLD = 0.5
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 
-# Materiality levels, indexed 0 to 4. Jev scores a development's priority for each subject it
-# happened to or that did it; the development's materiality level is its highest.
-MATERIALITY_LEVELS = ["Trivial", "Minor", "Notable", "Significant", "Critical"]
-# What each level means for one subject, in the same order: Jev scores against these, and Help
-# shows them. Opportunities count as well as threats, so adverse is a separate flag.
-MATERIALITY_RUBRIC = [
-    "routine, promotional or barely about this subject, with no consequence for it or for "
-    "Singapore",
-    "small or expected: routine statistics, speeches, FAQs and procedural notices, product and "
-    "promotional news, or a foreign event with little route to Singapore",
-    "worth knowing: a moderate change for this subject, such as new guidance, a consultation or "
-    "a results update, or a larger event that reaches it or Singapore only indirectly",
-    "a material change for this subject, a threat or an opportunity: an incident, enforcement "
-    "action, loss or failure at it, a binding decision that changes what it must do, a major "
-    "deal, or a market shock it is exposed to",
-    "severe, urgent or systemic for this subject or for Singapore's financial system; needs "
-    "immediate attention",
+# Priority labels, indexed by level 0 to 2. Jev scores a development's priority for each subject it
+# happened to or that did it, against PRIORITY_RUBRIC; the development's level is its highest.
+Priority = Literal["Low", "Medium", "High"]
+PRIORITY_LABELS: list[Priority] = ["Low", "Medium", "High"]
+# What each level means, in the same order: Jev scores against these, and Help shows them. They
+# follow the supervisors' guideline: where it happened (pipeline/singapore.py says how each
+# institution links to Singapore) and whether it is an incident or a development. Adverse is a
+# separate flag.
+PRIORITY_RUBRIC: list[str] = [
+    "no effect on financial institutions in Singapore: news about a foreign institution or third "
+    "party with no strong link to Singapore, Singapore news outside the financial landscape, or "
+    "routine, promotional or barely about this subject",
+    "a development at a financial institution in Singapore (results, strategy, deals, "
+    "appointments, a new rule, guidance or consultation that applies to it), or a development "
+    "at a foreign institution or third party strongly linked to Singapore",
+    "an incident at a financial institution in Singapore, or at a foreign institution or third "
+    "party strongly linked to Singapore: an outage, cyberattack or data breach, fraud, "
+    "enforcement action or penalty, a large loss, a failure or a rescue; or a development at a "
+    "financial institution in Singapore serious enough to change its position",
 ]
-# The priority label each level shows (phase1-plan.md, D2): High is Significant or Critical,
-# Medium is Notable, Low is Minor or Trivial. High starts at NEEDS_ATTENTION_LEVEL, which the
-# interface still calls Needs attention.
-Priority = Literal["High", "Medium", "Low"]
-PRIORITY_LABELS: list[Priority] = ["Low", "Low", "Medium", "High", "High"]
-NEEDS_ATTENTION_LEVEL = 3
+# Needs attention is High; Watch, the impact step and "material" start at Medium.
+NEEDS_ATTENTION_LEVEL = 2
+MATERIAL_LEVEL = 1
+# Below this probability on its top label, Jev is unsure and Claude decides instead.
+PRIORITY_SURE = 0.6
 
 
 def display_key(
     level: int, adverse: bool, last_published: date, development_id: str
-) -> tuple[int, bool, int, int, str]:
-    """The order a subject's developments are shown and briefed in: High and adverse first, then
-    other High, then Medium adverse, then other Medium, then the rest; most recent first within
-    each, then most material. `level` and `adverse` are the development's for the subjects in
-    view. The feed (server/queries.py) and the briefs (pipeline/summaries.py) both sort by it."""
-    rank = ("High", "Medium", "Low").index(PRIORITY_LABELS[level])
-    return (rank, rank < 2 and not adverse, -last_published.toordinal(), -level, development_id)
+) -> tuple[int, bool, int, str]:
+    """The order a subject's developments are shown and briefed in: High, Medium, Low, adverse
+    first within High and Medium, most recent first within each. `level` and `adverse` are the
+    development's for the subjects in view. The feed (server/queries.py) and the briefs
+    (pipeline/summaries.py) both sort by it."""
+    return (-level, level > 0 and not adverse, -last_published.toordinal(), development_id)
 
 
-# Promotional and product news gets the lowest label: its priority is capped at Minor.
-PROMOTIONAL_MAX_LEVEL = 1
+# Promotional and product news is Low.
+PROMOTIONAL_MAX_LEVEL = 0
 # A development only social media reports is unverified, and a single post is not a signal
-# (prd.md section 7): capped at Minor until a news, official or data source joins it.
-UNVERIFIED_MAX_LEVEL = 1
+# (prd.md section 7): Low until a news, official or data source joins it.
+UNVERIFIED_MAX_LEVEL = 0
+# A source reports on a jurisdiction when Jev scores it at least this likely.
+JURISDICTION_THRESHOLD = 0.5
+# Market moves (prices, indices, flows) are never High, and Low unless a Singapore financial
+# institution or Singapore market is involved (pipeline/singapore.py).
+MARKET_MAX_LEVEL = 1
 
 # Run 1 is computed as of T0 minus this many days, Run 2 as of T0.
 RUN_SPACING_DAYS = 7

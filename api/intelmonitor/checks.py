@@ -32,7 +32,7 @@ from intelmonitor.ingest.series.collect import DEFAULT_FLOOR, SeriesFetchResult,
 from intelmonitor.pipeline.detectors import store_detections
 from intelmonitor.pipeline.developments import build_developments
 from intelmonitor.pipeline.inference import Inference, JevAnswers, JevQuestion
-from intelmonitor.pipeline.params import MATERIALITY_LEVELS
+from intelmonitor.pipeline.params import PRIORITY_LABELS
 from intelmonitor.pipeline.run import compute_run, run_dates
 from intelmonitor.seed import XSource, load_series
 from intelmonitor.store.db import connect, set_meta
@@ -158,7 +158,7 @@ async def _detector_check(conn: sqlite3.Connection) -> DetectorCheck:
         developments=[
             CheckedDevelopment(
                 title=r["title"],
-                materiality_label=MATERIALITY_LEVELS[int(r["materiality_level"])],
+                materiality_label=PRIORITY_LABELS[int(r["materiality_level"])],
                 materiality_rule=r["materiality_rule"],
                 needs_attention=bool(r["needs_attention"]),
                 subjects=json.loads(r["subjects"]),

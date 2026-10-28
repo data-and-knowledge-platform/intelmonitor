@@ -144,9 +144,9 @@ def judge_prompt(inp: BriefInputs, brief: Brief) -> str:
         f"Subject: {inp.subject.description}.",
         f"The brief is as of {inp.as_of:%d %b %Y} and covers developments with a source after "
         f"{inp.since:%d %b %Y}. Developments are listed with the subject's priority for each "
-        "(High, Medium or Low), whether it reports the cause of harm to the subject (adverse), "
-        "the subject's role, whether the development is new this week or an update, and whether "
-        "one news outlet alone reports it.",
+        "(High, Medium or Low), whether it reports the cause of harm to the subject "
+        "(adverse), the subject's role, whether the development is new this week or an update, "
+        "and whether one news outlet alone reports it.",
         "",
         "The subject's standing position. Key data:",
         *([f"- {k}" for k in inp.key_data] or ["none"]),

@@ -5,8 +5,9 @@ A development is shown when any of these holds, and unconfirmed otherwise:
   (markets.ft.com and ft.com are one outlet);
 - a reputable outlet (REPUTABLE_DOMAINS, matched on parent domain) reports it;
 - an official, research or data source backs it (the entity's own site, careers and docs pages
-  included, is stored as official);
-- MIN_POSTS or more social posts (X, forums) report it.
+  included, is stored as official).
+Social posts (X, forums) never show a development on their own: social sources are hidden in the
+app, so a development they alone report would have no source to show.
 
 This module owns the rule. The API (server/queries.py), the briefs (pipeline/summaries.py), the
 Data tab notes (pipeline/notes.py) and the run log (pipeline/runlog.py) call it; none
@@ -21,7 +22,6 @@ from dataclasses import dataclass
 from intelmonitor.ingest.sources.search import REPUTABLE_DOMAINS
 
 MIN_OUTLETS = 2
-MIN_POSTS = 4
 # Collections that back a development on their own: an official body, a researcher or a series.
 BACKING_COLLECTIONS = {"official", "dms", "data"}
 # Second-level labels under a country code that are part of the suffix: businesstimes.com.sg is
@@ -52,18 +52,13 @@ class Corroboration:
 
     @property
     def shown(self) -> bool:
-        return (
-            self.outlets >= MIN_OUTLETS
-            or self.reputable
-            or self.backing > 0
-            or self.posts >= MIN_POSTS
-        )
+        return self.outlets >= MIN_OUTLETS or self.reputable or self.backing > 0
 
     @property
     def single_outlet(self) -> bool:
         """Backed by one news outlet alone, shown only because it is reputable: the briefs hedge
         what rests on it."""
-        return self.outlets == 1 and self.backing == 0 and self.posts < MIN_POSTS
+        return self.outlets == 1 and self.backing == 0
 
 
 def corroboration(sources: Iterable[tuple[str, str]]) -> Corroboration:

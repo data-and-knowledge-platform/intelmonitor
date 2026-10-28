@@ -11,15 +11,12 @@ computed with roles. Writes cases.json in the eval directory."""
 import json
 import sqlite3
 from pathlib import Path
-from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from intelmonitor.eval.common import EVAL_DIR
-from intelmonitor.pipeline.params import PRIORITY_LABELS
+from intelmonitor.pipeline.params import PRIORITY_LABELS, Priority
 from intelmonitor.store.db import DB_PATH
-
-Priority = Literal["High", "Medium", "Low"]
 
 
 class AdverseCase(BaseModel):

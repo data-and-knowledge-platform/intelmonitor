@@ -14,9 +14,9 @@ export const PRIORITIES: Priority[] = ["High", "Medium", "Low"];
 const PRIORITY_CLASS: Record<Priority, string> = { High: "b-attn", Medium: "b-watch", Low: "b-neutral" };
 
 const PRIORITY_TITLE: Record<Priority, string> = {
-  High: "High: significant for the entity or topic",
-  Medium: "Medium: worth knowing for the entity or topic",
-  Low: "Low: minor for the entity or topic",
+  High: "High: an incident at or strongly linked to a Singapore financial institution",
+  Medium: "Medium: a development at or strongly linked to a Singapore financial institution",
+  Low: "Low: no effect on Singapore's financial institutions",
 };
 
 /** Priority as the one filled badge: High, Medium or Low, with what it means on hover. */
@@ -33,9 +33,9 @@ export function PriorityBadge({ priority }: { priority: Priority }) {
  * headings and in Help.
  */
 export const PRIORITY_MEANING: Record<Priority, string> = {
-  High: "Read these first. They could change the picture for the entity or topic in view.",
-  Medium: "Worth knowing about, but not urgent.",
-  Low: "Routine, promotional or minor news.",
+  High: "Incidents at Singapore financial institutions, or at foreign institutions and third parties strongly linked to Singapore (not through loans alone), and developments serious enough to change a Singapore institution's position. Read these first.",
+  Medium: "Other developments at Singapore financial institutions or at institutions strongly linked to Singapore. Market moves are Medium at most.",
+  Low: "News with no effect on Singapore's financial institutions, and routine or promotional news.",
 };
 
 /** New as a badge; Updated as a plain word in the new color, so it never reads as a priority. */
@@ -105,26 +105,6 @@ export const UnconfirmedMark = () => <span className="unv">Unconfirmed</span>;
 export function names(list: string[], max = 4): string {
   const shown = list.length > max ? [...list.slice(0, max), `${list.length - max} more`] : list;
   return shown.length < 2 ? (shown[0] ?? "") : `${shown.slice(0, -1).join(", ")} and ${shown.at(-1)}`;
-}
-
-/**
- * One line on who a development impacts: the entities it happened to, the ones that did it, the
- * topics it is about, and the tracked entities it could reach through their links.
- */
-export function impactLine(d: Schema<"DevelopmentSummary">): string {
-  const actor = new Set(d.actors);
-  const entities = d.subjects.filter((s) => s.type === "entity");
-  const affected = entities.filter((s) => !actor.has(s.id)).map((s) => s.name);
-  const by = entities.filter((s) => actor.has(s.id)).map((s) => s.name);
-  const topics = d.subjects.filter((s) => s.type !== "entity").map((s) => s.name);
-  return [
-    affected.length > 0 && `Impacts ${names(affected)}`,
-    by.length > 0 && `By ${names(by)}`,
-    topics.length > 0 && `About ${names(topics, 2)}`,
-    d.also_affects.length > 0 && `Could also affect ${names(d.also_affects.map((s) => s.name))}`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 }
 
 /** "22 Sep", or "17 to 20 Sep" when it was reported over several days. */

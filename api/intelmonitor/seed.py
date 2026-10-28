@@ -433,7 +433,7 @@ def load_series() -> SeriesSeed:
 # Detectors (api/seed/detectors.yaml): rules over series whose firings become developments
 # (pipeline/detectors.py). Each detector applies to every series its pattern matches.
 
-MaterialityName = Literal["trivial", "minor", "notable", "significant", "critical"]
+MaterialityName = Literal["low", "medium", "high"]
 DetectorCategory = Literal["market", "financial", "incident"]
 MoveWindow = Literal["previous", "1w", "1m", "3m", "1y"]
 MoveDirection = Literal["up", "down", "either"]

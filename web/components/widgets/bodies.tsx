@@ -479,7 +479,7 @@ function WatchRow({
         </span>
         {lines === 2 && e.latest && (
           <span className="ent-latest w-meta">
-            <span>{e.latest.title}</span>
+            <span>{e.latest.headline}</span>
             <span>{shortDate(e.latest.last_published)}</span>
           </span>
         )}

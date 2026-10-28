@@ -198,7 +198,7 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
         const w = overview.watchlist.find((x) => x.subject.name === name);
         if (!w?.top) throw new Error(`${name} has no top development`);
         await expect(rows.nth(i).locator(".wl-cnt")).toHaveText(w.new_high > 0 ? `${w.new_high} new High` : "None");
-        await expect(rows.nth(i).getByRole("link", { name: w.top.title, exact: true })).toBeVisible();
+        await expect(rows.nth(i).getByRole("link", { name: w.top.headline, exact: true })).toBeVisible();
       }
       if (names.length < overview.watchlist.length) {
         await watch.getByRole("button", { name: `Show all ${overview.watchlist.length} entities` }).click();
@@ -211,7 +211,7 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       const feed = page.getByRole("region", { name: "Latest developments" });
       const shown = list.developments.slice(0, 15);
       await expect(feed.locator(".frow")).toHaveCount(shown.length);
-      await expect(feed.locator(".frow .ftitle").first()).toHaveText(shown[0].title);
+      await expect(feed.locator(".frow .ftitle").first()).toHaveText(shown[0].headline);
       const ranks = (await badges(feed)).map((b) => PRIORITIES.indexOf(b));
       expect(ranks, "highest priority first").toEqual([...ranks].sort((a, b) => a - b));
       await expect(feed.locator(".frow .b-new")).toHaveCount(shown.filter((d) => d.change === "new" && !d.read).length);
@@ -268,11 +268,11 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       );
       const d = rows.developments[0];
       expect(d, "this week has a High development").toBeTruthy();
-      const link = feed.getByRole("link", { name: d.title, exact: true });
+      const link = feed.getByRole("link", { name: d.headline, exact: true });
       await link.click();
       await expect(page).toHaveURL(popupUrl(`/dashboards/${dashboardId}`, d.id));
-      const popup = page.getByRole("dialog", { name: d.title });
-      await expect(popup.getByRole("heading", { level: 2, name: d.title })).toBeFocused();
+      const popup = page.getByRole("dialog", { name: d.headline });
+      await expect(popup.getByRole("heading", { level: 2, name: d.headline })).toBeFocused();
       await expect(popup.getByRole("button", { name: "Close development" })).toBeVisible();
       await expect(popup.getByRole("button", { name: /^Back/ })).toHaveCount(0);
       await expect(popup.getByRole("heading", { name: "Who it impacts" })).toBeVisible();
@@ -280,8 +280,7 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       // Social posts are hidden for now (SHOW_SOCIAL), so the sources are one list without tabs.
       await expect(popup.getByRole("tab")).toHaveCount(0);
       await expect(popup.locator("#sources")).not.toContainText("Social");
-      await expect(popup.getByRole("button", { name: "Dismiss", exact: true })).toBeVisible();
-      await expect(popup.getByRole("button", { name: "Not relevant", exact: true })).toBeVisible();
+      await expect(popup.getByRole("button", { name: /^(Dismiss|Not relevant)$/ })).toHaveCount(0);
       for (const word of ["materiality", "Tagged to", "tagged by", "Needs attention"]) {
         await expect(popup, `no "${word}"`).not.toContainText(word, { ignoreCase: true });
       }
@@ -296,7 +295,7 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       await expect(link, "focus returns to the row").toBeFocused();
       const after = await unwrap(api.GET("/developments", { params: { query: { dashboard_id: dashboardId, days: 7, priority: ["High"] } } }));
       expect(after.developments.find((x) => x.id === d.id)?.read, "opening it marked it read").toBe(true);
-      await expect(feed.locator(".frow").filter({ hasText: d.title }).locator(".b-new")).toHaveCount(0);
+      await expect(feed.locator(".frow").filter({ hasText: d.headline }).locator(".b-new")).toHaveCount(0);
 
       // The development's old page address opens the popup on the dashboard; close drops it.
       await page.goto(`/developments/${d.id}?dashboard=${dashboardId}`);
@@ -313,17 +312,10 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       const popup = page.getByRole("dialog", { name: title });
       await expect(popup).toBeVisible();
       const id = new URL(page.url()).searchParams.get("development") ?? "";
-      const triage = async () => (await unwrap(api.GET("/developments/{development_id}", { params: { path: { development_id: id } } }))).triage;
-      expect((await triage()).dismissed).toBe(false);
-
-      await page.getByRole("button", { name: "Dismiss", exact: true }).click();
-      // The toast region is a zero-size live region; its message and Undo are what show.
-      const toast = page.locator(".toast-region").filter({ hasText: "Dismissed." });
-      await expect(toast.getByText("Dismissed.")).toBeVisible();
-      await expect(popup).toContainText("Restore to feed");
-      await expect.poll(async () => (await triage()).dismissed, { message: "the API has it dismissed" }).toBe(true);
-      await toast.getByRole("button", { name: "Undo" }).click();
-      await expect.poll(async () => (await triage()).dismissed, { message: "Undo restores it" }).toBe(false);
+      const d = await unwrap(api.GET("/developments/{development_id}", { params: { path: { development_id: id } } }));
+      // The key points sit under the headline, as the API gives them; the full title only when there are none.
+      if (d.points.length > 0) await expect(popup.locator("ul.dp-points li")).toHaveText(d.points);
+      else if (d.headline !== d.title) await expect(popup.locator(".dp-points")).toHaveText(d.title);
       await popup.getByRole("button", { name: "Close development" }).click();
       await expect(page).toHaveURL(feedUrl);
       await expect(feed.getByRole("link", { name: title, exact: true }), "back in the feed").toBeVisible();
@@ -431,7 +423,7 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       const month = await unwrap(api.GET("/developments", { params: { query: { subject_id: ["dbs"], days: 30, dismissed: false } } }));
       const top = page.getByRole("region", { name: "Top DBS developments" });
       await expect(top.locator(".frow")).toHaveCount(Math.min(month.developments.length, 5));
-      await expect(top.locator(".frow .ftitle").first()).toHaveText(month.developments[0].title);
+      await expect(top.locator(".frow .ftitle").first()).toHaveText(month.developments[0].headline);
       await expect(top.locator(".frow-head")).toHaveText("PriorityFindingDate");
       await top.getByRole("link", { name: /^See all/ }).click();
       await expect(page).toHaveURL(/\/monitors\/dbs\/developments$/);
@@ -478,9 +470,9 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       expect(hit, "a development matches outage").toBeTruthy();
       await page.keyboard.press("ControlOrMeta+k");
       await search.fill("outage");
-      await page.locator("#search-results .search-hit.development").filter({ hasText: hit.title }).click();
+      await page.locator("#search-results .search-hit.development").filter({ hasText: hit.headline }).click();
       await expect(page).toHaveURL(popupUrl("/monitors/ocbc", hit.id));
-      await expect(page.getByRole("dialog", { name: hit.title }).getByRole("heading", { level: 2, name: hit.title })).toBeVisible();
+      await expect(page.getByRole("dialog", { name: hit.headline }).getByRole("heading", { level: 2, name: hit.headline })).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(page).toHaveURL(/\/monitors\/ocbc$/);
     });

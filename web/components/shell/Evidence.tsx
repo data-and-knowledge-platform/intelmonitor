@@ -142,7 +142,7 @@ function DevelopmentEvidence({ development: d }: { development: Schema<"Developm
         </span>
       </p>
       <h5 className="ev-title">
-        <Link {...developmentLink(d.id)}>{d.title}</Link>
+        <Link {...developmentLink(d.id)}>{d.headline}</Link>
       </h5>
       {shownSources(d.sources).map((s) => (
         <SourceBlock key={s.document_id} source={s} title={d.title} />

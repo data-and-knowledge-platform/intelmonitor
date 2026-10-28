@@ -11,7 +11,12 @@ from intelmonitor.ingest.parse import document_id
 from intelmonitor.pipeline.detectors import Detection, live_events, materiality_level
 from intelmonitor.pipeline.facts import FixedState, KeyData, SeriesFact, key_data, subject_facts
 from intelmonitor.pipeline.indicators import Indicator, compute_indicators, months_before
-from intelmonitor.pipeline.params import MATERIALITY_LEVELS, NEEDS_ATTENTION_LEVEL, RUN_SPACING_DAYS
+from intelmonitor.pipeline.params import (
+    NEEDS_ATTENTION_LEVEL,
+    PRIORITY_LABELS,
+    RUN_SPACING_DAYS,
+    Priority,
+)
 from intelmonitor.pipeline.subjects import questions_for
 from intelmonitor.seed import Deviation, SeriesDef, load_series, providers, source_label
 from intelmonitor.server.models import (
@@ -52,7 +57,7 @@ class SeriesDetail(BaseModel):
 
 
 # From the detector rules on the series (api/seed/detectors.yaml): needs_attention when a live
-# event's rule is Significant or above, watch for a lower one, else stable.
+# event's rule is High, watch for a lower one, else stable.
 IndicatorStatus = Literal["stable", "watch", "needs_attention"]
 
 
@@ -60,7 +65,7 @@ class IndicatorEvent(BaseModel):
     """A detector event behind an indicator's status."""
 
     statement: str = Field(description="The sentence code wrote for it")
-    materiality_label: str = Field(description="Its rule's level, e.g. Notable")
+    materiality_label: Priority = Field(description="Its rule's priority, e.g. Medium")
     known_on: date = Field(description="When every value it rests on was known")
     development_id: str | None = Field(
         description="The development carrying it in the latest run by the date, if any"
@@ -204,7 +209,7 @@ def _event_views(
         out.setdefault(e.series.id, []).append(
             IndicatorEvent(
                 statement=e.statement,
-                materiality_label=MATERIALITY_LEVELS[materiality_level(e.detector)],
+                materiality_label=PRIORITY_LABELS[materiality_level(e.detector)],
                 known_on=e.known_at.date(),
                 development_id=row[0] if row else None,
             )
@@ -215,7 +220,7 @@ def _event_views(
 def _status(events: list[IndicatorEvent]) -> IndicatorStatus:
     if not events:
         return "stable"
-    worst = MATERIALITY_LEVELS.index(events[0].materiality_label)
+    worst = PRIORITY_LABELS.index(events[0].materiality_label)
     return "needs_attention" if worst >= NEEDS_ATTENTION_LEVEL else "watch"
 
 

@@ -16,9 +16,10 @@ from intelmonitor.agent.generate import encode_events
 from intelmonitor.pipeline import runlog
 from intelmonitor.pipeline.custom import SeriesChoiceError
 from intelmonitor.pipeline.params import (
-    MATERIALITY_LEVELS,
-    MATERIALITY_RUBRIC,
+    MATERIAL_LEVEL,
     NEEDS_ATTENTION_LEVEL,
+    PRIORITY_LABELS,
+    PRIORITY_RUBRIC,
 )
 from intelmonitor.pipeline.subjects import all_subjects
 from intelmonitor.seed import load_detectors
@@ -89,7 +90,6 @@ from intelmonitor.server.models import (
 )
 from intelmonitor.server.overview import dashboard_overview, new_count
 from intelmonitor.server.queries import (
-    MATERIAL_LEVEL,
     NoRunError,
     NotFoundError,
     Queries,
@@ -747,12 +747,12 @@ def materiality_levels(q: Q) -> list[MaterialityLevel]:
         MaterialityLevel(
             level=level,
             name=name,
-            description=MATERIALITY_RUBRIC[level],
+            description=PRIORITY_RUBRIC[level],
             material=level >= MATERIAL_LEVEL,
             needs_attention=level >= NEEDS_ATTENTION_LEVEL,
             developments=counts[level],
         )
-        for level, name in reversed(list(enumerate(MATERIALITY_LEVELS)))
+        for level, name in reversed(list(enumerate(PRIORITY_LABELS)))
     ]
 
 

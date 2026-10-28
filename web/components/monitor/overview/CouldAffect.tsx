@@ -108,7 +108,7 @@ function ImpactRow({ impact: i, subject }: { impact: Impact; subject: Subject })
       <span className={`ca-dir ${dir.cls}`}>{dir.word}</span>
       <span className="ca-main">
         <Link {...developmentLink(d.id, { subject: subject.id })} className="tlink">
-          {d.title}
+          {d.headline}
         </Link>
         <span className="ca-why">{i.why}</span>
         {about && <span className="meta">News about {about}</span>}

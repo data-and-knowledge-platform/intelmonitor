@@ -8,8 +8,8 @@ detection's sentence when a detector measured the event.
 A development's subjects are those its findings say it happened to or that did it, less the tags
 the analyst removed from it; they are topics or entities, never groups. It is adverse to a subject
 when one of those findings says so. Subjects that only comment on it or are mentioned in it are
-kept apart, as mentions, and are never scored. Its materiality level is its highest priority over
-its subjects."""
+kept apart, as mentions, and are never scored. Its level (materiality_level, 0 Low to 2 High) is
+its highest priority over its subjects."""
 
 import asyncio
 import atexit
@@ -25,7 +25,7 @@ from typing import Literal
 import numpy as np
 from fastembed import TextEmbedding
 from numpy.typing import NDArray
-from pydantic import TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 from typesafe_sdk import Noul, Score
 
 from intelmonitor.config import DATA_DIR
@@ -35,16 +35,21 @@ from intelmonitor.pipeline.feedback import removed_tags
 from intelmonitor.pipeline.inference import Inference, StepFailed, noul, score
 from intelmonitor.pipeline.params import (
     EMBEDDING_MODEL,
-    MATERIALITY_LEVELS,
-    MATERIALITY_RUBRIC,
+    JURISDICTION_THRESHOLD,
+    MARKET_MAX_LEVEL,
     MERGE_MAX_NEIGHBOURS,
     MERGE_MIN_SIMILARITY,
     MERGE_WINDOW_DAYS,
     NEEDS_ATTENTION_LEVEL,
+    PRIORITY_LABELS,
+    PRIORITY_RUBRIC,
+    PRIORITY_SURE,
     PROMOTIONAL_MAX_LEVEL,
     SAME_EVENT_THRESHOLD,
     UNVERIFIED_MAX_LEVEL,
+    Priority,
 )
+from intelmonitor.pipeline.singapore import NO_LINK, singapore_links
 from intelmonitor.pipeline.subjects import Subject, monitored_subjects, resolve_groups
 from intelmonitor.seed import load_detectors
 from intelmonitor.store import search
@@ -72,8 +77,9 @@ class RunFinding:
     domain: str
     title: str
     stage: str | None
-    rule_level: int | None  # a detection's materiality, set by its detector
+    rule_level: int | None  # a detection's priority level, set by its detector
     rule_id: str | None  # that detector
+    singapore: bool  # its document reports on Singapore
 
     @property
     def when(self) -> date:
@@ -94,11 +100,12 @@ def _detection_roles(subjects: list[str], tone: Tone) -> dict[str, FindingRole]:
 
 def load_findings(conn: sqlite3.Connection, as_of: date) -> list[RunFinding]:
     """Findings in documents published by the date: screened documents' findings with their
-    roles, and detections with their rule's materiality. A detection whose detector has left the
+    roles, and detections with their rule's level. A detection whose detector has left the
     seed is left out; one stored tagged to a group counts for the group's members."""
     detectors = {d.id: d for d in load_detectors().detectors}
     rows = conn.execute(
-        "SELECT f.*, d.published_at, d.collection, d.domain, d.title, t.stage, k.detector_id, "
+        "SELECT f.*, d.published_at, d.collection, d.domain, d.title, t.stage, t.jurisdictions, "
+        "k.detector_id, "
         "k.direction AS detection_tone FROM findings f "
         "JOIN source_documents d ON d.id = f.document_id "
         "LEFT JOIN document_tags t ON t.document_id = f.document_id "
@@ -130,6 +137,8 @@ def load_findings(conn: sqlite3.Connection, as_of: date) -> list[RunFinding]:
             stage=r["stage"],
             rule_level=materiality_level(detectors[r["detector_id"]]) if r["detector_id"] else None,
             rule_id=r["detector_id"],
+            singapore=json.loads(r["jurisdictions"] or "{}").get("sg", 0.0)
+            >= JURISDICTION_THRESHOLD,
         )
         for r in rows
         if r["detector_id"] is None or r["detector_id"] in detectors
@@ -230,7 +239,7 @@ class Development:
 
     @property
     def top(self) -> DevelopmentSubject | None:
-        """The subject it matters most to, whose priority is its materiality; a rule's level
+        """The subject it matters most to, whose priority is the development's; a rule's level
         first on a tie, as a rule's level stands when Jev scores no higher. None without
         subjects."""
         return max(
@@ -252,6 +261,20 @@ class Development:
     def unverified(self) -> bool:
         """Only social media reports it: no news, official, DMS or data source confirms it."""
         return all(f.collection == "social" for f in self.findings)
+
+    @property
+    def market_move(self) -> bool:
+        """Most of its findings report market moves: prices, indices or flows."""
+        return 2 * sum(f.category == "market" for f in self.findings) > len(self.findings)
+
+    @property
+    def singapore(self) -> bool:
+        """A Singapore financial institution did it or was affected, or a source reports on
+        Singapore."""
+        links = singapore_links()
+        return any(f.singapore for f in self.findings) or any(
+            links.get(s, NO_LINK).kind == "singapore_fi" for s in self.subjects
+        )
 
     @property
     def lead(self) -> RunFinding:
@@ -358,14 +381,21 @@ def link_subjects(conn: sqlite3.Connection, devs: list[Development]) -> None:
 
 
 PRIORITY_CRITERIA = [
-    f"{name}: {desc}" for name, desc in zip(MATERIALITY_LEVELS, MATERIALITY_RUBRIC, strict=True)
+    f"{name}: {desc}" for name, desc in zip(PRIORITY_LABELS, PRIORITY_RUBRIC, strict=True)
 ]
+PRIORITY_GUIDE = (
+    "Decide two things. Where it happened: at a financial institution in Singapore, at a foreign "
+    "institution or third party strongly linked to Singapore, or neither; the institutions "
+    "listed with the development say how each links to Singapore, and an institution not listed "
+    "is judged from the text. A loan exposure alone is not a strong link. Then whether it is an "
+    "incident (something went wrong: an outage, attack, breach, fraud, penalty, loss or failure) "
+    "or a development. Share price, index and market moves are never High."
+)
 
 
 def priority_question(subject: Subject, link: DevelopmentSubject) -> Score:
-    """The development's priority for one subject: how directly it concerns the subject and what
-    it changes for it, how far it reaches Singapore, and whether something adverse happened to
-    the subject."""
+    """The development's priority for one subject: how directly it concerns the subject, where it
+    happened relative to Singapore's financial institutions, and whether it is an incident."""
     name = subject.name
     if subject.type == "topic":
         how = f"it is a development within {name}"
@@ -376,32 +406,68 @@ def priority_question(subject: Subject, link: DevelopmentSubject) -> Score:
     return Score(
         instructions=(
             "How important is this development for a supervisor at the Monetary Authority of "
-            f"Singapore who monitors {subject.description}? Rate it for {name} alone: how "
-            f"directly it concerns {name} ({how}) and what it changes for it, how far it "
-            "reaches Singapore's financial system, institutions or markets, and whether "
-            f"something adverse happened to {name} ({'it did' if link.adverse else 'it did not'})."
-            " Doing something routine is not important in itself. A foreign event with no route "
-            "to Singapore rarely goes above Notable. Opportunities count as well as threats."
+            f"Singapore who monitors {subject.description}? Rate it for {name} alone, and only "
+            f"as far as it concerns {name} ({how}). {PRIORITY_GUIDE} "
+            f"Something adverse {'did' if link.adverse else 'did not'} happen to {name}."
         ),
         criteria=PRIORITY_CRITERIA,
     )
 
 
 def priority_state(dev: Development) -> str:
-    """What Jev scores priority from: the lead statement, the category, the number of sources and
-    the top sources."""
+    """What priority is scored from: the lead statement, the category, how each institution it
+    concerns links to Singapore (pipeline/singapore.py), the number of sources and the top
+    sources."""
+    names = monitored_subjects()
+    links = singapore_links()
+    institutions = "\n".join(
+        f"- {names[s].name}: {links[s].describe()}" for s in dev.subjects if s in links
+    )
     sources = "\n".join(
         f'- {f.published} {f.domain}: {f.title}\n  "{f.first_quote}"'
         for f in sorted(dev.findings, key=lambda f: f.rank)[:6]
     )
     return (
         f"Development: {dev.lead.statement}\nCategory: {dev.category}\n"
+        f"Institutions:\n{institutions or 'none listed'}\n"
         f"Sources ({len(dev.document_ids)}):\n{sources}"
     )
 
 
+class SubjectPriority(BaseModel):
+    subject_id: str
+    priority: Priority
+
+
+class PriorityDecision(BaseModel):
+    """Claude's priority for the subjects Jev was unsure about."""
+
+    priorities: list[SubjectPriority]
+
+
+PRIORITY_SYSTEM = (
+    "You rate news developments for supervisors at the Monetary Authority of Singapore. Rate each "
+    "listed subject High, Medium or Low against the rubric, for that subject alone."
+)
+
+
+def priority_prompt(dev: Development, unsure: list[str]) -> str:
+    names = monitored_subjects()
+    rubric = "\n".join(f"- {c}" for c in reversed(PRIORITY_CRITERIA))
+    subjects = "\n".join(
+        f"- {sid}: {names[sid].name}, {names[sid].description}; "
+        f"{dev.subjects[sid].role}{', adverse to it' if dev.subjects[sid].adverse else ''}"
+        for sid in unsure
+    )
+    return (
+        f"{priority_state(dev)}\n\nRubric:\n{rubric}\n\n{PRIORITY_GUIDE}\n\n"
+        f"Rate each of these subjects, by id:\n{subjects}"
+    )
+
+
 async def score_priority(inf: Inference, dev: Development) -> None:
-    """Jev scores the development for each of its subjects in one call, a question per subject."""
+    """Jev scores the development for each of its subjects in one call, a question per subject;
+    Claude decides the subjects whose top label Jev gives less than PRIORITY_SURE."""
     names = monitored_subjects()
     answers = await inf.jev(
         "priority",
@@ -409,19 +475,35 @@ async def score_priority(inf: Inference, dev: Development) -> None:
         priority_state(dev),
         {sid: priority_question(names[sid], s) for sid, s in dev.subjects.items()},
     )
+    unsure: list[str] = []
     for sid, s in dev.subjects.items():
         a = score(answers, sid)
-        # Levels come back indexed 0 to 4 in the order sent; the most likely one is the level.
+        # Levels come back indexed 0 to 2 in the order sent; the most likely one is the level.
         s.priority_level = max(a.probabilities, key=lambda k: a.probabilities[k])
         s.priority_score = a.score
-        s.priority_confidence = a.confidence
+        s.priority_confidence = a.probabilities[s.priority_level]
+        if s.priority_confidence < PRIORITY_SURE:
+            unsure.append(sid)
+    if not unsure:
+        return
+    decision = await inf.claude(
+        "priority_check",
+        f"dev:{dev.id}:{len(dev.findings)}",
+        priority_prompt(dev, unsure),
+        PriorityDecision,
+        PRIORITY_SYSTEM,
+    )
+    for p in decision.priorities:
+        if p.subject_id in unsure:
+            dev.subjects[p.subject_id].priority_level = PRIORITY_LABELS.index(p.priority)
 
 
 async def rate(inf: Inference, dev: Development) -> None:
     """The development's priority for each subject. A development made only of detections takes
-    its rule's level; otherwise Jev scores it, promotional news and unverified social posts are
-    capped at Minor, and a merged detection's rule raises the level for the subjects it measured
-    when Jev scores them lower."""
+    its rule's level; otherwise Jev scores it (Claude where Jev is unsure), promotional news and
+    unverified social posts are Low, market moves are at most Medium and Low without Singapore,
+    and a merged detection's rule raises the level for the subjects it measured when the score
+    is lower."""
     rule = dev.detection
     level = rule.rule_level if rule else None
     if rule and level is not None and all(f.rule_level is not None for f in dev.findings):
@@ -431,10 +513,12 @@ async def rate(inf: Inference, dev: Development) -> None:
         return
     if dev.subjects:
         await score_priority(inf, dev)
+    market_cap = MARKET_MAX_LEVEL if dev.singapore else 0
     for sid, s in dev.subjects.items():
         for capped, cap in (
             (dev.promotional, PROMOTIONAL_MAX_LEVEL),
             (dev.unverified, UNVERIFIED_MAX_LEVEL),
+            (dev.market_move, market_cap),
         ):
             if capped:
                 s.priority_level = min(s.priority_level, cap)
@@ -453,7 +537,7 @@ class MergeStats:
     pairs: int = 0
     merged_pairs: int = 0
     developments: int = 0
-    high: int = 0  # developments at High: Significant or Critical for at least one subject
+    high: int = 0  # developments needing attention: High for at least one subject
 
 
 async def merge(inf: Inference, findings: list[RunFinding]) -> tuple[list[Development], MergeStats]:

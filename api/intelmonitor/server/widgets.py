@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, JsonValue, model_validator
 
 from intelmonitor.pipeline.detectors import corpus_start
 from intelmonitor.pipeline.indicators import months_before
+from intelmonitor.pipeline.params import MATERIAL_LEVEL
 from intelmonitor.pipeline.subjects import all_subjects, questions_for, resolve_groups
 from intelmonitor.seed import SeriesDef, SubjectType, load_series
 from intelmonitor.server.alerts import alert_badge, watched_ids
@@ -25,7 +26,6 @@ from intelmonitor.server.models import (
     WhatChanged,
 )
 from intelmonitor.server.queries import (
-    MATERIAL_LEVEL,
     STATE_RANK,
     Queries,
     subject_links,

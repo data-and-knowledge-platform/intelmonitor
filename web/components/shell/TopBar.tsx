@@ -253,7 +253,7 @@ function HitRow({ hit }: { hit: Hit }) {
     case "development":
       return (
         <>
-          <b title={hit.development.title}>{hit.development.title}</b>
+          <b title={hit.development.title}>{hit.development.headline}</b>
           <span className="type">{shortDate(hit.development.last_published)}</span>
         </>
       );

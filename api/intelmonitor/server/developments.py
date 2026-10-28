@@ -13,7 +13,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field
 
 from intelmonitor.pipeline.extract import Tone
-from intelmonitor.pipeline.params import MATERIALITY_LEVELS, Priority
+from intelmonitor.pipeline.params import PRIORITY_LABELS, Priority
 from intelmonitor.pipeline.screen import JURISDICTION_NAMES, Category, Jurisdiction
 from intelmonitor.server.models import (
     ChangedDevelopment,
@@ -26,7 +26,6 @@ from intelmonitor.server.models import (
 )
 from intelmonitor.server.queries import (
     COLLECTION_ORDER,
-    PRIORITY_RANK,
     Queries,
     change_counts,
     expand,
@@ -86,8 +85,8 @@ class DevelopmentQuery(BaseModel):
     adverse: bool | None = Field(default=None, description="Adverse to a subject in scope or not")
     tone: list[Tone] = Field(default_factory=list[Tone])
     category: list[Category] = Field(default_factory=list[Category])
-    materiality: list[Annotated[int, Field(ge=0, le=4)]] = Field(
-        default_factory=list[int], description="Materiality levels, 0 Trivial to 4 Critical"
+    materiality: list[Annotated[int, Field(ge=0, le=2)]] = Field(
+        default_factory=list[int], description="Priority levels, 0 Low to 2 High"
     )
     jurisdiction: list[Jurisdiction] = Field(default_factory=list[Jurisdiction])
     days: int | None = Field(
@@ -147,7 +146,7 @@ def _facets(
     return DevelopmentFacets(
         priority=[
             FacetValue(value=p, label=p, count=priorities[p])
-            for p in PRIORITY_RANK
+            for p in reversed(PRIORITY_LABELS)
             if priorities[p] or p in f.priority
         ],
         adverse=[
@@ -161,8 +160,8 @@ def _facets(
         ],
         category=_values(Counter(d.category for d in base("category")), f.category, str.capitalize),
         materiality=[
-            FacetValue(value=str(lvl), label=MATERIALITY_LEVELS[lvl], count=levels[str(lvl)])
-            for lvl in reversed(range(len(MATERIALITY_LEVELS)))
+            FacetValue(value=str(lvl), label=PRIORITY_LABELS[lvl], count=levels[str(lvl)])
+            for lvl in reversed(range(len(PRIORITY_LABELS)))
             if levels[str(lvl)] or lvl in f.materiality
         ],
         jurisdiction=_values(

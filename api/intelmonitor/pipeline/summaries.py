@@ -50,7 +50,12 @@ from intelmonitor.pipeline.facts import key_data, mapped_series, series_fact
 from intelmonitor.pipeline.impact import link_words
 from intelmonitor.pipeline.indicators import compute_indicators
 from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
-from intelmonitor.pipeline.params import NEEDS_ATTENTION_LEVEL, PRIORITY_LABELS, display_key
+from intelmonitor.pipeline.params import (
+    MATERIAL_LEVEL,
+    NEEDS_ATTENTION_LEVEL,
+    PRIORITY_LABELS,
+    display_key,
+)
 from intelmonitor.pipeline.subjects import Subject, monitored_subjects
 from intelmonitor.pipeline.wording import day, fx_currency
 from intelmonitor.relationships import EVIDENCE_GRADES, RelType, links_from
@@ -161,8 +166,9 @@ class BriefDevelopment:
 
 @dataclass(frozen=True)
 class EarlierMatter:
-    """An open matter from before the window: High for the subject, or adverse to it at Medium or
-    above, and whether one news outlet alone reports it. Concerns cite it by its id."""
+    """An open matter from before the window: High for the subject, or adverse to it
+    at Medium or above, and whether one news outlet alone reports it. Concerns cite it by its
+    id."""
 
     id: str
     title: str
@@ -391,17 +397,17 @@ def earlier_matters(
     gate: dict[str, Corroboration],
 ) -> list[EarlierMatter]:
     """The subject's open matters from earlier weeks: developments that pass the source gate
-    (`gate`, by id) and are High for it, or adverse to it at Medium or above, with their last
-    source in the BRIEF_EARLIER_DAYS before the window; High adverse first, as the feed orders
-    them. They keep an open matter in the inputs on later quiet weeks instead of living on only
-    through the previous brief."""
+    (`gate`, by id) and are High for it, or adverse to it at Medium or above, with
+    their last source in the BRIEF_EARLIER_DAYS before the window; High adverse
+    first, as the feed orders them. They keep an open matter in the inputs on later quiet weeks
+    instead of living on only through the previous brief."""
     rows = conn.execute(
         "SELECT d.id, d.title, d.last_published, s.priority_level AS level, s.adverse "
         "FROM developments d JOIN development_subjects s "
         "ON s.run_id = d.run_id AND s.development_id = d.id "
         "WHERE d.run_id = ? AND s.subject_id = ? AND d.last_published <= ? "
         "AND d.last_published > ? "
-        "AND (s.priority_level >= ? OR (s.adverse AND s.priority_level >= 2)) "
+        "AND (s.priority_level >= ? OR (s.adverse AND s.priority_level >= ?)) "
         "ORDER BY s.priority_level >= ? DESC, s.adverse DESC, d.last_published DESC, d.id",
         (
             run_id,
@@ -409,6 +415,7 @@ def earlier_matters(
             since.isoformat(),
             (since - timedelta(days=BRIEF_EARLIER_DAYS)).isoformat(),
             NEEDS_ATTENTION_LEVEL,
+            MATERIAL_LEVEL,
             NEEDS_ATTENTION_LEVEL,
         ),
     ).fetchall()
@@ -699,9 +706,9 @@ only loosely about the subject.
   development_ids lists the D: and I: ids behind it, without the prefix.
 - label: each concern's topic in {LABEL_WORDS[0]} to {LABEL_WORDS[1]} words, with no full stop
   ("Property loans", "China stake").
-- A development High and adverse to the subject, this week's or an open matter from earlier
-  weeks, is always a concern, quiet week or not: at least one concern cites one. A concern on an
-  earlier matter says it is still open and does not present it as new.
+- A development High and adverse to the subject, this week's or an open matter from
+  earlier weeks, is always a concern, quiet week or not: at least one concern cites one. A concern
+  on an earlier matter says it is still open and does not present it as new.
 - A development, open matter or indirect impact marked "reported by one outlet" rests on a
   single news report: a concern that relies only on such items says so ("reported by one
   outlet").
@@ -784,7 +791,8 @@ def direction_basis(inp: BriefInputs) -> str:
     """Code's signals in words."""
     n, b = inp.now, inp.before
     stated = (
-        f"{n.adverse_high} High developments adverse to it and {n.positive_high} High positive "
+        f"{n.adverse_high} High developments adverse to it and {n.positive_high} "
+        "High positive "
         "for it this week"
     )
     if inp.base is None:
@@ -837,8 +845,8 @@ def brief_problems(draft: BriefDraft, inp: BriefInputs, allowed: str, fx: bool) 
     cited = {_bare(i) for c in draft.concerns[:MAX_CONCERNS] for i in c.development_ids}
     if (must := high_adverse_ids(inp)) and cited.isdisjoint(must):
         problems.append(
-            "no concern cites a development High and adverse to the subject: make one a "
-            f"concern, citing one of {must}"
+            "no concern cites a development High and adverse to the subject: make "
+            f"one a concern, citing one of {must}"
         )
     for n, c in enumerate(draft.concerns, 1):
         ids = [_bare(i) for i in c.development_ids]
@@ -876,9 +884,9 @@ def brief_problems(draft: BriefDraft, inp: BriefInputs, allowed: str, fx: bool) 
     if draft.direction not in allowed_directions(inp.now, inp.before):
         problems.append(
             f"direction {draft.direction} does not match the evidence ({direction_basis(inp)}): "
-            "worse needs more High developments adverse to the subject than the previous week, "
-            "better needs fewer or a new High gain for it. Give direction_reason as the events "
-            "themselves, never as priority labels"
+            "worse needs more High developments adverse to the subject than the "
+            "previous week, better needs fewer or a new High gain for it. Give "
+            "direction_reason as the events themselves, never as priority labels"
         )
     return problems
 

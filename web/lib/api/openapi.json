@@ -758,9 +758,9 @@
               "type": "array",
               "items": {
                 "enum": [
-                  "High",
+                  "Low",
                   "Medium",
-                  "Low"
+                  "High"
                 ],
                 "type": "string"
               },
@@ -833,13 +833,13 @@
               "type": "array",
               "items": {
                 "type": "integer",
-                "maximum": 4,
+                "maximum": 2,
                 "minimum": 0
               },
-              "description": "Materiality levels, 0 Trivial to 4 Critical",
+              "description": "Priority levels, 0 Low to 2 High",
               "title": "Materiality"
             },
-            "description": "Materiality levels, 0 Trivial to 4 Critical"
+            "description": "Priority levels, 0 Low to 2 High"
           },
           {
             "name": "jurisdiction",
@@ -3651,7 +3651,21 @@
           },
           "title": {
             "type": "string",
-            "title": "Title"
+            "title": "Title",
+            "description": "Its lead finding's full statement"
+          },
+          "headline": {
+            "type": "string",
+            "title": "Headline",
+            "description": "A short news headline; the title when none was written"
+          },
+          "points": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Points",
+            "description": "2 or 3 key points; empty when none were written"
           },
           "category": {
             "type": "string",
@@ -3699,7 +3713,7 @@
           },
           "materiality_level": {
             "type": "integer",
-            "maximum": 4.0,
+            "maximum": 2.0,
             "minimum": 0.0,
             "title": "Materiality Level"
           },
@@ -3714,9 +3728,9 @@
           "priority": {
             "type": "string",
             "enum": [
-              "High",
+              "Low",
               "Medium",
-              "Low"
+              "High"
             ],
             "title": "Priority",
             "description": "High, Medium or Low for the subjects in scope"
@@ -3859,6 +3873,8 @@
         "required": [
           "id",
           "title",
+          "headline",
+          "points",
           "category",
           "stage",
           "event_date",
@@ -4821,7 +4837,21 @@
           },
           "title": {
             "type": "string",
-            "title": "Title"
+            "title": "Title",
+            "description": "Its lead finding's full statement"
+          },
+          "headline": {
+            "type": "string",
+            "title": "Headline",
+            "description": "A short news headline; the title when none was written"
+          },
+          "points": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Points",
+            "description": "2 or 3 key points; empty when none were written"
           },
           "category": {
             "type": "string",
@@ -4869,7 +4899,7 @@
           },
           "materiality_level": {
             "type": "integer",
-            "maximum": 4.0,
+            "maximum": 2.0,
             "minimum": 0.0,
             "title": "Materiality Level"
           },
@@ -4884,9 +4914,9 @@
           "priority": {
             "type": "string",
             "enum": [
-              "High",
+              "Low",
               "Medium",
-              "Low"
+              "High"
             ],
             "title": "Priority",
             "description": "High, Medium or Low for the subjects in scope"
@@ -5080,6 +5110,8 @@
         "required": [
           "id",
           "title",
+          "headline",
+          "points",
           "category",
           "stage",
           "event_date",
@@ -5247,7 +5279,7 @@
             },
             "type": "array",
             "title": "Developments",
-            "description": "High adverse first, then other High, Medium adverse, other Medium and the rest; most recent first within each"
+            "description": "By priority, High first, adverse first within each priority above Low; most recent first within each"
           },
           "facets": {
             "$ref": "#/components/schemas/DevelopmentFacets"
@@ -5277,7 +5309,21 @@
           },
           "title": {
             "type": "string",
-            "title": "Title"
+            "title": "Title",
+            "description": "Its lead finding's full statement"
+          },
+          "headline": {
+            "type": "string",
+            "title": "Headline",
+            "description": "A short news headline; the title when none was written"
+          },
+          "points": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Points",
+            "description": "2 or 3 key points; empty when none were written"
           },
           "category": {
             "type": "string",
@@ -5325,7 +5371,7 @@
           },
           "materiality_level": {
             "type": "integer",
-            "maximum": 4.0,
+            "maximum": 2.0,
             "minimum": 0.0,
             "title": "Materiality Level"
           },
@@ -5340,9 +5386,9 @@
           "priority": {
             "type": "string",
             "enum": [
-              "High",
+              "Low",
               "Medium",
-              "Low"
+              "High"
             ],
             "title": "Priority",
             "description": "High, Medium or Low for the subjects in scope"
@@ -5468,6 +5514,8 @@
         "required": [
           "id",
           "title",
+          "headline",
+          "points",
           "category",
           "stage",
           "event_date",
@@ -5655,9 +5703,9 @@
           "priority": {
             "type": "string",
             "enum": [
-              "High",
+              "Low",
               "Medium",
-              "Low"
+              "High"
             ],
             "title": "Priority"
           },
@@ -6863,8 +6911,13 @@
           },
           "materiality_label": {
             "type": "string",
+            "enum": [
+              "Low",
+              "Medium",
+              "High"
+            ],
             "title": "Materiality Label",
-            "description": "Its rule's level, e.g. Notable"
+            "description": "Its rule's priority, e.g. Medium"
           },
           "known_on": {
             "type": "string",
@@ -7361,7 +7414,7 @@
         "properties": {
           "level": {
             "type": "integer",
-            "maximum": 4.0,
+            "maximum": 2.0,
             "minimum": 0.0,
             "title": "Level"
           },

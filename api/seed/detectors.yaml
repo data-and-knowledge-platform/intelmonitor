@@ -4,7 +4,7 @@
 # and search then treat it like any other development.
 #
 # Every detector applies to each series its `series` pattern matches (`*` spans dots), and gives its
-# developments the `materiality` level (trivial, minor, notable, significant or critical) instead
+# developments the `materiality` level (low, medium or high priority) instead
 # of a Jev score; merged with news, a development keeps the higher of the two.
 # A condition that holds for several observations in a row is one event, dated by its first.
 #
@@ -32,7 +32,7 @@ detectors:
     series: "mas.ltd.*"
     above: 90
     category: financial
-    materiality: significant
+    materiality: high
   - id: fx-weekly-2pct
     name: SGD exchange rate moves more than 2% in a week
     kind: move
@@ -40,7 +40,7 @@ detectors:
     window: 1w
     beyond: 2
     category: market
-    materiality: notable
+    materiality: medium
   - id: npl-sector-up
     name: NPL ratio up more than 0.5 points on the quarter
     kind: release
@@ -48,14 +48,14 @@ detectors:
     beyond: 0.5
     direction: up
     category: financial
-    materiality: notable
+    materiality: medium
   - id: ltd-release-move
     name: Loan-to-deposit ratio moves more than 2 points on the month
     kind: release
     series: "mas.ltd.*"
     beyond: 2
     category: financial
-    materiality: notable
+    materiality: medium
 
   # Share prices and markets (Yahoo Finance, FRED). Sizes from the backtest in
   # docs/archive/structured-data-plan.md, F8.
@@ -67,7 +67,7 @@ detectors:
     sigmas: 3
     direction: down
     category: market
-    materiality: notable
+    materiality: medium
   - id: share-trails-sti
     name: Share price trails the STI by more than 5 points in a week
     kind: move
@@ -77,7 +77,7 @@ detectors:
     beyond: 5
     direction: down
     category: market
-    materiality: notable
+    materiality: medium
   - id: share-trails-hsi
     name: Share price trails the Hang Seng Index by more than 5 points in a week
     kind: move
@@ -87,7 +87,7 @@ detectors:
     beyond: 5
     direction: down
     category: market
-    materiality: notable
+    materiality: medium
   - id: index-weekly-3sd-drop
     name: Equity index falls more than 3 standard deviations in a week
     kind: move
@@ -96,7 +96,7 @@ detectors:
     sigmas: 3
     direction: down
     category: market
-    materiality: notable
+    materiality: medium
   - id: asia-spread-weekly-3sd
     name: Asia corporate spread widens more than 3 standard deviations in a week
     kind: move
@@ -105,7 +105,7 @@ detectors:
     sigmas: 3
     direction: up
     category: market
-    materiality: notable
+    materiality: medium
   - id: sora-weekly-3sd-up
     name: SORA rises more than 3 standard deviations in a week
     kind: move
@@ -114,7 +114,7 @@ detectors:
     sigmas: 3
     direction: up
     category: market
-    materiality: notable
+    materiality: medium
 
   # Global rates and risk sentiment (FRED), tagged to Fixed income and FX.
   - id: fed-funds-change
@@ -124,7 +124,7 @@ detectors:
     window: previous
     beyond: 0.1
     category: market
-    materiality: notable
+    materiality: medium
   - id: ecb-deposit-change
     name: ECB deposit rate change
     kind: move
@@ -132,7 +132,7 @@ detectors:
     window: previous
     beyond: 0.1
     category: market
-    materiality: notable
+    materiality: medium
   - id: us10y-weekly-3sd
     name: US 10-year yield moves more than 3 standard deviations in a week
     kind: move
@@ -140,32 +140,18 @@ detectors:
     window: 1w
     sigmas: 3
     category: market
-    materiality: notable
+    materiality: medium
   - id: hy-spread-above-5
     name: US high-yield spread above 5 points
     kind: threshold
     series: fred.us_hy_spread
     above: 5
     category: market
-    materiality: notable
+    materiality: medium
   - id: vix-above-30
     name: VIX above 30
     kind: threshold
     series: fred.vix
     above: 30
     category: market
-    materiality: notable
-
-  # Post volume on X (x-api-plan.md, X1, decision D-X2): a jump in posts about a target is a
-  # development of its own, merged with news about the same subject and day. A quiet target going
-  # from 1 post to 4 never fires.
-  - id: x-posts-spike
-    name: Posts on X jump more than 3 standard deviations in a day
-    kind: move
-    series: "x.posts.*"
-    window: previous
-    sigmas: 3
-    direction: up
-    when: {at_least: 20}
-    category: incident
-    materiality: notable
+    materiality: medium

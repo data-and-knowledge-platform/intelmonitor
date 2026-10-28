@@ -226,7 +226,7 @@ function Cited({ cited }: { cited: Dated[] }) {
           <span>
             <span className="row-title full">
               <Link {...evidenceLink.development(d.id)} className="stretch tlink">
-                {d.title}
+                {d.headline}
               </Link>
             </span>
             <span className="row-meta">

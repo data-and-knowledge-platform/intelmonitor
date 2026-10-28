@@ -122,7 +122,7 @@ export function DevelopmentRow({
         <span className={`row-title${lines === 1 ? " one" : ""}`} title={lines === 1 ? d.title : undefined}>
           {link ? (
             <Link {...evidenceLink.development(d.id)} className="stretch">
-              {d.title}
+              {d.headline}
             </Link>
           ) : (
             d.title

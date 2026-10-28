@@ -166,13 +166,15 @@ class DevelopmentSummary(BaseModel):
     scope that it is tagged to (over all its subjects when unscoped)."""
 
     id: str
-    title: str
+    title: str = Field(description="Its lead finding's full statement")
+    headline: str = Field(description="A short news headline; the title when none was written")
+    points: list[str] = Field(description="2 or 3 key points; empty when none were written")
     category: str
     stage: Stage | None
     event_date: date | None
     first_published: date
     last_published: date
-    materiality_level: int = Field(ge=0, le=4)
+    materiality_level: int = Field(ge=0, le=2)
     materiality_label: str
     needs_attention: bool
     priority: Priority = Field(description="High, Medium or Low for the subjects in scope")
@@ -343,8 +345,8 @@ class DevelopmentList(ChangeCounts):
         "it is on or not"
     )
     developments: list[ChangedDevelopment] = Field(
-        description="High adverse first, then other High, Medium adverse, other Medium and the "
-        "rest; most recent first within each"
+        description="By priority, High first, adverse first within each priority above Low; "
+        "most recent first within each"
     )
     facets: DevelopmentFacets
 
@@ -970,7 +972,7 @@ class Suggestions(BaseModel):
 class MaterialityLevel(BaseModel):
     """A materiality level for Help: what it means and how the app treats it."""
 
-    level: int = Field(ge=0, le=4)
+    level: int = Field(ge=0, le=2)
     name: str
     description: str
     material: bool = Field(description="Counted as material, as in the Direction widget")

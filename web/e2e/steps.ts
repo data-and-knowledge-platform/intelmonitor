@@ -6,7 +6,7 @@ export const STEPS = [
   "Dashboard: the busiest entities on the watchlist with Show all, the feed under priority headings with New marked, upcoming dates, one Updated date, no parked controls",
   "Feed: Show all opens the developments list; This week and High narrow the feed and survive a reload",
   "Development popup from a feed row: labels, who it impacts, connections, sources; Esc returns to the same feed and it reads as read; the old page link opens the popup",
-  "Dismiss and Undo in the development popup, read back from the API",
+  "Key points under the headline in the development popup, as the API gives them",
   "Edit dashboard: add an entity and Save; the watchlist follows",
   "New dashboard from the sidebar: Add all on a group names it, Create opens it",
   "Sidebar: groups as headings under Entities open an entity page; topics and new High marks; dashboard new counts",

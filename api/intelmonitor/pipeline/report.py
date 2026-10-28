@@ -17,7 +17,12 @@ from intelmonitor.pipeline.answers import load_run_developments
 from intelmonitor.pipeline.extract import locate_quote
 from intelmonitor.pipeline.facts import SeriesFact
 from intelmonitor.pipeline.notes import stored_note_problems
-from intelmonitor.pipeline.params import MATERIALITY_LEVELS, ROUTE_HIGH, ROUTE_LOW
+from intelmonitor.pipeline.params import (
+    NEEDS_ATTENTION_LEVEL,
+    PRIORITY_LABELS,
+    ROUTE_HIGH,
+    ROUTE_LOW,
+)
 from intelmonitor.pipeline.subjects import monitored_subjects, questions_for
 from intelmonitor.store.db import connect, get_meta
 
@@ -320,8 +325,8 @@ def _developments(conn: sqlite3.Connection, runs: list[sqlite3.Row]) -> list[str
         dist.append(
             [
                 rid,
-                *(levels[i] for i in range(len(MATERIALITY_LEVELS))),
-                sum(levels[i] for i in range(3, len(MATERIALITY_LEVELS))),
+                *(levels[i] for i in range(len(PRIORITY_LABELS))),
+                levels[NEEDS_ATTENTION_LEVEL],
             ]
         )
     same = conn.execute(
@@ -346,10 +351,10 @@ def _developments(conn: sqlite3.Connection, runs: list[sqlite3.Row]) -> list[str
             rows,
         ),
         "",
-        "## Materiality distribution",
+        "## Priority distribution",
         "",
         _table(
-            ["Run", *(f"{i} {n}" for i, n in enumerate(MATERIALITY_LEVELS)), "Needs attention"],
+            ["Run", *(f"{i} {n}" for i, n in enumerate(PRIORITY_LABELS)), "Needs attention"],
             dist,
         ),
     ]
@@ -676,7 +681,7 @@ def _run_detections(conn: sqlite3.Connection) -> list[str]:
                 r["series_id"],
                 r["period"],
                 r["published_at"][:10],
-                MATERIALITY_LEVELS[r["materiality_level"]],
+                PRIORITY_LABELS[r["materiality_level"]],
                 r["sources"],
                 r["development_id"],
                 "FAIL: published before its value" if early else "pass",

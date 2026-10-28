@@ -31,7 +31,7 @@ from intelmonitor.pipeline.corroboration import shown_developments
 from intelmonitor.pipeline.facts import mapped_series
 from intelmonitor.pipeline.indicators import change_basis, months_before
 from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
-from intelmonitor.pipeline.params import MATERIALITY_LEVELS
+from intelmonitor.pipeline.params import PRIORITY_LABELS
 from intelmonitor.pipeline.subjects import Subject, all_subjects, monitored_subjects, questions_for
 from intelmonitor.pipeline.wording import day, fx_currency, fx_move, peg_side, period, value
 from intelmonitor.seed import Deviation, DeviationRule, SeriesDef, load_series
@@ -294,8 +294,7 @@ def note_prompt(
     parts += [f"S:{m.series_id} | {m.text}" for m in moves]
     parts += ["", "Developments tagged to the subject with a source published in the week:"]
     parts += [
-        f"D:{d.id} | {d.title} | last source {day(d.last_published)} | "
-        f"{MATERIALITY_LEVELS[d.level]}"
+        f"D:{d.id} | {d.title} | last source {day(d.last_published)} | {PRIORITY_LABELS[d.level]}"
         for d in devs
     ] or ["none"]
     if problems:

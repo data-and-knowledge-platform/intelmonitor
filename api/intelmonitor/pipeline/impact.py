@@ -25,7 +25,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
-from intelmonitor.pipeline.params import PRIORITY_LABELS
+from intelmonitor.pipeline.params import MATERIAL_LEVEL, PRIORITY_LABELS
 from intelmonitor.pipeline.screen import Category
 from intelmonitor.pipeline.subjects import all_subjects
 from intelmonitor.relationships import (
@@ -41,8 +41,6 @@ from intelmonitor.relationships import (
 )
 from intelmonitor.seed import EntityKind, load_subjects
 
-# Developments judged: Notable or above (Medium or High priority) for one of their targets.
-IMPACT_MIN_LEVEL = 2
 # D5a: an exposure counts only with a disclosed share (of loans, reserves, revenue) of at least 5%.
 EXPOSURE_MIN_WEIGHT = 0.05
 # An exposure (a loan share in a country, region or sector) carries only economic and market
@@ -354,7 +352,7 @@ class ImpactInput:
 
 
 def load_inputs(conn: sqlite3.Connection, run_id: str) -> list[ImpactInput]:
-    """The run's developments at IMPACT_MIN_LEVEL or above for some target, with their targets
+    """The run's developments at MATERIAL_LEVEL or above for some target, with their targets
     and findings, earliest source first."""
     inputs: dict[str, ImpactInput] = {}
     rows = conn.execute(
@@ -367,7 +365,7 @@ def load_inputs(conn: sqlite3.Connection, run_id: str) -> list[ImpactInput]:
     for r in rows:
         dev = inputs.setdefault(r["id"], ImpactInput(r["id"], r["title"], r["category"], {}))
         dev.targets[r["subject_id"]] = (r["role"], r["priority_level"])
-    chosen = {i: d for i, d in inputs.items() if d.level >= IMPACT_MIN_LEVEL}
+    chosen = {i: d for i, d in inputs.items() if d.level >= MATERIAL_LEVEL}
     for r in conn.execute(
         "SELECT s.development_id, f.id, f.statement, f.quotes, f.document_id, d.domain, "
         "d.published_at FROM development_sources s JOIN findings f ON f.id = s.finding_id "

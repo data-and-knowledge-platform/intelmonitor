@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS developments (
     materiality_level INTEGER NOT NULL, -- its highest priority_level over its subjects
     materiality_score REAL NOT NULL,    -- that subject's priority_score
     materiality_confidence REAL NOT NULL,
-    needs_attention INTEGER NOT NULL,   -- materiality_level >= 3: High priority
+    needs_attention INTEGER NOT NULL,   -- materiality_level 2: High priority (0 Low, 1 Medium)
     PRIMARY KEY (run_id, id)
 );
 
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS development_subjects (
     role TEXT NOT NULL DEFAULT 'affected', -- affected or actor
     adverse INTEGER NOT NULL DEFAULT 0, -- 1 when a finding says something bad happened to it
     tone TEXT NOT NULL DEFAULT 'neutral', -- positive, negative or neutral, for this subject
-    priority_level INTEGER NOT NULL DEFAULT 0, -- 0 Trivial to 4 Critical, for this subject
+    priority_level INTEGER NOT NULL DEFAULT 0, -- 0 Low, 1 Medium, 2 High, for this subject
     priority_score REAL NOT NULL DEFAULT 0, -- Jev expected score
     priority_confidence REAL NOT NULL DEFAULT 0,
     PRIMARY KEY (run_id, development_id, subject_id)
@@ -601,6 +601,9 @@ ADDED_COLUMNS = [
     ("run_summaries", "problems", "TEXT NOT NULL DEFAULT '[]'"),
     # The brief's concerns, in place of points and indirect (pipeline/summaries.py).
     ("run_summaries", "concerns", "TEXT"),
+    # Display headline and key points (pipeline/headlines.py); null until written or if refused.
+    ("developments", "headline", "TEXT"),
+    ("developments", "points", "TEXT"),  # JSON list
 ]
 
 

@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from intelmonitor.store.db import get_meta
+
 # social: X posts, Reddit and forum threads (ingest/sources/social.py), unverified until a
 # non-social source in the same development confirms them.
 Collection = Literal["dms", "official", "news", "data", "social"]
@@ -32,7 +34,12 @@ _COLUMNS = list(SourceDocument.model_fields)
 
 
 def insert_document(conn: sqlite3.Connection, doc: SourceDocument) -> bool:
-    """Insert unless the canonical URL or content hash is already stored. Returns True if added."""
+    """Insert unless the canonical URL or content hash is already stored, or it was published
+    before the corpus start, so every subject's news starts on the same day. Returns True if
+    added."""
+    start = get_meta(conn, "corpus_start")
+    if start and doc.published_at.date() < date.fromisoformat(start):
+        return False
     row = doc.model_dump(mode="json")
     cursor = conn.execute(
         f"INSERT OR IGNORE INTO source_documents ({', '.join(_COLUMNS)}) "

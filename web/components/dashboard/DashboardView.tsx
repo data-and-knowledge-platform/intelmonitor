@@ -183,14 +183,14 @@ function WatchRow({ item: w }: { item: Watch }) {
           <span className="wtop">
             <PriorityBadge priority={w.top.priority} />
             <Link {...developmentLink(w.top.id, view)} className="wtitle">
-              {w.top.title}
+              {w.top.headline}
             </Link>
           </span>
         ) : w.latest ? (
           <span className="wl-none">
             Nothing this month. Latest:{" "}
             <Link {...developmentLink(w.latest.id, view)} className="wtitle">
-              {w.latest.title}
+              {w.latest.headline}
             </Link>
           </span>
         ) : (

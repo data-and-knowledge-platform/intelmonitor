@@ -3,8 +3,9 @@ then those to watch. Read is the development's triage read, which holds the run 
 so a development that a later run changes alerts again. Dismissed and unconfirmed developments
 (pipeline/corroboration.py) do not alert."""
 
+from intelmonitor.pipeline.params import MATERIAL_LEVEL
 from intelmonitor.server.models import Alert, AlertBadge, AlertCounts, Alerts, DevelopmentSummary
-from intelmonitor.server.queries import MATERIAL_LEVEL, Queries
+from intelmonitor.server.queries import Queries
 from intelmonitor.server.triage import followed_ids, mark_read
 
 
@@ -22,7 +23,7 @@ def watched_ids(q: Queries) -> set[str]:
 
 
 def alert_badge(d: DevelopmentSummary, watched: set[str]) -> AlertBadge | None:
-    """Needs attention, or Watch for a Notable development or one a Watch answer cites."""
+    """Needs attention, or Watch for a Medium development or one a Watch answer cites."""
     if d.needs_attention:
         return "needs_attention"
     if d.materiality_level == MATERIAL_LEVEL or d.id in watched:
@@ -48,13 +49,12 @@ def alerts(q: Queries) -> Alerts:
             continue
         if badge := alert_badge(d, watched):
             flagged.append((badge, d))
-    # Stable sort keeps display order within each badge: High adverse, other High, Medium
-    # adverse, other Medium, the rest, most recent first in each (server/queries.py).
+    # Stable sort keeps display order within each badge (pipeline/params.py, display_key).
     flagged.sort(key=lambda t: t[0] != "needs_attention")
     items = [
         Alert(
             id=d.id,
-            title=d.title,
+            title=d.headline,
             badge=badge,
             meta=_meta(d),
             outlet_count=d.outlet_count,

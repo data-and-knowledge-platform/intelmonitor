@@ -16,7 +16,7 @@ from intelmonitor.pipeline.answers import scope
 from intelmonitor.pipeline.corroboration import corroboration
 from intelmonitor.pipeline.extract import TONE_ORDER, Tone
 from intelmonitor.pipeline.params import (
-    MATERIALITY_LEVELS,
+    JURISDICTION_THRESHOLD,
     NEEDS_ATTENTION_LEVEL,
     PRIORITY_LABELS,
     display_key,
@@ -58,10 +58,6 @@ from intelmonitor.server.models import (
 UPCOMING_HORIZON_DAYS = 90
 STAGE_LOOKBACK_DAYS = 30
 GROUP_LOOKBACK_DAYS = 14
-# Developments at or above this materiality level (Notable) count as material.
-MATERIAL_LEVEL = 2
-# A source reports on a jurisdiction when Jev scores it at least this likely.
-JURISDICTION_THRESHOLD = 0.5
 COLLECTION_ORDER: list[Collection] = ["official", "dms", "data", "news", "social"]
 # Worst first: the state a subject shows when its answers disagree.
 STATE_RANK: dict[State, int] = {"needs_attention": 0, "watch": 1, "new": 2, "stable": 3}
@@ -166,7 +162,7 @@ def priority_fields(priorities: dict[str, SubjectPriority]) -> dict[str, object]
     at_top = [s for s, p in priorities.items() if PRIORITY_LABELS[p.level] == top]
     return {
         "materiality_level": level,
-        "materiality_label": MATERIALITY_LEVELS[level],
+        "materiality_label": PRIORITY_LABELS[level],
         "needs_attention": level >= NEEDS_ATTENTION_LEVEL,
         "priority": top,
         "priority_for": [subject_ref(s) for s in at_top] if len(at_top) < len(priorities) else [],
@@ -266,13 +262,15 @@ def load_developments(conn: sqlite3.Connection, run: RunRef) -> RunDevelopments:
         by_id[r["id"]] = DevelopmentSummary(
             id=r["id"],
             title=r["title"],
+            headline=r["headline"] or r["title"],
+            points=json.loads(r["points"] or "[]"),
             category=r["category"],
             stage=r["stage"],
             event_date=r["event_date"],
             first_published=r["first_published"],
             last_published=r["last_published"],
             materiality_level=level,
-            materiality_label=MATERIALITY_LEVELS[level],
+            materiality_label=PRIORITY_LABELS[level],
             needs_attention=bool(r["needs_attention"]),
             priority=PRIORITY_LABELS[level],
             priority_for=[],
@@ -306,10 +304,7 @@ def load_developments(conn: sqlite3.Connection, run: RunRef) -> RunDevelopments:
     )
 
 
-PRIORITY_RANK = {"High": 0, "Medium": 1, "Low": 2}
-
-
-def _display_key(d: DevelopmentSummary) -> tuple[int, bool, int, int, str]:
+def _display_key(d: DevelopmentSummary) -> tuple[int, bool, int, str]:
     """Display order (pipeline/params.py `display_key`), with priority and adverse as the
     summary's scope sees them."""
     return display_key(d.materiality_level, d.adverse, d.last_published, d.id)

@@ -7,7 +7,7 @@ more than a size), keyed by its detector, series and first period. `store_detect
 event once as a source document in the data collection, with a sentence written by code and one
 finding tagged to the series' primary subjects (a group's members for a group), so the run's
 merge, materiality, triage, alerts and search take it like any other development. Only the rule's
-materiality differs: developments.py reads it from the seed instead of asking Jev.
+priority differs: developments.py reads it from the seed instead of asking Jev.
 """
 
 import bisect
@@ -22,7 +22,7 @@ from typing import Literal
 from intelmonitor.ingest.models import WINDOW_DAYS, Window
 from intelmonitor.ingest.parse import content_hash, document_id, domain_of
 from intelmonitor.pipeline.indicators import change_basis, compute_indicators, window_start
-from intelmonitor.pipeline.params import MATERIALITY_LEVELS
+from intelmonitor.pipeline.params import PRIORITY_LABELS
 from intelmonitor.pipeline.subjects import resolve_groups
 from intelmonitor.pipeline.wording import day, fx_move, peg_side, period, value
 from intelmonitor.seed import (
@@ -83,8 +83,8 @@ class Detection:
 
 
 def materiality_level(detector: DetectorDef) -> int:
-    """The rule's materiality as a level index, 0 Trivial to 4 Critical."""
-    return [name.lower() for name in MATERIALITY_LEVELS].index(detector.materiality)
+    """The rule's priority as a level index, 0 Low to 2 High."""
+    return [name.lower() for name in PRIORITY_LABELS].index(detector.materiality)
 
 
 def points(conn: sqlite3.Connection, series_id: str, as_of: date) -> list[Point]:
@@ -448,8 +448,8 @@ def _document_text(e: Detection) -> str:
     d, s = e.detector, e.series
     return (
         f"{e.statement}\n\n"
-        f"Detector: {d.name}, which fires on {describe(d, s)}. Materiality set by the rule: "
-        f"{MATERIALITY_LEVELS[materiality_level(d)]}.\n"
+        f"Detector: {d.name}, which fires on {describe(d, s)}. Priority set by the rule: "
+        f"{PRIORITY_LABELS[materiality_level(d)]}.\n"
         f"Series {s.id}: {s.name}, in {s.unit}, {s.frequency}, from {s.source_url}. "
         f"Values as known on {day(e.known_at.date())}."
     )

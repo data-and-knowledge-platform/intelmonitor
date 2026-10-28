@@ -1,8 +1,8 @@
 // A development in a popup over the page it was opened from (the user's sketch, after mock u1
 // option B), the size of the New dashboard popup. The header holds its labels for the subjects in
-// view, the full title, Not relevant and Dismiss, and the close button; below, "Who it impacts" over
-// "Connections" (the claims and the graph snippet) on the left, and the sources in News and Social
-// tabs down the right. Each column scrolls inside the popup; under 1024 px they stack.
+// view, the headline, its key points (the full title when it has none), and the close button;
+// below, "Who it impacts" over "Connections" (the claims and the graph snippet) on the left, and
+// the sources in News and Social tabs down the right. Each column scrolls inside the popup; under 1024 px they stack.
 //
 // The popup lives in the URL (`?development=<id>&scope=...`, built by link.ts), so a shared link and
 // browser Back work. Close, Esc and a backdrop click go back to the entry it was opened over, or drop
@@ -115,7 +115,7 @@ function Head({
   scope: ViewScope;
   headingRef: React.Ref<HTMLHeadingElement>;
 }) {
-  const triage = useTriageActions(d);
+  const restore = useRestore(d);
   // Say whose priority it is when the subjects disagree.
   const differ = new Set(d.direct_subjects.map((s) => s.priority)).size > 1;
   const viewed = d.direct_subjects.find((s) => s.subject.id === scope.subject)?.subject.name;
@@ -143,28 +143,25 @@ function Head({
         </span>
       </p>
       <h2 id="dp-title" tabIndex={-1} ref={headingRef}>
-        {d.title}
+        {d.headline}
       </h2>
-      <div className="dp-acts">
-        {d.triage.dismissed ? (
-          <>
-            <span className="meta">{d.triage.not_relevant ? "Marked not relevant." : "Dismissed."}</span>
-            <button type="button" className="btn btn-sm" onClick={triage.restore}>
-              Restore to feed
-            </button>
-          </>
-        ) : (
-          <>
-            <button type="button" className="btn btn-sm" onClick={triage.notRelevant}>
-              Not relevant
-            </button>
-            <button type="button" className="btn btn-sm" onClick={triage.dismiss}>
-              Dismiss
-            </button>
-            <span className="meta">Not relevant means it should not be here. Dismiss hides it from your feed.</span>
-          </>
-        )}
-      </div>
+      {d.points.length > 0 ? (
+        <ul className="dp-points">
+          {d.points.map((p) => (
+            <li key={p}>{p}</li>
+          ))}
+        </ul>
+      ) : (
+        d.headline !== d.title && <p className="dp-points">{d.title}</p>
+      )}
+      {d.triage.dismissed && (
+        <div className="dp-acts">
+          <span className="meta">{d.triage.not_relevant ? "Marked not relevant." : "Dismissed."}</span>
+          <button type="button" className="btn btn-sm" onClick={restore}>
+            Restore to feed
+          </button>
+        </div>
+      )}
     </header>
   );
 }
@@ -176,18 +173,14 @@ function jumpToSources(e: React.MouseEvent<HTMLAnchorElement>) {
   sources?.querySelector<HTMLElement>("[role=tab][aria-selected=true]")?.focus({ preventScroll: true });
 }
 
-/** Not relevant, Dismiss and Restore, each with a toast that can undo it. */
-function useTriageActions(d: Schema<"DevelopmentDetail">) {
+/** Restore for a development dismissed earlier, with a toast that can undo it. */
+function useRestore(d: Schema<"DevelopmentDetail">) {
   const setTriage = useSetTriage();
   const toast = useToast();
-  const apply = (change: TriageChange, message: string, undo: TriageChange) => {
-    setTriage.mutate({ id: d.id, change });
-    toast({ message, action: { label: "Undo", run: () => setTriage.mutate({ id: d.id, change: undo }) } });
-  };
-  return {
-    notRelevant: () => apply({ not_relevant: true }, "Marked not relevant and hidden from your feed.", { not_relevant: false, dismissed: false }),
-    dismiss: () => apply({ dismissed: true }, "Dismissed.", { dismissed: false }),
-    restore: () => apply({ dismissed: false, not_relevant: false }, "Restored to your feed.", { dismissed: d.triage.dismissed, not_relevant: d.triage.not_relevant }),
+  return () => {
+    const undo: TriageChange = { dismissed: d.triage.dismissed, not_relevant: d.triage.not_relevant };
+    setTriage.mutate({ id: d.id, change: { dismissed: false, not_relevant: false } });
+    toast({ message: "Restored to your feed.", action: { label: "Undo", run: () => setTriage.mutate({ id: d.id, change: undo }) } });
   };
 }
 

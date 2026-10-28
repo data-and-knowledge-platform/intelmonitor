@@ -24,6 +24,7 @@ from intelmonitor.pipeline.developments import build_developments
 from intelmonitor.pipeline.diff import development_changes, previous_run, store_changes
 from intelmonitor.pipeline.extract import extract_documents
 from intelmonitor.pipeline.graph import store_graph
+from intelmonitor.pipeline.headlines import write_headlines
 from intelmonitor.pipeline.impact import store_impacts
 from intelmonitor.pipeline.indicators import store_run_indicators
 from intelmonitor.pipeline.inference import Inference
@@ -112,6 +113,11 @@ async def compute_run(
         step(
             f"{merge.developments} developments from {merge.findings} findings "
             f"({merge.merged_pairs}/{merge.pairs} candidate pairs merged), {merge.high} High"
+        )
+        heads = await write_headlines(inf, conn, run_id)
+        step(
+            f"headlines: {heads.written} written, {heads.from_code} from detectors, "
+            f"{heads.refused} refused"
         )
         impact = await store_impacts(inf, conn, run_id)
         step(

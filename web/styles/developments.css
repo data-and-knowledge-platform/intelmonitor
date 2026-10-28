@@ -202,15 +202,6 @@
   text-decoration: underline;
   text-decoration-color: var(--line-field);
 }
-.fwho {
-  max-width: 90ch;
-  color: var(--ink);
-}
-.fmeta {
-  font-size: var(--fs-meta);
-  line-height: var(--lh-meta);
-  color: var(--ink2);
-}
 .fend {
   display: flex;
   flex-direction: column;
@@ -223,7 +214,10 @@
 }
 .fopen {
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
   gap: 2px;
   color: var(--accent);
   font-weight: 500;
@@ -323,6 +317,18 @@
 }
 .dp-head h2:focus {
   outline: none;
+}
+.dp-points {
+  margin: 0;
+  padding-left: 1.2em;
+  max-width: 100ch;
+  color: var(--ink);
+}
+p.dp-points {
+  padding-left: 0;
+}
+.dp-points li + li {
+  margin-top: var(--s-1);
 }
 .dp-acts {
   display: flex;
