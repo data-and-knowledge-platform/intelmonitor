@@ -482,7 +482,25 @@ X_SEARCH = "https://api.x.com/2/tweets/search/recent"
 X_SEARCH_ALL = "https://api.x.com/2/tweets/search/all"
 X_USERS = "https://api.x.com/2/users/by"
 X_DAYS = 7  # how far back recent search reaches, and the span every X search covers
-_X_FILTERS = "-is:retweet lang:en"
+# X accounts of the news outlets we ingest (search.NEWS_DOMAINS). Their posts share articles the
+# news search already stores, so keyword searches leave them out. Kept short: the longest target
+# query must stay under the 512-character recent search limit.
+NEWS_OUTLET_HANDLES = (
+    "straits_times",
+    "ChannelNewsAsia",
+    "BusinessTimes",
+    "Reuters",
+    "business",  # Bloomberg
+    "FT",
+    "CNBC",
+    "WSJ",
+    "SCMPNews",
+    "AP",
+    "NikkeiAsia",
+    "BleepinComputer",
+    "TheRecord_Media",
+)
+_X_FILTERS = "-is:retweet lang:en " + " ".join(f"-from:{h}" for h in NEWS_OUTLET_HANDLES)
 _TWEET_FIELDS = "created_at,public_metrics,author_id,lang,note_tweet,entities,referenced_tweets"
 _USER_FIELDS = "username,name,verified_type,affiliation,public_metrics"
 # Query length limits: recent search, and full-archive search.
