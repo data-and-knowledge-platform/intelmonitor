@@ -11,12 +11,12 @@ def search(q: Queries, text: str, limit: int) -> SearchResults:
     query = fts.match_query(text)
     if query is None:
         return SearchResults(subjects=subjects(text), developments=[], documents=[])
-    development_ids = fts.developments(q.conn, q.run.id, query, limit)
+    development_ids = fts.developments(q.conn, q.run.id, query)
     documents = fts.documents(q.conn, q.run.id, text, limit)
     citing = _citing_development(q, [d.id for d in documents])
     return SearchResults(
         subjects=subjects(text),
-        developments=[q.devs.by_id[i] for i in development_ids if i in q.devs.by_id],
+        developments=[q.devs.by_id[i] for i in development_ids if i in q.devs.by_id][:limit],
         documents=[
             DocumentHit(
                 id=d.id,

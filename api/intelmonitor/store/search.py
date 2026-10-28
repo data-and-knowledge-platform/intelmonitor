@@ -61,13 +61,14 @@ def rebuild(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def developments(conn: sqlite3.Connection, run_id: str, query: str, limit: int) -> list[str]:
-    """Ids of the run's developments matching an FTS5 query, best first."""
+def developments(conn: sqlite3.Connection, run_id: str, query: str) -> list[str]:
+    """Ids of all the run's developments matching an FTS5 query, best first. Unlimited: the
+    caller drops the ones the source gate hides before taking its top few."""
     rows = conn.execute(
         "SELECT development_id FROM developments_fts "
         "WHERE developments_fts MATCH ? AND run_id = ? "
-        "ORDER BY bm25(developments_fts, ?, 1.0) LIMIT ?",
-        (query, run_id, _TITLE_WEIGHT, limit),
+        "ORDER BY bm25(developments_fts, ?, 1.0)",
+        (query, run_id, _TITLE_WEIGHT),
     )
     return [r["development_id"] for r in rows]
 
