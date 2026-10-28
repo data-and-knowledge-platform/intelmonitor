@@ -380,11 +380,17 @@
 .dp-graph > h3 {
   margin-bottom: var(--s-3);
 }
+/* The sources column has no top padding, so its heading carries it, level with Who it impacts. */
+.dp-src > h3 {
+  padding-top: var(--s-4);
+}
 .dp-graph > .muted {
   margin: 0;
 }
-/* The tabs stay at the top of the sources column as it scrolls. */
-.dp-src .src-tabs {
+/* The tabs, or the heading while social posts are hidden, stay at the top of the sources column
+   as it scrolls. */
+.dp-src .src-tabs,
+.dp-src > h3 {
   position: sticky;
   top: 0;
   z-index: 1;

@@ -10,7 +10,7 @@ import { longDate, plural } from "@/lib/format";
 import { Dotted } from "@/components/monitor/parts";
 import { SeriesSource } from "@/components/shell/SeriesSource";
 
-import { SOURCE_TYPE_LABEL } from "./labels";
+import { SHOW_SOCIAL, SOURCE_TYPE_LABEL } from "./labels";
 
 type Source = Schema<"EvidenceSource">;
 type Tab = "reports" | "social";
@@ -41,6 +41,26 @@ export function Sources({ sources, title, unconfirmed = false }: { sources: Sour
     setTab(next);
     document.getElementById(`${id}-${next}`)?.focus();
   };
+
+  // With social posts hidden (SHOW_SOCIAL) there is one list and no tabs.
+  if (!SHOW_SOCIAL) {
+    return (
+      <section className="dp-src dp-sec" aria-labelledby={`${id}-heading`} id="sources">
+        <h3 id={`${id}-heading`}>Sources</h3>
+        <div className="src-panel">
+          {unconfirmed && (
+            <p className="src-lead">
+              <span className="unv">Unconfirmed:</span> not enough independent sources yet.
+            </p>
+          )}
+          {reports.length === 0 && <p className="muted">No news or official report yet.</p>}
+          {reports.map((s) => (
+            <SourceBlock key={s.document_id} source={s} title={title} />
+          ))}
+        </div>
+      </section>
+    );
+  }
 
   const shown = tab === "reports" ? reports : social;
   return (

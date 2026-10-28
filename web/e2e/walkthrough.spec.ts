@@ -277,8 +277,9 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       await expect(popup.getByRole("button", { name: /^Back/ })).toHaveCount(0);
       await expect(popup.getByRole("heading", { name: "Who it impacts" })).toBeVisible();
       await expect(popup.getByRole("heading", { name: "Connections" })).toBeVisible();
-      await expect(popup.getByRole("tab", { name: /^News/ })).toBeVisible();
-      await expect(popup.getByRole("tab", { name: /^Social/ })).toBeVisible();
+      // Social posts are hidden for now (SHOW_SOCIAL), so the sources are one list without tabs.
+      await expect(popup.getByRole("tab")).toHaveCount(0);
+      await expect(popup.locator("#sources")).not.toContainText("Social");
       await expect(popup.getByRole("button", { name: "Dismiss", exact: true })).toBeVisible();
       await expect(popup.getByRole("button", { name: "Not relevant", exact: true })).toBeVisible();
       for (const word of ["materiality", "Tagged to", "tagged by", "Needs attention"]) {
