@@ -42,7 +42,7 @@ const CATEGORY: Record<Category, true> = {
   market: true,
   other: true,
 };
-const COLLECTION: Record<Collection, true> = { dms: true, official: true, data: true, news: true, social: true };
+const COLLECTION: Record<Collection, true> = { dms: true, official: true, data: true, news: true };
 const PRIORITY: Record<Priority, true> = { High: true, Medium: true, Low: true };
 const TONE: Record<Tone, true> = { negative: true, neutral: true, positive: true };
 

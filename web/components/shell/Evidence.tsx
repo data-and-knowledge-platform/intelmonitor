@@ -11,7 +11,7 @@ import { answerText, longDate, plural } from "@/lib/format";
 import { typingIn } from "@/lib/dom";
 import { CloseButton } from "@/components/ui/Modal";
 import { Dotted, StateChange } from "@/components/monitor/parts";
-import { PriorityBadge, shownSources } from "@/components/developments/labels";
+import { PriorityBadge } from "@/components/developments/labels";
 import { developmentLink } from "@/components/developments/link";
 import { SourceBlock } from "@/components/developments/Sources";
 
@@ -144,7 +144,7 @@ function DevelopmentEvidence({ development: d }: { development: Schema<"Developm
       <h5 className="ev-title">
         <Link {...developmentLink(d.id)}>{d.headline}</Link>
       </h5>
-      {shownSources(d.sources).map((s) => (
+      {d.sources.map((s) => (
         <SourceBlock key={s.document_id} source={s} title={d.title} />
       ))}
     </section>

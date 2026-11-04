@@ -58,7 +58,6 @@ def alerts(q: Queries) -> Alerts:
             badge=badge,
             meta=_meta(d),
             outlet_count=d.outlet_count,
-            social_count=d.social_count,
             source_types=d.source_types,
             read=q.is_read(d.id),
         )

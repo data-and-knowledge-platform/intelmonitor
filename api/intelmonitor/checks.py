@@ -34,7 +34,7 @@ from intelmonitor.pipeline.developments import build_developments
 from intelmonitor.pipeline.inference import Inference, JevAnswers, JevQuestion
 from intelmonitor.pipeline.params import PRIORITY_LABELS
 from intelmonitor.pipeline.run import compute_run, run_dates
-from intelmonitor.seed import XSource, load_series
+from intelmonitor.seed import load_series
 from intelmonitor.store.db import connect, set_meta
 from intelmonitor.store.series import (
     Observation,
@@ -212,9 +212,7 @@ class SeriesCheck(BaseModel):
     fetched_at: datetime
     backfill: FetchReplay = Field(description="Every series from the floor, into an empty store")
     fetch: FetchReplay = Field(description="The daily fetch that follows the backfill")
-    catalogue: int = Field(
-        description="Series in api/seed/series.yaml, less X post counts, which start after today"
-    )
+    catalogue: int = Field(description="Series in api/seed/series.yaml")
     series: int = Field(description="Series with observations after the backfill")
     observations: int
     per_100: list[CheckedValue] = Field(description="SGD per one unit, from quotes per 100")
@@ -223,16 +221,14 @@ class SeriesCheck(BaseModel):
 
 
 def _replay(result: SeriesFetchResult, http: CachedHttp) -> FetchReplay:
-    """The replay's outcome. X post counts are left out: they start after REPLAY_TODAY, so the
-    replay has no cached counts to read."""
-    x_series = {s.id for s in load_series().series if isinstance(s.source, XSource)}
+    """The replay's outcome."""
     return FetchReplay(
         added=sum(result.added.values()),
         revised=sum(result.revised.values()),
-        failures={k: v for k, v in result.failures.items() if k not in x_series},
+        failures=dict(result.failures),
         network=sum(http.network.values()),
         cached=sum(http.cached.values()),
-        missed=sum(n for namespace, n in http.missed.items() if namespace != "x"),
+        missed=sum(http.missed.values()),
     )
 
 
@@ -284,7 +280,7 @@ def _series_check(conn: sqlite3.Connection, store: sqlite3.Connection) -> Series
         fetched_at=REPLAY_AT,
         backfill=runs[0],
         fetch=runs[1],
-        catalogue=sum(not isinstance(s.source, XSource) for s in seed.series),
+        catalogue=len(seed.series),
         series=series,
         observations=observations,
         per_100=per_100,

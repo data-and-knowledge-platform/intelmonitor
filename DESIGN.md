@@ -303,7 +303,7 @@ Selected segments, pressed toggles and page-head buttons have no shadow.
 - 18 px tall, padding 0 6px, 4 px radius, 12/500, tinted fill in the status pair.
 - Development priority is the one filled badge on a development: High is `.b-attn`, Medium `.b-watch`, Low `.b-neutral` (`components/developments/labels.tsx`).
 - New is `.b-new`. Updated is a plain 12/500 word in `new` with no fill (`.upd`), so it never reads as a priority.
-- Adverse is the words `Adverse event` in 600 `attn` text, shown only when true, followed by the tone word ("Negative tone"). Unverified on a social post is 600 `watch` text.
+- Adverse is the words `Adverse event` in 600 `attn` text, shown only when true, followed by the tone word ("Negative tone").
 - Stable is green text with no fill and no padding.
 - Badges sit in the fixed `.stat` column (112 px), left-aligned, so row titles share one left edge.
 
@@ -345,7 +345,7 @@ Selected segments, pressed toggles and page-head buttons have no shadow.
 - A development opens in a popup over the current page (`?development=<id>&scope=...`, `components/developments/DevelopmentPopup.tsx`), the New dashboard popup's size. No Back button: the 28 px close, Esc and a backdrop click return to the page underneath with its URL and scroll.
 - The header: the labels line, the title at 22 px, Not relevant and Dismiss, the close at the top right, over a 1 px `line` rule.
 - Below, two equal columns split by a `line` rule, each scrolling inside the popup: "Who it impacts" over "Connections" (the claim lines and the graph snippet) on the left; the sources down the right. Under 1024 px the popup fills the screen less 16 px and the columns stack.
-- Sources sit under two tabs at the top of their column, News (news, official and research) and Social, underlined like the monitor tabs and pinned while the column scrolls.
+- Sources sit in one list under a `Sources` heading pinned at the top of their column as it scrolls.
 - The answer drawer is square, 520 px, 1 px `line-strong` left border plus `--shadow-pop`.
 - Sources are blocks separated by `line` rules, not grey cards; the quoted span gets `mark`.
 

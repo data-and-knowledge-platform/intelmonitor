@@ -901,8 +901,7 @@
                   "dms",
                   "official",
                   "news",
-                  "data",
-                  "social"
+                  "data"
                 ],
                 "type": "string"
               },
@@ -3113,11 +3112,6 @@
             "title": "Outlet Count",
             "description": "As on the development's summary"
           },
-          "social_count": {
-            "type": "integer",
-            "title": "Social Count",
-            "description": "As on the development's summary"
-          },
           "source_types": {
             "items": {
               "$ref": "#/components/schemas/SourceTypeCount"
@@ -3139,7 +3133,6 @@
           "badge",
           "meta",
           "outlet_count",
-          "social_count",
           "source_types",
           "read"
         ],
@@ -3798,11 +3791,6 @@
             "title": "Outlet Count",
             "description": "Distinct news outlets among its sources, one per parent domain"
           },
-          "social_count": {
-            "type": "integer",
-            "title": "Social Count",
-            "description": "Social posts among its sources"
-          },
           "unconfirmed": {
             "type": "boolean",
             "title": "Unconfirmed",
@@ -3815,8 +3803,7 @@
                 "dms",
                 "official",
                 "news",
-                "data",
-                "social"
+                "data"
               ]
             },
             "type": "array",
@@ -3893,7 +3880,6 @@
           "source_count",
           "source_types",
           "outlet_count",
-          "social_count",
           "unconfirmed",
           "collections",
           "jurisdictions",
@@ -4638,8 +4624,7 @@
               "dms",
               "official",
               "news",
-              "data",
-              "social"
+              "data"
             ],
             "title": "Collection"
           },
@@ -4984,11 +4969,6 @@
             "title": "Outlet Count",
             "description": "Distinct news outlets among its sources, one per parent domain"
           },
-          "social_count": {
-            "type": "integer",
-            "title": "Social Count",
-            "description": "Social posts among its sources"
-          },
           "unconfirmed": {
             "type": "boolean",
             "title": "Unconfirmed",
@@ -5001,8 +4981,7 @@
                 "dms",
                 "official",
                 "news",
-                "data",
-                "social"
+                "data"
               ]
             },
             "type": "array",
@@ -5130,7 +5109,6 @@
           "source_count",
           "source_types",
           "outlet_count",
-          "social_count",
           "unconfirmed",
           "collections",
           "jurisdictions",
@@ -5456,11 +5434,6 @@
             "title": "Outlet Count",
             "description": "Distinct news outlets among its sources, one per parent domain"
           },
-          "social_count": {
-            "type": "integer",
-            "title": "Social Count",
-            "description": "Social posts among its sources"
-          },
           "unconfirmed": {
             "type": "boolean",
             "title": "Unconfirmed",
@@ -5473,8 +5446,7 @@
                 "dms",
                 "official",
                 "news",
-                "data",
-                "social"
+                "data"
               ]
             },
             "type": "array",
@@ -5534,7 +5506,6 @@
           "source_count",
           "source_types",
           "outlet_count",
-          "social_count",
           "unconfirmed",
           "collections",
           "jurisdictions",
@@ -5883,8 +5854,7 @@
               "dms",
               "official",
               "news",
-              "data",
-              "social"
+              "data"
             ],
             "title": "Collection"
           },
@@ -6196,8 +6166,7 @@
               "dms",
               "official",
               "news",
-              "data",
-              "social"
+              "data"
             ],
             "title": "Collection"
           },
@@ -9922,7 +9891,6 @@
               "coingecko",
               "defillama",
               "yahoo",
-              "x",
               "manual",
               "derived"
             ],
@@ -10333,8 +10301,7 @@
               "dms",
               "official",
               "news",
-              "data",
-              "social"
+              "data"
             ],
             "title": "Collection"
           },

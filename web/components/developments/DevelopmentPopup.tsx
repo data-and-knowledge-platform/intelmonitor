@@ -2,7 +2,7 @@
 // option B), the size of the New dashboard popup. The header holds its labels for the subjects in
 // view, the headline, its key points (the full title when it has none), and the close button;
 // below, "Who it impacts" over "Connections" (the claims and the graph snippet) on the left, and
-// the sources in News and Social tabs down the right. Each column scrolls inside the popup; under 1024 px they stack.
+// the sources down the right. Each column scrolls inside the popup; under 1024 px they stack.
 //
 // The popup lives in the URL (`?development=<id>&scope=...`, built by link.ts), so a shared link and
 // browser Back work. Close, Esc and a backdrop click go back to the entry it was opened over, or drop

@@ -6,9 +6,6 @@ A development is shown when any of these holds, and unconfirmed otherwise:
 - a reputable outlet (REPUTABLE_DOMAINS, matched on parent domain) reports it;
 - an official, research or data source backs it (the entity's own site, careers and docs pages
   included, is stored as official).
-Social posts (X, forums) never show a development on their own: social sources are hidden in the
-app, so a development they alone report would have no source to show.
-
 This module owns the rule. The API (server/queries.py), the briefs (pipeline/summaries.py), the
 Data tab notes (pipeline/notes.py) and the run log (pipeline/runlog.py) call it; none
 re-implements it. Unconfirmed developments stay in the store and the API can list them on
@@ -31,7 +28,7 @@ _SUFFIX_LABELS = {"com", "co", "net", "org", "gov", "edu", "ac", "go", "or", "ne
 
 def outlet(domain: str) -> str:
     """The parent domain a source's domain belongs to: markets.ft.com is ft.com,
-    forums.hardwarezone.com.sg is hardwarezone.com.sg."""
+    www.businesstimes.com.sg is businesstimes.com.sg."""
     labels = domain.lower().removeprefix("www.").split(".")
     keep = 3 if len(labels) >= 3 and len(labels[-1]) == 2 and labels[-2] in _SUFFIX_LABELS else 2
     return ".".join(labels[-keep:])
@@ -42,13 +39,12 @@ _REPUTABLE = {outlet(d) for d in REPUTABLE_DOMAINS}
 
 @dataclass(frozen=True)
 class Corroboration:
-    """What backs a development: its distinct news outlets, whether one is reputable, its
-    official, research and data sources, and its social posts."""
+    """What backs a development: its distinct news outlets, whether one is reputable, and its
+    official, research and data sources."""
 
     outlets: int
     reputable: bool
     backing: int
-    posts: int
 
     @property
     def shown(self) -> bool:
@@ -65,19 +61,16 @@ def corroboration(sources: Iterable[tuple[str, str]]) -> Corroboration:
     """A development's corroboration from its sources, as (collection, domain) pairs, one per
     document."""
     outlets: set[str] = set()
-    backing = posts = 0
+    backing = 0
     for collection, domain in sources:
         if collection == "news":
             outlets.add(outlet(domain))
-        elif collection == "social":
-            posts += 1
         elif collection in BACKING_COLLECTIONS:
             backing += 1
     return Corroboration(
         outlets=len(outlets),
         reputable=not outlets.isdisjoint(_REPUTABLE),
         backing=backing,
-        posts=posts,
     )
 
 

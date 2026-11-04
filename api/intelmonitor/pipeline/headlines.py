@@ -23,7 +23,7 @@ from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
 MAX_FINDINGS = 8
 # The lead source's text shown, from its start: enough for the facts of a news story.
 ARTICLE_MAX_CHARS = 12_000
-_COLLECTION_RANK = {"dms": 0, "official": 1, "data": 2, "news": 3, "social": 4}
+_COLLECTION_RANK = {"dms": 0, "official": 1, "data": 2, "news": 3}
 
 
 class Headline(BaseModel):
@@ -139,7 +139,7 @@ class StoredFinding:
 
     @property
     def rank(self) -> tuple[int, str]:
-        return (_COLLECTION_RANK.get(self.collection, 5), self.published)
+        return (_COLLECTION_RANK.get(self.collection, 4), self.published)
 
 
 def lead(findings: list[StoredFinding]) -> StoredFinding:

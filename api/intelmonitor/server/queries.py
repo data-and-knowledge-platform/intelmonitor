@@ -58,7 +58,7 @@ from intelmonitor.server.models import (
 UPCOMING_HORIZON_DAYS = 90
 STAGE_LOOKBACK_DAYS = 30
 GROUP_LOOKBACK_DAYS = 14
-COLLECTION_ORDER: list[Collection] = ["official", "dms", "data", "news", "social"]
+COLLECTION_ORDER: list[Collection] = ["official", "dms", "data", "news"]
 # Worst first: the state a subject shows when its answers disagree.
 STATE_RANK: dict[State, int] = {"needs_attention": 0, "watch": 1, "new": 2, "stable": 3}
 
@@ -281,7 +281,6 @@ def load_developments(conn: sqlite3.Connection, run: RunRef) -> RunDevelopments:
             also_affects=[subject_ref(s) for s in indirect.get(r["id"], []) if s not in direct],
             source_count=len(docs),
             outlet_count=backing.outlets,
-            social_count=backing.posts,
             unconfirmed=not backing.shown,
             source_types=[
                 SourceTypeCount(collection=c, count=per_type[c])

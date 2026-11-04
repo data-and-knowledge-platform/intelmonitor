@@ -19,65 +19,17 @@ def ingest(
     t0: Annotated[
         str | None, typer.Option("--t0", help="Override the stored T0, YYYY-MM-DD")
     ] = None,
-    social_only: Annotated[
-        bool,
-        typer.Option(
-            "--social-only",
-            help="Only fetch social posts and search trends, for the stored T0; with --t0, "
-            "backfill that week's social posts",
-        ),
-    ] = False,
-    subjects: Annotated[
-        str | None,
-        typer.Option("--subjects", help="With --social-only: comma-separated subject ids"),
-    ] = None,
-    incidents: Annotated[
-        bool,
-        typer.Option(
-            "--incidents",
-            help="With --social-only: backfill the social posts of every incident in "
-            "api/seed/known-incidents.yaml",
-        ),
-    ] = False,
 ) -> None:
-    """Fetch the measured series, then fetch, cache, parse and dedup the 60-day corpus, social
-    posts and search trends, and print its stats."""
+    """Fetch the measured series, then fetch, cache, parse and dedup the 60-day corpus and search
+    trends, and print its stats."""
     from datetime import date
 
-    from intelmonitor.ingest.run import run_ingest, run_social_ingest
+    from intelmonitor.ingest.run import run_ingest
     from intelmonitor.ingest.series.collect import fetch_series
     from intelmonitor.ingest.stats import ingest_stats
     from intelmonitor.store.db import connect
 
-    if social_only and stats:
-        raise typer.BadParameter("--social-only cannot be combined with --stats")
-    if (subjects or incidents) and not social_only:
-        raise typer.BadParameter("--subjects and --incidents only apply with --social-only")
-    if incidents and (subjects or t0):
-        raise typer.BadParameter("--incidents names its own dates and subjects")
-    if social_only:
-        from intelmonitor.ingest.sources.social import TARGETS
-        from intelmonitor.seed import load_known_incidents
-
-        searched = {t.subject_id for t in TARGETS}
-        ids = {s.strip() for s in subjects.split(",") if s.strip()} if subjects else None
-        runs = (
-            [(set(i.subjects), i.day) for i in load_known_incidents()]
-            if incidents
-            else [(ids, date.fromisoformat(t0) if t0 else None)]
-        )
-        for run_ids, _ in runs:
-            if unknown := (run_ids or set()) - searched:
-                raise typer.BadParameter(
-                    f"not searched on social media: {', '.join(sorted(unknown))}"
-                )
-        for run_ids, run_t0 in runs:
-            result = run_social_ingest(run_ids, run_t0, log=typer.echo)
-            typer.echo(
-                f"added {sum(result.added.values())} {dict(result.added)}, "
-                f"{result.duplicates} duplicates, {len(result.failures)} failures\n"
-            )
-    elif not stats:
+    if not stats:
         fetch_series(connect(), date.today(), log=typer.echo)
         typer.echo("")
         result = run_ingest(date.fromisoformat(t0) if t0 else None)

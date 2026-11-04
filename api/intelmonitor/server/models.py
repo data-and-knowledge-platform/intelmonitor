@@ -36,7 +36,7 @@ from intelmonitor.store.series import Observation, Revision
 State = Literal["stable", "watch", "needs_attention", "new"]
 Stage = Literal["signal", "consultation", "proposed", "enacted", "enforced"]
 STAGE_ORDER: list[Stage] = ["signal", "consultation", "proposed", "enacted", "enforced"]
-Collection = Literal["dms", "official", "news", "data", "social"]
+Collection = Literal["dms", "official", "news", "data"]
 
 
 def _known_subject(value: str) -> str:
@@ -196,7 +196,6 @@ class DevelopmentSummary(BaseModel):
     outlet_count: int = Field(
         description="Distinct news outlets among its sources, one per parent domain"
     )
-    social_count: int = Field(description="Social posts among its sources")
     unconfirmed: bool = Field(
         description="Its sources do not pass the source gate (pipeline/corroboration.py), so "
         "lists leave it out unless asked"
@@ -1021,7 +1020,6 @@ class Alert(BaseModel):
     badge: AlertBadge
     meta: str = Field(description='"OCBC, financial": the lead entity (else subject) and category')
     outlet_count: int = Field(description="As on the development's summary")
-    social_count: int = Field(description="As on the development's summary")
     source_types: list[SourceTypeCount] = Field(description="As on the development's summary")
     read: bool = Field(description="The development's triage read state")
 

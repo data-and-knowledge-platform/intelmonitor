@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS meta (
 
 CREATE TABLE IF NOT EXISTS source_documents (
     id TEXT PRIMARY KEY,               -- sha256(canonical_url)[:16], stable across reruns
-    source TEXT NOT NULL,              -- mas, fed, ecb, hkma, bis, fsb, exa, tavily, x or detector
-    collection TEXT NOT NULL,          -- dms, official, news, social, or data (detections)
+    source TEXT NOT NULL,              -- mas, fed, ecb, hkma, bis, fsb, exa, tavily or detector
+    collection TEXT NOT NULL,          -- dms, official, news, or data (detections)
     doc_type TEXT NOT NULL,            -- e.g. Media Releases, Speeches, News
     classification TEXT NOT NULL,      -- public for every POC document
     url TEXT NOT NULL,
@@ -493,36 +493,17 @@ CREATE TABLE IF NOT EXISTS detections (
     direction TEXT NOT NULL            -- the move's tone: positive, negative or neutral
 );
 
--- Social posts and forum threads (ingest/sources/social.py): what a source document in the social
--- collection carries beyond the document itself. Engagement counts are as of the fetch.
-CREATE TABLE IF NOT EXISTS social_posts (
-    document_id TEXT PRIMARY KEY REFERENCES source_documents (id),
-    platform TEXT NOT NULL,            -- x, reddit or hardwarezone
-    subject_id TEXT NOT NULL,          -- the subject whose search found it
-    query TEXT NOT NULL,
-    post_id TEXT,                      -- X post id
-    author_id TEXT,                    -- X author id
-    likes INTEGER,
-    reposts INTEGER,
-    replies INTEGER,
-    quotes INTEGER,
-    impressions INTEGER,
-    fetched_at TEXT NOT NULL
-    -- and the ADDED_COLUMNS for X authors, official accounts and links
-);
-
--- Search trends (ingest/sources/trends.py), one snapshot per ingest T0. Google trending searches
--- and X trends hold one row per trending term; Google interest over time holds one row per term
--- and day, relative (0 to 100) within the call that fetched it, so compare a term with its own
--- baseline.
+-- Search trends (ingest/sources/trends.py), one snapshot per ingest T0. Trending searches hold one
+-- row per trending term. Older stores also hold Google interest over time from SerpApi, one row
+-- per term and day, relative (0 to 100) within the call that fetched it.
 CREATE TABLE IF NOT EXISTS trends (
     snapshot TEXT NOT NULL,            -- the ingest T0, YYYY-MM-DD
-    source TEXT NOT NULL,              -- google (SerpApi), google_rss (no key) or x
+    source TEXT NOT NULL,              -- google_rss; older stores also hold google (SerpApi)
     kind TEXT NOT NULL,                -- trending or interest
     geo TEXT NOT NULL,                 -- SG, MY, ...
     term TEXT NOT NULL,
     observed_at TEXT NOT NULL,         -- trending: when it started; interest: the day
-    value REAL,                        -- search volume, post count or interest (0 to 100)
+    value REAL,                        -- search volume or interest (0 to 100)
     subjects TEXT NOT NULL DEFAULT '[]', -- JSON ids of tracked subjects the term names
     detail TEXT NOT NULL DEFAULT '{}', -- JSON: increase, categories, related terms, call terms
     fetched_at TEXT NOT NULL,
@@ -555,16 +536,6 @@ CREATE VIRTUAL TABLE IF NOT EXISTS developments_fts USING fts5(
 
 # Columns added to tables after stores were created. connect() adds any a store lacks, in place.
 ADDED_COLUMNS = [
-    # X authors, official accounts and links in posts (x-api-plan.md, X3, X4 and X6).
-    ("social_posts", "author_username", "TEXT"),
-    ("social_posts", "author_name", "TEXT"),
-    ("social_posts", "author_verified_type", "TEXT"),  # blue, business, government or none
-    ("social_posts", "author_followers", "INTEGER"),
-    ("social_posts", "official", "INTEGER NOT NULL DEFAULT 0"),  # the subject's own account
-    ("social_posts", "urls", "TEXT NOT NULL DEFAULT '[]'"),  # JSON, links expanded
-    ("social_posts", "referenced", "TEXT NOT NULL DEFAULT '[]'"),  # JSON, "quoted:<id>" etc.
-    # The first link that is a stored document: the news article a post shares.
-    ("social_posts", "cites_document_id", "TEXT"),
     ("dashboards", "deleted_at", "TEXT"),
     # The profile that made the dashboard; null for starter and older ones, listed for every
     # profile (phase1-plan.md, item U3).
@@ -692,6 +663,60 @@ def _fold_alert_reads(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+# X post-count series (since removed); their ids all start with this.
+_X_SERIES = "x.posts.%"
+
+
+def _drop_social(conn: sqlite3.Connection) -> None:
+    """Stores made while social media was a source hold X posts and forum threads, X trends and
+    X post-count series. They go with every row that refers to them: the social documents, the
+    posts from subjects' own X accounts (stored as official) and the detections on X series, with
+    their tags, findings and development sources; the series' observations, indicators and notes;
+    and the social_posts table. A development left with no sources no longer passes the source
+    gate. Stores dropped before own-account posts were included still hold those, so either
+    leftover triggers it."""
+    exists = (
+        "SELECT 1 FROM sqlite_master WHERE name = 'social_posts' "
+        "UNION ALL SELECT 1 FROM source_documents WHERE source = 'x' LIMIT 1"
+    )
+    if conn.execute(exists).fetchone() is None:
+        return
+    conn.execute("BEGIN IMMEDIATE")  # another connection may be dropping them too
+    if conn.execute(exists).fetchone() is None:
+        conn.rollback()
+        return
+    conn.execute(
+        "CREATE TEMP TABLE dropped_documents AS SELECT id FROM source_documents "
+        "WHERE collection = 'social' OR source = 'x' "
+        "OR id IN (SELECT document_id FROM detections WHERE series_id LIKE ?)",
+        (_X_SERIES,),
+    )
+    doomed = "SELECT id FROM dropped_documents"
+    conn.execute(
+        "DELETE FROM upcoming_dates WHERE finding_id IN "  # noqa: S608
+        f"(SELECT id FROM findings WHERE document_id IN ({doomed}))"
+    )
+    for table in ["development_sources", "findings", "document_tags", "document_subjects"]:
+        conn.execute(f"DELETE FROM {table} WHERE document_id IN ({doomed})")  # noqa: S608
+    conn.execute(f"DELETE FROM detections WHERE document_id IN ({doomed})")  # noqa: S608
+    conn.execute(f"DELETE FROM source_documents WHERE id IN ({doomed})")  # noqa: S608
+    conn.execute("DROP TABLE dropped_documents")
+    for table in [
+        "observations",
+        "observation_revisions",
+        "observation_sources",
+        "run_indicators",
+        "run_facts",
+        "run_notes",
+        "series_subjects",
+    ]:
+        conn.execute(f"DELETE FROM {table} WHERE series_id LIKE ?", (_X_SERIES,))  # noqa: S608
+    conn.execute("DELETE FROM series WHERE id LIKE ?", (_X_SERIES,))
+    conn.execute("DELETE FROM trends WHERE source = 'x'")
+    conn.execute("DROP TABLE IF EXISTS social_posts")
+    conn.commit()
+
+
 def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     """Open the store and make sure the schema exists."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -705,6 +730,7 @@ def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     _per_subject_priority(conn)
     _drop_columns(conn)
     _fold_alert_reads(conn)
+    _drop_social(conn)
     if indexed is None:
         search.rebuild(conn)  # the search tables are new: index what is already stored
     return conn

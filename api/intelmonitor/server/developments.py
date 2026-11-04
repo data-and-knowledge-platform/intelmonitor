@@ -40,7 +40,6 @@ COLLECTION_LABELS: dict[Collection, str] = {
     "dms": "Research",
     "data": "Data",
     "news": "News",
-    "social": "Social",
 }
 JURISDICTION_CODES: dict[str, Jurisdiction] = {
     name: code for code, name in JURISDICTION_NAMES.items()

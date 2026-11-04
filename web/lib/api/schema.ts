@@ -1192,11 +1192,6 @@ export interface components {
              */
             outlet_count: number;
             /**
-             * Social Count
-             * @description As on the development's summary
-             */
-            social_count: number;
-            /**
              * Source Types
              * @description As on the development's summary
              */
@@ -1512,11 +1507,6 @@ export interface components {
              */
             outlet_count: number;
             /**
-             * Social Count
-             * @description Social posts among its sources
-             */
-            social_count: number;
-            /**
              * Unconfirmed
              * @description Its sources do not pass the source gate (pipeline/corroboration.py), so lists leave it out unless asked
              */
@@ -1525,7 +1515,7 @@ export interface components {
              * Collections
              * @description Where its sources come from
              */
-            collections: ("dms" | "official" | "news" | "data" | "social")[];
+            collections: ("dms" | "official" | "news" | "data")[];
             /**
              * Jurisdictions
              * @description Names of the jurisdictions its sources report on, alphabetical
@@ -1823,7 +1813,7 @@ export interface components {
              * Collection
              * @enum {string}
              */
-            collection: "dms" | "official" | "news" | "data" | "social";
+            collection: "dms" | "official" | "news" | "data";
             /** Documents */
             documents: number;
             /** Relevant Documents */
@@ -1994,11 +1984,6 @@ export interface components {
              */
             outlet_count: number;
             /**
-             * Social Count
-             * @description Social posts among its sources
-             */
-            social_count: number;
-            /**
              * Unconfirmed
              * @description Its sources do not pass the source gate (pipeline/corroboration.py), so lists leave it out unless asked
              */
@@ -2007,7 +1992,7 @@ export interface components {
              * Collections
              * @description Where its sources come from
              */
-            collections: ("dms" | "official" | "news" | "data" | "social")[];
+            collections: ("dms" | "official" | "news" | "data")[];
             /**
              * Jurisdictions
              * @description Names of the jurisdictions its sources report on, alphabetical
@@ -2248,11 +2233,6 @@ export interface components {
              */
             outlet_count: number;
             /**
-             * Social Count
-             * @description Social posts among its sources
-             */
-            social_count: number;
-            /**
              * Unconfirmed
              * @description Its sources do not pass the source gate (pipeline/corroboration.py), so lists leave it out unless asked
              */
@@ -2261,7 +2241,7 @@ export interface components {
              * Collections
              * @description Where its sources come from
              */
-            collections: ("dms" | "official" | "news" | "data" | "social")[];
+            collections: ("dms" | "official" | "news" | "data")[];
             /**
              * Jurisdictions
              * @description Names of the jurisdictions its sources report on, alphabetical
@@ -2447,7 +2427,7 @@ export interface components {
              * Collection
              * @enum {string}
              */
-            collection: "dms" | "official" | "news" | "data" | "social";
+            collection: "dms" | "official" | "news" | "data";
             /** Doc Type */
             doc_type: string;
             /** Classification */
@@ -2601,7 +2581,7 @@ export interface components {
              * Collection
              * @enum {string}
              */
-            collection: "dms" | "official" | "news" | "data" | "social";
+            collection: "dms" | "official" | "news" | "data";
             /** Doc Type */
             doc_type: string;
             /** Classification */
@@ -4168,7 +4148,7 @@ export interface components {
              * Source
              * @enum {string}
              */
-            source: "mas" | "fred" | "coingecko" | "defillama" | "yahoo" | "x" | "manual" | "derived";
+            source: "mas" | "fred" | "coingecko" | "defillama" | "yahoo" | "manual" | "derived";
             /**
              * Source Label
              * @description Where its values come from: "MAS I.18", "FRED DFF"
@@ -4312,7 +4292,7 @@ export interface components {
              * Collection
              * @enum {string}
              */
-            collection: "dms" | "official" | "news" | "data" | "social";
+            collection: "dms" | "official" | "news" | "data";
             /** Count */
             count: number;
         };
@@ -5745,7 +5725,7 @@ export interface operations {
                 jurisdiction?: ("sg" | "my" | "id" | "th" | "vn" | "hk" | "cn" | "tw" | "in" | "au" | "kr" | "us" | "eu" | "uk" | "jp" | "intl")[];
                 /** @description Last published in the last this many days of the run */
                 days?: number | null;
-                source?: ("dms" | "official" | "news" | "data" | "social")[];
+                source?: ("dms" | "official" | "news" | "data")[];
                 /** @description Words that must all appear in the title */
                 q?: string | null;
             };

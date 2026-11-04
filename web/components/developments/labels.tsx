@@ -67,27 +67,17 @@ export const SOURCE_TYPE_LABEL: Record<SourceType["collection"], string> = {
   official: "Official",
   dms: "Research",
   data: "Data",
-  social: "Social",
 };
 
-// Social posts are hidden everywhere for now: posts mostly reshare the news articles already listed.
-// The api still stores them and the source gate still counts them.
-export const SHOW_SOCIAL = false;
-
-/** A development's sources as shown: social posts left out while SHOW_SOCIAL is off. */
-export const shownSources = <S extends Pick<SourceType, "collection">>(sources: S[]): S[] =>
-  SHOW_SOCIAL ? sources : sources.filter((s) => s.collection !== "social");
-
 /**
- * "3 outlets · 12 posts · 1 official source": distinct news outlets, social posts, then official,
- * research and data sources, each left out when zero. These are what the source gate counts
- * (api pipeline/corroboration.py). Posts are left out while SHOW_SOCIAL is off.
+ * "3 outlets · 1 official source": distinct news outlets, then official, research and data
+ * sources, each left out when zero. These are what the source gate counts
+ * (api pipeline/corroboration.py).
  */
-export function sourceCountText(d: Pick<Schema<"DevelopmentSummary">, "outlet_count" | "social_count" | "source_types">): string {
+export function sourceCountText(d: Pick<Schema<"DevelopmentSummary">, "outlet_count" | "source_types">): string {
   const of = (c: SourceType["collection"]) => d.source_types.find((t) => t.collection === c)?.count ?? 0;
   const parts: [number, string][] = [
     [d.outlet_count, "outlet"],
-    [SHOW_SOCIAL ? d.social_count : 0, "post"],
     [of("official"), "official source"],
     [of("dms"), "research paper"],
     [of("data"), "data source"],

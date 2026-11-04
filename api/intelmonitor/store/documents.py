@@ -9,9 +9,7 @@ from pydantic import BaseModel
 
 from intelmonitor.store.db import get_meta
 
-# social: X posts, Reddit and forum threads (ingest/sources/social.py), unverified until a
-# non-social source in the same development confirms them.
-Collection = Literal["dms", "official", "news", "data", "social"]
+Collection = Literal["dms", "official", "news", "data"]
 
 
 class SourceDocument(BaseModel):

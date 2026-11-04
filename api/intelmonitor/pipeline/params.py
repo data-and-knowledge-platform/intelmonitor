@@ -64,9 +64,6 @@ def display_key(
 
 # Promotional and product news is Low.
 PROMOTIONAL_MAX_LEVEL = 0
-# A development only social media reports is unverified, and a single post is not a signal
-# (prd.md section 7): Low until a news, official or data source joins it.
-UNVERIFIED_MAX_LEVEL = 0
 # A source reports on a jurisdiction when Jev scores it at least this likely.
 JURISDICTION_THRESHOLD = 0.5
 # Market moves (prices, indices, flows) are never High, and Low unless a Singapore financial

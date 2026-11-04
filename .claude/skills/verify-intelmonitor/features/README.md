@@ -63,7 +63,7 @@ Walk top to bottom for a broad regression, or run `pnpm -C web e2e`, which cover
 ## Developments and evidence
 
 - [developments](developments.md): Development feeds on the developments page, the dashboard and a monitor page's Developments tab: column header, period, facets, words, rows.
-- [development-page](development-page.md): The development popup over any page: who it impacts, connections, News and Social source tabs, Not relevant and Dismiss, close.
+- [development-page](development-page.md): The development popup over any page: who it impacts, connections, sources, Not relevant and Dismiss, close.
 - [evidence-drawer](evidence-drawer.md): Evidence for a standing question's answer: series and developments it relies on, Mark wrong.
 
 ## Pipeline

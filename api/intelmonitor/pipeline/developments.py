@@ -46,7 +46,6 @@ from intelmonitor.pipeline.params import (
     PRIORITY_SURE,
     PROMOTIONAL_MAX_LEVEL,
     SAME_EVENT_THRESHOLD,
-    UNVERIFIED_MAX_LEVEL,
     Priority,
 )
 from intelmonitor.pipeline.singapore import NO_LINK, singapore_links
@@ -55,7 +54,7 @@ from intelmonitor.seed import load_detectors
 from intelmonitor.store import search
 
 # Primary sources first: a measured value ranks after official text and before news reporting it.
-_COLLECTION_RANK = {"dms": 0, "official": 1, "data": 2, "news": 3, "social": 4}
+_COLLECTION_RANK = {"dms": 0, "official": 1, "data": 2, "news": 3}
 _ROLES = TypeAdapter(dict[str, FindingRole])
 
 
@@ -88,7 +87,7 @@ class RunFinding:
     @property
     def rank(self) -> tuple[int, date, str]:
         """Primary sources first, then earliest."""
-        return (_COLLECTION_RANK.get(self.collection, 5), self.published, self.id)
+        return (_COLLECTION_RANK.get(self.collection, 4), self.published, self.id)
 
 
 def _detection_roles(subjects: list[str], tone: Tone) -> dict[str, FindingRole]:
@@ -256,11 +255,6 @@ class Development:
     def promotional(self) -> bool:
         """Most of its findings are marketing or routine product news."""
         return 2 * sum(f.promotional for f in self.findings) > len(self.findings)
-
-    @property
-    def unverified(self) -> bool:
-        """Only social media reports it: no news, official, DMS or data source confirms it."""
-        return all(f.collection == "social" for f in self.findings)
 
     @property
     def market_move(self) -> bool:
@@ -500,8 +494,8 @@ async def score_priority(inf: Inference, dev: Development) -> None:
 
 async def rate(inf: Inference, dev: Development) -> None:
     """The development's priority for each subject. A development made only of detections takes
-    its rule's level; otherwise Jev scores it (Claude where Jev is unsure), promotional news and
-    unverified social posts are Low, market moves are at most Medium and Low without Singapore,
+    its rule's level; otherwise Jev scores it (Claude where Jev is unsure), promotional news is
+    Low, market moves are at most Medium and Low without Singapore,
     and a merged detection's rule raises the level for the subjects it measured when the score
     is lower."""
     rule = dev.detection
@@ -517,7 +511,6 @@ async def rate(inf: Inference, dev: Development) -> None:
     for sid, s in dev.subjects.items():
         for capped, cap in (
             (dev.promotional, PROMOTIONAL_MAX_LEVEL),
-            (dev.unverified, UNVERIFIED_MAX_LEVEL),
             (dev.market_move, market_cap),
         ):
             if capped:

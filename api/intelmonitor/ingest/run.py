@@ -2,11 +2,9 @@
 
 Order matters for dedup (the first copy of a document wins): official sources, then news
 searches, then gap searches for subjects that still have fewer than GAP_TARGET candidates, then
-social posts and search trends. T0 is fixed on the first run and stored in the meta table, so
-reruns send the same requests and are served entirely from the cache.
+search trends. T0 is fixed on the first run and stored in the meta table, so reruns send the same
+requests and are served entirely from the cache.
 
-`im ingest --social-only` runs only the social and trends steps, for the stored T0; with `--t0`,
-it backfills one earlier week's social posts (x-api-plan.md, X2).
 `im redate` applies the URL-date rule to documents stored before it existed, removing those it
 dates before the window.
 """
@@ -43,7 +41,6 @@ from intelmonitor.ingest.sources.search import (
     tavily_search,
     url_dated,
 )
-from intelmonitor.ingest.sources.social import XSpend, fetch_social, store_social_meta
 from intelmonitor.ingest.sources.trends import fetch_trends
 from intelmonitor.seed import load_subjects
 from intelmonitor.store.db import connect, get_meta, set_meta
@@ -170,94 +167,14 @@ def run_ingest(t0_override: date | None = None, log: Callable[[str], None] = pri
         keep(fill_gap(subject_id))
     log(f"gaps: {result.gap_subjects}")
 
-    # 4. Social posts and search trends, last so a news copy of a page wins dedup.
-    _ingest_social(conn, http, window, result, None, log)
+    # 4. Search trends.
+    fetched = fetch_trends(conn, http, window.t0, log=log)
+    result.failures += fetched.failures
 
     network, cached = sum(http.network.values()), sum(http.cached.values())
     log(f"requests: {network} external, {cached} served from cache")
     log(f"external by source: {dict(sorted(http.network.items()))}")
     return result
-
-
-def run_social_ingest(
-    subject_ids: set[str] | None = None,
-    t0: date | None = None,
-    log: Callable[[str], None] = print,
-) -> IngestResult:
-    """Only the social steps: adds social documents to a store that already holds the news
-    corpus. With `subject_ids`, only those subjects are searched.
-
-    For the stored T0, which stays unchanged, the trends snapshot is fetched too. With `t0`, the
-    social history of an earlier week is backfilled (X through full-archive search) and the stored
-    T0 is left alone; trends, which describe the fetch day, are skipped."""
-    conn = connect()
-    stored = get_meta(conn, "t0")
-    if stored is None:
-        raise RuntimeError("no T0 in the store: run a full `im ingest` first")
-    window = Window(t0 or date.fromisoformat(stored))
-    result = IngestResult(t0=window.t0)
-    http = CachedHttp()
-    backfill = t0 is not None and t0.isoformat() != stored
-    log(f"T0 {window.t0} ({'backfill' if backfill else 'stored'}), social only")
-    _ingest_social(conn, http, window, result, subject_ids, log, trends=not backfill)
-    log(f"external by source: {dict(sorted(http.network.items()))}")
-    return result
-
-
-def _ingest_social(
-    conn: sqlite3.Connection,
-    http: CachedHttp,
-    window: Window,
-    result: IngestResult,
-    subject_ids: set[str] | None,
-    log: Callable[[str], None],
-    trends: bool = True,
-) -> None:
-    """Store social posts with their metadata, then the trends snapshot unless `trends` is off,
-    and log X reads and estimated spend."""
-    settings = get_settings()
-    spend = XSpend(settings.x_spend_cap_usd)
-
-    def fail(message: str) -> None:
-        result.failures.append(message)
-        log(f"failed: {message}")
-
-    if not settings.x_bearer_token:
-        log("social: no X_BEARER_TOKEN, X skipped")
-    found = fetch_social(
-        http,
-        settings.x_bearer_token,
-        settings.tavily_api_key,
-        settings.exa_api_key,
-        window,
-        spend,
-        subject_ids,
-        log,
-        fail,
-    )
-    social_added = 0
-    for item in found:
-        if _store(conn, item.doc):
-            social_added += 1
-            result.added[item.doc.source] += 1
-        else:
-            result.duplicates += 1
-        store_social_meta(conn, document_id(canonical_url(item.doc.url)), item.meta)
-    conn.commit()
-    log(f"social: {len(found)} found, {social_added} stored")
-    if trends:
-        fetched = fetch_trends(
-            conn,
-            http,
-            window.t0,
-            settings.serpapi_api_key,
-            settings.x_bearer_token,
-            spend,
-            subject_ids,
-            log,
-        )
-        result.failures += fetched.failures
-    log(spend.line())
 
 
 def _store(conn: sqlite3.Connection, doc: RawDocument) -> bool:
@@ -297,7 +214,7 @@ class Redated:
 
 
 # Per-document rows a removed document leaves behind; run rows go when the runs are recomputed.
-_DOCUMENT_TABLES = ["document_tags", "document_subjects", "findings", "detections", "social_posts"]
+_DOCUMENT_TABLES = ["document_tags", "document_subjects", "findings", "detections"]
 
 
 def redate_stored(conn: sqlite3.Connection) -> list[Redated]:

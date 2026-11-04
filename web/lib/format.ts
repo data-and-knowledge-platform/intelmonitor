@@ -157,7 +157,6 @@ export const COLLECTION_LABEL: Record<Schema<"EvidenceSource">["collection"], st
   official: "Official",
   data: "Data",
   news: "News",
-  social: "Social media",
 };
 
 type Series = Schema<"SeriesInfo">;
