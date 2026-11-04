@@ -24,8 +24,8 @@ from intelmonitor.pipeline.subjects import all_subjects
 from intelmonitor.store.db import connect
 
 SAMPLE = [
-    "banking-regulation",
-    "tech-outages",
+    "financial-regulation",
+    "cyber-resilience",
     "singapore-banks",
     "sea-countries",
     "dbs",

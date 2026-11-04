@@ -46,7 +46,7 @@ SCREEN_CHARS = 800
 GOLD_CHARS = 1500
 SCREEN_BATCH = 40
 KEYWORD_HITS = 25
-CONSISTENCY_QUESTIONS = ["banking-regulation/topic.new-developments"]
+CONSISTENCY_QUESTIONS = ["financial-regulation/topic.new-developments"]
 
 # The exposure question asks about markets, not about UOB itself, so the screen also marks
 # documents on adverse developments in the markets UOB lends to.

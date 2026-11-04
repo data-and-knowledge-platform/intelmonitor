@@ -33,7 +33,7 @@ Preconditions:
 - `pnpm -C web verify doctor` is ok.
 - `S` below means `agent-browser --session $VERIFY_SESSION` (default `im-verify`).
 - Node counts come from `verify api "/graph?center=<id>&hops=1"` (`nodes`, `edges`, `truncated_developments`, `has_new`).
-  On 30 Sep: `ocbc` has 27 nodes at 1 hop and 51 at 2 hops with no truncation (small and readable); `central-banks` has 49 at 1 hop with 117 developments truncated; `bangkok-bank` has 5 at 1 hop (sparse); `banking-regulation` has 44 at 1 hop with 119 truncated.
+  On 30 Sep: `ocbc` has 27 nodes at 1 hop and 51 at 2 hops with no truncation (small and readable); `central-banks` has 49 at 1 hop with 117 developments truncated; `bangkok-bank` has 5 at 1 hop (sparse); `banking-regulation` (a topic since replaced by the 30 MAS topics) had 44 at 1 hop with 119 truncated.
 - Read only: nothing here writes to the store.
 
 - **Open.** `pnpm -C web verify open graph OCBC`, `S wait '[data-testid=graph-canvas][data-layout=settled]'`. The URL ends `/monitors/ocbc/graph`; the canvas reads `Graph of 27 nodes and 47 links around OCBC`; `In view` reads `26 nodes, 13 new` under `Groups, 1 hop 1` and `Developments, 1 hop 25`.

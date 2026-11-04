@@ -46,8 +46,8 @@ from intelmonitor.pipeline.summaries import (
 from intelmonitor.store.db import DB_PATH, connect
 
 # DBS, UOB and OCBC (the Singapore banks group is no longer monitored, decision S3), a cloud
-# provider for TCRD and an FMD topic.
-SUBJECTS = ["dbs", "uob", "ocbc", "aws", "singapore-equities"]
+# provider for TCRD and a markets topic.
+SUBJECTS = ["dbs", "uob", "ocbc", "aws", "capital-markets-equities"]
 COMPARE_MODEL = "claude-opus-5-5"
 # The subject's High developments in the window the judge checks coverage of, newest first.
 TOP_HIGH = 5

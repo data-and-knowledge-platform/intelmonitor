@@ -97,7 +97,7 @@ CASES = [
         "about five hours on Oct 5, the bank said, after a fault in a data centre system. "
         "Services were restored at about 3pm. DBS apologised to customers and said it would "
         "investigate the cause and report to the Monetary Authority of Singapore.",
-        subjects=["dbs", "tech-outages"],
+        subjects=["dbs", "cyber-resilience"],
         expected={"dbs": Expected(roles=["affected"], adverse=True)},
         reason="An outage at the bank is the cause of harm to it",
     ),
@@ -109,7 +109,7 @@ CASES = [
         "Victims lost at least $8.2 million after clicking on links in fake SMS messages that "
         "impersonated the bank. DBS said it is blocking the fake sites and reminded customers "
         "never to share one-time passwords.",
-        subjects=["dbs", "cyber-threats"],
+        subjects=["dbs", "scams-fraud"],
         expected={"dbs": Expected(roles=["affected"], adverse=True)},
         reason="A harmful trend that bears directly on the bank's customers is adverse to it",
     ),
@@ -121,7 +121,7 @@ CASES = [
         "Jan 1, 2027. DBS, OCBC and UOB, the three banks designated as D-SIBs, will have to hold "
         "more common equity against their risk-weighted assets, which analysts said could "
         "limit dividend growth.",
-        subjects=["mas", "dbs", "ocbc", "uob", "banking-regulation"],
+        subjects=["mas", "dbs", "ocbc", "uob", "financial-regulation"],
         expected={
             "mas": Expected(roles=["actor"], adverse=False),
             **{

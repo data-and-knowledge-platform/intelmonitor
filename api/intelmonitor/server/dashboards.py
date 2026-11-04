@@ -98,13 +98,16 @@ def _insert(
 
 
 def _stored_spec(raw: str) -> DashboardSpec | None:
-    """A stored spec without the widgets that no longer validate (an indicator whose series left
-    its subject), or None when the dashboard itself names a subject removed from the seed."""
+    """A stored spec without the subjects removed from the seed and the widgets that no longer
+    validate (one set to a removed subject, an indicator whose series left its subject), or None
+    when what is left still does not validate."""
     try:
         return DashboardSpec.model_validate_json(raw)
     except ValidationError:
         pass
     data = json.loads(raw)
+    seeded = all_subjects()
+    data["subject_ids"] = [i for i in data.get("subject_ids", []) if i in seeded]
     data["widgets"] = [w for w in data.get("widgets", []) if _valid_widget(w)]
     try:
         return DashboardSpec.model_validate(data)

@@ -19,10 +19,13 @@ sets:
       - {id: topic.impact, label: Impact, lookback_days: 7, question: "Which tracked groups and entities are affected, and how?"}
       - {id: topic.local-relevance, label: Local relevance, lookback_days: 7, question: "What does this mean for Singapore and MAS-supervised institutions?"}
 
-  - applies_to: {type: topic, subject: banking-regulation}
+  - applies_to: {type: topic, subject: financial-regulation}
     questions:
-      - {id: banking-regulation.stage, label: Stage, lookback_days: 30, question: "Is each item a signal, consultation, proposal, enacted rule or enforcement?"}
-      - {id: banking-regulation.enforcement, label: Enforcement, lookback_days: 30, question: "Were any enforcement actions or penalties announced against banks?"}
+      - {id: financial-regulation.stage, label: Stage, lookback_days: 30, question: "Is each item a signal, consultation, proposal or enacted rule?"}
+
+  - applies_to: {type: topic, subject: enforcement}
+    questions:
+      - {id: enforcement.banks, label: Against banks, lookback_days: 30, question: "Were any enforcement actions or penalties announced against banks?"}
 
   - applies_to: {type: entity, kind: bank}
     questions:

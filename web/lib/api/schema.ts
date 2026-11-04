@@ -4360,7 +4360,7 @@ export interface components {
              * Icon
              * @description Topic glyph from the web icon library
              */
-            icon?: ("landmark" | "server" | "shield" | "network" | "scale" | "trending-up" | "briefcase" | "banknote" | "umbrella" | "building-2") | null;
+            icon?: ("activity" | "arrow-left-right" | "ban" | "banknote" | "blocks" | "brain-circuit" | "briefcase" | "building-2" | "chart-pie" | "clipboard-check" | "credit-card" | "fuel" | "gauge" | "gavel" | "gem" | "globe" | "handshake" | "landmark" | "leaf" | "life-buoy" | "network" | "percent" | "piggy-bank" | "scale" | "scroll-text" | "server" | "shield" | "siren" | "trending-up" | "umbrella") | null;
             /** Aliases */
             aliases: string[];
             /**
@@ -4601,7 +4601,7 @@ export interface components {
              * Icon
              * @description Topic glyph from the web icon library
              */
-            icon?: ("landmark" | "server" | "shield" | "network" | "scale" | "trending-up" | "briefcase" | "banknote" | "umbrella" | "building-2") | null;
+            icon?: ("activity" | "arrow-left-right" | "ban" | "banknote" | "blocks" | "brain-circuit" | "briefcase" | "building-2" | "chart-pie" | "clipboard-check" | "credit-card" | "fuel" | "gauge" | "gavel" | "gem" | "globe" | "handshake" | "landmark" | "leaf" | "life-buoy" | "network" | "percent" | "piggy-bank" | "scale" | "scroll-text" | "server" | "shield" | "siren" | "trending-up" | "umbrella") | null;
         };
         /** SubjectSummary */
         SubjectSummary: {
@@ -4630,7 +4630,7 @@ export interface components {
              * Icon
              * @description Topic glyph from the web icon library
              */
-            icon?: ("landmark" | "server" | "shield" | "network" | "scale" | "trending-up" | "briefcase" | "banknote" | "umbrella" | "building-2") | null;
+            icon?: ("activity" | "arrow-left-right" | "ban" | "banknote" | "blocks" | "brain-circuit" | "briefcase" | "building-2" | "chart-pie" | "clipboard-check" | "credit-card" | "fuel" | "gauge" | "gavel" | "gem" | "globe" | "handshake" | "landmark" | "leaf" | "life-buoy" | "network" | "percent" | "piggy-bank" | "scale" | "scroll-text" | "server" | "shield" | "siren" | "trending-up" | "umbrella") | null;
             /** Aliases */
             aliases: string[];
             /**

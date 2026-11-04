@@ -446,8 +446,8 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       await expect(page.locator(".tr-cited .badge")).toHaveText(cited.map((c) => inFeed.get(c.development.id) ?? c.development.priority));
 
       // A topic links to nothing: no Related tab, and its URL lands on the Overview.
-      await page.goto("/monitors/banking-regulation/related");
-      await expect(page).toHaveURL(/\/monitors\/banking-regulation$/);
+      await page.goto("/monitors/financial-regulation/related");
+      await expect(page).toHaveURL(/\/monitors\/financial-regulation$/);
       await expect(tabs.getByRole("link")).toHaveText(["Overview", "Developments", "Data"]);
     });
 

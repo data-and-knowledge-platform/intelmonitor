@@ -45,21 +45,14 @@ PRESETS: list[tuple[str, str, Role]] = [
 ]
 
 BANKS = ["dbs", "ocbc", "uob"]
-TCRD_TOPICS = ["tech-outages", "cyber-threats", "third-party-risk"]
-FMD_TOPICS = [
-    "singapore-equities",
-    "asset-management",
-    "fixed-income-fx",
-    "insurance-risk-financing",
-    "infrastructure-finance",
-]
 
-# Groups the picker opens for each role, in order; the rest follow under More to add.
+# Groups the picker opens for each role, in order; the rest follow under More to add. Topics are
+# for every role and none is preselected: staff pick the ones they want.
 OPEN_GROUPS: dict[Role, list[str]] = {
-    "regulatory_supervisor": ["singapore-banks"],
-    "tech_cyber_supervisor": ["singapore-banks", "topics", "tech-providers", "payment-systems"],
-    "development_staff": ["topics", "exchanges"],
-    "other": ["mas-supervised"],
+    "regulatory_supervisor": ["singapore-banks", "topics"],
+    "tech_cyber_supervisor": ["singapore-banks", "tech-providers", "payment-systems", "topics"],
+    "development_staff": ["exchanges", "topics"],
+    "other": ["mas-supervised", "topics"],
 }
 DASHBOARD_NAMES: dict[Role, str] = {
     "regulatory_supervisor": "Bank supervision",
@@ -284,11 +277,10 @@ def suggestions(conn: sqlite3.Connection, role: Role | None) -> Suggestions:
         "regulatory_supervisor": lambda: BANKS,
         "tech_cyber_supervisor": lambda: [
             *BANKS,
-            *TCRD_TOPICS,
             *_used_by_banks(conn, [r.subject_id for r in by_id["tech-providers"].rows]),
             *_used_by_banks(conn, [r.subject_id for r in by_id["payment-systems"].rows]),
         ],
-        "development_staff": lambda: [*FMD_TOPICS, "sgx", "hkex"],
+        "development_staff": lambda: ["sgx", "hkex"],
         "other": lambda: [r.subject_id for r in by_id["mas-supervised"].rows],
     }[role]()
     opened = OPEN_GROUPS[role]

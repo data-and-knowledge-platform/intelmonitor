@@ -115,8 +115,7 @@ def relevance_criterion() -> str:
         "if it reports a concrete development, decision, action, statement or data point on any "
         "of these, including an institution's results, incidents, regulation, management or "
         "strategy, and an economy's markets and policy. Passing mentions, personal finance "
-        "advice, generic market wraps, and companies or topics unrelated to these are not "
-        "relevant."
+        "tips, and companies or topics unrelated to these are not relevant."
     )
 
 

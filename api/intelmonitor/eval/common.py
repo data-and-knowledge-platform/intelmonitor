@@ -45,7 +45,7 @@ EXPOSURE_ID = "uob/custom.exposure"
 # questions; their subjects are parked and groups get no questions (phase1-decisions.md, S2 and
 # S3), so they are left out and their cached answers are no longer scored.
 STANDING = [
-    ("banking-regulation", "topic.new-developments"),
+    ("financial-regulation", "topic.new-developments"),
     ("mas", "central-bank.regulation"),
     ("ocbc", "bank.incidents"),
 ]

@@ -8,7 +8,7 @@
 #   series[]: one tracked figure.
 #     id             dotted id, source prefix first (sgx., hkex., mas., mas_ams., hkma., adb.)
 #     name           human label shown on the Data tab
-#     subject        tracked subject id: sgx | hkex | singapore-equities | asset-management | fixed-income-fx
+#     subject        tracked subject id: sgx | hkex | capital-markets-equities | asset-wealth-management | fixed-income-credit | fx-reserves
 #     unit           unit as published (SGD m = S$ million, HKD m = HK$ million, etc.)
 #     frequency      monthly | quarterly | yearly
 #     bad_direction  up | down | none: which move is unwelcome for Singapore's markets (peers are none)
@@ -1221,7 +1221,7 @@ series:
     quote: Month-end figures Sep 2026 Sep 2025 End 2025 / Total market capitalisation ($Bil.) 45,480.4 49,853.5 47,392.5
 - id: mas_ams.aum
   name: Singapore assets under management
-  subject: asset-management
+  subject: asset-wealth-management
   unit: SGD bn
   frequency: yearly
   bad_direction: down
@@ -1249,7 +1249,7 @@ series:
     quote: 'Singapore’s AUM grew by 10% to reach S$6.7 trillion (US$5.2 trillion) on the back of robust market performance and net inflows. [Chart 3: Assets under Management, S$ billion, bar labels 2020-2025: 4,654 5,415 4,909 5,407 6,067 6,680]'
 - id: mas_ams.net_inflows
   name: Singapore net AUM inflows
-  subject: asset-management
+  subject: asset-wealth-management
   unit: SGD bn
   frequency: yearly
   bad_direction: down
@@ -1277,7 +1277,7 @@ series:
     quote: 'Singapore’s net inflows grew by 29% year-on-year in 2025. [Chart 4: Net AUM Inflows, S$ billion, bar labels 2020-2025: 387 448 435 193 290 376]'
 - id: mas_ams.licensed_fmcs
   name: Licensed fund management companies in Singapore
-  subject: asset-management
+  subject: asset-wealth-management
   unit: count
   frequency: yearly
   bad_direction: down
@@ -1289,7 +1289,7 @@ series:
     quote: The total number of licensed fund management companies in Singapore reached 1,320, with a net increase of 22 new fund management companies set up in Singapore as at December 2025.
 - id: mas_ams.aum_sourced_outside_sg_pct
   name: Share of Singapore AUM sourced from outside Singapore
-  subject: asset-management
+  subject: asset-wealth-management
   unit: percent
   frequency: yearly
   bad_direction: down
@@ -1301,7 +1301,7 @@ series:
     quote: 76% of AUM is sourced from outside Singapore and 88% of total AUM is invested globally.
 - id: mas_ams.aum_sourced_apac_ex_sg_pct
   name: Share of Singapore AUM sourced from Asia Pacific ex-Singapore
-  subject: asset-management
+  subject: asset-wealth-management
   unit: percent
   frequency: yearly
   bad_direction: down
@@ -1313,7 +1313,7 @@ series:
     quote: '[Chart 1: Singapore’s AUM – Sources of Funds, segment 39%, legend Asia Pacific ex-Singapore]'
 - id: mas_ams.aum_sourced_north_america_pct
   name: Share of Singapore AUM sourced from North America
-  subject: asset-management
+  subject: asset-wealth-management
   unit: percent
   frequency: yearly
   bad_direction: down
@@ -1325,7 +1325,7 @@ series:
     quote: '[Chart 1: Singapore’s AUM – Sources of Funds, segment 15%, legend North America]'
 - id: mas_ams.aum_sourced_europe_pct
   name: Share of Singapore AUM sourced from Europe
-  subject: asset-management
+  subject: asset-wealth-management
   unit: percent
   frequency: yearly
   bad_direction: down
@@ -1337,7 +1337,7 @@ series:
     quote: '[Chart 1: Singapore’s AUM – Sources of Funds, segment 12%, legend Europe]'
 - id: mas_ams.aum_invested_outside_sg_pct
   name: Share of Singapore AUM invested outside Singapore
-  subject: asset-management
+  subject: asset-wealth-management
   unit: percent
   frequency: yearly
   bad_direction: down
@@ -1349,7 +1349,7 @@ series:
     quote: 76% of AUM is sourced from outside Singapore and 88% of total AUM is invested globally.
 - id: mas_ams.aum_invested_apac_ex_sg_pct
   name: Share of Singapore AUM invested in Asia Pacific ex-Singapore
-  subject: asset-management
+  subject: asset-wealth-management
   unit: percent
   frequency: yearly
   bad_direction: down
@@ -1361,7 +1361,7 @@ series:
     quote: '[Chart 2: Singapore’s AUM – Investments of Funds, segment 40%, legend Asia Pacific ex-Singapore]'
 - id: mas.eqdp_batch_placement
   name: MAS Equity Market Development Programme placement per batch (period = announcement month)
-  subject: singapore-equities
+  subject: capital-markets-equities
   unit: SGD bn
   frequency: monthly
   bad_direction: none
@@ -1381,7 +1381,7 @@ series:
     quote: MAS will place S$1.45 billion with the third batch of five EQDP asset managers.
 - id: mas.eqdp_total_allocation
   name: MAS EQDP cumulative allocation to appointed asset managers
-  subject: singapore-equities
+  subject: capital-markets-equities
   unit: SGD bn
   frequency: monthly
   bad_direction: down
@@ -1393,7 +1393,7 @@ series:
     quote: MAS will place S$1.45 billion with the appointed managers, bringing the total allocation under the EQDP to S$5.4 billion.
 - id: mas.fx_adtv
   name: Singapore FX average daily trading volume (BIS Triennial Survey, April of survey year)
-  subject: fixed-income-fx
+  subject: fx-reserves
   unit: USD bn
   frequency: yearly
   bad_direction: down
@@ -1405,7 +1405,7 @@ series:
     quote: The Monetary Authority of Singapore (MAS) announced today that Singapore’s foreign exchange (FX) average daily trading volumes (ADTV) rose to US$1.485 trillion in April 2025, increasing by 60% from April 2022.
 - id: mas.fx_global_share
   name: Singapore share of global FX turnover (BIS Triennial Survey, April of survey year)
-  subject: fixed-income-fx
+  subject: fx-reserves
   unit: percent
   frequency: yearly
   bad_direction: down
@@ -1421,7 +1421,7 @@ series:
     quote: Singapore strengthened its position as the third largest FX centre in the world, after the UK and the US, with its share of global FX volumes rising to 11.8% in April 2025, from 9.5% in April 2022.
 - id: hkma.fx_adt
   name: Hong Kong FX average daily turnover (BIS Triennial Survey, April of survey year)
-  subject: fixed-income-fx
+  subject: fx-reserves
   unit: USD bn
   frequency: yearly
   bad_direction: none
@@ -1437,7 +1437,7 @@ series:
     quote: The average daily turnover of foreign exchange transactions in Hong Kong increased by 27.2% to US$883.1 billion in April 2025 from US$694.4 billion in April 2022.
 - id: mas.corp_debt_issuance
   name: New debt issuance arranged by financial institutions in Singapore (SGD and non-SGD)
-  subject: fixed-income-fx
+  subject: fixed-income-credit
   unit: SGD bn
   frequency: yearly
   bad_direction: down
@@ -1453,7 +1453,7 @@ series:
     quote: New debt issuance increased 10% YoY to SGD 339 billion in 2025
 - id: mas.corp_debt_outstanding
   name: Total outstanding debt arranged by financial institutions in Singapore
-  subject: fixed-income-fx
+  subject: fixed-income-credit
   unit: SGD bn
   frequency: yearly
   bad_direction: down
@@ -1469,7 +1469,7 @@ series:
     quote: Total outstanding debt arranged by financial institutions in Singapore registered a 6.8% YoY increase to SGD 659 billion
 - id: mas.sg_bond_issuance_usd
   name: Singapore long-term bond issuance, SGD and non-SGD (Dealogic, converted to USD)
-  subject: fixed-income-fx
+  subject: fixed-income-credit
   unit: USD bn
   frequency: yearly
   bad_direction: down
@@ -1485,7 +1485,7 @@ series:
     quote: Singapore's bond market issuance grew 21.8% YoY in 2025, achieving a record USD 95 billion in issuance volume. This exceeded the previous high of USD 77 billion achieved in 2023.
 - id: mas.covered_bond_issuance
   name: Singapore covered bond issuance
-  subject: fixed-income-fx
+  subject: fixed-income-credit
   unit: SGD bn
   frequency: yearly
   bad_direction: down
@@ -1497,7 +1497,7 @@ series:
     quote: Covered bond volumes hit a record SGD 11 billion in 2025, with total outstanding size of the market reaching SGD 29.8 billion
 - id: adb.sg_lcy_bonds_outstanding
   name: Singapore local currency bonds outstanding (incl. MAS bills)
-  subject: fixed-income-fx
+  subject: fixed-income-credit
   unit: SGD bn
   frequency: quarterly
   bad_direction: down
@@ -1525,7 +1525,7 @@ series:
     quote: Singapore’s LCY debt securities outstanding were broadly stable, settling at SGD912.4 billion at the end of the second quarter (Q2) of 2026, edging up 0.2% quarter-on-quarter (q-o-q)
 - id: adb.sg_corp_bond_issuance
   name: Singapore LCY corporate bond issuance (AsianBondsOnline estimates)
-  subject: fixed-income-fx
+  subject: fixed-income-credit
   unit: SGD bn
   frequency: quarterly
   bad_direction: down
@@ -1542,7 +1542,7 @@ series:
 tickers:
 - ticker: ^STI
   name: Straits Times Index
-  subject: singapore-equities
+  subject: capital-markets-equities
 - ticker: ^HSI
   name: Hang Seng Index
   subject: hkex
@@ -1551,7 +1551,7 @@ tickers:
   subject: hkex
 - ticker: SGD=X
   name: USD/SGD exchange rate
-  subject: fixed-income-fx
+  subject: fixed-income-credit
 - ticker: S68.SI
   name: Singapore Exchange Ltd share price
   subject: sgx
@@ -1560,13 +1560,13 @@ tickers:
   subject: hkex
 - ticker: ^KLSE
   name: FTSE Bursa Malaysia KLCI
-  subject: singapore-equities
+  subject: capital-markets-equities
 - ticker: ^SET.BK
   name: SET Index (Thailand)
-  subject: singapore-equities
+  subject: capital-markets-equities
 - ticker: ^JKSE
   name: Jakarta Composite Index
-  subject: singapore-equities
+  subject: capital-markets-equities
 gaps:
 - 'sgx.*: 2025-05 missing. The May 2025 SGX monthly statistics report was not found on links.sgx.com; the 18-month window otherwise runs 2025-03 to 2026-08 (2025-03, 2025-04 and 2025-06 come from the prior-year column of the 2026 reports).'
 - 'sgx.*: 2026-09 not yet published (SGX releases around the 8th to 10th of the following month).'

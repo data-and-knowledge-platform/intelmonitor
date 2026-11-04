@@ -94,7 +94,7 @@ series:
     source: {kind: mas, table: i12a, field: overall}
     subjects:
       primary: [singapore]
-      context: [dbs, ocbc, uob, mas, banking-regulation]
+      context: [dbs, ocbc, uob, mas, banking-lending]
   - id: mas.npl.construction
     name: NPL ratio, construction
     group: Non-performing loans
@@ -107,7 +107,7 @@ series:
     source: {kind: mas, table: i12a, field: bc_construction}
     subjects:
       primary: [singapore]
-      context: [dbs, ocbc, uob, mas, banking-regulation]
+      context: [dbs, ocbc, uob, mas, banking-lending]
   - id: mas.npl.transport
     name: NPL ratio, transport and storage
     group: Non-performing loans
@@ -120,7 +120,7 @@ series:
     source: {kind: mas, table: i12a, field: tsc_trns_strg}
     subjects:
       primary: [singapore]
-      context: [dbs, ocbc, uob, mas, banking-regulation]
+      context: [dbs, ocbc, uob, mas, banking-lending]
   - id: mas.npl.manufacturing
     name: NPL ratio, manufacturing
     group: Non-performing loans
@@ -133,7 +133,7 @@ series:
     source: {kind: mas, table: i12a, field: manufactring}
     subjects:
       primary: [singapore]
-      context: [dbs, ocbc, uob, mas, banking-regulation]
+      context: [dbs, ocbc, uob, mas, banking-lending]
   - id: mas.npl.wholesale
     name: NPL ratio, wholesale trade
     group: Non-performing loans
@@ -146,7 +146,7 @@ series:
     source: {kind: mas, table: i12a, field: gc_whsl_trd}
     subjects:
       primary: [singapore]
-      context: [dbs, ocbc, uob, mas, banking-regulation]
+      context: [dbs, ocbc, uob, mas, banking-lending]
 
   # MAS I.5B: loans and advances to non-residents by industry, S$ million, monthly.
   - id: mas.nrl.total
@@ -247,7 +247,7 @@ series:
     source: {kind: mas, table: fx, field: usd_sgd}
     subjects:
       primary: [singapore]
-      context: [mas, fixed-income-fx]
+      context: [mas, fx-reserves]
   - id: fx.sgd.myr
     name: SGD per Malaysian ringgit
     group: Exchange rates
@@ -342,7 +342,7 @@ series:
     source: {kind: mas, table: sora, field: sora}
     subjects:
       primary: [mas]
-      context: [singapore, fixed-income-fx, dbs, ocbc, uob]
+      context: [singapore, monetary-policy, dbs, ocbc, uob]
   - id: mas.sora_3m
     name: Compounded SORA, 3 months
     group: SORA
@@ -356,7 +356,7 @@ series:
     source: {kind: mas, table: sora, field: comp_sora_3m}
     subjects:
       primary: [mas]
-      context: [singapore, fixed-income-fx, dbs, ocbc, uob]
+      context: [singapore, monetary-policy, dbs, ocbc, uob]
 
   # FRED: policy rates and risk sentiment, for fixed income and FX.
   - id: fred.fed_funds
@@ -369,7 +369,7 @@ series:
     source_url: https://fred.stlouisfed.org/series/DFF
     source: {kind: fred, series: DFF}
     subjects:
-      primary: [fixed-income-fx]
+      primary: [monetary-policy]
       context: [dbs, ocbc, uob]
   - id: fred.ecb_deposit
     name: ECB deposit facility rate
@@ -381,7 +381,7 @@ series:
     source_url: https://fred.stlouisfed.org/series/ECBDFR
     source: {kind: fred, series: ECBDFR}
     subjects:
-      primary: [fixed-income-fx]
+      primary: [monetary-policy]
   - id: fred.us10y
     name: US 10-year Treasury yield
     group: Rates
@@ -393,8 +393,8 @@ series:
     source_url: https://fred.stlouisfed.org/series/DGS10
     source: {kind: fred, series: DGS10}
     subjects:
-      primary: [fixed-income-fx]
-      context: [infrastructure-finance]
+      primary: [fixed-income-credit]
+      context: [fiscal-policy]
   - id: fred.us_hy_spread
     name: US high-yield spread
     group: Credit spreads
@@ -406,7 +406,7 @@ series:
     source_url: https://fred.stlouisfed.org/series/BAMLH0A0HYM2
     source: {kind: fred, series: BAMLH0A0HYM2}
     subjects:
-      primary: [fixed-income-fx]
+      primary: [fixed-income-credit]
   - id: fred.vix
     name: VIX
     scope: market
@@ -417,8 +417,8 @@ series:
     source_url: https://fred.stlouisfed.org/series/VIXCLS
     source: {kind: fred, series: VIXCLS}
     subjects:
-      primary: [fixed-income-fx]
-      context: [singapore-equities]
+      primary: [financial-stability]
+      context: [capital-markets-equities]
 
   # FRED: oil, Asian credit and the dollar, market-wide stress the region's banks feel.
   - id: fred.brent
@@ -432,7 +432,7 @@ series:
     source_url: https://fred.stlouisfed.org/series/DCOILBRENTEU
     source: {kind: fred, series: DCOILBRENTEU, lag_days: 7}
     subjects:
-      context: [fixed-income-fx, infrastructure-finance]
+      context: [commodities-energy]
   - id: fred.asia_em_corporate_spread
     name: Asia emerging markets corporate spread
     group: Credit spreads
@@ -444,7 +444,7 @@ series:
     source_url: https://fred.stlouisfed.org/series/BAMLEMRACRPIASIAOAS
     source: {kind: fred, series: BAMLEMRACRPIASIAOAS}
     subjects:
-      primary: [fixed-income-fx]
+      primary: [fixed-income-credit]
       context: [singapore, dbs, ocbc, uob]
   - id: fred.usd_broad
     name: US dollar broad index
@@ -456,7 +456,7 @@ series:
     source_url: https://fred.stlouisfed.org/series/DTWEXBGS
     source: {kind: fred, series: DTWEXBGS, lag_days: 10}
     subjects:
-      context: [fixed-income-fx]
+      context: [fx-reserves]
 
   # Yahoo Finance daily closes: listed banks and exchanges, and the region's equity indices. Ids
   # name the exchange (eq.<exchange>.<subject>), so a detector compares each share with its home
@@ -510,7 +510,7 @@ series:
     source: {kind: yahoo, symbol: "S68.SI"}
     subjects:
       primary: [sgx]
-      context: [singapore-equities]
+      context: [capital-markets-equities]
   - id: eq.hkex.hkex
     name: HKEX share price
     short_name: HKEX
@@ -535,7 +535,7 @@ series:
     source_url: https://finance.yahoo.com/quote/%5ESTI
     source: {kind: yahoo, symbol: "^STI"}
     subjects:
-      primary: [singapore, singapore-equities]
+      primary: [singapore, capital-markets-equities]
       context: [sgx, mas, dbs, ocbc, uob]
   - id: idx.klci
     name: FTSE Bursa Malaysia KLCI
@@ -549,7 +549,7 @@ series:
     source: {kind: yahoo, symbol: "^KLSE"}
     subjects:
       primary: [malaysia]
-      context: [bnm, singapore-equities]
+      context: [bnm, capital-markets-equities]
   - id: idx.set50
     name: SET50 (ThaiDEX SET50 ETF)
     group: Equity indices
@@ -562,7 +562,7 @@ series:
     source: {kind: yahoo, symbol: "TDEX.BK"}
     subjects:
       primary: [thailand]
-      context: [singapore-equities]
+      context: [capital-markets-equities]
   - id: idx.jci
     name: Jakarta Composite Index
     group: Equity indices
@@ -575,7 +575,7 @@ series:
     source: {kind: yahoo, symbol: "^JKSE"}
     subjects:
       primary: [indonesia]
-      context: [singapore-equities]
+      context: [capital-markets-equities]
   - id: idx.vnm
     name: Vietnamese equities (VanEck Vietnam ETF)
     group: Equity indices
@@ -600,7 +600,7 @@ series:
     source: {kind: yahoo, symbol: "^HSI"}
     subjects:
       primary: [hong-kong]
-      context: [hkex, hkma, singapore-equities]
+      context: [hkex, hkma, capital-markets-equities]
   - id: idx.hscei
     name: Hang Seng China Enterprises Index
     group: Equity indices
@@ -642,7 +642,7 @@ series:
     source_url: https://links.sgx.com/FileOpen/SGX%20Monthly%20Statistics%20Report%20Update_Aug%202026.ashx?App=Announcement&FileID=903915
     source: {kind: manual, label: "SGX monthly statistics", lag_days: 10}
     subjects:
-      primary: [sgx, singapore-equities]
+      primary: [sgx, capital-markets-equities]
   - id: sgx.securities_turnover
     name: SGX securities turnover in the month
     short_name: Securities turnover in the month
@@ -655,7 +655,7 @@ series:
     source_url: https://links.sgx.com/FileOpen/SGX%20Monthly%20Statistics%20Report%20Update_Aug%202026.ashx?App=Announcement&FileID=903915
     source: {kind: manual, label: "SGX monthly statistics", lag_days: 10}
     subjects:
-      primary: [sgx, singapore-equities]
+      primary: [sgx, capital-markets-equities]
   - id: sgx.derivatives_dav
     name: SGX derivatives daily average volume
     short_name: Derivatives daily average volume
@@ -669,7 +669,7 @@ series:
     source: {kind: manual, label: "SGX monthly statistics", lag_days: 10}
     subjects:
       primary: [sgx]
-      context: [fixed-income-fx]
+      context: [capital-markets-equities]
   - id: sgx.market_cap
     name: SGX market capitalisation
     short_name: Market capitalisation
@@ -682,7 +682,7 @@ series:
     source_url: https://links.sgx.com/FileOpen/SGX%20Monthly%20Statistics%20Report%20Update_Aug%202026.ashx?App=Announcement&FileID=903915
     source: {kind: manual, label: "SGX monthly statistics", lag_days: 10}
     subjects:
-      primary: [sgx, singapore-equities]
+      primary: [sgx, capital-markets-equities]
   - id: sgx.listed_securities
     name: SGX listed securities
     short_name: Listed securities
@@ -695,7 +695,7 @@ series:
     source_url: https://links.sgx.com/FileOpen/SGX%20Monthly%20Statistics%20Report%20Update_Aug%202026.ashx?App=Announcement&FileID=903915
     source: {kind: manual, label: "SGX monthly statistics", lag_days: 10}
     subjects:
-      primary: [sgx, singapore-equities]
+      primary: [sgx, capital-markets-equities]
   - id: sgx.ipos_mainboard
     name: SGX Mainboard IPOs in the month
     short_name: Mainboard IPOs
@@ -708,7 +708,7 @@ series:
     source_url: https://links.sgx.com/FileOpen/SGX%20Monthly%20Statistics%20Report%20Update_Aug%202026.ashx?App=Announcement&FileID=903915
     source: {kind: manual, label: "SGX monthly statistics", lag_days: 10}
     subjects:
-      primary: [sgx, singapore-equities]
+      primary: [sgx, capital-markets-equities]
   - id: sgx.ipos_catalist
     name: SGX Catalist IPOs in the month
     short_name: Catalist IPOs
@@ -721,7 +721,7 @@ series:
     source_url: https://links.sgx.com/FileOpen/SGX%20Monthly%20Statistics%20Report%20Update_Aug%202026.ashx?App=Announcement&FileID=903915
     source: {kind: manual, label: "SGX monthly statistics", lag_days: 10}
     subjects:
-      primary: [sgx, singapore-equities]
+      primary: [sgx, capital-markets-equities]
   - id: sgx.ipo_funds_mainboard
     name: SGX Mainboard IPO and RTO funds raised
     short_name: Mainboard IPO and RTO funds raised
@@ -734,7 +734,7 @@ series:
     source_url: https://links.sgx.com/FileOpen/SGX%20Monthly%20Statistics%20Report%20Update_Aug%202026.ashx?App=Announcement&FileID=903915
     source: {kind: manual, label: "SGX monthly statistics", lag_days: 10}
     subjects:
-      primary: [sgx, singapore-equities]
+      primary: [sgx, capital-markets-equities]
   - id: sgx.ipo_funds_catalist
     name: SGX Catalist IPO and RTO funds raised
     short_name: Catalist IPO and RTO funds raised
@@ -747,7 +747,7 @@ series:
     source_url: https://links.sgx.com/FileOpen/SGX%20Monthly%20Statistics%20Report%20Update_Aug%202026.ashx?App=Announcement&FileID=903915
     source: {kind: manual, label: "SGX monthly statistics", lag_days: 10}
     subjects:
-      primary: [sgx, singapore-equities]
+      primary: [sgx, capital-markets-equities]
   - id: sgx.delistings_mainboard
     name: SGX Mainboard delistings in the month
     short_name: Mainboard delistings
@@ -760,7 +760,7 @@ series:
     source_url: https://links.sgx.com/FileOpen/SGX%20Monthly%20Statistics%20Report%20Update_Aug%202026.ashx?App=Announcement&FileID=903915
     source: {kind: manual, label: "SGX monthly statistics", lag_days: 10}
     subjects:
-      primary: [sgx, singapore-equities]
+      primary: [sgx, capital-markets-equities]
   - id: sgx.delistings_catalist
     name: SGX Catalist delistings in the month
     short_name: Catalist delistings
@@ -773,7 +773,7 @@ series:
     source_url: https://links.sgx.com/FileOpen/SGX%20Monthly%20Statistics%20Report%20Update_Aug%202026.ashx?App=Announcement&FileID=903915
     source: {kind: manual, label: "SGX monthly statistics", lag_days: 10}
     subjects:
-      primary: [sgx, singapore-equities]
+      primary: [sgx, capital-markets-equities]
   - id: sgx.secondary_fundraising_ytd
     name: SGX secondary fundraising, year to date
     short_name: Secondary fundraising, year to date
@@ -787,7 +787,7 @@ series:
     source_url: https://mondovisione.com/news/sgx-group-reports-resilient-multi-asset-performance-for-august-2026910/
     source: {kind: manual, label: "SGX monthly news release", lag_days: 10}
     subjects:
-      primary: [sgx, singapore-equities]
+      primary: [sgx, capital-markets-equities]
   - id: sgx.new_bond_listings_funds
     name: SGX new bond listings, funds raised
     short_name: New bond listings, funds raised
@@ -800,7 +800,7 @@ series:
     source_url: https://links.sgx.com/FileOpen/SGX%20Monthly%20Statistics%20Report%20Update_Aug%202026.ashx?App=Announcement&FileID=903915
     source: {kind: manual, label: "SGX monthly statistics", lag_days: 10}
     subjects:
-      primary: [sgx, fixed-income-fx]
+      primary: [sgx, fixed-income-credit]
   - id: hkex.adt
     name: HKEX securities average daily turnover
     short_name: Securities average daily turnover
@@ -814,7 +814,7 @@ series:
     source: {kind: manual, label: "HKEX market highlights", lag_days: 5}
     subjects:
       primary: [hkex]
-      context: [hong-kong, singapore-equities]
+      context: [hong-kong, capital-markets-equities]
   - id: hkex.market_cap
     name: HKEX market capitalisation
     short_name: Market capitalisation
@@ -828,7 +828,7 @@ series:
     source: {kind: manual, label: "HKEX market highlights", lag_days: 5}
     subjects:
       primary: [hkex]
-      context: [hong-kong, singapore-equities]
+      context: [hong-kong, capital-markets-equities]
   - id: hkex.newly_listed
     name: HKEX newly listed companies in the month
     short_name: Newly listed companies
@@ -842,7 +842,7 @@ series:
     source: {kind: manual, label: "HKEX market highlights", lag_days: 5}
     subjects:
       primary: [hkex]
-      context: [hong-kong, singapore-equities]
+      context: [hong-kong, capital-markets-equities]
   - id: hkex.ipo_funds_ytd
     name: HKEX IPO funds raised, year to date
     short_name: IPO funds raised, year to date
@@ -857,7 +857,7 @@ series:
     source: {kind: manual, label: "HKEX market highlights", lag_days: 5}
     subjects:
       primary: [hkex]
-      context: [hong-kong, singapore-equities]
+      context: [hong-kong, capital-markets-equities]
   - id: mas_ams.aum
     name: Singapore assets under management
     short_name: Assets under management
@@ -870,7 +870,7 @@ series:
     source_url: https://www.mas.gov.sg/-/media/mas-media-library/publications/singapore-asset-management-survey/asset-management-survey-report-2025.pdf
     source: {kind: manual, label: "MAS asset management survey", lag_days: 209}
     subjects:
-      primary: [asset-management]
+      primary: [asset-wealth-management]
   - id: mas_ams.net_inflows
     name: Singapore net AUM inflows
     short_name: Net inflows
@@ -883,7 +883,7 @@ series:
     source_url: https://www.mas.gov.sg/-/media/mas-media-library/publications/singapore-asset-management-survey/asset-management-survey-report-2025.pdf
     source: {kind: manual, label: "MAS asset management survey", lag_days: 209}
     subjects:
-      primary: [asset-management]
+      primary: [asset-wealth-management]
   - id: mas_ams.licensed_fmcs
     name: Licensed fund management companies in Singapore
     short_name: Licensed fund management companies
@@ -896,7 +896,7 @@ series:
     source_url: https://www.mas.gov.sg/-/media/mas-media-library/publications/singapore-asset-management-survey/asset-management-survey-report-2025.pdf
     source: {kind: manual, label: "MAS asset management survey", lag_days: 209}
     subjects:
-      primary: [asset-management]
+      primary: [asset-wealth-management]
   - id: mas_ams.aum_sourced_outside_sg_pct
     name: Singapore AUM sourced from outside Singapore
     short_name: Sourced from outside Singapore
@@ -909,7 +909,7 @@ series:
     source_url: https://www.mas.gov.sg/-/media/mas-media-library/publications/singapore-asset-management-survey/asset-management-survey-report-2025.pdf
     source: {kind: manual, label: "MAS asset management survey", lag_days: 209}
     subjects:
-      primary: [asset-management]
+      primary: [asset-wealth-management]
   - id: mas_ams.aum_sourced_apac_ex_sg_pct
     name: Singapore AUM sourced from Asia Pacific ex-Singapore
     short_name: Sourced from Asia Pacific ex-Singapore
@@ -922,7 +922,7 @@ series:
     source_url: https://www.mas.gov.sg/-/media/mas-media-library/publications/singapore-asset-management-survey/asset-management-survey-report-2025.pdf
     source: {kind: manual, label: "MAS asset management survey", lag_days: 209}
     subjects:
-      primary: [asset-management]
+      primary: [asset-wealth-management]
   - id: mas_ams.aum_sourced_north_america_pct
     name: Singapore AUM sourced from North America
     short_name: Sourced from North America
@@ -935,7 +935,7 @@ series:
     source_url: https://www.mas.gov.sg/-/media/mas-media-library/publications/singapore-asset-management-survey/asset-management-survey-report-2025.pdf
     source: {kind: manual, label: "MAS asset management survey", lag_days: 209}
     subjects:
-      primary: [asset-management]
+      primary: [asset-wealth-management]
   - id: mas_ams.aum_sourced_europe_pct
     name: Singapore AUM sourced from Europe
     short_name: Sourced from Europe
@@ -948,7 +948,7 @@ series:
     source_url: https://www.mas.gov.sg/-/media/mas-media-library/publications/singapore-asset-management-survey/asset-management-survey-report-2025.pdf
     source: {kind: manual, label: "MAS asset management survey", lag_days: 209}
     subjects:
-      primary: [asset-management]
+      primary: [asset-wealth-management]
   - id: mas_ams.aum_invested_outside_sg_pct
     name: Singapore AUM invested outside Singapore
     short_name: Invested outside Singapore
@@ -961,7 +961,7 @@ series:
     source_url: https://www.mas.gov.sg/-/media/mas-media-library/publications/singapore-asset-management-survey/asset-management-survey-report-2025.pdf
     source: {kind: manual, label: "MAS asset management survey", lag_days: 209}
     subjects:
-      primary: [asset-management]
+      primary: [asset-wealth-management]
   - id: mas_ams.aum_invested_apac_ex_sg_pct
     name: Singapore AUM invested in Asia Pacific ex-Singapore
     short_name: Invested in Asia Pacific ex-Singapore
@@ -974,7 +974,7 @@ series:
     source_url: https://www.mas.gov.sg/-/media/mas-media-library/publications/singapore-asset-management-survey/asset-management-survey-report-2025.pdf
     source: {kind: manual, label: "MAS asset management survey", lag_days: 209}
     subjects:
-      primary: [asset-management]
+      primary: [asset-wealth-management]
   - id: mas.eqdp_batch_placement
     name: EQDP placement per batch of asset managers
     short_name: Placement per batch
@@ -987,8 +987,8 @@ series:
     source_url: https://www.mas.gov.sg/news/media-releases/2026/mas-appoints-third-batch-of-eqdp-asset-managers
     source: {kind: manual, label: "MAS media releases", lag_days: 0}
     subjects:
-      primary: [singapore-equities]
-      context: [asset-management, mas]
+      primary: [capital-markets-equities]
+      context: [asset-wealth-management, mas]
   - id: mas.eqdp_total_allocation
     name: EQDP total allocation to asset managers
     short_name: Total allocation
@@ -1001,8 +1001,8 @@ series:
     source_url: https://www.mas.gov.sg/news/media-releases/2026/mas-appoints-third-batch-of-eqdp-asset-managers
     source: {kind: manual, label: "MAS media releases", lag_days: 0}
     subjects:
-      primary: [singapore-equities]
-      context: [asset-management, mas]
+      primary: [capital-markets-equities]
+      context: [asset-wealth-management, mas]
   - id: mas.fx_adtv
     name: Singapore FX average daily turnover
     short_name: Singapore, average daily
@@ -1015,7 +1015,7 @@ series:
     source_url: https://www.mas.gov.sg/news/media-releases/2025/singapore-strengthens-position-as-third-largest-global-fx-centre
     source: {kind: manual, label: "BIS FX survey (MAS)", lag_days: -92}
     subjects:
-      primary: [fixed-income-fx]
+      primary: [fx-reserves]
       context: [singapore]
   - id: mas.fx_global_share
     name: Singapore share of global FX turnover
@@ -1029,7 +1029,7 @@ series:
     source_url: https://www.mas.gov.sg/news/media-releases/2025/singapore-strengthens-position-as-third-largest-global-fx-centre
     source: {kind: manual, label: "BIS FX survey (MAS)", lag_days: -92}
     subjects:
-      primary: [fixed-income-fx]
+      primary: [fx-reserves]
       context: [singapore]
   - id: hkma.fx_adt
     name: Hong Kong FX average daily turnover
@@ -1043,7 +1043,7 @@ series:
     source_url: https://www.hkma.gov.hk/eng/news-and-media/press-releases/2025/09/20250930-9/
     source: {kind: manual, label: "BIS FX survey (HKMA)", lag_days: -92}
     subjects:
-      primary: [fixed-income-fx]
+      primary: [fx-reserves]
       context: [hong-kong]
   - id: mas.corp_debt_issuance
     name: New debt issuance arranged in Singapore
@@ -1056,7 +1056,7 @@ series:
     source_url: https://www.mas.gov.sg/-/media/mas-media-library/publications/singapore-corporate-debt-market-developments/singapore-corporate-debt-market-development-2026.pdf
     source: {kind: manual, label: "MAS corporate debt market report", lag_days: 150}
     subjects:
-      primary: [fixed-income-fx]
+      primary: [fixed-income-credit]
       context: [singapore]
   - id: mas.corp_debt_outstanding
     name: Outstanding debt arranged in Singapore
@@ -1069,7 +1069,7 @@ series:
     source_url: https://www.mas.gov.sg/-/media/mas-media-library/publications/singapore-corporate-debt-market-developments/singapore-corporate-debt-market-development-2026.pdf
     source: {kind: manual, label: "MAS corporate debt market report", lag_days: 150}
     subjects:
-      primary: [fixed-income-fx]
+      primary: [fixed-income-credit]
       context: [singapore]
   - id: mas.sg_bond_issuance_usd
     name: Singapore long-term bond issuance in USD
@@ -1083,7 +1083,7 @@ series:
     source_url: https://www.mas.gov.sg/-/media/mas-media-library/publications/singapore-corporate-debt-market-developments/singapore-corporate-debt-market-development-2026.pdf
     source: {kind: manual, label: "MAS corporate debt market report", lag_days: 150}
     subjects:
-      primary: [fixed-income-fx]
+      primary: [fixed-income-credit]
       context: [singapore]
   - id: mas.covered_bond_issuance
     name: Singapore covered bond issuance
@@ -1097,7 +1097,7 @@ series:
     source_url: https://www.mas.gov.sg/-/media/mas-media-library/publications/singapore-corporate-debt-market-developments/singapore-corporate-debt-market-development-2026.pdf
     source: {kind: manual, label: "MAS corporate debt market report", lag_days: 150}
     subjects:
-      primary: [fixed-income-fx]
+      primary: [fixed-income-credit]
       context: [singapore]
   - id: adb.sg_lcy_bonds_outstanding
     name: Singapore local currency bonds outstanding
@@ -1111,7 +1111,7 @@ series:
     source_url: https://asianbondsonline.adb.org/singapore/market_summary/sg_market_summary_202609.pdf
     source: {kind: manual, label: "ADB AsianBondsOnline", lag_days: 75}
     subjects:
-      primary: [fixed-income-fx]
+      primary: [fixed-income-credit]
       context: [singapore]
   - id: adb.sg_corp_bond_issuance
     name: Singapore local currency corporate bond issuance
@@ -1125,6 +1125,6 @@ series:
     source_url: https://asianbondsonline.adb.org/singapore/market_summary/sg_market_summary_202511.pdf
     source: {kind: manual, label: "ADB AsianBondsOnline", lag_days: 75}
     subjects:
-      primary: [fixed-income-fx]
+      primary: [fixed-income-credit]
       context: [singapore]
 
