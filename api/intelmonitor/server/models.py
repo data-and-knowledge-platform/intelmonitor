@@ -852,7 +852,10 @@ class GraphEdge(BaseModel):
     target: str
     type: LinkType
     label: str = Field(description='The link in plain words: "depends on, for cloud services"')
-    origin: str = Field(description="relationships, seed, claude or detector; jev in older runs")
+    origin: str = Field(
+        description="relationships for a stored link, claude or detector for AFFECTS (who tagged "
+        "it), table for IMPACTS; seed and jev in older runs"
+    )
     confidence: float
     relationship_id: str | None = Field(description="A stored relationship's id")
     route: str | None = Field(description="IMPACTS: the route in plain words")

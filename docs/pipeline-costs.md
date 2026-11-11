@@ -23,7 +23,7 @@ From the claude-api skill (cached 6 Oct 2026), per million tokens:
 | Model | Input | Output | Cache read | Cache write (5 min) |
 |---|---|---|---|---|
 | Claude Haiku 5.5 (`claude-haiku-5-5`) | $0.10 | $0.50 | $0.01 | $0.125 |
-| Claude Sonnet 5.5 (`claude-sonnet-5-5`) | $2.00 | $10.00 | $0.20 | $2.50 |
+| Claude Sonnet 5.5 (`claude-sonnet-5-5`) | $2.00 | $10.00 | $0.10 | $2.50 |
 
 Haiku's prices hold for prompts up to 100k tokens; every pipeline call is far below that.
 The Message Batches API takes 50% off every token, cache reads and writes included.

@@ -82,7 +82,7 @@ function ImpactRow({ impact: i }: { impact: Impact }) {
         {" · "}
         <span className={`imp-dir ${LEVEL_CLASS[i.level]}`}>{i.level}</span>
       </p>
-      <p className="imp-why">{i.link.reason}</p>
+      <p className="imp-why">{reasonFrom(i)}</p>
       <p className="meta imp-ev">
         <LinkEvidence link={i.link} />
       </p>
@@ -155,6 +155,15 @@ export function LinkEvidence({ link: l }: { link: Link }) {
 function endpointOf(i: Impact): { id: string; name: string } {
   const l = i.link;
   return l.from_id === i.subject.id ? { id: l.to_id, name: l.to_name } : { id: l.from_id, name: l.from_name };
+}
+
+/**
+ * The link's reason under the entity reached. A reason built from a share starts at its verb, written from the
+ * link's `from` end, so when the entity reached is the `to` end it gets that end's name: "OCBC holds 93.7% of
+ * Great Eastern, ...". A detail sentence stands alone.
+ */
+export function reasonFrom({ subject, link: l }: Pick<Impact, "subject" | "link">): string {
+  return l.to_id === subject.id && l.reason !== l.detail ? `${l.from_name} ${l.reason}` : l.reason;
 }
 
 /** Whether the entity reached is the link's `from` end, so the link reads from it ("DBS uses Singtel"). */

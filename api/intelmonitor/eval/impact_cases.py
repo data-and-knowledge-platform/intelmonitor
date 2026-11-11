@@ -119,9 +119,7 @@ class Case:
     links: list[Relationship]
     tagged: dict[str, Tagged]
     expected: dict[str, Expect]
-    # Every entity that gets a row must be in `expected`; `absent` names the ones the case is
-    # about, for the report.
-    absent: list[str] = field(default_factory=list[str])
+    # Every entity that gets a row must be in `expected`.
     endpoints: list[Endpoint] = field(default_factory=list[Endpoint])
     from_low: bool = False
     reason: str = ""
@@ -159,7 +157,6 @@ def cells() -> list[Case]:
                         links=[link("dbs", "depends_on", "singtel", "Weak", strength)],
                         tagged={"singtel": adverse(direct)},
                         expected=expected,
-                        absent=[] if expected else ["dbs"],
                         from_low=from_low,
                         reason=f"{PRIORITY_LABELS[direct]} by {strength} gives "
                         f"{PRIORITY_LABELS[level] if level is not None else 'nothing'}",
@@ -189,7 +186,6 @@ CASES: list[Case] = [
         links=[link("dbs", "depends_on", "singtel", "Weak", "Strong")],
         tagged={"dbs": adverse(MEDIUM)},
         expected={},
-        absent=["singtel"],
         reason="from_to is Weak, and Medium by Weak gives nothing; to_from's Strong is not read",
     ),
     Case(
@@ -265,7 +261,6 @@ CASES: list[Case] = [
         ],
         tagged={"singtel": adverse(HIGH), "dbs": adverse(HIGH)},
         expected={"ocbc": Expect("Medium", "singtel", "ocbc:depends_on:singtel", "Strong")},
-        absent=["dbs", "singtel"],
         reason="DBS and Singtel are both tagged, so neither gets a row from the other",
     ),
     Case(
@@ -273,7 +268,6 @@ CASES: list[Case] = [
         links=[link("dbs", "depends_on", "singtel", "Strong", "Strong")],
         tagged={"singtel": calm(HIGH)},
         expected={},
-        absent=["dbs"],
         reason="A High development not adverse for Singtel passes nothing",
     ),
     Case(
@@ -284,7 +278,6 @@ CASES: list[Case] = [
         ],
         tagged={"singtel": adverse(MEDIUM), "ocbc": calm(HIGH)},
         expected={"uob": Expect("Medium", "singtel", "uob:depends_on:singtel", "Strong")},
-        absent=["great-eastern"],
         reason="Adverse for Singtel only: its neighbour gets a row, OCBC's does not",
     ),
     Case(
@@ -292,7 +285,6 @@ CASES: list[Case] = [
         links=[link("dbs", "depends_on", "singtel", "Weak", "Moderate")],
         tagged={"singtel": adverse(LOW)},
         expected={},
-        absent=["dbs"],
         from_low=True,
         reason="With the switch on, Low reaches only a Strong link",
     ),
@@ -304,7 +296,6 @@ CASES: list[Case] = [
         ],
         tagged={"singtel": adverse(HIGH)},
         expected={"dbs": Expect("Medium", "singtel", DBS_SINGTEL, "Strong")},
-        absent=["ocbc"],
         reason="Singtel reaches DBS; nothing goes on from DBS to OCBC",
     ),
     Case(
@@ -316,7 +307,6 @@ CASES: list[Case] = [
         endpoints=[VENDOR],
         tagged={"singtel": adverse(HIGH)},
         expected={},
-        absent=["dbs", VENDOR.id],
         reason="An endpoint gets no row and passes nothing on",
     ),
     Case(
@@ -337,7 +327,6 @@ CASES: list[Case] = [
         endpoints=[GREATER_CHINA],
         tagged={"singapore": adverse(HIGH)},
         expected={},
-        absent=["uob"],
         reason="Singapore is not in Greater China",
     ),
     Case(
@@ -346,7 +335,6 @@ CASES: list[Case] = [
         endpoints=[GREATER_CHINA],
         tagged={"uob": adverse(HIGH)},
         expected={},
-        absent=["taiwan", "hong-kong", "mainland-china", "greater-china"],
         reason="UOB's own event does not reach the region's members through its figure",
     ),
     Case(
@@ -372,7 +360,6 @@ CASES: list[Case] = [
         ],
         tagged={"dbs": adverse(HIGH), "ocbc": adverse(HIGH)},
         expected={},
-        absent=["ocbc", "dbs", "singapore-banks"],
         reason="belongs_to_sector carries nothing, even between two entities",
     ),
     Case(
@@ -381,7 +368,6 @@ CASES: list[Case] = [
         endpoints=[VENDOR],
         tagged={"dbs": adverse(HIGH)},
         expected={},
-        absent=[VENDOR.id],
         reason="An endpoint is not a seed entity and gets no row",
     ),
     Case(
@@ -389,7 +375,6 @@ CASES: list[Case] = [
         links=[link("dbs", "depends_on", "singtel", "Strong", "Strong")],
         tagged={"banking-lending": adverse(HIGH)},
         expected={},
-        absent=["dbs", "singtel"],
         reason="A topic has no links",
     ),
 ]

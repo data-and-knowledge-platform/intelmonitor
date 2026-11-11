@@ -4,8 +4,8 @@ runs for the evaluated subjects on Sonnet 5.5, at the base run and then the scor
 scored answers see the base answers as their previous run, as in `im run`.
 
 The model is part of every call's cache key (pipeline/inference.py), so switching it globally would
-recompute extraction and routing. Instead the setting is switched only around the answer step,
-which needs no change to the pipeline code."""
+recompute screening, extraction and priority. Instead the setting is switched only around the
+answer step, which needs no change to the pipeline code."""
 
 import json
 import shutil

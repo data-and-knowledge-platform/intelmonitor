@@ -26,6 +26,7 @@
 #   reason        one line built by code: the plain-words phrase with the share and its date,
 #                 "is the controlling owner of ..." for a controlling stake with no share, else
 #                 detail
+#   controlling   holds_stake_in with no published share where the holder controls the held
 #   service       depends_on and participates_in: cloud, data_centre, payments, custody,
 #                 blockchain, distribution and the like
 #   figures[]     exposed_to only: further figures for the same entity and target (loans by
@@ -82,6 +83,7 @@ relationships:
   detail: Airwallex launched in Singapore in January 2022 after Airwallex (Singapore) Pte. Ltd. received
     its MAS major payment institution licence.
   reason: is the controlling owner of Airwallex Singapore
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -135,6 +137,7 @@ relationships:
     and financial services company.
   detail: PIMCO is a majority-owned indirect subsidiary of Allianz SE (exact stake not stated).
   reason: is the controlling owner of PIMCO
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -237,6 +240,7 @@ relationships:
   quote: Acquisition of 2C2P opens a new chapter for our payment and acquiring services.
   detail: Ant acquired 2C2P in 2022; Ant International lists it among its own milestones. Stake not published.
   reason: is the controlling owner of 2C2P
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -288,6 +292,7 @@ relationships:
   detail: Ant acquired WorldFirst in 2019; it runs Ant International's cross-border account business.
     Stake not published.
   reason: is the controlling owner of WorldFirst
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -313,6 +318,7 @@ relationships:
   quote: BlackRock (Singapore) Limited | Singapore
   detail: BlackRock (Singapore) Limited is a BlackRock subsidiary incorporated in Singapore.
   reason: is the controlling owner of BlackRock (Singapore) Limited
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -540,6 +546,7 @@ relationships:
   detail: Circle Internet Singapore Pte. Ltd., incorporated in Singapore, is a subsidiary of Circle Internet
     Group.
   reason: is the controlling owner of Circle Internet Singapore Pte. Ltd.
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -566,6 +573,7 @@ relationships:
   detail: Citigroup counts Citibank Singapore Ltd. within its Citibank bank entities; Citibank N.A. Singapore
     branch is part of the same node.
   reason: is the controlling owner of Citibank
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -647,6 +655,7 @@ relationships:
   detail: Coinbase holds its MAS major payment institution licence through Coinbase Singapore Pte. Ltd.;
     no stake is published (the Exhibit 21 list omits non-significant subsidiaries).
   reason: is the controlling owner of Coinbase Singapore Pte. Ltd.
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -676,6 +685,7 @@ relationships:
   detail: Foris Asia Pte. Ltd. issues the Crypto.com Visa Card in Singapore under its own MAS Major Payment
     Institution licence; no stake is published.
   reason: is the controlling owner of Foris Asia Pte. Ltd.
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -703,6 +713,7 @@ relationships:
   detail: Foris DAX Asia Pte. Ltd. is the Singapore entity trading as Crypto.com, licensed by MAS for
     DPT services; no stake is published.
   reason: is the controlling owner of Foris DAX Asia Pte. Ltd.
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -1010,6 +1021,7 @@ relationships:
   detail: EDBI (EDB Investments) is the investment arm for global leaders under SG Growth Capital, the
     investment platform of the Economic Development Board.
   reason: is the controlling owner of EDBI
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -1860,6 +1872,7 @@ relationships:
   detail: GPay Network (S) Pte. Ltd., the GrabPay wallet entity in Singapore, is a significant subsidiary
     of Grab Holdings Limited.
   reason: is the controlling owner of GrabPay
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -1885,6 +1898,7 @@ relationships:
     app, and Singtel - Asia’s leading communications technology group.
   detail: GXS Bank is backed by a Grab and Singtel consortium.
   reason: is the controlling owner of GXS Bank
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -2065,6 +2079,7 @@ relationships:
   detail: JPMorgan Chase Bank, N.A., whose Singapore branch is the jpmorgan-singapore node, is JPMorganChase's
     principal bank subsidiary.
   reason: is the controlling owner of JPMorgan Chase Singapore
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -2244,6 +2259,7 @@ relationships:
     Services (BCS) and NETS Solutions.
   detail: Banking Computer Services is one of the three entities in the NETS Group.
   reason: is the controlling owner of BCS
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -2633,6 +2649,7 @@ relationships:
   detail: PIMCO Asia Pte Ltd, PIMCO's Singapore entity, sits among PIMCO's operating companies in the
     Allianz group organisation chart.
   reason: is the controlling owner of PIMCO Asia Pte Ltd
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -2718,6 +2735,7 @@ relationships:
     held by its Singapore subsidiary Ripple Markets APAC Pte. Ltd. (RMA).
   detail: Ripple Markets APAC Pte. Ltd. is Ripple's Singapore subsidiary and holds its MAS licence.
   reason: is the controlling owner of Ripple Markets APAC Pte. Ltd.
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -2770,6 +2788,7 @@ relationships:
   detail: Sea Limited runs its digital financial services business as Monee, renamed from SeaMoney on
     8 May 2025.
   reason: is the controlling owner of SeaMoney
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -2796,6 +2815,7 @@ relationships:
   detail: ShopeePay Private Limited, Sea's Singapore e-wallet entity, is a principal subsidiary of Sea
     Limited.
   reason: is the controlling owner of ShopeePay Singapore
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -2824,6 +2844,7 @@ relationships:
   detail: Monee (formerly SeaMoney) oversees Sea's digital banks, MariBank in Singapore and SeaBank in
     Indonesia and the Philippines.
   reason: is the controlling owner of MariBank
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -2902,6 +2923,7 @@ relationships:
   quote: Fullerton is part of Seviora, an independent asset management group, owned by Temasek.
   detail: Fullerton Fund Management is part of Seviora, the Temasek-owned asset management group.
   reason: is the controlling owner of Fullerton Fund Management
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -2925,6 +2947,7 @@ relationships:
   quote: '* - Direct 100% consolidation with SGX'
   detail: SGX directly and fully owns The Central Depository (Pte) Limited (CDP)
   reason: is the controlling owner of CDP
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -2978,6 +3001,7 @@ relationships:
   detail: SGX Derivatives Clearing (SGX-DC), SGX's derivatives clearing house, is a 100% SGX subsidiary
     per SGX's legal entity chart.
   reason: is the controlling owner of Singapore Exchange Derivatives Clearing Limited
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -3158,6 +3182,7 @@ relationships:
   quote: Singapore | Stripe Payments Singapore Pte. Ltd.
   detail: Stripe Payments Singapore Pte. Ltd. is the Stripe contracting entity for Singapore users.
   reason: is the controlling owner of Stripe Payments Singapore
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -3209,6 +3234,7 @@ relationships:
   detail: Sygnum Pte. Ltd. (Sygnum Singapore) is the group's MAS-licensed Singapore entity; no stake is
     published.
   reason: is the controlling owner of Sygnum Pte. Ltd.
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -3812,6 +3838,7 @@ relationships:
   detail: Vertex Ventures Southeast Asia & India is one of the Vertex funds anchored by Vertex Holdings;
     each fund raises and manages its own capital.
   reason: is the controlling owner of Vertex Ventures
+  controlling: true
   transmission:
     from_to:
       strength: Strong
@@ -4013,6 +4040,7 @@ relationships:
   quote: Asia and Pacific | Singapore | Wise Asia-Pacific Pte. Ltd.
   detail: Wise Asia-Pacific Pte. Ltd. is the Wise Group entity in Singapore.
   reason: is the controlling owner of Wise Asia-Pacific
+  controlling: true
   transmission:
     from_to:
       strength: Strong

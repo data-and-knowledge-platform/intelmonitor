@@ -6,8 +6,9 @@ every link in one schema, decides subject or endpoint from api/seed/subjects.yam
 entity's belongs_to_sector links from the seed's groups, writes each link's one-line reason, merges
 each link's strengths from api/seed/collected/transmission.yaml, and prints a build report. The
 output is deterministic: a second run produces no diff. Rerun after any edit to the collected files
-or to the subject seed, then run scripts/rate_relationships.py if the report lists unrated links,
-and build again.
+or to the subject seed, then run scripts/rate_relationships.py and build again: a link whose input
+changed keeps its old rating until it is rated again. The report lists unrated links and stale
+ratings (a model rating whose input hash no longer matches the link's current prompt).
 
 Usage (from api/): uv run python scripts/build_relationships.py
 """
@@ -17,6 +18,7 @@ from collections import Counter
 from datetime import date
 from typing import Literal
 
+import rate_relationships as rating
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -36,6 +38,7 @@ from intelmonitor.relationships import (
     FigureUnit,
     Node,
     Relationship,
+    RelationshipsFile,
     RelType,
     Service,
     Transmission,
@@ -252,7 +255,6 @@ class Build:
         self.declared: dict[str, Endpoint] = {}  # first declaration wins
         self.dropped: list[tuple[str, str]] = []  # (row, reason)
         self.merged: list[str] = []  # ids that took a second row from the same source
-        self.controlling: set[str] = set()  # holds_stake_in ids from a controlling row
         self.partner_rows = 0  # collected partner_of rows read
 
     def drop(self, row: str, reason: str) -> None:
@@ -433,8 +435,6 @@ def build_tech(build: Build, data: TechFile, confirmed: date = LAST_CONFIRMED) -
         build.declare(Endpoint(id=RENAME.get(e.id, e.id), name=e.name, kind=endpoint_kind(e.kind)))
     for r in data.relationships:
         src, dst = RENAME.get(r.from_, r.from_), RENAME.get(r.to, r.to)
-        if r.controlling:
-            build.controlling.add(rel_id(src, r.type, dst))
         build.add(
             Relationship(
                 id=rel_id(src, r.type, dst),
@@ -450,6 +450,7 @@ def build_tech(build: Build, data: TechFile, confirmed: date = LAST_CONFIRMED) -
                 detail=r.detail,
                 reason="",  # written by with_reasons()
                 service=r.service if r.type in ("depends_on", "participates_in") else None,
+                controlling=r.controlling,
             )
         )
 
@@ -482,8 +483,6 @@ def build_links(build: Build, data: LinksFile, confirmed: date = LAST_CONFIRMED)
     for r in data.relationships:
         src, dst = ends(RENAME.get(r.from_, r.from_), r.type, RENAME.get(r.to, r.to))
         build.partner_rows += r.type == "partner_of"
-        if r.controlling:
-            build.controlling.add(rel_id(src, r.type, dst))
         build.add(
             Relationship(
                 id=rel_id(src, r.type, dst),
@@ -499,6 +498,7 @@ def build_links(build: Build, data: LinksFile, confirmed: date = LAST_CONFIRMED)
                 quote=r.quote,
                 detail=r.detail,
                 reason="",  # written by with_reasons()
+                controlling=r.controlling,
             )
         )
     for g in data.groups:
@@ -594,14 +594,14 @@ def both_ways(rels: list[Relationship], mutual: bool = False) -> list[str]:
     )
 
 
-def reason(r: Relationship, to: Node, controlling: bool) -> str:
+def reason(r: Relationship, to: Node) -> str:
     """The link in one line: the plain-words phrase with its share and the share's date ("has
     12.2% of its loans in Hong Kong, 30 Jun 2026"); a controlling stake with no share, "is the
     controlling owner of BCS"; else the detail sentence."""
     if r.weight is not None:
         phrase = link_words(r, to)
         return f"{phrase}, {r.as_of.day} {r.as_of:%b %Y}" if r.as_of else phrase
-    if controlling:
+    if r.controlling:
         return f"is the controlling owner of {to.name}"
     return r.detail
 
@@ -612,10 +612,20 @@ def with_reasons(build: Build, endpoints: list[Endpoint]) -> list[Relationship]:
     nodes = {e.id: Node(id=e.id, name=e.name, kind=e.kind, subject=False) for e in endpoints}
     nodes |= {i: Node(id=i, name=n, kind="group", subject=False) for i, n in build.groups.items()}
     nodes |= {i: Node(id=i, name=e.name, kind=e.kind, subject=True) for i, e in entities.items()}
-    return [
-        r.model_copy(update={"reason": reason(r, nodes[r.to], r.id in build.controlling)})
-        for r in build.rels.values()
-    ]
+    return [r.model_copy(update={"reason": reason(r, nodes[r.to])}) for r in build.rels.values()]
+
+
+def stale(rels: list[Relationship], endpoints: list[Endpoint]) -> list[str]:
+    """Links whose model rating was made from another input than the link's current prompt."""
+    names = rating.ends(RelationshipsFile(relationships=rels, endpoints=endpoints))
+    ratings = load_ratings()
+    return sorted(
+        r.id
+        for r in rels
+        if (e := ratings.get(r.id)) is not None
+        and e.rated_by == "model"
+        and e.input_hash != rating.input_hash(rating.user_prompt(r, names))
+    )
 
 
 def with_ratings(rels: list[Relationship]) -> tuple[list[Relationship], list[str], list[str]]:
@@ -668,6 +678,7 @@ HEADER = """\
 #   reason        one line built by code: the plain-words phrase with the share and its date,
 #                 "is the controlling owner of ..." for a controlling stake with no share, else
 #                 detail
+#   controlling   holds_stake_in with no published share where the holder controls the held
 #   service       depends_on and participates_in: cloud, data_centre, payments, custody,
 #                 blockchain, distribution and the like
 #   figures[]     exposed_to only: further figures for the same entity and target (loans by
@@ -808,6 +819,11 @@ def main() -> None:
             f"  {len(unrated)} unrated (load_relationships refuses them): run "
             "scripts/rate_relationships.py, then build again"
         )
+    outdated = stale([r for r in rels if rateable(r)], endpoints)
+    print(f"  {len(outdated)} stale ratings (input changed since the link was rated)")
+    if outdated:
+        print(*(f"    {i}" for i in outdated), sep="\n")
+        print("  run scripts/rate_relationships.py to rate them again, then build again")
     problems = [f"no source: {i}" for i in unsourced(rels)]
     problems += [f"stored both ways: {i}" for i in both_ways(rels)]
     if problems:

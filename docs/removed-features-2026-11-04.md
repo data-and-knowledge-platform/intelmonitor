@@ -107,4 +107,4 @@ The deployed store's counts are recorded when it is backed up, before it is firs
 | `development_staff` | FMD | 8 | 1085 | 2026-10-12 | 2026-11-04 |
 | `regulatory_supervisor` | Regulatory supervisor | 5 | 2128 | 2026-10-09 | 2026-10-21 |
 | `tech_cyber_supervisor` | TCRD | 7 | 940 | 2026-10-12 | 2026-11-04 |
-| All | | | 4153 | 2026-10-09 | 2026-11-04 |
+| All | | 13 | 4153 | 2026-10-09 | 2026-11-04 |

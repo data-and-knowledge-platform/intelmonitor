@@ -225,10 +225,13 @@ CREATE TABLE IF NOT EXISTS graph_edges (
     from_id TEXT NOT NULL,
     to_id TEXT NOT NULL,
     type TEXT NOT NULL,                -- a relationship type in capitals, AFFECTS or IMPACTS
-    source TEXT NOT NULL,              -- relationships, seed, claude or detector; jev when older
+    source TEXT NOT NULL,              -- relationships (a stored link), claude or detector
+                                       -- (AFFECTS), table (IMPACTS); seed and jev when older
     confidence REAL NOT NULL,
     label TEXT NOT NULL DEFAULT '',    -- the link in plain words
-    detail TEXT NOT NULL DEFAULT '{}', -- JSON: relationship id, or an impact's route
+    detail TEXT NOT NULL DEFAULT '{}', -- JSON: a link's relationship_id, evidence, weight, reason,
+                                       -- from_to and to_from; IMPACTS: route, level, strength,
+                                       -- source_id and link_id
     PRIMARY KEY (run_id, from_id, to_id, type)
 );
 

@@ -3,7 +3,8 @@
 With no API key: MAS search API, RSS feeds (Fed, ECB, BIS, FSB, Bank of England, EBA, ESMA, NY Fed
 Liberty Street, Thunes), HKMA API, and the status pages of the cloud providers
 (AWS, Azure, Google Cloud, Oracle Cloud, Cloudflare). Sites with no feed, or that refuse our
-fetches, are searched with Exa over their domain (SITE_SEARCHES), which returns the text too.
+fetches, are searched with Exa over their domain (SITE_SEARCHES), which returns the text too. A
+feed that does not reach back to the window start is backfilled the same way, over its own sites.
 
 Each adapter lists the window's items; `fetch_listing` then fetches and parses each page. Status
 page items carry their own text, so they need no fetch. A listing request whose URL does not
@@ -22,9 +23,9 @@ from urllib.parse import urlencode, urljoin, urlsplit, urlunsplit
 
 from pydantic import BaseModel, Field, TypeAdapter
 
-from intelmonitor.ingest.http import CachedHttp
+from intelmonitor.ingest.http import CachedHttp, FetchError
 from intelmonitor.ingest.models import MIN_TEXT_CHARS, Listing, RawDocument, Window
-from intelmonitor.ingest.parse import response_text
+from intelmonitor.ingest.parse import canonical_url, response_text
 from intelmonitor.ingest.sources.search import exa_search
 from intelmonitor.store.documents import Collection
 
@@ -117,29 +118,126 @@ class Feed:
     collection: Collection
     doc_type: str
     url: str
+    # Where the feed's items live (domains, or domains with a path prefix) and what they are: a
+    # feed that does not reach back to the window start is backfilled by an Exa search over them.
+    sites: list[str]
+    query: str
     paged: bool = False  # WordPress feeds take ?paged=N for older items
 
 
 FEEDS = [
-    Feed("fed", "official", "Press releases", "https://www.federalreserve.gov/feeds/press_all.xml"),
-    Feed("fed", "official", "Speeches", "https://www.federalreserve.gov/feeds/speeches.xml"),
-    Feed("ecb", "official", "Press releases", "https://www.ecb.europa.eu/rss/press.html"),
-    Feed("ecb", "official", "Publications", "https://www.ecb.europa.eu/rss/pub.html"),
-    Feed("bis", "dms", "Central bankers' speeches", "https://www.bis.org/doclist/cbspeeches.rss"),
-    Feed("bis", "dms", "Press releases", "https://www.bis.org/doclist/all_pressrels.rss"),
-    Feed("fsb", "dms", "Publications", "https://www.fsb.org/feed/", paged=True),
-    Feed("boe", "official", "News", "https://www.bankofengland.co.uk/rss/news"),
-    Feed("boe", "official", "Speeches", "https://www.bankofengland.co.uk/rss/speeches"),
-    Feed("eba", "official", "Press releases", "https://www.eba.europa.eu/news-press/news/rss.xml"),
-    Feed("esma", "official", "News", "https://www.esma.europa.eu/rss.xml"),
+    Feed(
+        "fed",
+        "official",
+        "Press releases",
+        "https://www.federalreserve.gov/feeds/press_all.xml",
+        ["federalreserve.gov/newsevents/pressreleases"],
+        "Federal Reserve press release",
+    ),
+    Feed(
+        "fed",
+        "official",
+        "Speeches",
+        "https://www.federalreserve.gov/feeds/speeches.xml",
+        ["federalreserve.gov/newsevents/speech"],
+        "Federal Reserve speech",
+    ),
+    Feed(
+        "ecb",
+        "official",
+        "Press releases",
+        "https://www.ecb.europa.eu/rss/press.html",
+        ["ecb.europa.eu/press"],
+        "ECB press release, speech or interview",
+    ),
+    Feed(
+        "ecb",
+        "official",
+        "Publications",
+        "https://www.ecb.europa.eu/rss/pub.html",
+        ["ecb.europa.eu/pub"],
+        "ECB publication or report",
+    ),
+    Feed(
+        "bis",
+        "dms",
+        "Central bankers' speeches",
+        "https://www.bis.org/doclist/cbspeeches.rss",
+        ["bis.org/speeches", "bis.org/review"],
+        "central banker speech",
+    ),
+    Feed(
+        "bis",
+        "dms",
+        "Press releases",
+        "https://www.bis.org/doclist/all_pressrels.rss",
+        ["bis.org/media-releases", "bis.org/press"],
+        "BIS press release",
+    ),
+    Feed(
+        "fsb",
+        "dms",
+        "Publications",
+        "https://www.fsb.org/feed/",
+        ["fsb.org"],
+        "FSB publication or press release",
+        paged=True,
+    ),
+    Feed(
+        "boe",
+        "official",
+        "News",
+        "https://www.bankofengland.co.uk/rss/news",
+        [
+            "bankofengland.co.uk/news",
+            "bankofengland.co.uk/minutes",
+            "bankofengland.co.uk/letter",
+            "bankofengland.co.uk/monetary-policy-summary-and-minutes",
+        ],
+        "Bank of England news release",
+    ),
+    Feed(
+        "boe",
+        "official",
+        "Speeches",
+        "https://www.bankofengland.co.uk/rss/speeches",
+        ["bankofengland.co.uk/speech"],
+        "Bank of England speech",
+    ),
+    Feed(
+        "eba",
+        "official",
+        "Press releases",
+        "https://www.eba.europa.eu/news-press/news/rss.xml",
+        ["eba.europa.eu/publications-and-media/press-releases"],
+        "EBA press release",
+    ),
+    Feed(
+        "esma",
+        "official",
+        "News",
+        "https://www.esma.europa.eu/rss.xml",
+        ["esma.europa.eu/press-news/esma-news"],
+        "ESMA news or statement",
+    ),
     Feed(
         "nyfed",
         "official",
         "Liberty Street Economics",
         "https://libertystreeteconomics.newyorkfed.org/feed/",
+        ["libertystreeteconomics.newyorkfed.org"],
+        "Liberty Street Economics post",
         paged=True,
     ),
-    Feed("thunes", "official", "News", "https://www.thunes.com/feed/", paged=True),
+    Feed(
+        "thunes",
+        "official",
+        "News",
+        "https://www.thunes.com/feed/",
+        ["thunes.com/news", "thunes.com/insights"],
+        "Thunes news or partnership announcement",
+        paged=True,
+    ),
 ]
 _MAX_FEED_PAGES = 6
 
@@ -181,14 +279,17 @@ def _feed_date(item: ET.Element) -> datetime | None:
 
 def feed_listings(http: CachedHttp, feed: Feed, window: Window) -> tuple[list[Listing], bool]:
     """The window's items, and whether the feed reached back past the window start (a feed that
-    holds only its latest items may miss the start of an older window)."""
+    holds only its latest items may miss the start of an older window). A feed that answers
+    with an error (403 or 404 included) raises FetchError: it failed, it is not quiet."""
     listings: list[Listing] = []
     oldest: datetime | None = None
     for page in range(1, (_MAX_FEED_PAGES if feed.paged else 1) + 1):
         url = feed.url if page == 1 else f"{feed.url}?paged={page}"
         response = http.get(feed.source, url, vary=str(window.t0))
         if not response.ok:
-            oldest = None
+            if page == 1:
+                raise FetchError(f"{url}: HTTP {response.status}")
+            oldest = None  # no older page: the feed ends before the window start
             break
         items = _feed_items(response.content)
         oldest = None
@@ -321,18 +422,22 @@ def _keyed(url: str) -> str:
 
 # RSS feeds whose items hold the incident text. AWS links every item to the same page, and its
 # guid, a link to the event, names the item instead.
+@dataclass(frozen=True)
+class StatusFeed:
+    source: str
+    url: str
+
+
 STATUS_FEEDS = [
-    Feed("aws", "official", "Status page", "https://status.aws.amazon.com/rss/all.rss"),
-    Feed(
-        "oracle-cloud", "official", "Status page", "https://ocistatus.oraclecloud.com/history.rss"
-    ),
+    StatusFeed("aws", "https://status.aws.amazon.com/rss/all.rss"),
+    StatusFeed("oracle-cloud", "https://ocistatus.oraclecloud.com/history.rss"),
 ]
 
 
-def status_feed_listings(http: CachedHttp, feed: Feed, window: Window) -> list[Listing]:
+def status_feed_listings(http: CachedHttp, feed: StatusFeed, window: Window) -> list[Listing]:
     response = http.get(feed.source, feed.url, vary=str(window.t0))
     if not response.ok:
-        return []
+        raise FetchError(f"{feed.url}: HTTP {response.status}")
     listings: list[Listing] = []
     for item in _feed_items(response.content):
         published = _feed_date(item)
@@ -374,6 +479,8 @@ def azure_listings(http: CachedHttp, window: Window) -> list[Listing]:
             },
         )
         if not response.ok:
+            if page == 1:
+                raise FetchError(f"{AZURE_HISTORY}: HTTP {response.status}")
             break
         page_html = response.text()
         blocks = page_html.split(_AZURE_BLOCK)[1:]
@@ -413,7 +520,7 @@ class _GcpIncident(BaseModel):
 def gcp_listings(http: CachedHttp, window: Window) -> list[Listing]:
     response = http.get("google-cloud", GCP_INCIDENTS, vary=str(window.t0))
     if not response.ok:
-        return []
+        raise FetchError(f"{GCP_INCIDENTS}: HTTP {response.status}")
     incidents = TypeAdapter(list[_GcpIncident]).validate_json(response.content)
     return [
         _status(
@@ -455,7 +562,7 @@ class _CloudflareIncidents(BaseModel):
 def cloudflare_listings(http: CachedHttp, window: Window) -> list[Listing]:
     response = http.get("cloudflare", CLOUDFLARE_INCIDENTS, vary=str(window.t0))
     if not response.ok:
-        return []
+        raise FetchError(f"{CLOUDFLARE_INCIDENTS}: HTTP {response.status}")
     incidents = _CloudflareIncidents.model_validate_json(response.content).incidents
     return [
         _status(
@@ -472,20 +579,13 @@ def cloudflare_listings(http: CachedHttp, window: Window) -> list[Listing]:
     ]
 
 
-def status_listings(http: CachedHttp, window: Window) -> list[Listing]:
-    listings: list[Listing] = []
-    for feed in STATUS_FEEDS:
-        listings += status_feed_listings(http, feed, window)
-    listings += azure_listings(http, window) + gcp_listings(http, window)
-    return listings + cloudflare_listings(http, window)
-
-
 # --- Exa over an official site ------------------------------------------------------------
 # Official sites with no usable feed, or that refuse our fetches (FATF, FCA, Treasury, IADI), are
 # searched once per window over their own domain. Exa returns each page's text, so nothing is
 # fetched, and every result is stored as official under the site's source name. Exa's search
 # reaches past windows, which a feed holding only its latest items does not (sc.com's feed holds
-# ten items and ignores ?paged=).
+# ten items and ignores ?paged=); a feed that does not reach the window start is backfilled the
+# same way (`feed_backfill`).
 
 _DBS_HEADING = re.compile(r"^# (.+)$", re.MULTILINE)
 _DBS_LANGUAGE_LINK = re.compile(r"\s*\|\s*(English|繁體|简体|中文)\s*$")
@@ -528,6 +628,7 @@ class SiteSearch:
     skip: re.Pattern[str] | None = None  # result URLs that are not documents (listing pages)
     # Corrects a result's title or date from its text, or drops it (None).
     clean: Callable[[RawDocument], RawDocument | None] | None = None
+    collection: Collection = "official"
 
 
 SITE_SEARCHES = [
@@ -560,9 +661,22 @@ SITE_SEARCHES = [
         "IADI deposit insurance news or publication",
         skip=re.compile(r"/news-and-media/[^/]+/?$"),
     ),
-    SiteSearch("sgx", ["links.sgx.com"], "Announcements", "SGX-listed company announcement"),
+    # Exa holds only corporate-action stubs here (dividend and entitlement notices of a few
+    # hundred characters), not the announcements and media releases MAS cites, so they are
+    # skipped and SGX reads as quiet until announcements are reachable.
     SiteSearch(
-        "police", ["police.gov.sg"], "News releases", "police news release on scams or fraud"
+        "sgx",
+        ["links.sgx.com"],
+        "Announcements",
+        "SGX-listed company announcement",
+        skip=re.compile(r"/corporate-actions/"),
+    ),
+    # News releases only: the rest of the site carries Police Life features.
+    SiteSearch(
+        "police",
+        ["police.gov.sg/Media-Hub/News"],
+        "News releases",
+        "police news release on scams or fraud",
     ),
     SiteSearch("mot", ["mot.gov.sg"], "Press releases", "Ministry of Transport press release"),
     # The newsroom only: dbs.com also serves product pages and Taiwanese fund notices.
@@ -593,12 +707,40 @@ def site_search_documents(
         cleaned = site.clean(doc) if site.clean else doc
         if cleaned and window.contains(cleaned.published_at):
             docs.append(
-                cleaned.model_copy(update={"source": site.source, "doc_type": site.doc_type})
+                cleaned.model_copy(
+                    update={
+                        "source": site.source,
+                        "doc_type": site.doc_type,
+                        "collection": site.collection,
+                    }
+                )
             )
     return docs
 
 
+def feed_backfill(
+    http: CachedHttp, api_key: str, feed: Feed, window: Window, listed: list[Listing]
+) -> list[RawDocument]:
+    """The window's pages from a feed's sites that the feed did not list, for a feed that does not
+    reach back to the window start."""
+    site = SiteSearch(
+        feed.source, feed.sites, feed.doc_type, feed.query, collection=feed.collection
+    )
+    known = {canonical_url(item.url) for item in listed}
+    return [
+        d
+        for d in site_search_documents(http, api_key, site, window)
+        if canonical_url(d.url) not in known
+    ]
+
+
 # --- Pages ---------------------------------------------------------------------------------
+
+# The Bank of England's cookie banner, which leads the text of every page it serves; a page with
+# no body text would otherwise be stored as the banner alone.
+_COOKIE_BANNER = re.compile(
+    r"^\s*Our use of cookies\s+We use necessary cookies.*?Cookie policy\.", re.DOTALL
+)
 
 
 def fetch_listing(http: CachedHttp, listing: Listing) -> RawDocument | None:
@@ -608,7 +750,7 @@ def fetch_listing(http: CachedHttp, listing: Listing) -> RawDocument | None:
         text = listing.text
     else:
         response = http.get(listing.source, listing.url)
-        text = response_text(response)
+        text = _COOKIE_BANNER.sub("", response_text(response)).strip()
         if listing.source == "mas" and listing.collection == "dms" and response.ok:
             if pdf_url := _mas_main_pdf(response.text(), listing.published_at.date()):
                 pdf_text = response_text(http.get("mas", pdf_url))
@@ -621,22 +763,40 @@ def fetch_listing(http: CachedHttp, listing: Listing) -> RawDocument | None:
 @dataclass(frozen=True)
 class OfficialListings:
     listings: list[Listing]
-    short_feeds: list[str]  # feeds whose oldest item is newer than the window start
+    short_feeds: list[Feed]  # feeds whose oldest item is newer than the window start
+    failed: dict[str, FetchError]  # source -> error, for adapters that could not be read
 
 
 def official_listings(http: CachedHttp, window: Window) -> OfficialListings:
-    listings = mas_listings(http, window)
-    short: list[str] = []
-    for feed in FEEDS:
+    """Every feed and API source's listings for the window. Each adapter is read on its own, so
+    one that fails (network error, retries spent, or a 403 or 404) loses only its own items."""
+    result = OfficialListings([], [], {})
+
+    def read(source: str, adapter: Callable[[], list[Listing]]) -> None:
+        try:
+            result.listings.extend(adapter())
+        except FetchError as e:
+            result.failed[source] = e
+
+    def read_feed(feed: Feed) -> list[Listing]:
         found, reaches_start = feed_listings(http, feed, window)
-        listings += found
         if not reaches_start:
-            short.append(f"{feed.source} {feed.doc_type}")
-    listings += hkma_listings(http, window)
-    return OfficialListings(listings + status_listings(http, window), short)
+            result.short_feeds.append(feed)
+        return found
+
+    read("mas", lambda: mas_listings(http, window))
+    for feed in FEEDS:
+        read(feed.source, lambda feed=feed: read_feed(feed))
+    read("hkma", lambda: hkma_listings(http, window))
+    for status in STATUS_FEEDS:
+        read(status.source, lambda status=status: status_feed_listings(http, status, window))
+    read("azure", lambda: azure_listings(http, window))
+    read("google-cloud", lambda: gcp_listings(http, window))
+    read("cloudflare", lambda: cloudflare_listings(http, window))
+    return result
 
 
-# Every official adapter's source name, so the ingest log can list those that stored nothing.
+# Every official adapter's source name, so the ingest log can list those that returned nothing.
 OFFICIAL_SOURCES = list(
     dict.fromkeys(
         [

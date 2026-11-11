@@ -25,6 +25,7 @@ from datetime import UTC, date, datetime, timedelta
 
 from intelmonitor.ingest.models import corpus_start
 from intelmonitor.pipeline import runlog
+from intelmonitor.pipeline.corroboration import shown_developments
 from intelmonitor.pipeline.detectors import store_detections
 from intelmonitor.pipeline.developments import build_developments
 from intelmonitor.pipeline.diff import development_changes, previous_run, store_changes
@@ -119,7 +120,12 @@ async def compute_run(
         step(f"screen {len(texts)} documents published {start} to {as_of}")
         screens = await screen_documents(inf, conn, texts)
         relevant = sum(s.relevant for s in screens.values())
-        step(f"extract from {relevant} relevant documents")
+        to_extract = sum(s.relevant and bool(s.subjects) for s in screens.values())
+        step(
+            f"screened {len(screens)} documents, {relevant} relevant "
+            f"({relevant / max(len(screens), 1):.0%}); extract from the {to_extract} relevant "
+            f"documents with a tagged subject"
+        )
         _, ex = await extract_documents(inf, conn, texts, screens)
         step(
             f"extracted {ex.kept}/{ex.proposed} findings, "
@@ -191,18 +197,30 @@ async def compute_run(
 
 
 def _impact_lines(conn: sqlite3.Connection, run_id: str, impact: ImpactStats) -> list[str]:
-    """The indirect row counts without and with Low direct items for INDIRECT_REPORTED, and up to
-    INDIRECT_LOW_SAMPLES rows that only Low direct items reach, one per development. A subject
-    no longer in the seed shows by its id."""
+    """The indirect row counts without and with Low direct items, in total and for
+    INDIRECT_REPORTED, over every development and over the shown ones (those the source gate
+    passes, the only ones a page shows); then up to INDIRECT_LOW_SAMPLES rows that only Low
+    direct items reach, one per development. A subject no longer in the seed shows by its id."""
     subjects = monitored_subjects()
+    shown = shown_developments(conn, run_id)
 
     def name(subject_id: str) -> str:
         return subjects[subject_id].name if subject_id in subjects else subject_id
 
-    counts = ", ".join(
-        f"{name(s)} {impact.without_low_by[s]}/{impact.with_low_by[s]}" for s in INDIRECT_REPORTED
-    )
-    lines = [f"indirect rows without/with Low direct items: {counts}"]
+    def counts(only_shown: bool) -> str:
+        def n(low: bool, subject_id: str | None = None) -> int:
+            return sum(
+                (subject_id is None or s == subject_id) and (not only_shown or dev in shown)
+                for dev, s in impact.pairs[low]
+            )
+
+        by = [f"{name(s)} {n(False, s)}/{n(True, s)}" for s in INDIRECT_REPORTED]
+        return ", ".join([f"total {n(False)}/{n(True)}", *by])
+
+    lines = [
+        f"indirect rows without/with Low direct items, all developments: {counts(False)}",
+        f"indirect rows without/with Low direct items, shown developments only: {counts(True)}",
+    ]
     seen: set[str] = set()
     for dev_id, r in impact.low_only:
         if dev_id in seen or len(seen) == INDIRECT_LOW_SAMPLES:
@@ -211,19 +229,22 @@ def _impact_lines(conn: sqlite3.Connection, run_id: str, impact: ImpactStats) ->
         title = conn.execute(
             "SELECT title FROM developments WHERE run_id = ? AND id = ?", (run_id, dev_id)
         ).fetchone()["title"]
+        gate = "" if dev_id in shown else " (unconfirmed, not shown)"
         lines.append(
             f"  Low adds {name(r.subject_id)}, {PRIORITY_LABELS[r.level]}, from "
             f"{name(r.source_id)} by {r.relationship.type} ({r.strength}): "
-            f"{dev_id} {title[:90]}"
+            f"{dev_id} {title[:90]}{gate}"
         )
     return lines
 
 
 def _topic_only_lines(conn: sqlite3.Connection, run_id: str) -> list[str]:
     """Per topic, the developments tagged with it that name no entity, by level: the topic's own
-    rating is their only priority. A subject no longer in the seed counts as a topic and shows by
-    its id."""
+    rating is their only priority. Each count is over every development, then over the shown
+    ones (those the source gate passes, the only ones a page shows). A subject no longer in the
+    seed counts as a topic and shows by its id."""
     names = monitored_subjects()
+    shown = shown_developments(conn, run_id)
     tagged: dict[str, list[tuple[str, int]]] = {}
     for r in conn.execute(
         "SELECT development_id, subject_id, priority_level FROM development_subjects "
@@ -233,19 +254,29 @@ def _topic_only_lines(conn: sqlite3.Connection, run_id: str) -> list[str]:
         tagged.setdefault(r["development_id"], []).append(
             (r["subject_id"], int(r["priority_level"]))
         )
-    levels: dict[str, Counter[int]] = {}
-    developments = 0
-    for subjects in tagged.values():
+    # topic -> (all developments, shown ones), each counted by level
+    levels: dict[str, tuple[Counter[int], Counter[int]]] = {}
+    developments, shown_count = 0, 0
+    for dev_id, subjects in tagged.items():
         if any(s in names and names[s].type == "entity" for s, _ in subjects):
             continue
         developments += 1
+        shown_count += dev_id in shown
         for s, level in subjects:
-            levels.setdefault(s, Counter[int]())[level] += 1
-    lines = [f"developments naming no entity: {developments}, per topic:"]
-    for topic_id, by in sorted(levels.items(), key=lambda item: -item[1].total()):
-        counts = ", ".join(f"{PRIORITY_LABELS[i]} {by[i]}" for i in (2, 1, 0))
+            every, visible = levels.setdefault(s, (Counter[int](), Counter[int]()))
+            every[level] += 1
+            visible[level] += dev_id in shown
+
+    def by_level(by: Counter[int]) -> str:
+        return f"{by.total()} ({', '.join(f'{PRIORITY_LABELS[i]} {by[i]}' for i in (2, 1, 0))})"
+
+    lines = [
+        f"developments naming no entity: {developments} in all, {shown_count} shown; "
+        "per topic, all then shown:"
+    ]
+    for topic_id, (every, visible) in sorted(levels.items(), key=lambda item: -item[1][0].total()):
         name = names[topic_id].name if topic_id in names else topic_id
-        lines.append(f"  {name}: {by.total()} ({counts})")
+        lines.append(f"  {name}: all {by_level(every)}; shown {by_level(visible)}")
     return lines
 
 

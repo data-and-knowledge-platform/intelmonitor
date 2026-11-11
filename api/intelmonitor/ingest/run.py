@@ -4,9 +4,10 @@
 The weekly ingest then searches each week once; `im weekly` runs it for each week, Monday to
 Sunday, with T0 the Sunday.
 
-Order matters for dedup (the first copy of a document wins): official sources (feeds, APIs and
-Exa searches over official sites), then news searches, then gap searches for subjects that still
-have fewer than GAP_TARGET candidates, then search trends. T0 is fixed on the first run and stored
+Order matters for dedup (the first copy of a document wins): official sources (feeds, APIs, Exa
+searches over official sites, and over a feed's sites when the feed misses the window start),
+then news searches, then gap searches for subjects that still have fewer than GAP_TARGET
+candidates, then search trends. T0 is fixed on the first run and stored
 in the meta table, so reruns send the same requests and are served entirely from the cache.
 
 `im redate` applies the URL-date rule to documents stored before it existed, removing those it
@@ -30,7 +31,7 @@ from intelmonitor.ingest.models import (
     RawDocument,
     Window,
     corpus_start,
-    extend_corpus,
+    record_corpus_start,
 )
 from intelmonitor.ingest.parse import (
     canonical_url,
@@ -42,6 +43,7 @@ from intelmonitor.ingest.parse import (
 from intelmonitor.ingest.sources.official import (
     OFFICIAL_SOURCES,
     SITE_SEARCHES,
+    feed_backfill,
     fetch_listing,
     official_listings,
     site_search_documents,
@@ -103,8 +105,11 @@ def run_ingest(
     conn = connect()
     length = days or (SEED_DAYS if seeding else WEEK_DAYS)
     window = Window(resolve_t0(conn, t0_override), length)
-    if seeding:
-        extend_corpus(conn, window)
+    if seeding and (kept := record_corpus_start(conn, window)) and window.start < kept:
+        log(
+            f"corpus start stays {kept}: this seed reaches back to {window.start}, but runs "
+            f"read only from {kept}. Set meta corpus_start by hand to move it."
+        )
     result = IngestResult(t0=window.t0)
     http = CachedHttp()
     # This run's unique documents, deduped like the store (canonical URL and content hash).
@@ -132,41 +137,59 @@ def run_ingest(
         log(f"failed: {label}: {error}")
 
     # 1. Official sources: list the window, then fetch each page; then search the official sites
-    # that have no feed.
-    listings: list[Listing] = []
-    short_feeds: list[str] = []
+    # that have no feed, and backfill each feed that does not reach the window start.
     if subject_ids is None:
-        try:
-            found = official_listings(http, window)
-            listings, short_feeds = found.listings, found.short_feeds
-        except FetchError as e:
-            fail("official listings", e)
+        official = official_listings(http, window)
+        for source, error in official.failed.items():
+            fail(f"official {source}", error)
 
-    def fetch(listing: Listing) -> RawDocument | None:
-        try:
-            return fetch_listing(http, listing)
-        except FetchError as e:
-            fail(listing.url, e)
-            return None
+        def fetch(listing: Listing) -> RawDocument | None:
+            try:
+                return fetch_listing(http, listing)
+            except FetchError as e:
+                fail(listing.url, e)
+                return None
 
-    with ThreadPoolExecutor(_PAGE_WORKERS) as pool:
-        keep(d for d in pool.map(fetch, listings) if d is not None)
-    if subject_ids is None:
-        failed: set[str] = set()
+        with ThreadPoolExecutor(_PAGE_WORKERS) as pool:
+            keep(d for d in pool.map(fetch, official.listings) if d is not None)
+        failed = set(official.failed)
         for site in SITE_SEARCHES:
             try:
                 keep(site_search_documents(http, settings.exa_api_key, site, window))
             except FetchError as e:
                 failed.add(site.source)
                 fail(f"official site search {site.source}", e)
-        # Quiet: reached, and returned nothing for the window. Failed searches are logged above.
-        quiet = [s for s in OFFICIAL_SOURCES if not returned[s] and s not in failed]
+        # A feed holding only its latest items may have missed the start of the window, so its
+        # sites are searched for the window too; the feed's own items are left out.
+        backfilled: dict[str, int] = {}
+        for feed in official.short_feeds:
+            label = f"{feed.source} {feed.doc_type}"
+            listed = [item for item in official.listings if item.source == feed.source]
+            try:
+                docs = feed_backfill(http, settings.exa_api_key, feed, window, listed)
+            except FetchError as e:
+                failed.add(feed.source)
+                fail(f"official backfill {label}", e)
+                continue
+            backfilled[label] = len(docs)
+            keep(docs)
+        # Short: a feed missed the window start and Exa found nothing either, so the source may
+        # have had items we could not reach. Quiet: reached, and returned nothing for the window.
+        short_sources = {f.source for f in official.short_feeds}
+        silent = [s for s in OFFICIAL_SOURCES if not returned[s] and s not in failed]
+        short = [s for s in silent if s in short_sources]
+        quiet = [s for s in silent if s not in short_sources]
         stored = sum(result.added.values())
-        log(f"official: {len(listings)} listed by feeds and APIs, {stored} stored with searches")
+        log(
+            f"official: {len(official.listings)} listed by feeds and APIs, "
+            f"{stored} stored with searches"
+        )
         log(f"official returned by source: {dict(returned)}; stored: {dict(result.added)}")
+        if backfilled:
+            log(f"feeds whose oldest item is after {window.start}, Exa backfill: {backfilled}")
+        log(f"official failed: {sorted(failed)}")
+        log(f"official short: {short}")
         log(f"official quiet: {quiet}")
-        if short_feeds:
-            log(f"feeds whose oldest item is after {window.start}: {short_feeds}")
 
     # 2. News: Exa over reputable domains, queries generated from subjects.yaml.
     seed = load_subjects()

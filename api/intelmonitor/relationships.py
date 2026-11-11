@@ -208,6 +208,9 @@ class Relationship(_Model):
     # One line built by the build script from the stored facts: the plain-words phrase with the
     # share and its date, else `detail`; a controlling stake with no share says so.
     reason: str
+    # holds_stake_in with no published share where the holder controls the held (a former owns or
+    # subsidiary_of row), from the collected row's flag; `owns` reads it.
+    controlling: bool = False
     service: Service | None = None
     figures: list[Figure] = []
     # Strength in each direction, from transmission.yaml; every rateable link has one.
@@ -437,11 +440,11 @@ OWNING_STAKE = 0.2
 
 def owns(r: Relationship) -> bool:
     """Whether a holds_stake_in link counts as ownership: a share of at least OWNING_STAKE, or,
-    with no published share, a controlling owner, which the build's reason line names."""
+    with no published share, a controlling stake."""
     if r.type != "holds_stake_in":
         return False
     if r.weight is None:
-        return r.reason.startswith("is the controlling owner")
+        return r.controlling
     return r.weight >= OWNING_STAKE
 
 

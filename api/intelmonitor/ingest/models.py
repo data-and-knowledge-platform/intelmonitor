@@ -32,8 +32,10 @@ class Window:
 
 
 def corpus_start(conn: sqlite3.Connection) -> date | None:
-    """Meta `corpus_start`, the earliest window start of any seed ingest: where the stored corpus
-    begins. None when it is not set; T0 moves every week, so it is no fallback."""
+    """Meta `corpus_start`: the first day every run reads documents from, and the first week
+    `im weekly` ingests. A first seed ingest records its window start; otherwise it is set by hand
+    (the October rebuild sets 2026-10-01). Documents stored from before it stay outside every
+    run. None when it is not set; T0 moves every week, so it is no fallback."""
     stored = get_meta(conn, "corpus_start")
     return date.fromisoformat(stored) if stored else None
 
@@ -50,11 +52,14 @@ def week_window(sunday: date, start: date | None) -> Window:
     return Window(sunday, days)
 
 
-def extend_corpus(conn: sqlite3.Connection, window: Window) -> None:
-    """Record a seed window's start as the corpus start when it reaches further back."""
+def record_corpus_start(conn: sqlite3.Connection, window: Window) -> date | None:
+    """Record a seed window's start as the corpus start when none is set. A start already set is
+    kept, even when the seed reaches further back, since every run reads from it; it is returned
+    so the caller can say so. Returns None when this window's start was recorded."""
     start = corpus_start(conn)
-    if start is None or window.start < start:
+    if start is None:
         set_meta(conn, "corpus_start", window.start.isoformat())
+    return start
 
 
 class Listing(BaseModel):

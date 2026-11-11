@@ -2717,7 +2717,7 @@ export interface components {
             label: string;
             /**
              * Origin
-             * @description relationships, seed, claude or detector; jev in older runs
+             * @description relationships for a stored link, claude or detector for AFFECTS (who tagged it), table for IMPACTS; seed and jev in older runs
              */
             origin: string;
             /** Confidence */

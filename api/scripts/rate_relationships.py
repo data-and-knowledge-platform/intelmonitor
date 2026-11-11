@@ -9,7 +9,9 @@ rated again only when the hash of the model and both prompts changes, and an ent
 `rated_by: hand` is never touched. Entries for links that no longer exist are dropped, hand
 entries excepted.
 
-After a run, rerun scripts/build_relationships.py to merge the ratings into relationships.yaml.
+Ratings are written as they arrive. A run where any link failed exits non-zero; rerun it to rate
+the failed links. After a run, rerun scripts/build_relationships.py to merge the ratings into
+relationships.yaml.
 
 Usage (from api/):
   uv run python scripts/rate_relationships.py [--limit N] [--sheet <file>.csv]
@@ -47,6 +49,9 @@ from intelmonitor.seed import load_subjects
 MODEL = "claude-sonnet-5-5"
 EFFORT = "medium"
 CONCURRENCY = 8
+# transmission.yaml is rewritten after every this many ratings, and once more at the end (also on
+# Ctrl-C or a crash), so a stopped run keeps the ratings already paid for.
+WRITE_EVERY = 20
 
 # The team's prompt (wayfind/topics-watchlists-views/assets/16/transmission-prompt.md, deck of 10
 # Nov 2026, slides 5 and 6) with its zero-width spaces stripped. The answer comes back through a
@@ -329,7 +334,7 @@ def sheet(
     print(f"\nwrote the review sheet {path}")
 
 
-async def main() -> None:
+async def main() -> int:
     parser = argparse.ArgumentParser(
         description="Rate each link Strong, Moderate or Weak in each direction."
     )
@@ -360,14 +365,30 @@ async def main() -> None:
     failed: list[str] = []
     if batch:
         sem = asyncio.Semaphore(CONCURRENCY)
-        results = await asyncio.gather(*(rate(r, p, sem) for r, p in batch), return_exceptions=True)
-        for (r, _), res in zip(batch, results, strict=True):
-            if isinstance(res, BaseException):
-                failed.append(f"{r.id}: {res}")
-            else:
+
+        async def one(
+            r: Relationship, p: str
+        ) -> tuple[Relationship, tuple[RatingEntry, float] | Exception]:
+            try:
+                return r, await rate(r, p, sem)
+            except Exception as e:  # one link's failure leaves the rest running
+                return r, e
+
+        rated = 0
+        try:
+            for done in asyncio.as_completed([one(r, p) for r, p in batch]):
+                r, res = await done
+                if isinstance(res, Exception):
+                    failed.append(f"{r.id}: {res}")
+                    continue
                 entries[r.id] = res[0]
                 cost += res[1]
-    if batch or len(entries) != len(old):
+                rated += 1
+                if rated % WRITE_EVERY == 0:
+                    write(entries)
+        finally:
+            write(entries)
+    elif len(entries) != len(old):
         write(entries)
     print(
         f"rated {len(batch) - len(failed)} links on {MODEL} for ${cost:.2f}"
@@ -381,7 +402,8 @@ async def main() -> None:
         sheet(args.sheet, rels, entries, names)
     if batch:
         print("\nnow rerun scripts/build_relationships.py to merge the ratings")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    raise SystemExit(asyncio.run(main()))

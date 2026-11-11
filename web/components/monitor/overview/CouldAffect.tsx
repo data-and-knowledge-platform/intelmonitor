@@ -8,7 +8,7 @@ import { useState } from "react";
 
 import type { Schema } from "@/lib/api/client";
 import { capitalize, shortDate } from "@/lib/format";
-import { LEVEL_CLASS, LinkEvidence } from "@/components/developments/Impacts";
+import { LEVEL_CLASS, LinkEvidence, reasonFrom } from "@/components/developments/Impacts";
 import { developmentLink } from "@/components/developments/link";
 
 import { Section } from "../parts";
@@ -109,7 +109,7 @@ function ImpactRow({ impact: i, subject }: { impact: Impact; subject: Subject })
         <Link {...developmentLink(d.id, { subject: subject.id })} className="tlink">
           {d.headline}
         </Link>
-        <span className="ca-why">{i.link.reason}</span>
+        <span className="ca-why">{reasonFrom(i)}</span>
         {about && <span className="meta">News about {about}</span>}
       </span>
       <span className="ca-end num">{shortDate(d.last_published)}</span>
