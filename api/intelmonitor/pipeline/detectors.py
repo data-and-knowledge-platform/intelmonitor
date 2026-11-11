@@ -19,7 +19,8 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 
-from intelmonitor.ingest.models import WINDOW_DAYS, Window
+from intelmonitor.ingest.models import SEED_DAYS
+from intelmonitor.ingest.models import corpus_start as stored_corpus_start
 from intelmonitor.ingest.parse import content_hash, document_id, domain_of
 from intelmonitor.pipeline.indicators import change_basis, compute_indicators, window_start
 from intelmonitor.pipeline.params import PRIORITY_LABELS
@@ -38,7 +39,6 @@ from intelmonitor.seed import (
     load_detectors,
     load_series,
 )
-from intelmonitor.store.db import get_meta
 from intelmonitor.store.series import Observation, read_observations, read_revisions
 
 # A move in standard deviations needs at least this many earlier changes to measure against.
@@ -456,10 +456,9 @@ def _document_text(e: Detection) -> str:
 
 
 def corpus_start(conn: sqlite3.Connection, as_of: date) -> date:
-    """The start of the document corpus (T0 minus WINDOW_DAYS), so detections cover the same span
-    as the news; without a stored T0, WINDOW_DAYS before the date."""
-    t0 = get_meta(conn, "t0")
-    return Window(date.fromisoformat(t0)).start if t0 else as_of - timedelta(days=WINDOW_DAYS)
+    """The start of the document corpus, so detections cover the same span as the news; with no
+    ingest yet, SEED_DAYS before the date."""
+    return stored_corpus_start(conn) or as_of - timedelta(days=SEED_DAYS)
 
 
 @dataclass(frozen=True)

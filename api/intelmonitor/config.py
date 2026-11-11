@@ -19,8 +19,12 @@ class Settings(BaseSettings):
         env_file=REPO_ROOT / ".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    # Claude runs on the user's Claude login; a non-empty key would bill the API instead.
+    # Claude runs on the Anthropic API on anthropic_api_key, billed per token, or with
+    # CLAUDE_VIA_API=0 on the user's Claude login for local runs (pipeline/claude.py).
     anthropic_api_key: str = ""
+    claude_via_api: bool = True
+    # The Generate agent (/agent/generate) is off until AGENT_ENABLED=1.
+    agent_enabled: bool = False
     anthropic_model: str = "claude-sonnet-5-5"
 
     openrouter_api_key: str

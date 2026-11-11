@@ -19,20 +19,38 @@ def ingest(
     t0: Annotated[
         str | None, typer.Option("--t0", help="Override the stored T0, YYYY-MM-DD")
     ] = None,
+    seed: Annotated[
+        bool,
+        typer.Option(
+            "--seed",
+            help="Search the 60 days ending at T0 instead of the week: the history for the first "
+            "runs, or with --subjects for newly added subjects",
+        ),
+    ] = False,
+    subjects: Annotated[
+        str | None,
+        typer.Option("--subjects", help="With --seed: comma-separated subject ids"),
+    ] = None,
 ) -> None:
-    """Fetch the measured series, then fetch, cache, parse and dedup the 60-day corpus and search
-    trends, and print its stats."""
+    """Fetch the measured series, then fetch, cache, parse and dedup the week's corpus (60 days
+    with --seed) and search trends, and print its stats."""
     from datetime import date
 
     from intelmonitor.ingest.run import run_ingest
     from intelmonitor.ingest.series.collect import fetch_series
     from intelmonitor.ingest.stats import ingest_stats
+    from intelmonitor.pipeline.subjects import all_subjects
     from intelmonitor.store.db import connect
 
+    if subjects and not seed:
+        raise typer.BadParameter("--subjects only applies with --seed")
     if not stats:
         fetch_series(connect(), date.today(), log=typer.echo)
         typer.echo("")
-        result = run_ingest(date.fromisoformat(t0) if t0 else None)
+        ids = {s.strip() for s in subjects.split(",") if s.strip()} if subjects else None
+        if unknown := (ids or set()) - set(all_subjects()):
+            raise typer.BadParameter(f"unknown subjects: {', '.join(sorted(unknown))}")
+        result = run_ingest(date.fromisoformat(t0) if t0 else None, seed, ids, log=typer.echo)
         typer.echo(
             f"added {sum(result.added.values())} {dict(result.added)}, "
             f"{result.duplicates} duplicates, {len(result.failures)} failures\n"

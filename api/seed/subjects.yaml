@@ -373,9 +373,9 @@ entities:
     logo_full: /logos/full/nets.svg
     home: singapore
   - id: bcs
-    name: Banking Computer Services
+    name: BCS
     kind: payment_system
-    aliases: [BCS, Banking Computer Services Pte Ltd]
+    aliases: [Banking Computer Services, Banking Computer Services Pte Ltd]
     covers: the Singapore company that runs the interbank clearing house behind cheque clearing, GIRO and FAST
     domains: []
     home: singapore
@@ -403,6 +403,7 @@ entities:
     kind: tech_provider
     aliases: [Amazon Web Services]
     domains: [aws.amazon.com]
+    logo: /logos/full/aws.svg
     logo_full: /logos/full/aws.svg
   - id: microsoft-azure
     name: Microsoft Azure
@@ -768,9 +769,9 @@ entities:
 
   # Financial markets
   - id: cdp
-    name: The Central Depository
+    name: CDP
     kind: market_infrastructure
-    aliases: [Central Depository, SGX CDP, SGX-CDP, The Central Depository (Pte) Limited]
+    aliases: [The Central Depository, Central Depository, SGX CDP, SGX-CDP, The Central Depository (Pte) Limited]
     covers: "The Central Depository, SGX's securities depository and clearing house; not other uses of CDP such as the Carbon Disclosure Project"
     domains: []
     home: singapore

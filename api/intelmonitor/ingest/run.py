@@ -1,4 +1,7 @@
-"""`im ingest`: fetch, cache, parse and dedup the corpus for the 60 days ending at T0.
+"""`im ingest`: fetch, cache, parse and dedup the corpus for the week ending at T0 (WEEK_DAYS),
+or with `--seed` for the SEED_DAYS ending at T0. A seed builds the history for the first runs;
+`--seed --subjects` builds it for newly added subjects only, through their news and gap searches.
+The weekly ingest then searches each week once.
 
 Order matters for dedup (the first copy of a document wins): official sources, then news
 searches, then gap searches for subjects that still have fewer than GAP_TARGET candidates, then
@@ -19,7 +22,15 @@ from datetime import UTC, date, datetime
 from intelmonitor.config import get_settings
 from intelmonitor.ingest.candidates import candidate_counts, normalize, subject_matchers
 from intelmonitor.ingest.http import CachedHttp, FetchError
-from intelmonitor.ingest.models import Listing, RawDocument, Window
+from intelmonitor.ingest.models import (
+    SEED_DAYS,
+    WEEK_DAYS,
+    Listing,
+    RawDocument,
+    Window,
+    corpus_start,
+    extend_corpus,
+)
 from intelmonitor.ingest.parse import (
     canonical_url,
     content_hash,
@@ -46,7 +57,9 @@ from intelmonitor.seed import load_subjects
 from intelmonitor.store.db import connect, get_meta, set_meta
 from intelmonitor.store.documents import SourceDocument, insert_document, list_documents
 
+# Fewer candidates than this makes a subject thin: over a seed window, and over one week.
 GAP_TARGET = 8
+WEEK_GAP_TARGET = 2
 _PAGE_WORKERS = 8
 _SEARCH_WORKERS = 4
 
@@ -69,10 +82,19 @@ def resolve_t0(conn: sqlite3.Connection, override: date | None) -> date:
     return t0
 
 
-def run_ingest(t0_override: date | None = None, log: Callable[[str], None] = print) -> IngestResult:
+def run_ingest(
+    t0_override: date | None = None,
+    seeding: bool = False,
+    subject_ids: set[str] | None = None,
+    log: Callable[[str], None] = print,
+) -> IngestResult:
+    """The weekly ingest, or when `seeding` the SEED_DAYS history. Seeding `subject_ids` runs only
+    their news and gap searches: official sources and trends are not per subject."""
     settings = get_settings()
     conn = connect()
-    window = Window(resolve_t0(conn, t0_override))
+    window = Window(resolve_t0(conn, t0_override), SEED_DAYS if seeding else WEEK_DAYS)
+    if seeding:
+        extend_corpus(conn, window)
     result = IngestResult(t0=window.t0)
     http = CachedHttp()
     # This run's unique documents, deduped like the store (canonical URL and content hash).
@@ -97,11 +119,12 @@ def run_ingest(t0_override: date | None = None, log: Callable[[str], None] = pri
         log(f"failed: {label}: {error}")
 
     # 1. Official sources: list the window, then fetch each page.
-    try:
-        listings = official_listings(http, window)
-    except FetchError as e:
-        fail("official listings", e)
-        listings = []
+    listings: list[Listing] = []
+    if subject_ids is None:
+        try:
+            listings = official_listings(http, window)
+        except FetchError as e:
+            fail("official listings", e)
 
     def fetch(listing: Listing) -> RawDocument | None:
         try:
@@ -116,7 +139,7 @@ def run_ingest(t0_override: date | None = None, log: Callable[[str], None] = pri
 
     # 2. News: Exa over reputable domains, queries generated from subjects.yaml.
     seed = load_subjects()
-    queries = news_queries(seed)
+    queries = [q for q in news_queries(seed) if subject_ids is None or q.subject_id in subject_ids]
 
     def search_news(query: SearchQuery) -> list[RawDocument]:
         try:
@@ -138,7 +161,10 @@ def run_ingest(t0_override: date | None = None, log: Callable[[str], None] = pri
     # monitored, so only topics and entities get gap searches.
     counts = candidate_counts((d.title, d.text) for d in seen)
     matchers = {m.id: m for m in subject_matchers() if m.type != "group"}
-    result.gap_subjects = [m for m in matchers if counts[m] < GAP_TARGET]
+    target = GAP_TARGET if seeding else WEEK_GAP_TARGET
+    result.gap_subjects = [
+        m for m in matchers if counts[m] < target and (subject_ids is None or m in subject_ids)
+    ]
     entities = {e.id: e for e in seed.entities}
 
     def fill_gap(subject_id: str) -> list[RawDocument]:
@@ -168,8 +194,9 @@ def run_ingest(t0_override: date | None = None, log: Callable[[str], None] = pri
     log(f"gaps: {result.gap_subjects}")
 
     # 4. Search trends.
-    fetched = fetch_trends(conn, http, window.t0, log=log)
-    result.failures += fetched.failures
+    if subject_ids is None:
+        fetched = fetch_trends(conn, http, window.t0, log=log)
+        result.failures += fetched.failures
 
     network, cached = sum(http.network.values()), sum(http.cached.values())
     log(f"requests: {network} external, {cached} served from cache")
@@ -210,7 +237,7 @@ class Redated:
     title: str
     was: datetime
     now: datetime
-    removed: bool  # dated before the stored T0's window, so ingest would have dropped it
+    removed: bool  # dated before the corpus start, so ingest would have dropped it
 
 
 # Per-document rows a removed document leaves behind; run rows go when the runs are recomputed.
@@ -219,17 +246,16 @@ _DOCUMENT_TABLES = ["document_tags", "document_subjects", "findings", "detection
 
 def redate_stored(conn: sqlite3.Connection) -> list[Redated]:
     """Apply the URL-date rule (search.url_dated) to every stored document. A document it dates
-    before the stored T0's window is removed with its per-document rows, as ingest drops it.
+    before the corpus start is removed with its per-document rows, as ingest drops it.
     Returns what changed; the affected runs must be recomputed afterwards."""
-    stored = get_meta(conn, "t0")
-    if stored is None:
+    start = corpus_start(conn)
+    if start is None:
         raise RuntimeError("no T0 in the store: run `im ingest` first")
-    window = Window(date.fromisoformat(stored))
     changed: list[Redated] = []
     for doc in list_documents(conn):
         now = url_dated(doc.url, doc.published_at)
         if now != doc.published_at:
-            removed = now.date() < window.start
+            removed = now.date() < start
             changed.append(Redated(doc.id, doc.url, doc.title, doc.published_at, now, removed))
     with conn:
         conn.executemany(

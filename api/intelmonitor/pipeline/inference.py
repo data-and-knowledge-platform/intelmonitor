@@ -16,9 +16,13 @@ from pydantic import BaseModel, TypeAdapter
 from typesafe_sdk import Answer, Choice, ChoiceAnswer, Noul, NoulAnswer, Score, ScoreAnswer
 
 from intelmonitor.config import get_settings
-from intelmonitor.pipeline.claude import ask_claude
+from intelmonitor.pipeline.claude import ClaudeRefusal, ask_claude
 from intelmonitor.pipeline.jev import ask_jev
-from intelmonitor.pipeline.params import CLAUDE_CONCURRENCY, JEV_CONCURRENCY
+from intelmonitor.pipeline.params import (
+    CLAUDE_API_CONCURRENCY,
+    CLAUDE_CONCURRENCY,
+    JEV_CONCURRENCY,
+)
 
 type JevQuestion = Noul | Choice | Score
 type JevAnswers = dict[str, Answer]
@@ -34,6 +38,8 @@ class ClaudeRefused(RuntimeError):
 
 
 def _is_refusal(error: Exception) -> bool:
+    if isinstance(error, ClaudeRefusal):
+        return True
     text = str(error)
     return "anthropic.com/legal/aup" in text or "can't help with this" in text
 
@@ -86,7 +92,9 @@ def _engine_limits() -> _Limits:
     if (limits := _limits.get(loop)) is None:
         limits = _limits[loop] = (
             asyncio.Semaphore(JEV_CONCURRENCY),
-            asyncio.Semaphore(CLAUDE_CONCURRENCY),
+            asyncio.Semaphore(
+                CLAUDE_API_CONCURRENCY if get_settings().claude_via_api else CLAUDE_CONCURRENCY
+            ),
         )
     return limits
 

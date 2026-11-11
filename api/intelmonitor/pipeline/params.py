@@ -73,6 +73,8 @@ MARKET_MAX_LEVEL = 1
 # Run 1 is computed as of T0 minus this many days, Run 2 as of T0.
 RUN_SPACING_DAYS = 7
 
-# Concurrent model calls. Claude is capped to stay within the subscription allowance.
+# Concurrent model calls. On the API (settings.claude_via_api, the default), the API's rate limits
+# are the cap; Claude on the login is capped to stay within the subscription allowance.
 JEV_CONCURRENCY = 8
 CLAUDE_CONCURRENCY = 4
+CLAUDE_API_CONCURRENCY = 16

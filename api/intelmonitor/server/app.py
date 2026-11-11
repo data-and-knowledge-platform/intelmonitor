@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.routing import APIRoute
 
 from intelmonitor.agent.generate import encode_events
+from intelmonitor.config import get_settings
 from intelmonitor.pipeline import runlog
 from intelmonitor.pipeline.custom import SeriesChoiceError
 from intelmonitor.pipeline.params import (
@@ -828,4 +829,6 @@ def data_sources(q: Q) -> DataSources:
 async def generate(run: RunAgentInput) -> StreamingResponse:
     """AG-UI run for the New dashboard Generate tab: the page sends the conversation and the
     draft dashboard as state, and gets text, tool call and STATE_DELTA events back over SSE."""
+    if not get_settings().agent_enabled:
+        raise HTTPException(503, "The Generate agent is off (AGENT_ENABLED)")
     return StreamingResponse(encode_events(run), media_type="text/event-stream")
