@@ -106,7 +106,7 @@ class ClaudeRefusal(RuntimeError):
 
 
 # USD per million tokens: input, output, cache read, cache write (5-minute TTL).
-_PRICES = {"claude-sonnet-5-5": (2.0, 10.0, 0.20, 2.50), "claude-opus-5-5": (4.0, 20.0, 0.20, 5.0)}
+_PRICES = {"claude-sonnet-5-5": (2.0, 10.0, 0.10, 2.50), "claude-opus-5-5": (4.0, 20.0, 0.20, 5.0)}
 _MAX_TOKENS = 16000
 _clients: WeakKeyDictionary[asyncio.AbstractEventLoop, AsyncAnthropic] = WeakKeyDictionary()
 

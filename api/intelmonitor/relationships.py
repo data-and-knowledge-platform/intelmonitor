@@ -10,6 +10,10 @@ Direction: news about a relationship's `to` reaches its `from` (DBS exposed_to H
 depends_on BCS, NETS holds_stake_in BCS). partner_of is stored once per pair, ids in alphabetical
 order. belongs_to_sector links an entity to a seed group (its parent category), so seed group ids
 are valid link ends; it carries no impact and the Related and Shared sections leave it out.
+
+Every other link carries `transmission`, its strength in each direction, rated once by
+scripts/rate_relationships.py into api/seed/collected/transmission.yaml and merged in by the
+build. Pipeline runs read the ratings and call no model for them.
 """
 
 import json
@@ -25,6 +29,7 @@ from intelmonitor.config import SEED_DIR
 from intelmonitor.seed import EntityKind, load_subjects
 
 RELATIONSHIPS_PATH = SEED_DIR / "relationships.yaml"
+TRANSMISSION_PATH = SEED_DIR / "collected" / "transmission.yaml"
 
 # The team's 10 one-way types (deck of 10 Nov 2026, slide 4; ticket 17).
 RelType = Literal[
@@ -133,6 +138,49 @@ class Figure(_Model):
     note: str | None = None
 
 
+Strength = Literal["Strong", "Moderate", "Weak"]
+
+
+class Rating(_Model):
+    """How strongly a material adverse event at one end reaches the other, and why."""
+
+    strength: Strength
+    reason: str
+
+
+class Transmission(_Model):
+    """A link's strength in each direction (ticket 18): from_to is how strongly an event at its
+    `from` reaches its `to`, to_from the reverse (news about Hong Kong reaching DBS)."""
+
+    from_to: Rating
+    to_from: Rating
+
+
+class RatingEntry(_Model):
+    """One link's ratings as transmission.yaml holds them. rate_relationships.py writes `model`
+    entries and rates a link again only when input_hash changes; it never touches a `hand`
+    entry, which is how the team corrects a rating."""
+
+    id: str
+    from_to: Rating
+    to_from: Rating
+    model: str | None = None  # the model that answered; null for a hand entry
+    date: date
+    input_hash: str | None = None  # of the model and both prompts; null for a hand entry
+    rated_by: Literal["model", "hand"]
+
+
+class RatingsFile(_Model):
+    ratings: list[RatingEntry]
+
+
+def load_ratings(path: Path = TRANSMISSION_PATH) -> dict[str, RatingEntry]:
+    """transmission.yaml by link id; empty when the file does not exist yet."""
+    if not path.exists():
+        return {}
+    return {e.id: e for e in RatingsFile.model_validate(yaml.safe_load(path.read_text())).ratings}
+
+
 class Relationship(_Model):
     """One link, as relationships.yaml holds it. Keys at their default are left out of the YAML."""
 
@@ -162,6 +210,13 @@ class Relationship(_Model):
     reason: str
     service: Service | None = None
     figures: list[Figure] = []
+    # Strength in each direction, from transmission.yaml; every rateable link has one.
+    transmission: Transmission | None = None
+
+
+def rateable(r: Relationship) -> bool:
+    """Whether a link is rated: every type but belongs_to_sector, which carries no impact."""
+    return r.type != "belongs_to_sector"
 
 
 class Endpoint(_Model):
@@ -200,15 +255,23 @@ def link_ends() -> set[str]:
 
 
 def load_relationships(path: Path = RELATIONSHIPS_PATH) -> RelationshipsFile:
-    """Read relationships.yaml and check it against the entities and groups in subjects.yaml.
-    Raises ValueError naming every unknown id; the fix is to rerun
-    scripts/build_relationships.py."""
+    """Read relationships.yaml and check it against the entities and groups in subjects.yaml,
+    and that every rateable link has its strengths. Raises ValueError naming every unknown id
+    (the fix is to rerun scripts/build_relationships.py) or every unrated link (rerun
+    scripts/rate_relationships.py, then the build)."""
     data = RelationshipsFile.model_validate(yaml.safe_load(path.read_text()))
     found = problems(data, link_ends())
     if found:
         raise ValueError(
             f"{path.name} does not fit the subject seed (rerun scripts/build_relationships.py): "
             + "; ".join(found)
+        )
+    unrated = [r.id for r in data.relationships if rateable(r) and r.transmission is None]
+    if unrated:
+        raise ValueError(
+            f"{path.name} has {len(unrated)} links with no strength rating (run "
+            "scripts/rate_relationships.py, then scripts/build_relationships.py): "
+            + "; ".join(unrated)
         )
     return data
 
