@@ -1,18 +1,17 @@
 """Indirect impacts, direct subjects and shared relationships, read from the latest run's
 development_impacts and the relationship store (pipeline/impact.py, relationships.py)."""
 
-import json
 import sqlite3
 from datetime import timedelta
 
-from intelmonitor.pipeline.impact import relationship_label
+from intelmonitor.pipeline.impact import relationship_label, route_text
 from intelmonitor.pipeline.params import PRIORITY_LABELS
 from intelmonitor.pipeline.subjects import all_subjects
-from intelmonitor.relationships import SCHEMA, Relationship, shared
+from intelmonitor.relationships import SCHEMA, Relationship, load_nodes, shared
 from intelmonitor.server.models import (
     DirectSubject,
-    ImpactPassage,
     IndirectImpact,
+    IndirectLevel,
     RelationshipFigure,
     RelationshipLink,
     SharedEndpoint,
@@ -57,61 +56,57 @@ def relationship_link(r: Relationship, names: dict[str, str]) -> RelationshipLin
         page=r.page,
         quote=r.quote,
         detail=r.detail,
+        reason=r.reason,
+        from_to=r.transmission.from_to.strength if r.transmission else None,
+        to_from=r.transmission.to_from.strength if r.transmission else None,
         figures=[RelationshipFigure.model_validate(f.model_dump()) for f in r.figures],
     )
 
 
-def _relationships(conn: sqlite3.Connection, ids: set[str]) -> dict[str, Relationship]:
-    if not ids:
-        return {}
-    marks = ",".join("?" * len(ids))
-    rows = conn.execute(f"SELECT data FROM relationships WHERE id IN ({marks})", sorted(ids))
-    return {(r := Relationship.model_validate_json(row["data"])).id: r for row in rows.fetchall()}
+# development_impacts.level as the API names it; the table never gives High.
+INDIRECT_LEVELS: dict[int, IndirectLevel] = {1: "Medium", 0: "Low"}
 
 
 def _impacts(q: Queries, where: str, args: tuple[object, ...]) -> list[IndirectImpact]:
-    """The latest run's impacts matching `where`, by development and rank. An impact whose
-    relationship left the store since the run, or whose subject left the seed, is skipped."""
-    rows = q.conn.execute(
-        f"SELECT * FROM development_impacts WHERE run_id = ? AND {where} "
-        "ORDER BY development_id, rank",
-        (q.run.id, *args),
-    ).fetchall()
+    """The latest run's impacts matching `where` (on development_impacts as `i`), by development,
+    Medium before Low, stronger links first. An impact whose link left the store since the run,
+    or whose entity or source left the seed, is skipped."""
+    subjects = all_subjects()
+    rows = [
+        r
+        for r in q.conn.execute(
+            "SELECT i.development_id, i.subject_id, i.source_id, i.region, i.strength, i.level, "
+            "r.data FROM development_impacts i JOIN relationships r ON r.id = i.relationship_id "
+            f"WHERE i.run_id = ? AND {where} ORDER BY i.development_id, i.level DESC, "
+            "CASE i.strength WHEN 'Strong' THEN 0 WHEN 'Moderate' THEN 1 ELSE 2 END, i.subject_id",
+            (q.run.id, *args),
+        ).fetchall()
+        if r["subject_id"] in subjects and r["source_id"] in subjects
+    ]
     if not rows:
         return []
-    ids = {i for r in rows for i in json.loads(r["relationship_ids"])}
+    links = [Relationship.model_validate_json(r["data"]) for r in rows]
     names = display_names(q.conn)
-    stored = _relationships(q.conn, ids)
-    subjects = all_subjects()
-    found: list[IndirectImpact] = []
-    for r in rows:
-        path = [stored.get(i) for i in json.loads(r["relationship_ids"])]
-        rels = [x for x in path if x is not None]
-        if len(rels) < len(path) or r["subject_id"] not in subjects:
-            continue
-        found.append(
-            IndirectImpact(
-                development_id=r["development_id"],
-                subject=subject_ref(r["subject_id"]),
-                direction=r["direction"],
-                route=r["route"],
-                why=r["why"],
-                confidence=r["confidence"],
-                weight=r["weight"],
-                region=names.get(r["region"], r["region"]) if r["region"] else None,
-                evidence=r["evidence"],
-                last_confirmed=min(x.last_confirmed for x in rels),
-                relationships=[relationship_link(x, names) for x in rels],
-                finding_ids=json.loads(r["finding_ids"]),
-                passages=[ImpactPassage.model_validate(p) for p in json.loads(r["passages"])],
-            )
+    ends = {i for link in links for i in (link.from_, link.to)}
+    nodes = load_nodes(q.conn, ends | {r["source_id"] for r in rows})
+    return [
+        IndirectImpact(
+            development_id=r["development_id"],
+            subject=subject_ref(r["subject_id"]),
+            level=INDIRECT_LEVELS[r["level"]],
+            strength=r["strength"],
+            source=subject_ref(r["source_id"]),
+            route=route_text(link, r["source_id"], r["subject_id"], nodes),
+            region=names.get(r["region"], r["region"]) if r["region"] else None,
+            link=relationship_link(link, names),
         )
-    return found
+        for r, link in zip(rows, links, strict=True)
+    ]
 
 
 def development_impacts(q: Queries, development_id: str) -> list[IndirectImpact]:
-    """The entities a development reaches indirectly, in rank order."""
-    return _impacts(q, "development_id = ?", (development_id,))
+    """The entities a development reaches indirectly, Medium before Low."""
+    return _impacts(q, "i.development_id = ?", (development_id,))
 
 
 def subject_impacts(q: Queries, subject_id: str, days: int | None) -> list[SubjectImpact]:
@@ -119,7 +114,7 @@ def subject_impacts(q: Queries, subject_id: str, days: int | None) -> list[Subje
     date (any time in the run when None), in display order."""
     since = q.run.as_of - timedelta(days=days) if days else None
     found: list[SubjectImpact] = []
-    for i in _impacts(q, "subject_id = ?", (subject_id,)):
+    for i in _impacts(q, "i.subject_id = ?", (subject_id,)):
         dev = q.devs.by_id.get(i.development_id)
         if dev is not None and (since is None or dev.last_published > since):
             found.append(SubjectImpact(**i.model_dump(), development=dev))

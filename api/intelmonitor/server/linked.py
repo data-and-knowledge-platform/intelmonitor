@@ -96,7 +96,8 @@ def linked_institutions(q: Queries, subject_id: str) -> list[LinkedInstitution]:
             [
                 i
                 for i in subject_impacts(q, inst, IMPACT_PERIOD_DAYS)
-                if i.relationships and i.relationships[-1].to_id in ends
+                # through a link whose other end is this subject or a region covering it
+                if (i.link.to_id if i.link.from_id == inst else i.link.from_id) in ends
             ]
             if first.subject
             else []

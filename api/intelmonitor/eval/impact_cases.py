@@ -1,276 +1,545 @@
-"""Gold cases for the impact step (phase1-plan.md, item I), set by hand: a made-up development per
-case goes through the real step (relationship store, candidates, routes, one Claude call) and the
-affected entities, their order and their evidence grades are checked.
+"""Cases for indirect impact by the fixed table (pipeline/impact.py; ticket 20, spec step 3a),
+written before the code. Each case builds a small relationship store in memory from made-up links
+between real seed ids, tags entities on one development at a level, adverse or not, and checks
+which entities the table reaches, at what level, and through which source, link and strength. No
+model call; the cases never read relationships.yaml or a stored run, so ratings changed by hand
+cannot move them.
 
-- A BCS outage reaches the FAST banks.
-- Hong Kong property news reaches DBS, OCBC and UOB in order of weight, direct links first.
-- Singapore home prices reach DBS, OCBC and UOB through their housing loans, never through their
-  Singapore loans: a bank's home country is no exposure route.
-- A MAS rule reaches no bank: not through its Singapore loans (home, and loans carry only
-  economic and market news), nor through supervision.
-- An HKMA rule reaches DBS and OCBC through their Hong Kong subsidiaries, and not UOB through its
-  Greater China loans: a regulator's rule binds the units in its place, not the lenders to it.
-- An Azure outage reaches OCBC, and a Microsoft 365 outage reaches DBS, the banks whose links the
-  store holds, each with that link's evidence grade (replaces the Maybank case, decision S2).
-- An AWS product launch reaches nobody: a link alone is not an impact.
+Every way the table logic could fail, and the cases that catch it:
+- a cell of the table is wrong, or a High direct item gives High: `cell-*`, one per direct level,
+  strength and INDIRECT_FROM_LOW setting;
+- a link is read in the wrong direction: Singtel's event reaches DBS through "DBS depends on
+  Singtel" at `to_from`, DBS's event reaches Singtel at `from_to` (`direction-*`);
+- several links between the same pair: the strongest wins, then the larger share (a link with no
+  share loses to one with a share), then the id (`several-links-*`);
+- several tagged sources reach the same entity: the highest level wins, then the stronger link
+  (`several-sources-*`);
+- an entity tagged on the development gets an indirect row (`tagged-*`);
+- a development not adverse for the tagged entity passes something, or the adverse flag of one
+  tagged entity leaks to another (`not-adverse-*`);
+- a Low direct item passes something by default, or more than Strong to Low when switched on
+  (`cell-*`, `low-*`);
+- anything reaches two hops, through an entity or an endpoint (`two-hops-*`);
+- a region figure misses its member country, covers a place outside the region, carries an event
+  out of the lender towards the region's members, or loses to a weaker direct link (`region-*`);
+- belongs_to_sector carries something, or an endpoint or a group gets a row (`no-carry-*`);
+- a topic tag passes something (`topic-*`);
+- the run step reads the wrong level or adverse flag from development_subjects, stores the wrong
+  row, or counts the two settings wrongly (`store`).
 
-The cases run in their own store, eval-runs/.../db/impact.db, synced from
-api/seed/relationships.yaml, so the app's store is never touched and repeat runs replay the
-recorded calls:
-`uv run python -m intelmonitor.eval impact`. Writes impact_cases.json in the eval directory."""
+`uv run python -m intelmonitor.eval impact` runs them and writes impact_cases.json in the eval
+directory."""
 
 import json
+import sqlite3
+from dataclasses import dataclass, field
 from datetime import date
 
-from pydantic import BaseModel, Field
-
 from intelmonitor.eval.common import EVAL_DIR
-from intelmonitor.pipeline.impact import Impact, ImpactInput, SourceFinding, judge
-from intelmonitor.pipeline.inference import Inference
-from intelmonitor.pipeline.screen import Category
-from intelmonitor.relationships import Evidence, Relationship, sync_relationships
-from intelmonitor.store.db import connect
+from intelmonitor.pipeline.impact import Reached, Tagged, indirect_level, reached, store_impacts
+from intelmonitor.pipeline.params import PRIORITY_LABELS, Priority
+from intelmonitor.relationships import (
+    SCHEMA,
+    Endpoint,
+    Rating,
+    Relationship,
+    RelationshipsFile,
+    RelType,
+    Strength,
+    Transmission,
+    store_relationships,
+)
+from intelmonitor.seed import load_subjects
+from intelmonitor.store.db import SCHEMA as STORE_SCHEMA
 
-STORE = EVAL_DIR / "db" / "impact.db"
+HIGH, MEDIUM, LOW = 2, 1, 0
+
+# The deck's table (slide 8) as decided in ticket 20 Q2: direct level, then strength, to the
+# indirect level, None for nothing. The Low row is the one INDIRECT_FROM_LOW switches on.
+TABLE: dict[int, dict[Strength, int | None]] = {
+    HIGH: {"Strong": MEDIUM, "Moderate": MEDIUM, "Weak": LOW},
+    MEDIUM: {"Strong": MEDIUM, "Moderate": LOW, "Weak": None},
+    LOW: {"Strong": LOW, "Moderate": None, "Weak": None},
+}
 
 
-class ImpactCase(BaseModel):
+def link(
+    from_: str,
+    type_: RelType,
+    to: str,
+    from_to: Strength | None,
+    to_from: Strength | None,
+    weight: float | None = None,
+) -> Relationship:
+    """A made-up link; `from_to` and `to_from` None leaves it unrated, as belongs_to_sector is."""
+    return Relationship.model_validate(
+        {
+            "id": f"{from_}:{type_}:{to}",
+            "from": from_,
+            "to": to,
+            "type": type_,
+            "weight": weight,
+            "evidence": "public",
+            "last_confirmed": date(2026, 11, 1),
+            "detail": "made up for a case",
+            "reason": "made up for a case",
+            "transmission": Transmission(
+                from_to=Rating(strength=from_to, reason="case"),
+                to_from=Rating(strength=to_from, reason="case"),
+            )
+            if from_to is not None and to_from is not None
+            else None,
+        }
+    )
+
+
+GREATER_CHINA = Endpoint(
+    id="greater-china",
+    name="Greater China",
+    kind="region",
+    members=["hong-kong", "mainland-china", "taiwan", "macau"],
+)
+VENDOR = Endpoint(id="case-vendor", name="A vendor no page tracks", kind="tech_provider")
+
+
+@dataclass(frozen=True)
+class Expect:
+    """The one row an entity must get."""
+
+    level: Priority
+    source: str
+    link: str
+    strength: Strength
+    region: str | None = None
+
+
+@dataclass(frozen=True)
+class Case:
     id: str
-    title: str
-    category: Category
-    targets: dict[str, str] = Field(description="Subject id: role")
-    findings: list[str]
-    affected: list[str] = Field(description="Must be affected; in this order when `ordered`")
-    ordered: bool = False
-    not_affected: list[str] = Field(default_factory=list[str])
-    routes: dict[str, str] = Field(
-        default_factory=dict[str, str], description="Subject id: text its route must contain"
-    )
-    link_evidence: dict[str, str] = Field(
-        default_factory=dict[str, str],
-        description="Subject id: relationship id whose evidence grade the impact must carry",
-    )
-    reason: str
+    links: list[Relationship]
+    tagged: dict[str, Tagged]
+    expected: dict[str, Expect]
+    # Every entity that gets a row must be in `expected`; `absent` names the ones the case is
+    # about, for the report.
+    absent: list[str] = field(default_factory=list[str])
+    endpoints: list[Endpoint] = field(default_factory=list[Endpoint])
+    from_low: bool = False
+    reason: str = ""
 
 
-CASES = [
-    ImpactCase(
-        id="bcs-outage-fast-banks",
-        title="A system outage at Banking Computer Services halted FAST and GIRO transfers",
-        category="incident",
-        targets={"bcs": "affected"},
-        findings=[
-            "Banking Computer Services, which operates the FAST and GIRO clearing systems, had a "
-            "system outage on 2 October 2026 that left FAST transfers failing for about four "
-            "hours across Singapore banks.",
-            "Customers of several banks reported failed PayNow and FAST payments during the "
-            "outage, and GIRO deductions were delayed to the next day.",
-        ],
-        affected=["dbs", "ocbc", "uob"],
-        reason="DBS, OCBC and UOB take part in FAST and GIRO, which depend on BCS",
+def adverse(level: int) -> Tagged:
+    return Tagged(level=level, adverse=True)
+
+
+def calm(level: int) -> Tagged:
+    return Tagged(level=level, adverse=False)
+
+
+DBS_SINGTEL = "dbs:depends_on:singtel"
+
+
+def cells() -> list[Case]:
+    """One case per cell: Singtel's adverse event at each level reaches DBS through "DBS depends on
+    Singtel" rated at each strength from Singtel's end, under both settings."""
+    found: list[Case] = []
+    for from_low in (False, True):
+        for direct, row in TABLE.items():
+            for strength, level in row.items():
+                if direct == LOW and not from_low:
+                    level = None
+                expected = (
+                    {"dbs": Expect(PRIORITY_LABELS[level], "singtel", DBS_SINGTEL, strength)}
+                    if level is not None
+                    else {}
+                )
+                found.append(
+                    Case(
+                        id=f"cell-{PRIORITY_LABELS[direct].lower()}-{strength.lower()}"
+                        + ("-from-low" if from_low else ""),
+                        links=[link("dbs", "depends_on", "singtel", "Weak", strength)],
+                        tagged={"singtel": adverse(direct)},
+                        expected=expected,
+                        absent=[] if expected else ["dbs"],
+                        from_low=from_low,
+                        reason=f"{PRIORITY_LABELS[direct]} by {strength} gives "
+                        f"{PRIORITY_LABELS[level] if level is not None else 'nothing'}",
+                    )
+                )
+    return found
+
+
+CASES: list[Case] = [
+    *cells(),
+    Case(
+        id="direction-to-from",
+        links=[link("dbs", "depends_on", "singtel", "Weak", "Strong")],
+        tagged={"singtel": adverse(HIGH)},
+        expected={"dbs": Expect("Medium", "singtel", DBS_SINGTEL, "Strong")},
+        reason="Singtel's event reaches DBS through DBS's dependency, read at to_from",
     ),
-    ImpactCase(
-        id="hong-kong-property-three-banks",
-        title="Hong Kong home prices posted their sharpest monthly fall since 2008",
-        category="market",
-        targets={"hong-kong": "affected", "building-construction": "affected"},
-        findings=[
-            "Hong Kong home prices fell 4.1 per cent in September 2026, the sharpest monthly drop "
-            "since 2008, as higher interest rates and a supply glut weighed on demand.",
-            "Office and retail property values in Hong Kong fell a further 6 per cent in the "
-            "quarter, and developers cut prices on new launches.",
-        ],
-        affected=["dbs", "ocbc", "uob"],
-        ordered=True,
-        routes={"dbs": "Hong Kong", "ocbc": "Hong Kong", "uob": "Greater China"},
-        reason="Hong Kong loans are 12.2% of DBS's and 9.3% of OCBC's; UOB reports only Greater "
-        "China (13.5%), a region-level figure ranked after the direct links (D5b)",
+    Case(
+        id="direction-from-to",
+        links=[link("dbs", "depends_on", "singtel", "Weak", "Strong")],
+        tagged={"dbs": adverse(HIGH)},
+        expected={"singtel": Expect("Low", "dbs", DBS_SINGTEL, "Weak")},
+        reason="DBS's event reaches Singtel at from_to, Weak, so High gives Low",
     ),
-    ImpactCase(
-        id="azure-outage-ocbc",
-        title="A Microsoft Azure outage in Southeast Asia took down hosted services for hours",
-        category="incident",
-        targets={"microsoft-azure": "affected"},
-        findings=[
-            "Microsoft Azure's Southeast Asia region had a major outage on 5 October 2026, taking "
-            "down compute and storage services for customers for about six hours.",
-        ],
-        affected=["ocbc"],
-        link_evidence={"ocbc": "ocbc:depends_on:microsoft-azure"},
-        reason="OCBC's stored cloud dependency is on Azure",
+    Case(
+        id="direction-from-to-medium",
+        links=[link("dbs", "depends_on", "singtel", "Weak", "Strong")],
+        tagged={"dbs": adverse(MEDIUM)},
+        expected={},
+        absent=["singtel"],
+        reason="from_to is Weak, and Medium by Weak gives nothing; to_from's Strong is not read",
     ),
-    ImpactCase(
-        id="m365-outage-dbs",
-        title="A global Microsoft 365 outage cut off email, Teams and Outlook for most of a day",
-        category="incident",
-        targets={"microsoft-365": "affected"},
-        findings=[
-            "A global Microsoft 365 outage on 6 October 2026 left enterprise users unable to use "
-            "Outlook, Teams and Exchange Online for about nine hours.",
+    Case(
+        id="several-links-strongest",
+        links=[
+            link("dbs", "depends_on", "singtel", "Weak", "Weak"),
+            link("dbs", "partner_of", "singtel", "Weak", "Moderate"),
         ],
-        affected=["dbs"],
-        link_evidence={"dbs": "dbs:depends_on:microsoft-365"},
-        reason="DBS's stored dependency is on Microsoft 365, not Azure (decision S9)",
+        tagged={"singtel": adverse(HIGH)},
+        expected={"dbs": Expect("Medium", "singtel", "dbs:partner_of:singtel", "Moderate")},
+        reason="The Moderate link beats the Weak one, which would give only Low",
     ),
-    ImpactCase(
-        id="aws-launch-no-impact",
-        title="AWS launched a new AI model hosting service",
-        category="strategy",
-        targets={"aws": "actor"},
-        findings=[
-            "Amazon Web Services launched a managed service for hosting large AI models on "
-            "7 October 2026, available first in its US regions.",
+    Case(
+        id="several-links-larger-share",
+        links=[
+            link("dbs", "depends_on", "hong-kong", "Weak", "Strong"),
+            link("dbs", "exposed_to", "hong-kong", "Weak", "Strong", weight=0.05),
+            link("dbs", "holds_stake_in", "hong-kong", "Weak", "Strong", weight=0.122),
+            link("dbs", "operates_in", "hong-kong", "Weak", "Strong"),
         ],
-        affected=[],
-        not_affected=["dbs", "uob", "singtel"],
-        reason="A product launch does not flow through a bank's cloud dependency",
+        tagged={"hong-kong": adverse(HIGH)},
+        expected={"dbs": Expect("Medium", "hong-kong", "dbs:holds_stake_in:hong-kong", "Strong")},
+        reason="Equal strength: the 12.2% share beats 5% and the links with no share, whose "
+        "ids come first",
     ),
-    ImpactCase(
-        id="singapore-home-prices-housing-loans",
-        title="Singapore private home prices fell for a second quarter",
-        category="market",
-        targets={"singapore": "affected", "housing": "affected"},
-        findings=[
-            "Singapore private home prices fell 3.2 per cent in the third quarter of 2026, a "
-            "second quarterly decline, as new launches went unsold and mortgage rates stayed "
-            "high.",
-            "HDB resale prices were flat in the quarter, and developers cut prices at several "
-            "new condominium launches.",
+    Case(
+        id="several-links-id",
+        links=[
+            link("dbs", "partner_of", "singtel", "Weak", "Moderate"),
+            link("dbs", "depends_on", "singtel", "Weak", "Moderate"),
         ],
-        affected=["dbs", "ocbc", "uob"],
-        routes={"dbs": "housing", "ocbc": "housing", "uob": "housing"},
-        reason="Housing is 17.8% of DBS's loans, 20.7% of OCBC's and 23.8% of UOB's; their "
-        "Singapore loans are home exposures and carry no impact",
+        tagged={"singtel": adverse(HIGH)},
+        expected={"dbs": Expect("Medium", "singtel", DBS_SINGTEL, "Moderate")},
+        reason="Equal strength, no share: the first id wins",
     ),
-    ImpactCase(
-        id="mas-rule-no-bank",
-        title="MAS consulted on revised corporate governance guidelines for financial institutions",
-        category="regulatory",
-        targets={"mas": "actor", "singapore": "affected"},
-        findings=[
-            "The Monetary Authority of Singapore on 6 October 2026 published a consultation on "
-            "revised corporate governance guidelines for banks, insurers and capital markets "
-            "firms in Singapore, including board independence and risk committee rules.",
+    Case(
+        id="several-sources-highest-level",
+        links=[
+            link("dbs", "depends_on", "singtel", "Weak", "Weak"),
+            link("dbs", "exposed_to", "hong-kong", "Weak", "Strong", weight=0.122),
         ],
-        affected=[],
-        not_affected=["dbs", "ocbc", "uob"],
-        reason="Singapore is the banks' home, and loans carry no regulatory news; MAS's own "
-        "rules reach a bank only when extraction names it",
+        tagged={"singtel": adverse(HIGH), "hong-kong": adverse(MEDIUM)},
+        expected={"dbs": Expect("Medium", "hong-kong", "dbs:exposed_to:hong-kong", "Strong")},
+        reason="High by Weak gives Low; Medium by Strong gives Medium, which wins",
     ),
-    ImpactCase(
-        id="hkma-rule-hong-kong-units",
-        title="HKMA raised capital requirements on property lending by Hong Kong banks",
-        category="regulatory",
-        targets={"hkma": "actor", "hong-kong": "affected"},
-        findings=[
-            "The Hong Kong Monetary Authority on 6 October 2026 raised risk weights on commercial "
-            "real estate loans for all authorized institutions in Hong Kong, effective January "
-            "2027, requiring banks there to hold more capital against property lending.",
+    Case(
+        id="several-sources-level-before-strength",
+        links=[
+            link("dbs", "depends_on", "singtel", "Weak", "Moderate"),
+            link("dbs", "exposed_to", "hong-kong", "Weak", "Strong", weight=0.122),
         ],
-        affected=["dbs", "ocbc"],
-        not_affected=["uob"],
-        routes={"dbs": "operates in Hong Kong", "ocbc": "operates in Hong Kong"},
-        reason="DBS and OCBC own Hong Kong banks the rule binds; UOB's only link is its Greater "
-        "China loans, which carry no regulatory news",
+        tagged={"singtel": adverse(HIGH), "hong-kong": adverse(LOW)},
+        expected={"dbs": Expect("Medium", "singtel", DBS_SINGTEL, "Moderate")},
+        from_low=True,
+        reason="Low by Strong gives Low; High by Moderate gives Medium, which wins over the "
+        "stronger link",
+    ),
+    Case(
+        id="several-sources-stronger-link",
+        links=[
+            link("dbs", "depends_on", "singtel", "Weak", "Moderate"),
+            link("dbs", "exposed_to", "hong-kong", "Weak", "Strong", weight=0.122),
+        ],
+        tagged={"singtel": adverse(HIGH), "hong-kong": adverse(MEDIUM)},
+        expected={"dbs": Expect("Medium", "hong-kong", "dbs:exposed_to:hong-kong", "Strong")},
+        reason="Both give Medium: the Strong link beats the Moderate one",
+    ),
+    Case(
+        id="tagged-no-row",
+        links=[
+            link("dbs", "depends_on", "singtel", "Strong", "Strong"),
+            link("ocbc", "depends_on", "singtel", "Weak", "Strong"),
+        ],
+        tagged={"singtel": adverse(HIGH), "dbs": adverse(HIGH)},
+        expected={"ocbc": Expect("Medium", "singtel", "ocbc:depends_on:singtel", "Strong")},
+        absent=["dbs", "singtel"],
+        reason="DBS and Singtel are both tagged, so neither gets a row from the other",
+    ),
+    Case(
+        id="not-adverse-high",
+        links=[link("dbs", "depends_on", "singtel", "Strong", "Strong")],
+        tagged={"singtel": calm(HIGH)},
+        expected={},
+        absent=["dbs"],
+        reason="A High development not adverse for Singtel passes nothing",
+    ),
+    Case(
+        id="not-adverse-per-entity",
+        links=[
+            link("uob", "depends_on", "singtel", "Weak", "Strong"),
+            link("ocbc", "holds_stake_in", "great-eastern", "Strong", "Weak", weight=0.88),
+        ],
+        tagged={"singtel": adverse(MEDIUM), "ocbc": calm(HIGH)},
+        expected={"uob": Expect("Medium", "singtel", "uob:depends_on:singtel", "Strong")},
+        absent=["great-eastern"],
+        reason="Adverse for Singtel only: its neighbour gets a row, OCBC's does not",
+    ),
+    Case(
+        id="low-switch-moderate",
+        links=[link("dbs", "depends_on", "singtel", "Weak", "Moderate")],
+        tagged={"singtel": adverse(LOW)},
+        expected={},
+        absent=["dbs"],
+        from_low=True,
+        reason="With the switch on, Low reaches only a Strong link",
+    ),
+    Case(
+        id="two-hops-entity",
+        links=[
+            link("dbs", "depends_on", "singtel", "Weak", "Strong"),
+            link("ocbc", "depends_on", "dbs", "Weak", "Strong"),
+        ],
+        tagged={"singtel": adverse(HIGH)},
+        expected={"dbs": Expect("Medium", "singtel", DBS_SINGTEL, "Strong")},
+        absent=["ocbc"],
+        reason="Singtel reaches DBS; nothing goes on from DBS to OCBC",
+    ),
+    Case(
+        id="two-hops-endpoint",
+        links=[
+            link("dbs", "depends_on", VENDOR.id, "Weak", "Strong"),
+            link(VENDOR.id, "depends_on", "singtel", "Weak", "Strong"),
+        ],
+        endpoints=[VENDOR],
+        tagged={"singtel": adverse(HIGH)},
+        expected={},
+        absent=["dbs", VENDOR.id],
+        reason="An endpoint gets no row and passes nothing on",
+    ),
+    Case(
+        id="region-member",
+        links=[link("uob", "exposed_to", "greater-china", "Weak", "Moderate", weight=0.135)],
+        endpoints=[GREATER_CHINA],
+        tagged={"taiwan": adverse(HIGH)},
+        expected={
+            "uob": Expect(
+                "Medium", "taiwan", "uob:exposed_to:greater-china", "Moderate", "greater-china"
+            )
+        },
+        reason="UOB's Greater China figure covers Taiwan, read at to_from",
+    ),
+    Case(
+        id="region-not-member",
+        links=[link("uob", "exposed_to", "greater-china", "Weak", "Strong", weight=0.135)],
+        endpoints=[GREATER_CHINA],
+        tagged={"singapore": adverse(HIGH)},
+        expected={},
+        absent=["uob"],
+        reason="Singapore is not in Greater China",
+    ),
+    Case(
+        id="region-to-from-only",
+        links=[link("uob", "exposed_to", "greater-china", "Strong", "Strong", weight=0.135)],
+        endpoints=[GREATER_CHINA],
+        tagged={"uob": adverse(HIGH)},
+        expected={},
+        absent=["taiwan", "hong-kong", "mainland-china", "greater-china"],
+        reason="UOB's own event does not reach the region's members through its figure",
+    ),
+    Case(
+        id="region-beats-weaker-direct",
+        links=[
+            link("dbs", "exposed_to", "hong-kong", "Weak", "Weak", weight=0.122),
+            link("dbs", "exposed_to", "greater-china", "Weak", "Strong", weight=0.2),
+        ],
+        endpoints=[GREATER_CHINA],
+        tagged={"hong-kong": adverse(HIGH)},
+        expected={
+            "dbs": Expect(
+                "Medium", "hong-kong", "dbs:exposed_to:greater-china", "Strong", "greater-china"
+            )
+        },
+        reason="The direct link is Weak (Low); the region figure is Strong (Medium) and wins",
+    ),
+    Case(
+        id="no-carry-belongs-to-sector",
+        links=[
+            link("dbs", "belongs_to_sector", "ocbc", None, None),
+            link("dbs", "belongs_to_sector", "singapore-banks", None, None),
+        ],
+        tagged={"dbs": adverse(HIGH), "ocbc": adverse(HIGH)},
+        expected={},
+        absent=["ocbc", "dbs", "singapore-banks"],
+        reason="belongs_to_sector carries nothing, even between two entities",
+    ),
+    Case(
+        id="no-carry-endpoint",
+        links=[link("dbs", "depends_on", VENDOR.id, "Strong", "Strong")],
+        endpoints=[VENDOR],
+        tagged={"dbs": adverse(HIGH)},
+        expected={},
+        absent=[VENDOR.id],
+        reason="An endpoint is not a seed entity and gets no row",
+    ),
+    Case(
+        id="topic-passes-nothing",
+        links=[link("dbs", "depends_on", "singtel", "Strong", "Strong")],
+        tagged={"banking-lending": adverse(HIGH)},
+        expected={},
+        absent=["dbs", "singtel"],
+        reason="A topic has no links",
     ),
 ]
 
 
-class ImpactCaseResult(BaseModel):
-    id: str
-    ok: bool
-    problems: list[str]
-    impacts: list[dict[str, object]]
-    reason: str
+def _store(links: list[Relationship], endpoints: list[Endpoint]) -> sqlite3.Connection:
+    """An in-memory store with the run tables and these links."""
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript(STORE_SCHEMA)
+    conn.executescript(SCHEMA)
+    store_relationships(conn, RelationshipsFile(relationships=links, endpoints=endpoints))
+    return conn
 
 
-def _input(case: ImpactCase) -> ImpactInput:
-    """The case as a development at Significant (High) for its targets."""
-    return ImpactInput(
-        id=f"case-{case.id}",
-        title=case.title,
-        category=case.category,
-        targets={s: (role, 3) for s, role in case.targets.items()},
-        findings=[
-            SourceFinding(
-                id=f"case-{case.id}-{n}",
-                statement=text,
-                quote=text,
-                document_id="",
-                domain="example.com",
-                published=date(2026, 10, 7).isoformat(),
-            )
-            for n, text in enumerate(case.findings)
-        ],
-    )
+def _row(r: Reached) -> dict[str, object]:
+    return {
+        "subject": r.subject_id,
+        "level": PRIORITY_LABELS[r.level],
+        "source": r.source_id,
+        "link": r.relationship.id,
+        "strength": r.strength,
+        "region": r.region,
+    }
 
 
-def check(case: ImpactCase, impacts: list[Impact], links: dict[str, Relationship]) -> list[str]:
-    by_subject = {i.subject_id: i for i in impacts}
-    problems = [f"{s} not affected" for s in case.affected if s not in by_subject]
-    problems += [f"{s} affected" for s in case.not_affected if s in by_subject]
-    if case.ordered:
-        order = [i.subject_id for i in impacts if i.subject_id in case.affected]
-        if order != case.affected:
-            problems.append(f"order {order}, expected {case.affected}")
-    for s, text in case.routes.items():
-        if s in by_subject and text not in by_subject[s].route:
-            problems.append(f"{s} route {by_subject[s].route!r} lacks {text!r}")
-    for s, rel_id in case.link_evidence.items():
-        if s not in by_subject:
+def check(case: Case, rows: list[Reached]) -> list[str]:
+    problems: list[str] = []
+    entities = {e.id for e in load_subjects().entities}
+    by_subject: dict[str, list[Reached]] = {}
+    for r in rows:
+        by_subject.setdefault(r.subject_id, []).append(r)
+    for subject, found in by_subject.items():
+        if len(found) > 1:
+            problems.append(f"{subject} has {len(found)} rows")
+        if subject not in entities:
+            problems.append(f"{subject} is not a seed entity")
+        if subject not in case.expected:
+            problems.append(f"{subject} reached: {_row(found[0])}")
+    for subject, want in case.expected.items():
+        if subject not in by_subject:
+            problems.append(f"{subject} not reached")
             continue
-        impact = by_subject[s]
-        expected: Evidence = links[rel_id].evidence
-        if rel_id not in impact.path.relationship_ids:
-            problems.append(f"{s} route rests on {impact.path.relationship_ids}, not {rel_id}")
-        if impact.path.evidence != expected:
-            problems.append(f"{s} evidence {impact.path.evidence}, link has {expected}")
+        got = by_subject[subject][0]
+        found = Expect(
+            PRIORITY_LABELS[got.level], got.source_id, got.relationship.id, got.strength, got.region
+        )
+        if found != want:
+            problems.append(f"{subject}: {found}, expected {want}")
+    problems += [f"{s} is tagged and reached" for s in case.tagged if s in by_subject]
     return problems
 
 
-async def run() -> None:
-    EVAL_DIR.mkdir(parents=True, exist_ok=True)
-    conn = connect(STORE)
-    data = sync_relationships(conn)
-    links = {r.id: r for r in data.relationships}
-    inf = Inference(conn, "eval-impact")
-    results: list[ImpactCaseResult] = []
-    for case in CASES:
-        impacts = await judge(inf, conn, _input(case))
-        problems = check(case, impacts, links)
-        results.append(
-            ImpactCaseResult(
-                id=case.id,
-                ok=not problems,
-                problems=problems,
-                impacts=[
-                    {
-                        "subject": i.subject_id,
-                        "direction": i.direction,
-                        "route": i.route,
-                        "why": i.why,
-                        "confidence": i.confidence,
-                        "evidence": i.path.evidence,
-                        "relationship_ids": i.path.relationship_ids,
-                    }
-                    for i in impacts
-                ],
-                reason=case.reason,
-            )
-        )
-    (EVAL_DIR / "impact_cases.json").write_text(
-        json.dumps([r.model_dump() for r in results], indent=2)
+def check_table() -> list[str]:
+    """indirect_level against TABLE, every cell under both settings; never High."""
+    problems: list[str] = []
+    for from_low in (False, True):
+        for direct, row in TABLE.items():
+            for strength, want in row.items():
+                if direct == LOW and not from_low:
+                    want = None
+                got = indirect_level(direct, strength, from_low=from_low)
+                if got != want:
+                    problems.append(f"{direct} by {strength} (from_low {from_low}): {got}, {want}")
+                if got == HIGH:
+                    problems.append(f"{direct} by {strength} gives High")
+    return problems
+
+
+def check_store() -> list[str]:
+    """store_impacts on a run with two developments: it reads each tag's level and adverse flag
+    from development_subjects, stores the default setting's rows and counts both settings."""
+    links = [
+        link("dbs", "depends_on", "singtel", "Weak", "Strong"),
+        link("uob", "depends_on", "singtel", "Weak", "Weak"),
+        link("ocbc", "exposed_to", "greater-china", "Weak", "Moderate", weight=0.2),
+    ]
+    conn = _store(links, [GREATER_CHINA])
+    tags = [
+        # dev-a: Singtel High and adverse reaches DBS (Medium) and UOB (Low)
+        ("dev-a", "singtel", HIGH, 1),
+        # dev-b: Taiwan Low and adverse reaches OCBC only when Low passes (it is Moderate: no)
+        ("dev-b", "taiwan", LOW, 1),
+        # dev-c: Singtel Low and adverse reaches DBS as Low only with the switch on
+        ("dev-c", "singtel", LOW, 1),
+        # dev-d: Singtel High, not adverse: nothing
+        ("dev-d", "singtel", HIGH, 0),
+    ]
+    conn.executemany(
+        "INSERT INTO development_subjects (run_id, development_id, subject_id, confidence, "
+        "source, role, adverse, priority_level) VALUES ('case', ?, ?, 1, 'claude', 'affected', "
+        "?, ?)",
+        [(dev, subject, adverse_flag, level) for dev, subject, level, adverse_flag in tags],
     )
+    stats = store_impacts(conn, "case")
+    stored = {
+        tuple(r)
+        for r in conn.execute(
+            "SELECT development_id, subject_id, source_id, relationship_id, region, strength, "
+            "level FROM development_impacts WHERE run_id = 'case'"
+        )
+    }
+    want = {
+        ("dev-a", "dbs", "singtel", DBS_SINGTEL, None, "Strong", MEDIUM),
+        ("dev-a", "uob", "singtel", "uob:depends_on:singtel", None, "Weak", LOW),
+    }
+    problems: list[str] = []
+    if stored != want:
+        problems.append(f"stored {sorted(stored, key=str)}, expected {sorted(want, key=str)}")
+    if (stats.without_low, stats.with_low) != (2, 3):
+        problems.append(f"counts {stats.without_low} without Low, {stats.with_low} with, not 2, 3")
+    if stats.impacts != len(stored):
+        problems.append(f"stats say {stats.impacts} rows, {len(stored)} stored")
+    return problems
+
+
+@dataclass(frozen=True)
+class Result:
+    id: str
+    ok: bool
+    problems: list[str]
+    rows: list[dict[str, object]]
+    reason: str
+
+
+def run() -> None:
+    results = [Result("table", not (p := check_table()), p, [], "indirect_level by cell")]
+    for case in CASES:
+        conn = _store(case.links, case.endpoints)
+        rows = reached(conn, case.tagged, from_low=case.from_low)
+        problems = check(case, rows)
+        rows_out = [_row(r) for r in rows]
+        results.append(Result(case.id, not problems, problems, rows_out, case.reason))
+    problems = check_store()
+    results.append(Result("store", not problems, problems, [], "store_impacts on a made-up run"))
+    EVAL_DIR.mkdir(parents=True, exist_ok=True)
+    (EVAL_DIR / "impact_cases.json").write_text(json.dumps([r.__dict__ for r in results], indent=2))
+    failed = [r for r in results if not r.ok]
     lines = [
-        f"Impact cases ({inf.calls} Claude calls, {inf.cache_hits} replayed)",
+        f"Impact cases: {len(results) - len(failed)} of {len(results)} pass, no model call",
         "",
-        "| Case | Result | Affected, in order | Problems |",
+        "| Case | Result | Reached | Problems |",
         "|---|---|---|---|",
     ]
     lines += [
         f"| {r.id} | {'pass' if r.ok else 'FAIL'} | "
-        f"{', '.join(str(i['subject']) for i in r.impacts) or 'none'} | "
+        f"{', '.join(f'{x["subject"]} {x["level"]}' for x in r.rows) or 'none'} | "
         f"{'; '.join(r.problems)} |"
         for r in results
     ]
     print("\n".join(lines))
+    if failed:
+        raise SystemExit(1)

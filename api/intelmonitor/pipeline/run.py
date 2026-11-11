@@ -7,7 +7,8 @@ Recomputing a complete run keeps it complete while it runs: each step swaps its 
 transaction, so the app keeps serving the run instead of falling back to an older one.
 
 Order (phase1-plan.md, section 5): sync the relationship store, detectors, screen, extract, merge
-and priority, indirect impact, upcoming dates, indicators and notes, diff, briefs, graph.
+and priority, headlines, indirect impact by table, upcoming dates, indicators and notes, diff,
+briefs, graph.
 
 Standing answers no longer run (phase1-plan.md, item P). Their module stays; a recomputed run drops
 what they wrote for it before.
@@ -29,7 +30,7 @@ from intelmonitor.pipeline.impact import store_impacts
 from intelmonitor.pipeline.indicators import store_run_indicators
 from intelmonitor.pipeline.inference import Inference
 from intelmonitor.pipeline.notes import write_notes
-from intelmonitor.pipeline.params import RUN_SPACING_DAYS
+from intelmonitor.pipeline.params import INDIRECT_FROM_LOW, RUN_SPACING_DAYS
 from intelmonitor.pipeline.screen import screen_documents
 from intelmonitor.pipeline.summaries import write_summaries
 from intelmonitor.pipeline.upcoming import store_upcoming
@@ -121,11 +122,11 @@ async def compute_run(
             f"headlines: {heads.written} written, {heads.from_code} from detectors, "
             f"{heads.refused} refused"
         )
-        impact = await store_impacts(inf, conn, run_id)
+        impact = store_impacts(conn, run_id)
         step(
-            f"impact: {impact.developments} developments at Medium or above, {impact.judged} "
-            f"with {impact.candidates} candidates; {impact.calls} Claude calls, "
-            f"{impact.cached} cached, {impact.refused} refused; {impact.impacts} indirect impacts"
+            f"impact by table: {impact.impacts} indirect impacts from {impact.developments} "
+            f"developments (INDIRECT_FROM_LOW {INDIRECT_FROM_LOW}); {impact.without_low} rows "
+            f"without Low direct items, {impact.with_low} with them"
         )
         upcoming = store_upcoming(conn, run_id, as_of, devs)
         base_id = previous_run(conn, run_id)

@@ -1,9 +1,10 @@
 """`uv run python -m intelmonitor.eval <step>`: v2, v1, v0, gold, judge, score, rescore (gold,
 judge and score from cached calls only, with no model call allowed), cases [store path] (the
 gold cases for roles, adverse and priority, on the app's store by default), adverse (the
-adverse flag's gold cases through the extraction prompt, in their own store), impact (the impact
-step's gold cases, in their own store), brief [store path] [subject ...] (the judged brief eval
-on a store's latest complete run, the app's by default) or brief-compare [store path]
+adverse flag's gold cases through the extraction prompt, in their own store), impact (the
+indirect impact table's cases, in memory, no model call), brief [store path] [subject ...] (the
+judged brief eval on a store's latest complete run, the app's by default) or brief-compare
+[store path]
 [subject ...] (the same subjects' briefs on Opus 5.5 beside the stored ones, in a store copy)."""
 
 import asyncio
@@ -36,13 +37,14 @@ def main() -> None:
         "v0": v0.run,
         "gold": gold.run,
         "judge": judge.run,
-        "impact": impact_cases.run,
         "adverse": adverse_cases.run,
     }
     if step in steps:
         asyncio.run(steps[step]())
     elif step == "score":
         score.run()
+    elif step == "impact":
+        impact_cases.run()
     elif step == "cases":
         cases.run(*(Path(p) for p in sys.argv[2:3]))
     elif step in ("brief", "brief-compare"):

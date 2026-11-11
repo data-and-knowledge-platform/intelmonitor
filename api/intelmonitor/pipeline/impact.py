@@ -1,121 +1,35 @@
-"""Step 7: indirect impact over the relationship store (phase1-plan.md, item I).
+"""Indirect impact by the team's fixed table (deck of 10 Nov 2026, slide 8; ticket 20), with no
+model call.
 
-For each development at Medium priority or above for one of its affected or acting subjects
-(the targets), code finds the tracked entities linked to a target in the relationship store
-(relationships.candidates), keeps the routes that suit the development (`usable`: a loan
-exposure carries only economic and market news, never into the bank's home country) and writes
-each route in plain words. One Claude call per development
-judges, per candidate, whether the development plausibly reaches it through one of those routes.
-The model never supplies a route or a relationship: it picks one of the numbered routes code gave.
-The call also gets the sentences in the development's own sources that name each candidate, so a
-line such as DBS's US dollar rate sensitivity in an article about the Fed can ground the reason.
+For each development and each entity tagged on it (development_subjects) that the development is
+adverse for, every seed entity one link away (relationships.reaches) and not itself tagged gets a
+level from INDIRECT_TABLE (pipeline/params.py): the tagged entity's direct level by the link's
+strength in the direction from the tagged entity to the neighbour. High gives Medium, Medium,
+Low for a Strong, Moderate, Weak link; Medium gives Medium, Low, nothing; Low passes nothing
+unless INDIRECT_FROM_LOW. Never High, and never a second hop; a link into a region endpoint counts
+for each member country. Where several routes reach the same entity, the highest level wins, then
+the stronger link, the larger share, the link id, the source id.
 
-Affected candidates go to development_impacts, apart from development_subjects, so an indirect
-impact is never shown as news about the entity itself.
+The rows go to development_impacts, apart from development_subjects, so an indirect impact is
+never shown as news about the entity itself. The wording helpers below write links in plain
+words for the graph, the briefs, the Linked section and the API.
 """
 
-import asyncio
-import json
-import re
 import sqlite3
-from dataclasses import asdict, dataclass, field, replace
-from functools import cache
-from typing import Literal
+from dataclasses import dataclass
 
-from pydantic import BaseModel, Field
-
-from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
-from intelmonitor.pipeline.params import MATERIAL_LEVEL, PRIORITY_LABELS
-from intelmonitor.pipeline.screen import Category
-from intelmonitor.pipeline.subjects import all_subjects
+from intelmonitor.pipeline.params import INDIRECT_FROM_LOW, INDIRECT_TABLE
 from intelmonitor.relationships import (
     LOAN_MEASURES,
-    Candidate,
     HeadlineMeasure,
-    ImpactPath,
     Node,
     Relationship,
     RelType,
     Service,
-    candidates,
+    Strength,
     owns,
+    reaches,
 )
-from intelmonitor.seed import EntityKind, load_subjects
-
-# D5a: an exposure counts only with a disclosed share (of loans, reserves, revenue) of at least 5%.
-EXPOSURE_MIN_WEIGHT = 0.05
-# An exposure (a loan share in a country, region or sector) carries only economic and market
-# news. A rule, a strategy move, a management change or an incident in a place binds or hits the
-# institutions there, which reach a bank through its own unit in the place (holds_stake_in), not
-# through its loans.
-EXPOSURE_CATEGORIES: tuple[Category, ...] = ("market", "financial", "policy", "security")
-# A second hop into a place counts only through the subject's own unit there: OCBC holds a stake
-# in OCBC Malaysia, which operates in Malaysia; not UOB depends on AWS, which operates in Singapore.
-PLACE_FIRST_HOPS: tuple[RelType, ...] = ("holds_stake_in",)
-# Links that never carry impact: a regulator's or an exchange's own news names the institutions
-# its rules or listings bind, so extraction tags them directly; the links stay for the graph. A
-# seed group (belongs_to_sector) is not an entity, and nothing is tagged to it.
-NO_IMPACT: tuple[RelType, ...] = ("regulated_by", "listed_on", "belongs_to_sector")
-# For the same reason, no path into a regulator or central bank counts: otherwise MEPS+, which
-# depends on MAS, would carry every MAS development to every MEPS+ bank. News about MEPS+ itself
-# tags MEPS+, and reaches the banks from there.
-NO_IMPACT_TARGETS: tuple[EntityKind, ...] = ("regulator", "central_bank")
-
-
-@cache
-def _homes() -> dict[str, str]:
-    """Each entity's home country from the seed: DBS, OCBC and UOB to Singapore."""
-    return {e.id: e.home for e in load_subjects().entities if e.home is not None}
-
-
-def usable(path: ImpactPath, category: Category) -> bool:
-    """A path counts for impact on a development of `category`: no assumed link, no excluded link
-    type, no regulator or central bank at its end, a second hop into a place only through the
-    subject's own unit, and any exposure on it discloses a loan share of EXPOSURE_MIN_WEIGHT or
-    more (D5a), is not to the lender's home country, and carries economic or market news
-    (EXPOSURE_CATEGORIES)."""
-    rels = path.relationships
-    if path.evidence == "assumed" or path.nodes[-1].kind in NO_IMPACT_TARGETS:
-        return False
-    if len(rels) == 2 and rels[1].type == "operates_in" and rels[0].type not in PLACE_FIRST_HOPS:
-        return False
-    for r in rels:
-        if r.type in NO_IMPACT:
-            return False
-        if r.type == "exposed_to" and (
-            r.weight is None
-            or r.weight < EXPOSURE_MIN_WEIGHT
-            or r.to == _homes().get(r.from_)
-            or category not in EXPOSURE_CATEGORIES
-        ):
-            return False
-    return True
-
-
-def impact_candidates(conn: sqlite3.Connection, dev: "ImpactInput") -> list[Candidate]:
-    """candidates(dev's targets) less the targets, keeping only paths usable for the development's
-    category, best first per candidate. Order: direct links with a loan share, largest first;
-    then region-level ones (D5b); then links without a share (vendors, payment systems,
-    ownership), by id."""
-    found: list[Candidate] = []
-    for c in candidates(conn, list(dev.targets)):
-        paths = [p for p in c.paths if usable(p, dev.category)]  # already best first
-        if paths:
-            best = paths[0]
-            found.append(
-                c.model_copy(
-                    update={
-                        "paths": paths,
-                        "weight": best.weight,
-                        "region": best.region,
-                        "evidence": best.evidence,
-                    }
-                )
-            )
-    return sorted(
-        found, key=lambda c: (c.weight is None, c.region is not None, -(c.weight or 0), c.subject)
-    )
-
 
 SERVICE_WORDS: dict[Service, str] = {
     "banking": "banking",
@@ -297,418 +211,162 @@ def short_label(r: Relationship, outbound: bool) -> str:
     return LINK_WORDS[r.type].removeprefix("is ").removeprefix("a ")
 
 
-def route_text(path: ImpactPath) -> str:
-    """The route in plain words, from the path's nodes and figures: "via its Hong Kong loans,
-    12.2% of total"; "takes part in FAST, which depends on BCS for payments"; for a region-level
-    exposure, "via its Greater China loans, 13.5% of total, a figure for the whole region
-    including Taiwan"."""
-    rels, nodes = path.relationships, path.nodes
-    first = rels[0]
-    loans = first.measure is None or first.measure in LOAN_MEASURES
-    if first.type == "exposed_to" and first.weight is not None and loans:
-        text = f"via its {_place(nodes[1])} loans, {_share(first.weight)} of total"
-        if first.chart_reading:
-            text += " (read from a chart)"
-    else:
-        text = link_words(first, nodes[1])
-    for r, to in zip(rels[1:], nodes[2:], strict=True):
-        text += f", which {link_words(r, to)}"
-    if path.region:
-        target = all_subjects()[path.target].name
-        text += f", a figure for the whole region including {target}"
+def _inbound(r: Relationship, source: Node) -> str:
+    """A link read from its `to` end, naming its `from` end: "depended on by DBS for telecoms",
+    "28.3% held by Temasek", "lent to by DBS, 12.2% of its loans"."""
+    if r.type == "exposed_to":
+        w = _exposure_words(r)
+        text = f"{w.inbound} {source.name}"
+        return text + (f", {_share(r.weight)} of its {w.short}" if r.weight is not None else "")
+    if r.type == "holds_stake_in" and r.weight is not None:
+        return f"{_share(r.weight)} held by {source.name}"
+    text = f"{INBOUND_WORDS[r.type]} {source.name}"
+    if r.type == "depends_on" and r.service:
+        text += f" for {SERVICE_WORDS[r.service]}"
     return text
 
 
-# What one development's call shows the model, at most.
-MAX_FINDINGS = 12
-MAX_PATHS = 3  # routes per candidate
-MAX_PASSAGES = 3  # source passages per candidate
-MAX_DOCUMENTS = 8  # documents searched for those passages
-PASSAGE_CHARS = 600
+def route_text(r: Relationship, source: str, reached: str, nodes: dict[str, Node]) -> str:
+    """The one link by which news about `source` reaches `reached`, in plain words without
+    `reached`, for an indirect impact. From the link's `from` end: "via its Hong Kong loans,
+    12.2% of total", "depends on Singtel for telecoms"; from its `to` end: "depended on by DBS
+    for telecoms"; into a region that covers the source: "via its Greater China loans, 13.5% of
+    total, a figure for the whole region including Taiwan". `nodes` holds both ends and the
+    source (relationships.load_nodes)."""
+    if reached == r.to:
+        return _inbound(r, nodes[r.from_])
+    to = nodes[r.to]
+    loans = r.measure is None or r.measure in LOAN_MEASURES
+    if r.type == "exposed_to" and r.weight is not None and loans:
+        text = f"via its {_place(to)} loans, {_share(r.weight)} of total"
+        if r.chart_reading:
+            text += " (read from a chart)"
+    else:
+        text = link_words(r, to)
+    if source != r.to:
+        text += f", a figure for the whole region including {nodes[source].name}"
+    return text
 
 
 @dataclass(frozen=True)
-class SourceFinding:
-    id: str
-    statement: str
-    quote: str
-    document_id: str
-    domain: str
-    published: str  # YYYY-MM-DD
+class Tagged:
+    """An entity tagged on a development: the development's direct level for it (0 Low to 2
+    High) and whether it is adverse for it."""
 
-
-@dataclass
-class ImpactInput:
-    """A development as the impact step reads it from the store."""
-
-    id: str
-    title: str
-    category: Category
-    targets: dict[str, tuple[str, int]]  # subject id: (role, priority level)
-    findings: list[SourceFinding] = field(default_factory=list[SourceFinding])
-
-    @property
-    def level(self) -> int:
-        return max(level for _, level in self.targets.values())
-
-
-def load_inputs(conn: sqlite3.Connection, run_id: str) -> list[ImpactInput]:
-    """The run's developments at MATERIAL_LEVEL or above for some target, with their targets
-    and findings, earliest source first."""
-    inputs: dict[str, ImpactInput] = {}
-    rows = conn.execute(
-        "SELECT d.id, d.title, d.category, s.subject_id, s.role, s.priority_level "
-        "FROM developments d JOIN development_subjects s "
-        "ON s.run_id = d.run_id AND s.development_id = d.id "
-        "WHERE d.run_id = ? ORDER BY d.id, s.subject_id",
-        (run_id,),
-    )
-    for r in rows:
-        dev = inputs.setdefault(r["id"], ImpactInput(r["id"], r["title"], r["category"], {}))
-        dev.targets[r["subject_id"]] = (r["role"], r["priority_level"])
-    chosen = {i: d for i, d in inputs.items() if d.level >= MATERIAL_LEVEL}
-    for r in conn.execute(
-        "SELECT s.development_id, f.id, f.statement, f.quotes, f.document_id, d.domain, "
-        "d.published_at FROM development_sources s JOIN findings f ON f.id = s.finding_id "
-        "JOIN source_documents d ON d.id = s.document_id WHERE s.run_id = ? "
-        "ORDER BY d.published_at, f.id",
-        (run_id,),
-    ):
-        if (dev := chosen.get(r["development_id"])) is not None:
-            quotes = json.loads(r["quotes"])
-            dev.findings.append(
-                SourceFinding(
-                    id=r["id"],
-                    statement=r["statement"],
-                    quote=quotes[0]["text"] if quotes else "",
-                    document_id=r["document_id"],
-                    domain=r["domain"],
-                    published=r["published_at"][:10],
-                )
-            )
-    return list(chosen.values())
+    level: int
+    adverse: bool
 
 
 @dataclass(frozen=True)
-class Passage:
-    """A sentence from one of the development's documents that names a candidate, with the next
-    one."""
-
-    document_id: str
-    domain: str
-    published: str
-    text: str
-
-
-_SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'“‘(\[])")
-
-
-@cache
-def _name_patterns() -> dict[str, re.Pattern[str]]:
-    """Each entity subject's name and aliases as one whole-word pattern."""
-    patterns: dict[str, re.Pattern[str]] = {}
-    for e in load_subjects().entities:
-        names = sorted({e.name, *e.aliases}, key=len, reverse=True)
-        alternatives = "|".join(re.escape(n) for n in names)
-        patterns[e.id] = re.compile(rf"(?<!\w)(?:{alternatives})(?!\w)")
-    return patterns
-
-
-def passages(conn: sqlite3.Connection, dev: ImpactInput, subject_id: str) -> list[Passage]:
-    """Up to MAX_PASSAGES passages from the development's documents that name the candidate: the
-    naming sentence and the next one, since the substance often follows ("For DBS, the impact is
-    less straightforward. The lender said its US dollar book..."). Passages naming fewer other
-    entities come first, then in document order."""
-    patterns = _name_patterns()
-    own = patterns[subject_id]
-    others = [p for i, p in patterns.items() if i != subject_id]
-    scored: list[tuple[int, int, Passage]] = []
-    documents = list(dict.fromkeys(f.document_id for f in dev.findings))[:MAX_DOCUMENTS]
-    for document_id in documents:
-        row = conn.execute(
-            "SELECT text, domain, published_at FROM source_documents WHERE id = ?", (document_id,)
-        ).fetchone()
-        if row is None:  # an eval case's made-up finding
-            continue
-        sentences = [
-            s.strip()
-            for line in row["text"].splitlines()
-            if not line.lstrip().startswith("#")
-            for s in _SENTENCE_END.split(line.strip())
-            if s.strip()
-        ]
-        for i, sentence in enumerate(sentences):
-            if len(sentence) < 30 or not own.search(sentence):
-                continue
-            text = " ".join(sentences[i : i + 2])[:PASSAGE_CHARS]
-            crowd = sum(bool(p.search(text)) for p in others)
-            passage = Passage(document_id, row["domain"], row["published_at"][:10], text)
-            scored.append((crowd, len(scored), passage))
-    chosen: list[Passage] = []
-    for _, _, p in sorted(scored, key=lambda x: x[:2]):
-        if all(p.text not in c.text and c.text not in p.text for c in chosen):
-            chosen.append(p)
-        if len(chosen) == MAX_PASSAGES:
-            break
-    return chosen
-
-
-Direction = Literal["negative", "positive", "mixed"]
-Confidence = Literal["high", "medium", "low"]
-
-
-class CandidateVerdict(BaseModel):
-    subject: str = Field(description="The candidate id")
-    affected: bool
-    route: int = Field(description="Number of the route the judgement rests on: 1 for R1")
-    direction: Direction
-    why: str = Field(description="One or two sentences; empty when not affected")
-    confidence: Confidence
-    findings: list[int] = Field(description="Numbers of the findings relied on: 1 for F1")
-    passages: list[int] = Field(description="Numbers of the source passages relied on: 1 for P1")
-
-
-class ImpactVerdicts(BaseModel):
-    candidates: list[CandidateVerdict]
-
-
-IMPACT_SYSTEM = (
-    "You judge indirect impact for a financial supervisor's monitoring dashboard. A development "
-    "happened to some entities; other tracked entities are linked to them by stored "
-    "relationships: loan exposures, vendor and payment-system dependencies, ownership. For each "
-    "linked entity you decide whether the development plausibly affects it through one of the "
-    "routes given. You only judge: never add a relationship, a route or a fact the input does "
-    "not give."
-)
-
-
-@dataclass(frozen=True)
-class Judged:
-    """One candidate as shown to the model: its routes and the passages naming it."""
-
-    candidate: Candidate
-    paths: list[ImpactPath]
-    routes: list[str]
-    passages: list[Passage]
-
-
-def _relationship_line(r: Relationship) -> str:
-    when = f"as of {r.as_of}" if r.as_of else f"last confirmed {r.last_confirmed}"
-    source = f" Source: {r.source_title}." if r.source_title else ""
-    quote = f' "{r.quote}"' if r.quote else ""
-    return f"{r.evidence}, {when}. {r.detail}{source}{quote}"
-
-
-def _target_line(dev: ImpactInput) -> str:
-    subjects = all_subjects()
-    return ", ".join(
-        f"{subjects[i].name} ({role}, {PRIORITY_LABELS[level]} priority)"
-        for i, (role, level) in dev.targets.items()
-        if i in subjects
-    )
-
-
-def impact_prompt(dev: ImpactInput, judged: list[Judged]) -> str:
-    findings = "\n".join(
-        f'[F{n}] {f.statement} ({f.domain}, {f.published})\n     Quote: "{f.quote}"'
-        for n, f in enumerate(dev.findings[:MAX_FINDINGS], 1)
-    )
-    blocks: list[str] = []
-    for j in judged:
-        c = j.candidate
-        routes = "\n".join(
-            f"[R{n}] {text}\n" + "\n".join(f"     {_relationship_line(r)}" for r in p.relationships)
-            for n, (text, p) in enumerate(zip(j.routes, j.paths, strict=True), 1)
-        )
-        found = "\n".join(
-            f'[P{n}] "{p.text}" ({p.domain}, {p.published})' for n, p in enumerate(j.passages, 1)
-        )
-        blocks.append(
-            f'<candidate id="{c.subject}" name="{c.name}">\nRoutes, best first:\n{routes}\n'
-            f"Source passages that name {c.name}:\n{found or 'none'}\n</candidate>"
-        )
-    candidates_text = "\n".join(blocks)
-    return f"""<development>
-{dev.title}
-It directly involves: {_target_line(dev)}
-Findings:
-{findings}
-</development>
-
-<candidates>
-{candidates_text}
-</candidates>
-
-Return one entry per candidate, in the order given:
-- subject: the candidate id.
-- affected: true only when the development plausibly changes the candidate's risk, finances,
-  operations or obligations through one of its routes. A link alone is not enough: the
-  development must bear on what flows through that link. An outage, breach or failure at a
-  cloud provider, vendor or payment system affects an institution the evidence shows using it,
-  even for a narrow use: say how narrow in why and lower the confidence. The provider's product
-  launch, earnings or hiring do not. Falling property prices or a slowdown in a market affect a
-  bank with sizeable loans there; a single deal or a speech there usually does not. A larger
-  share of loans makes an effect more plausible. A bank that reports only its region's figure
-  counts through it: the figure is an upper bound for the place, so say so and lower the
-  confidence. An owner rarely inherits its holding's vendor problems. Not affected is the
-  expected answer for weak links.
-- route: the number of the route that carries the development, 1 for R1. For news about one
-  place, take the exposure to that place, or to its region, over a sector-wide figure.
-- direction: negative, positive or mixed, for the candidate. Any value when not affected.
-- why: one or two sentences for a reader who sees only this sentence, the route and the
-  sources: how the development reaches the candidate, in terms of what happened. Use only
-  facts and numbers given above. Never write the labels F1, P1 or R1, and never talk about
-  "the findings", "the passages" or what they do or do not name; put those numbers in the
-  findings and passages fields instead. Do not restate the route; the reader sees it beside
-  your sentence. Plain words, no dashes as punctuation. Empty when not affected.
-- confidence: high, medium or low.
-- findings: numbers of the findings the sentence relies on, 1 for F1.
-- passages: numbers of the source passages it relies on, 1 for P1."""
-
-
-# Prompt labels the model may still leak into why: "(F1, F3)", "in P1", "R2".
-_LABEL_REFS = re.compile(r"\s*\((?:[FPR]\d+(?:,\s*)?)+\)|\b(?:in |from |see )?[FPR]\d+\b")
-
-
-def _strip_labels(why: str) -> str:
-    """The why sentence without prompt labels, which the reader cannot resolve."""
-    return re.sub(r"\s{2,}", " ", _LABEL_REFS.sub("", why)).replace(" .", ".").strip()
-
-
-@dataclass(frozen=True)
-class Impact:
-    """An affected candidate, as development_impacts stores it."""
+class Reached:
+    """An entity a development reaches indirectly, as development_impacts stores it: the tagged
+    entity it comes from, the link, that link's strength from the source's end, and the level."""
 
     subject_id: str
-    rank: int  # within the development: by its route, direct loan shares first (see `ranked`)
-    direction: Direction
-    route: str
-    why: str
-    confidence: Confidence
-    path: ImpactPath  # the route the verdict rests on
-    finding_ids: list[str]
-    passages: list[Passage]
+    source_id: str
+    relationship: Relationship
+    region: str | None
+    strength: Strength
+    level: int
 
 
-async def judge(inf: Inference, conn: sqlite3.Connection, dev: ImpactInput) -> list[Impact]:
-    """One Claude call over the development's candidates; the affected ones. No candidates, no
-    call."""
-    found = impact_candidates(conn, dev)
-    if not found:
-        return []
-    judged = [
-        Judged(
-            candidate=c,
-            paths=c.paths[:MAX_PATHS],
-            routes=[route_text(p) for p in c.paths[:MAX_PATHS]],
-            passages=passages(conn, dev, c.subject),
-        )
-        for c in found
-    ]
-    verdicts = await inf.claude(
-        "impact", f"dev:{dev.id}", impact_prompt(dev, judged), ImpactVerdicts, IMPACT_SYSTEM
+STRENGTHS: tuple[Strength, ...] = Strength.__args__  # strongest first
+
+
+def indirect_level(direct: int, strength: Strength, *, from_low: bool) -> int | None:
+    """INDIRECT_TABLE's level for a direct level and a strength; None passes nothing. A Low
+    direct item passes only `from_low`."""
+    if direct == 0 and not from_low:
+        return None
+    return INDIRECT_TABLE[direct][strength]
+
+
+def _best(r: Reached) -> tuple[int, int, float, str, str]:
+    """Sort key among routes to one entity: the highest level, the stronger link, the larger
+    share (none last), the link id, the source id."""
+    return (
+        -r.level,
+        STRENGTHS.index(r.strength),
+        -(r.relationship.weight or 0.0),
+        r.relationship.id,
+        r.source_id,
     )
-    by_subject = {v.subject: v for v in verdicts.candidates}
-    shown = dev.findings[:MAX_FINDINGS]
-    impacts: list[Impact] = []
-    for order, j in enumerate(judged):
-        v = by_subject.get(j.candidate.subject)
-        if v is None or not v.affected:
+
+
+def reached(
+    conn: sqlite3.Connection, tagged: dict[str, Tagged], *, from_low: bool = INDIRECT_FROM_LOW
+) -> list[Reached]:
+    """The entities one development reaches through the table, one row each, by id. `tagged`
+    holds every subject tagged on it; only those it is adverse for pass, and none of them gets a
+    row."""
+    best: dict[str, Reached] = {}
+    for source, tag in tagged.items():
+        if not tag.adverse:
             continue
-        n = v.route if 1 <= v.route <= len(j.paths) else 1
-        impacts.append(
-            Impact(
-                subject_id=j.candidate.subject,
-                rank=order,
-                direction=v.direction,
-                route=j.routes[n - 1],
-                why=_strip_labels(v.why),
-                confidence=v.confidence,
-                path=j.paths[n - 1],
-                finding_ids=[shown[i - 1].id for i in v.findings if 1 <= i <= len(shown)],
-                passages=[j.passages[i - 1] for i in v.passages if 1 <= i <= len(j.passages)],
+        for reach in reaches(conn, source):
+            level = indirect_level(tag.level, reach.strength, from_low=from_low)
+            if level is None or reach.reached in tagged:
+                continue
+            row = Reached(
+                subject_id=reach.reached,
+                source_id=source,
+                relationship=reach.relationship,
+                region=reach.region,
+                strength=reach.strength,
+                level=level,
             )
-        )
-    return ranked(impacts)
-
-
-def ranked(impacts: list[Impact]) -> list[Impact]:
-    """Impacts in display order, by the route each rests on: direct links with a loan share,
-    largest first; then region-level ones (D5b); then links without a share, in candidate
-    order. `rank` becomes the position."""
-    ordered = sorted(
-        impacts,
-        key=lambda i: (
-            i.path.weight is None,
-            i.path.region is not None,
-            -(i.path.weight or 0),
-            i.rank,
-        ),
-    )
-    return [replace(i, rank=n) for n, i in enumerate(ordered)]
+            held = best.get(row.subject_id)
+            if held is None or _best(row) < _best(held):
+                best[row.subject_id] = row
+    return [best[s] for s in sorted(best)]
 
 
 @dataclass
 class ImpactStats:
-    developments: int = 0  # at Medium priority or above for a target
-    judged: int = 0  # of those, with candidates: one Claude call each
-    candidates: int = 0
-    impacts: int = 0  # affected candidates stored
-    refused: int = 0
-    calls: int = 0  # Claude calls made, cache hits apart
-    cached: int = 0
+    developments: int = 0  # with a row under INDIRECT_FROM_LOW
+    impacts: int = 0  # rows stored, under INDIRECT_FROM_LOW
+    without_low: int = 0  # rows with INDIRECT_FROM_LOW off
+    with_low: int = 0  # rows with it on
 
 
-async def store_impacts(inf: Inference, conn: sqlite3.Connection, run_id: str) -> ImpactStats:
-    """Judge the run's developments and replace its development_impacts in one transaction."""
-    inputs = load_inputs(conn, run_id)
-    stats = ImpactStats(developments=len(inputs))
-    calls, cached = inf.calls, inf.cache_hits
-    failures: list[str] = []
-    results: dict[str, list[Impact]] = {}
-
-    async def one(dev: ImpactInput) -> None:
-        n = len(impact_candidates(conn, dev))
-        if n:
-            stats.judged += 1
-            stats.candidates += n
-        try:
-            results[dev.id] = await judge(inf, conn, dev)
-        except ClaudeRefused:
-            stats.refused += 1
-        except Exception as error:
-            failures.append(f"{dev.id}: {type(error).__name__}: {error}")
-
-    await asyncio.gather(*(one(d) for d in inputs))
-    stats.calls, stats.cached = inf.calls - calls, inf.cache_hits - cached
-    if failures:
-        raise StepFailed("impact", failures)
-    conn.execute("DELETE FROM development_impacts WHERE run_id = ?", (run_id,))
-    conn.executemany(
-        "INSERT INTO development_impacts (run_id, development_id, subject_id, rank, direction, "
-        "route, why, confidence, relationship_ids, weight, region, evidence, finding_ids, "
-        "passages) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [
-            (
-                run_id,
-                dev_id,
-                i.subject_id,
-                i.rank,
-                i.direction,
-                i.route,
-                i.why,
-                i.confidence,
-                json.dumps(i.path.relationship_ids),
-                i.path.weight,
-                i.path.region,
-                i.path.evidence,
-                json.dumps(i.finding_ids),
-                json.dumps([asdict(p) for p in i.passages]),
-            )
-            for dev_id, impacts in results.items()
-            for i in impacts
-        ],
-    )
-    conn.commit()
-    stats.impacts = sum(len(v) for v in results.values())
+def store_impacts(conn: sqlite3.Connection, run_id: str) -> ImpactStats:
+    """Replace the run's development_impacts with the table's rows, in one transaction, and count
+    the rows under both INDIRECT_FROM_LOW settings."""
+    tags: dict[str, dict[str, Tagged]] = {}
+    for r in conn.execute(
+        "SELECT development_id, subject_id, priority_level, adverse FROM development_subjects "
+        "WHERE run_id = ? ORDER BY development_id, subject_id",
+        (run_id,),
+    ):
+        tags.setdefault(r["development_id"], {})[r["subject_id"]] = Tagged(
+            level=int(r["priority_level"]), adverse=bool(r["adverse"])
+        )
+    stats = ImpactStats()
+    rows: list[tuple[str, Reached]] = []
+    for dev_id, tagged in tags.items():
+        found = {low: reached(conn, tagged, from_low=low) for low in (False, True)}
+        stats.without_low += len(found[False])
+        stats.with_low += len(found[True])
+        rows += [(dev_id, r) for r in found[INDIRECT_FROM_LOW]]
+        stats.developments += bool(found[INDIRECT_FROM_LOW])
+    stats.impacts = len(rows)
+    with conn:
+        conn.execute("DELETE FROM development_impacts WHERE run_id = ?", (run_id,))
+        conn.executemany(
+            "INSERT INTO development_impacts (run_id, development_id, subject_id, source_id, "
+            "relationship_id, region, strength, level) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    run_id,
+                    dev_id,
+                    r.subject_id,
+                    r.source_id,
+                    r.relationship.id,
+                    r.region,
+                    r.strength,
+                    r.level,
+                )
+                for dev_id, r in rows
+            ],
+        )
     return stats

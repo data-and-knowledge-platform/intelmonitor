@@ -2,12 +2,11 @@
 linked to the subject in the relationship store, in either direction, each with its links in a
 few words and the shown developments of the window that reach the subject through it.
 
-A development reaches the subject through a node when its impact route for the subject
-(development_impacts, read by server/impacts.py) leaves by the subject's link to that node, or
-passes through a node the development is tagged to directly: news tagged to Hong Kong that
-reaches DBS through DBS Hong Kong counts for both. Routes run from the subject outward, so only
-nodes the subject links to can carry developments; nodes that link to it (banks that depend on
-Azure, Temasek holding DBS) carry none."""
+A development reaches the subject through a node when its indirect impact on the subject
+(development_impacts, read by server/impacts.py) passes through the subject's link to that node:
+the entity the development is about, or a region that covers it. Links run either way, so news
+about Singtel reaches DBS through "DBS depends on Singtel" and news about DBS reaches Singtel
+through the same link."""
 
 from intelmonitor.pipeline.impact import short_label
 from intelmonitor.relationships import SCHEMA, links_of
@@ -46,13 +45,11 @@ def related_graph(q: Queries, subject_id: str, days: RelatedDays) -> RelatedGrap
 
     impacts = subject_impacts(q, subject_id, days) if nodes else []  # in display order
     for i in impacts:
-        path = i.relationships
-        tagged = q.devs.subject_ids[i.development_id]
-        through = {path[0].to_id} | {r.to_id for r in path[1:] if r.to_id in tagged}
-        for node_id in through & nodes.keys():
-            n = nodes[node_id]
+        through = i.link.to_id if i.link.from_id == subject_id else i.link.from_id
+        if (n := nodes.get(through)) is not None:
             n.development_ids.append(i.development_id)
-            n.harmful += int(i.direction == "negative")
+            # Only a development adverse for the entity it is about passes the table.
+            n.harmful += 1
 
     return RelatedGraph(
         run=q.run,

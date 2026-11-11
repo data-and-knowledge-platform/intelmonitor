@@ -176,7 +176,7 @@ def judge_prompt(inp: BriefInputs, brief: Brief) -> str:
         parts.append("none")
     parts += ["", "Indirect impacts (developments reaching the subject through a relationship):"]
     parts += [
-        f"[{i.development_id}] {i.title} | {i.direction} | route: {i.route} | {i.why}"
+        f"[{i.development_id}] {i.title} | {i.level} | route: {i.route} | link: {i.reason}"
         f"{' | reported by one outlet' if i.single_outlet else ''}"
         for i in inp.impacts
     ] or ["none"]

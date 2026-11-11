@@ -8,7 +8,7 @@ import { useState } from "react";
 import type { Schema } from "@/lib/api/client";
 import { useLinked } from "@/lib/api/queries";
 import { plural } from "@/lib/format";
-import { DIRECTION, EVIDENCE } from "@/components/developments/Impacts";
+import { EVIDENCE, LEVEL_CLASS } from "@/components/developments/Impacts";
 import { developmentLink } from "@/components/developments/link";
 import { SubjectLink } from "@/components/shell/SubjectLink";
 
@@ -147,7 +147,7 @@ function InstitutionRow({ inst, subject, regionHead }: { inst: Institution; subj
                     <Link {...developmentLink(i.development_id, { subject: subject.id })} className="tlink">
                       {i.development.title}
                     </Link>{" "}
-                    <span className={DIRECTION[i.direction].cls}>{DIRECTION[i.direction].word}.</span>
+                    <span className={LEVEL_CLASS[i.level]}>{i.level}.</span>
                   </li>
                 ))}
               </ul>

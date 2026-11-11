@@ -2,14 +2,14 @@
 
 api/seed/relationships.yaml (built by scripts/build_relationships.py) holds every relationship
 and an endpoint entry for each id that is not an entity subject or seed group.
-sync_relationships() copies it into the store at the start of a pipeline run; paths_to(),
-candidates() and shared() read it back for the impact step and GET /shared, links_from() for the
-briefs, and links_of() for the Related graph.
+sync_relationships() copies it into the store at the start of a pipeline run; reaches() reads it
+back for the impact step, shared() for GET /shared, linked_paths() for a place's linked
+institutions, links_from() for the briefs, and links_of() for the Related graph.
 
-Direction: news about a relationship's `to` reaches its `from` (DBS exposed_to Hong Kong, FAST
-depends_on BCS, NETS holds_stake_in BCS). partner_of is stored once per pair, ids in alphabetical
-order. belongs_to_sector links an entity to a seed group (its parent category), so seed group ids
-are valid link ends; it carries no impact and the Related and Shared sections leave it out.
+A link reads from its `from` to its `to` (DBS exposed_to Hong Kong, FAST depends_on BCS, NETS
+holds_stake_in BCS). partner_of is stored once per pair, ids in alphabetical order.
+belongs_to_sector links an entity to a seed group (its parent category), so seed group ids are
+valid link ends; it carries no impact and the Related and Shared sections leave it out.
 
 Every other link carries `transmission`, its strength in each direction, rated once by
 scripts/rate_relationships.py into api/seed/collected/transmission.yaml and merged in by the
@@ -307,6 +307,13 @@ def sync_relationships(
     transaction. Raises before touching the store if the file does not fit the subject seed.
     Commits any transaction the caller has open, so call it before a run's writes."""
     data = load_relationships(path)
+    store_relationships(conn, data)
+    return data
+
+
+def store_relationships(conn: sqlite3.Connection, data: RelationshipsFile) -> None:
+    """Replace the store's relationships and endpoints with `data`, unchecked, in one
+    transaction; sync_relationships checks the file first, the impact cases pass made-up links."""
     conn.executescript(SCHEMA)
     with conn:
         conn.execute("DELETE FROM relationships")
@@ -332,7 +339,6 @@ def sync_relationships(
             "VALUES (?, ?, ?, ?, ?)",
             [(e.id, e.name, e.kind, json.dumps(e.members), e.detail) for e in data.endpoints],
         )
-    return data
 
 
 class Node(_Model):
@@ -345,7 +351,8 @@ class Node(_Model):
 
 
 class ImpactPath(_Model):
-    """How news about `target` reaches `subject`: one relationship, or two through `nodes[1]`.
+    """How `subject` links to `target` on the target's page (linked_paths): one relationship, or
+    two through `nodes[1]`.
     `relationships` and `nodes` run from the subject outward, so relationships[i] links nodes[i]
     to nodes[i + 1]. When the last node is a region that covers the target (UOB's Greater China
     loans for Taiwan news), `region` names it and the path is region-level."""
@@ -364,12 +371,8 @@ class ImpactPath(_Model):
         return [r.id for r in self.relationships]
 
 
-# A second hop counts only after one of these from the subject: what it takes part in, what it
-# depends on, and what it holds a stake in (OCBC holds OCBC Malaysia, which operates in Malaysia).
-FIRST_HOPS: tuple[RelType, ...] = ("participates_in", "depends_on", "holds_stake_in")
-
-
-def _nodes(conn: sqlite3.Connection, ids: set[str]) -> dict[str, Node]:
+def load_nodes(conn: sqlite3.Connection, ids: set[str]) -> dict[str, Node]:
+    """Each id as a named node: endpoints from the store, entities and groups from the seed."""
     marks = ",".join("?" * len(ids))
     rows = conn.execute(
         f"SELECT id, name, kind FROM relationship_endpoints WHERE id IN ({marks})", sorted(ids)
@@ -415,40 +418,6 @@ def _path(target_id: str, rels: list[Relationship], nodes: dict[str, Node]) -> I
     )
 
 
-def paths_to(conn: sqlite3.Connection, target_id: str) -> list[ImpactPath]:
-    """Every path by which news about `target_id` reaches a tracked entity subject: one
-    relationship into the target (or into a region that covers it), or two where the first, from
-    the subject, is one of FIRST_HOPS. Endpoints, groups among them, are never the subject."""
-    ends = [target_id, *_regions(conn, target_id)]
-    end_marks = ",".join("?" * len(ends))
-    hop_marks = ",".join("?" * len(FIRST_HOPS))
-    not_endpoint = "NOT IN (SELECT id FROM relationship_endpoints)"
-    one = conn.execute(
-        f"SELECT data FROM relationships WHERE to_id IN ({end_marks}) "
-        f"AND from_id != ? AND from_id {not_endpoint}",
-        [*ends, target_id],
-    ).fetchall()
-    two = conn.execute(
-        "SELECT r1.data AS first, r2.data AS second FROM relationships r1 "
-        "JOIN relationships r2 ON r2.from_id = r1.to_id "
-        f"WHERE r1.type IN ({hop_marks}) AND r2.to_id IN ({end_marks}) "
-        f"AND r1.from_id != ? AND r1.to_id != ? AND r1.from_id {not_endpoint}",
-        [*FIRST_HOPS, *ends, target_id, target_id],
-    ).fetchall()
-    chains = [[Relationship.model_validate_json(r["data"])] for r in one] + [
-        [
-            Relationship.model_validate_json(r["first"]),
-            Relationship.model_validate_json(r["second"]),
-        ]
-        for r in two
-    ]
-    if not chains:
-        return []
-    nodes = _nodes(conn, {c[0].from_ for c in chains} | {r.to for c in chains for r in c})
-    paths = [_path(target_id, c, nodes) for c in chains]
-    return sorted(paths, key=lambda p: (p.subject, len(p.relationships), p.relationship_ids))
-
-
 # How an institution links to a place, sector, supplier or payment system on that subject's page:
 # one of LINKED_FIRST into it, or holding a stake in a company that has one of LINKED_SECOND into
 # it.
@@ -479,8 +448,8 @@ def owns(r: Relationship) -> bool:
 def linked_paths(conn: sqlite3.Connection, target_id: str) -> list[ImpactPath]:
     """Every node linked to `target_id` (or to a region that covers it) by one LINKED_FIRST link,
     or by owning (see `owns`) a company with a LINKED_SECOND link into it, for the target's page.
-    A holds_stake_in link counts only when it is ownership. Unlike paths_to, the first node may
-    be an endpoint, so untracked institutions count; shareholders that only hold a stake in a
+    A holds_stake_in link counts only when it is ownership. The first node may be an endpoint,
+    so untracked institutions count; shareholders that only hold a stake in a
     bank (Singtel in GXS Bank) are left to the caller to drop."""
     ends = [target_id, *_regions(conn, target_id)]
     end_marks = ",".join("?" * len(ends))
@@ -509,7 +478,7 @@ def linked_paths(conn: sqlite3.Connection, target_id: str) -> list[ImpactPath]:
     chains = [c for c in chains if c[0].type != "holds_stake_in" or owns(c[0])]
     if not chains:
         return []
-    nodes = _nodes(conn, {c[0].from_ for c in chains} | {r.to for c in chains for r in c})
+    nodes = load_nodes(conn, {c[0].from_ for c in chains} | {r.to for c in chains for r in c})
     return [_path(target_id, c, nodes) for c in chains]
 
 
@@ -525,7 +494,7 @@ def links_from(
     rels = [Relationship.model_validate_json(r["data"]) for r in rows]
     if not rels:
         return []
-    nodes = _nodes(conn, {r.to for r in rels})
+    nodes = load_nodes(conn, {r.to for r in rels})
     return [(r, nodes[r.to]) for r in rels]
 
 
@@ -541,60 +510,60 @@ def links_of(conn: sqlite3.Connection, subject_id: str) -> list[tuple[Relationsh
     if not rels:
         return []
     other = {r.id: r.to if r.from_ == subject_id else r.from_ for r in rels}
-    nodes = _nodes(conn, set(other.values()))
+    nodes = load_nodes(conn, set(other.values()))
     return [(r, nodes[other[r.id]]) for r in rels]
 
 
-class Candidate(_Model):
-    """A tracked entity subject that news about the targets may reach indirectly. Weight, region
-    and evidence come from its best path, paths[0]: a direct weighted link first, then a
-    region-level weighted one, then the shortest and best evidenced, then by first hop in
-    FIRST_HOPS order (taking part in FAST before owning a share of NETS)."""
+class Reach(_Model):
+    """One link by which an event at `source` reaches the seed entity `reached`, with the link's
+    strength in that direction. `region` names the region endpoint when the link goes into a
+    region that covers the source (UOB's Greater China loans, for news about Taiwan)."""
 
-    subject: str
-    name: str
-    weight: float | None
-    region: str | None
-    evidence: Evidence
-    paths: list[ImpactPath]
+    source: str
+    reached: str
+    relationship: Relationship
+    strength: Strength
+    region: str | None = None
 
 
-def _rank(p: ImpactPath) -> tuple[bool, bool, float, int, int, int]:
-    first = p.relationships[0].type
-    return (
-        p.weight is None,
-        p.region is not None,
-        -(p.weight or 0.0),
-        len(p.relationships),
-        EVIDENCE_GRADES.index(p.evidence),
-        FIRST_HOPS.index(first) if first in FIRST_HOPS else 0,
-    )
-
-
-def candidates(conn: sqlite3.Connection, target_ids: list[str]) -> list[Candidate]:
-    """paths_to over every target, less the targets themselves, grouped per subject; the largest
-    weight first, then subjects without one by id. One call per development is cheap: a few
-    indexed queries per target."""
-    by_subject: dict[str, list[ImpactPath]] = {}
-    for target in dict.fromkeys(target_ids):
-        for p in paths_to(conn, target):
-            if p.subject not in target_ids:
-                by_subject.setdefault(p.subject, []).append(p)
-    found: list[Candidate] = []
-    for subject, paths in by_subject.items():
-        paths.sort(key=_rank)
-        best = paths[0]
-        found.append(
-            Candidate(
-                subject=subject,
-                name=best.nodes[0].name,
-                weight=best.weight,
-                region=best.region,
-                evidence=best.evidence,
-                paths=paths,
+def reaches(conn: sqlite3.Connection, source_id: str) -> list[Reach]:
+    """Every seed entity one link from the entity `source_id`, for indirect impact (ticket 20):
+    each link with the source at one end, read from_to when the source is its `from` and to_from
+    when it is its `to`; and each link into a region endpoint whose members include the source,
+    read to_from only. belongs_to_sector, unrated links, endpoints, groups and the source itself
+    carry or get nothing, and nothing goes a second hop. By link id."""
+    entities = {e.id for e in load_subjects().entities}
+    if source_id not in entities:
+        return []
+    ends = [source_id, *_regions(conn, source_id)]
+    marks = ",".join("?" * len(ends))
+    rows = conn.execute(
+        "SELECT data FROM relationships WHERE type != 'belongs_to_sector' "
+        f"AND (from_id = ? OR to_id IN ({marks})) ORDER BY id",
+        (source_id, *ends),
+    ).fetchall()
+    found: list[Reach] = []
+    for row in rows:
+        r = Relationship.model_validate_json(row["data"])
+        if r.transmission is None:
+            continue
+        if r.from_ == source_id:
+            reached, rating, region = r.to, r.transmission.from_to, None
+        elif r.to == source_id:
+            reached, rating, region = r.from_, r.transmission.to_from, None
+        else:  # into a region that covers the source
+            reached, rating, region = r.from_, r.transmission.to_from, r.to
+        if reached != source_id and reached in entities:
+            found.append(
+                Reach(
+                    source=source_id,
+                    reached=reached,
+                    relationship=r,
+                    strength=rating.strength,
+                    region=region,
+                )
             )
-        )
-    return sorted(found, key=lambda c: (c.weight is None, -(c.weight or 0.0), c.subject))
+    return found
 
 
 class SharedEndpoint(_Model):
@@ -623,5 +592,5 @@ def shared(conn: sqlite3.Connection, a: str, b: str) -> list[SharedEndpoint]:
 
     a_links, b_links = links(a), links(b)
     common = sorted((a_links.keys() & b_links.keys()) - {a, b})
-    nodes = _nodes(conn, set(common))
+    nodes = load_nodes(conn, set(common))
     return [SharedEndpoint(node=nodes[i], a_links=a_links[i], b_links=b_links[i]) for i in common]

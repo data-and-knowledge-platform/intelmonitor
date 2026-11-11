@@ -311,9 +311,8 @@ def _run_rows(conn: sqlite3.Connection, run_id: str) -> dict[str, set[tuple[obje
         "indicators": "SELECT series_id, period, value, state FROM run_indicators WHERE run_id = ?",
         "changes": "SELECT base_run_id, kind, subject_id, ref_id, detail FROM run_changes "
         "WHERE run_id = ?",
-        "impacts": "SELECT development_id, subject_id, rank, direction, route, why, confidence, "
-        "relationship_ids, weight, region, evidence, finding_ids, passages "
-        "FROM development_impacts WHERE run_id = ?",
+        "impacts": "SELECT development_id, subject_id, source_id, relationship_id, region, "
+        "strength, level FROM development_impacts WHERE run_id = ?",
         "notes": "SELECT subject_id, since, headline, body, development_ids, series_id, moves "
         "FROM run_notes WHERE run_id = ?",
         "briefs": "SELECT subject_id, text, direction, direction_basis, developments_in_scope, "

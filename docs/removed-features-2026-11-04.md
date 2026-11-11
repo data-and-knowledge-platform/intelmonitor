@@ -51,6 +51,18 @@ Slide 7 of the team's deck of 10 Nov 2026 replaces the priority rubric.
 - The caps "promotional news is Low" (`PROMOTIONAL_MAX_LEVEL`) and "market moves are never High" (`MARKET_MAX_LEVEL`).
 - Promotional findings and findings that only report a share price or index move (`price_move`) are kept in `findings` but no longer join a development.
 
+### Claude's indirect impact judgement (uncommitted, spec step 3a)
+
+Slide 8 of the team's deck of 10 Nov 2026 replaces it with a fixed table of the direct level by the link's strength; the impact step makes no model call.
+
+- The `impact` Claude call, its prompt, the source passages it was shown, its verdicts and stats.
+- Each indirect impact's why sentence, direction (could hurt, could help, mixed) and confidence; the page and the popup show the level and the link's reason instead.
+- Two-hop routes, such as a bank reached through a payment system that depends on a failed vendor (`FIRST_HOPS`, `PLACE_FIRST_HOPS`, `paths_to`, `candidates`).
+- The route rules: exposures needing a 5% share, not to the lender's home country and only for economic, market, policy or security news; no route through `regulated_by` or `listed_on`, and none into a regulator or central bank (`usable`, `EXPOSURE_MIN_WEIGHT`, `EXPOSURE_CATEGORIES`, `NO_IMPACT`, `NO_IMPACT_TARGETS`).
+  The link ratings and the adverse gate take their place.
+- Impacts from developments that are not adverse for the entity they are about.
+- `development_impacts` loses `rank`, `direction`, `route`, `why`, `confidence`, `relationship_ids`, `weight`, `evidence`, `finding_ids` and `passages`; stores made earlier recreate the table empty when opened.
+
 ## Decided, not yet removed
 
 From the topics, watchlists and views plan (local map in `wayfind/topics-watchlists-views/`).

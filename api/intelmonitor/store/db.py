@@ -155,24 +155,17 @@ CREATE TABLE IF NOT EXISTS development_mentions (
     PRIMARY KEY (run_id, development_id, subject_id)
 );
 
--- Indirect impacts (pipeline/impact.py): entities a development reaches through the relationship
--- store, as Claude judged them, kept apart from development_subjects. Code writes the route from
--- the path; Claude only picks the path and writes why.
+-- Indirect impacts (pipeline/impact.py): entities a development reaches through one stored link,
+-- at the level the fixed table gives, kept apart from development_subjects.
 CREATE TABLE IF NOT EXISTS development_impacts (
     run_id TEXT NOT NULL,
     development_id TEXT NOT NULL,
     subject_id TEXT NOT NULL,          -- the entity reached
-    rank INTEGER NOT NULL,             -- order within the development: direct loan shares first
-    direction TEXT NOT NULL,           -- negative, positive or mixed, for this entity
-    route TEXT NOT NULL,               -- plain words: "via its Hong Kong loans, 12.2% of total"
-    why TEXT NOT NULL,                 -- one or two sentences citing the development
-    confidence TEXT NOT NULL,          -- high, medium or low
-    relationship_ids TEXT NOT NULL,    -- JSON [id], from the entity outward
-    weight REAL,                       -- the path's share of loans, if it has an exposure
-    region TEXT,                       -- the region endpoint, when the share covers a whole region
-    evidence TEXT NOT NULL,            -- the weakest grade on the path: public or reported
-    finding_ids TEXT NOT NULL,         -- JSON [finding id] the why relies on
-    passages TEXT NOT NULL,            -- JSON [{document_id, domain, published, text}] it relies on
+    source_id TEXT NOT NULL,           -- the tagged entity the development is adverse for
+    relationship_id TEXT NOT NULL,     -- the link it passes through
+    region TEXT,                       -- the region endpoint, when the link covers the source in it
+    strength TEXT NOT NULL,            -- from the source's end: Strong, Moderate or Weak
+    level INTEGER NOT NULL,            -- 0 Low or 1 Medium, never High
     PRIMARY KEY (run_id, development_id, subject_id)
 );
 CREATE INDEX IF NOT EXISTS development_impacts_subject ON development_impacts (run_id, subject_id);
@@ -724,6 +717,22 @@ def _drop_social(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _impacts_by_table(conn: sqlite3.Connection) -> None:
+    """Stores made before indirect impact by table kept Claude's judgement in development_impacts
+    (why, direction, confidence, a multi-link route). The table is recreated in its new shape,
+    empty: its rows are per run, and the next run of each date writes them again."""
+    stale = "SELECT 1 FROM pragma_table_info('development_impacts') WHERE name = 'why'"
+    if conn.execute(stale).fetchone() is None:
+        return
+    conn.execute("BEGIN IMMEDIATE")  # another connection may be recreating it too
+    if conn.execute(stale).fetchone() is None:
+        conn.rollback()
+        return
+    conn.execute("DROP TABLE development_impacts")
+    conn.commit()
+    conn.executescript(SCHEMA)
+
+
 def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     """Open the store and make sure the schema exists."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -738,6 +747,7 @@ def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     _drop_columns(conn)
     _fold_alert_reads(conn)
     _drop_social(conn)
+    _impacts_by_table(conn)
     if indexed is None:
         search.rebuild(conn)  # the search tables are new: index what is already stored
     return conn

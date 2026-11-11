@@ -1,14 +1,14 @@
-// "Could affect DBS" on the Related tab: this week's news about the places, sectors, suppliers,
-// systems and companies the subject is linked to, grouped by kind of link (exposure, ownership and
-// structure, dependency). Each link shows once, with
-// its evidence, over the developments that reach the subject through it: the effect in words, the
-// title and the full why.
+// "Could affect DBS" on the Related tab: this week's adverse news about the places, sectors,
+// suppliers, systems and companies the subject is linked to, grouped by kind of link (exposure,
+// ownership and structure, dependency). Each link shows once, with its evidence, over the
+// developments that reach the subject through it: the indirect level, the title and the link's
+// reason.
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import type { Schema } from "@/lib/api/client";
 import { capitalize, shortDate } from "@/lib/format";
-import { DIRECTION, LinkEvidence } from "@/components/developments/Impacts";
+import { LEVEL_CLASS, LinkEvidence } from "@/components/developments/Impacts";
 import { developmentLink } from "@/components/developments/link";
 
 import { Section } from "../parts";
@@ -34,11 +34,11 @@ export const routeHeading = (route: string) =>
 export function CouldAffect({ subject, impacts }: { subject: Subject; impacts: Impact[] }) {
   const byLink = new Map<string, Impact[]>();
   for (const i of impacts) {
-    const key = i.relationships.map((l) => l.id).join(">");
+    const key = i.link.id;
     byLink.set(key, [...(byLink.get(key) ?? []), i]);
   }
   const links = [...byLink.values()];
-  const typeOf = (rows: Impact[]) => rows[0].relationships[0]?.type;
+  const typeOf = (rows: Impact[]) => rows[0].link.type;
   const groups = [
     ...GROUPS.map((g) => ({ title: g.title, links: links.filter((l) => g.types.includes(typeOf(l))) })),
     { title: "Other links", links: links.filter((l) => !GROUPED.has(typeOf(l))) },
@@ -52,7 +52,7 @@ export function CouldAffect({ subject, impacts }: { subject: Subject; impacts: I
           <div key={g.title} className="ca-group">
             <h3>{g.title}</h3>
             {g.links.map((rows) => (
-              <LinkBlock key={rows[0].relationships.map((l) => l.id).join(">")} rows={rows} subject={subject} />
+              <LinkBlock key={rows[0].link.id} rows={rows} subject={subject} />
             ))}
           </div>
         ))
@@ -69,7 +69,7 @@ function LinkBlock({ rows, subject }: { rows: Impact[]; subject: Subject }) {
   return (
     <div className="ca-link">
       <p className="ca-route">{routeHeading(first.route)}</p>
-      <RouteEvidence links={first.relationships} />
+      <RouteEvidence links={[first.link]} />
       <ol className="ca-rows">
         {shown.map((i) => (
           <ImpactRow key={i.development_id} impact={i} subject={subject} />
@@ -99,18 +99,17 @@ export function RouteEvidence({ links }: { links: Schema<"RelationshipLink">[] }
 }
 
 function ImpactRow({ impact: i, subject }: { impact: Impact; subject: Subject }) {
-  const dir = DIRECTION[i.direction];
   const d = i.development;
   // A region-level link carries news about several places; the row names its own.
   const about = i.route.match(/, a figure for the whole region including (.+)$/)?.[1];
   return (
     <li className="ca-row">
-      <span className={`ca-dir ${dir.cls}`}>{dir.word}</span>
+      <span className={`ca-dir ${LEVEL_CLASS[i.level]}`}>{i.level}</span>
       <span className="ca-main">
         <Link {...developmentLink(d.id, { subject: subject.id })} className="tlink">
           {d.headline}
         </Link>
-        <span className="ca-why">{i.why}</span>
+        <span className="ca-why">{i.link.reason}</span>
         {about && <span className="meta">News about {about}</span>}
       </span>
       <span className="ca-end num">{shortDate(d.last_published)}</span>

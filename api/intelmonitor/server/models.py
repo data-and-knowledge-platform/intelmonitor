@@ -10,7 +10,6 @@ from pydantic import AfterValidator, BaseModel, Field
 from intelmonitor.pipeline.extract import Tone
 from intelmonitor.pipeline.facts import SeriesFact
 from intelmonitor.pipeline.graph import Theme
-from intelmonitor.pipeline.impact import Confidence, Direction
 from intelmonitor.pipeline.params import Priority
 from intelmonitor.pipeline.subjects import all_subjects
 from intelmonitor.relationships import (
@@ -21,6 +20,7 @@ from intelmonitor.relationships import (
     HeadlineMeasure,
     HeadlineUnit,
     RelType,
+    Strength,
 )
 from intelmonitor.seed import (
     BadDirection,
@@ -523,37 +523,40 @@ class RelationshipLink(BaseModel):
     page: int | None
     quote: str | None = Field(description="Verbatim from the source")
     detail: str
+    reason: str = Field(
+        description='One line from the stored facts: "has 12.2% of its loans in Hong Kong, 30 Jun '
+        '2026"'
+    )
+    from_to: Strength | None = Field(
+        description="How strongly a material adverse event at `from` reaches `to`; null for a "
+        "link that is not rated (belongs_to_sector)"
+    )
+    to_from: Strength | None = Field(description="The same, from `to` to `from`")
     figures: list[RelationshipFigure]
 
 
-class ImpactPassage(BaseModel):
-    """A passage from the development's sources that the impact's reason relies on."""
-
-    document_id: str
-    domain: str
-    published: date
-    text: str
+IndirectLevel = Literal["Medium", "Low"]
 
 
 class IndirectImpact(BaseModel):
-    """An entity a development reaches through stored relationships, as judged by Claude. Code
-    writes the route from the relationships; Claude only judged it and wrote why."""
+    """An entity a development reaches through one stored link, at the level the fixed table
+    gives (pipeline/impact.py): the development is adverse for `source` at a direct level, and
+    the link's strength from the source's end turns that into `level`."""
 
     development_id: str
-    subject: SubjectRef
-    direction: Direction
-    route: str = Field(description='Plain words: "via its Hong Kong loans, 12.2% of total"')
-    why: str = Field(description="One or two sentences citing the development")
-    confidence: Confidence
-    weight: float | None = Field(description="The route's exposure share, if it has an exposure")
-    region: str | None = Field(
-        description="The region's name when the share covers a whole region (Greater China)"
+    subject: SubjectRef = Field(description="The entity reached")
+    level: IndirectLevel
+    strength: Strength = Field(description="The link's strength from the source's end")
+    source: SubjectRef = Field(description="The entity the development is about")
+    route: str = Field(
+        description='The link in plain words from the entity reached: "via its Hong Kong loans, '
+        '12.2% of total", "depended on by DBS for telecoms"'
     )
-    evidence: Evidence = Field(description="The weakest grade along the route")
-    last_confirmed: date = Field(description="The oldest last confirmation along the route")
-    relationships: list[RelationshipLink] = Field(description="From the entity outward")
-    finding_ids: list[str] = Field(description="The development's findings the reason relies on")
-    passages: list[ImpactPassage]
+    region: str | None = Field(
+        description="The region's name when the link's figure covers a whole region that "
+        "includes the source (Greater China)"
+    )
+    link: RelationshipLink
 
 
 class SubjectImpact(IndirectImpact):
@@ -768,8 +771,7 @@ class DevelopmentDetail(DevelopmentSummary):
         description="What it happened to or who did it, highest priority first"
     )
     impacts: list[IndirectImpact] = Field(
-        description="Entities it reaches indirectly: direct links with a loan share, largest "
-        "first, then region-level ones, then links without a share"
+        description="Entities it reaches indirectly: Medium before Low, stronger links first"
     )
     triage: "Triage"
 
@@ -1093,7 +1095,10 @@ class RelatedNode(BaseModel):
         description="Shown developments in the window that reach the centre through this node, "
         "in display order"
     )
-    harmful: int = Field(description="How many of them are negative for the centre")
+    harmful: int = Field(
+        description="How many of them are adverse for the entity they are about; every "
+        "indirect impact is, so this equals the number of developments"
+    )
 
 
 class RelatedGraph(BaseModel):

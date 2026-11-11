@@ -1,7 +1,8 @@
 // "Who it impacts" in the development popup: the subjects it is about first, then the tracked
-// entities it could reach through their stored links, each with its route, why, direction and the
-// link's evidence (grade, size, age, source). "Connections" under it backs one claim per route with
-// the graph, the claims written here from the links, never by a model.
+// entities it reaches through one stored link (indirect impact by the fixed table), each with its
+// route, level, the link's reason and its evidence (grade, size, age, source). "Connections" under
+// it backs one claim per route with the graph, the claims written here from the links, never by a
+// model.
 import type { Schema } from "@/lib/api/client";
 import { longDate } from "@/lib/format";
 import { SubjectLink } from "@/components/shell/SubjectLink";
@@ -13,11 +14,8 @@ type Impact = Schema<"IndirectImpact">;
 type Direct = Schema<"DirectSubject">;
 type Link = Schema<"RelationshipLink">;
 
-export const DIRECTION: Record<Impact["direction"], { word: string; cls: string }> = {
-  negative: { word: "Could hurt", cls: "c-attn" },
-  positive: { word: "Could help", cls: "c-stable" },
-  mixed: { word: "Mixed effect", cls: "muted" },
-};
+/** The color of an indirect level, shown as a plain word. */
+export const LEVEL_CLASS: Record<Impact["level"], string> = { Medium: "c-watch", Low: "muted" };
 
 export const EVIDENCE: Record<Link["evidence"], { word: string; hint: string }> = {
   public: { word: "Public disclosure", hint: "Published by the institution or system itself." },
@@ -77,21 +75,17 @@ function DirectRows({ direct }: { direct: Direct[] }) {
 }
 
 function ImpactRow({ impact: i }: { impact: Impact }) {
-  const dir = DIRECTION[i.direction];
   return (
     <div className="imp">
       <p className="imp-h">
         <SubjectLink subject={i.subject} /> <span className="imp-route">{i.route}</span>
         {" · "}
-        <span className={`imp-dir ${dir.cls}`}>{dir.word}</span>
+        <span className={`imp-dir ${LEVEL_CLASS[i.level]}`}>{i.level}</span>
       </p>
-      <p className="imp-why">{i.why}</p>
-      {i.relationships.map((l) => (
-        <p key={l.id} className="meta imp-ev">
-          {i.relationships.length > 1 && <>{`${l.from_name} ${l.label.split(",")[0]} ${l.to_name}: `}</>}
-          <LinkEvidence link={l} />
-        </p>
-      ))}
+      <p className="imp-why">{i.link.reason}</p>
+      <p className="meta imp-ev">
+        <LinkEvidence link={i.link} />
+      </p>
     </div>
   );
 }
@@ -157,33 +151,33 @@ export function LinkEvidence({ link: l }: { link: Link }) {
   );
 }
 
-/** The thing a route ends at: what the news is about. */
+/** The link's other end from the entity reached: what the news is about, or its region. */
 function endpointOf(i: Impact): { id: string; name: string } {
-  let here = i.subject.id;
-  let name = i.subject.name;
-  for (const l of i.relationships) {
-    [here, name] = l.from_id === here ? [l.to_id, l.to_name] : [l.from_id, l.from_name];
-  }
-  return { id: here, name };
+  const l = i.link;
+  return l.from_id === i.subject.id ? { id: l.to_id, name: l.to_name } : { id: l.from_id, name: l.from_name };
 }
+
+/** Whether the entity reached is the link's `from` end, so the link reads from it ("DBS uses Singtel"). */
+const outward = (i: Impact) => i.link.from_id === i.subject.id;
 
 /** One sentence per route type and endpoint: "DBS, OCBC and UOB each lend over 40% of their loans in Singapore". */
 export function claims(impacts: Impact[]): string[] {
   const groups = new Map<string, Impact[]>();
   for (const i of impacts) {
-    const key = `${i.relationships[0]?.type}:${endpointOf(i).id}`;
+    const key = `${i.link.type}:${outward(i)}:${endpointOf(i).id}`;
     groups.set(key, [...(groups.get(key) ?? []), i]);
   }
   return [...groups.values()].map((g) => {
     const who = names([...new Set(g.map((i) => i.subject.name))]);
     const many = g.length > 1;
     const end = endpointOf(g[0]).name;
-    const first = g[0].relationships[0];
-    switch (first?.type) {
+    const first = g[0].link;
+    // Read from the far end ("Singtel, used by DBS"), only the plain wording fits.
+    switch (outward(g[0]) ? first.type : null) {
       case "exposed_to": {
         // Reserves, revenue and the like: the label's head says how ("holds reserves in").
         if (!first.label.startsWith("lends")) return `${who} ${many ? "are each exposed to" : first.label.split(",")[0]} ${end}`;
-        const shares = g.map((i) => i.relationships[0].weight);
+        const shares = g.map((i) => i.link.weight);
         if (shares.some((w) => w === null)) return `${who} ${many ? "lend" : "lends"} in ${end}`;
         const low = Math.min(...(shares as number[]));
         if (!many) return `${who} lends ${(low * 100).toFixed(1).replace(/\.0$/, "")}% of its loans in ${end}`;
@@ -193,10 +187,8 @@ export function claims(impacts: Impact[]): string[] {
         return `${who} ${many ? (g.length === 2 ? "both use" : "all use") : "uses"} ${end}`;
       case "participates_in":
         return `${who} ${many ? (g.length === 2 ? "both take" : "all take") : "takes"} part in ${end}`;
-      default: {
-        const via = g[0].relationships.length > 1 ? ` through ${g[0].relationships[0].to_name}` : "";
-        return `${who} ${many ? "are" : "is"} linked to ${end}${via}`;
-      }
+      default:
+        return `${who} ${many ? "are" : "is"} linked to ${end}`;
     }
   });
 }
@@ -204,7 +196,7 @@ export function claims(impacts: Impact[]): string[] {
 /** "Connections" under the impacts: the claims, then one snippet with every route. */
 export function ImpactGraph({ impacts }: { impacts: Impact[] }) {
   const lines = claims(impacts);
-  const paths: SnippetPath[] = impacts.map((i) => ({ entityId: i.subject.id, entityName: i.subject.name, links: i.relationships }));
+  const paths: SnippetPath[] = impacts.map((i) => ({ entityId: i.subject.id, entityName: i.subject.name, links: [i.link] }));
   return (
     <section className="dp-sec dp-graph" aria-labelledby="connections">
       <h3 id="connections">Connections</h3>

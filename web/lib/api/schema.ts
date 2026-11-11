@@ -2034,7 +2034,7 @@ export interface components {
             direct_subjects: components["schemas"]["DirectSubject"][];
             /**
              * Impacts
-             * @description Entities it reaches indirectly: direct links with a loan share, largest first, then region-level ones, then links without a share
+             * @description Entities it reaches indirectly: Medium before Low, stronger links first
              */
             impacts: components["schemas"]["IndirectImpact"][];
             triage: components["schemas"]["Triage"];
@@ -2801,23 +2801,6 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /**
-         * ImpactPassage
-         * @description A passage from the development's sources that the impact's reason relies on.
-         */
-        ImpactPassage: {
-            /** Document Id */
-            document_id: string;
-            /** Domain */
-            domain: string;
-            /**
-             * Published
-             * Format: date
-             */
-            published: string;
-            /** Text */
-            text: string;
-        };
         /** IndicatorChange */
         IndicatorChange: {
             /**
@@ -2931,67 +2914,39 @@ export interface components {
         };
         /**
          * IndirectImpact
-         * @description An entity a development reaches through stored relationships, as judged by Claude. Code
-         *     writes the route from the relationships; Claude only judged it and wrote why.
+         * @description An entity a development reaches through one stored link, at the level the fixed table
+         *     gives (pipeline/impact.py): the development is adverse for `source` at a direct level, and
+         *     the link's strength from the source's end turns that into `level`.
          */
         IndirectImpact: {
             /** Development Id */
             development_id: string;
+            /** @description The entity reached */
             subject: components["schemas"]["SubjectRef"];
             /**
-             * Direction
+             * Level
              * @enum {string}
              */
-            direction: "negative" | "positive" | "mixed";
+            level: "Medium" | "Low";
+            /**
+             * Strength
+             * @description The link's strength from the source's end
+             * @enum {string}
+             */
+            strength: "Strong" | "Moderate" | "Weak";
+            /** @description The entity the development is about */
+            source: components["schemas"]["SubjectRef"];
             /**
              * Route
-             * @description Plain words: "via its Hong Kong loans, 12.2% of total"
+             * @description The link in plain words from the entity reached: "via its Hong Kong loans, 12.2% of total", "depended on by DBS for telecoms"
              */
             route: string;
             /**
-             * Why
-             * @description One or two sentences citing the development
-             */
-            why: string;
-            /**
-             * Confidence
-             * @enum {string}
-             */
-            confidence: "high" | "medium" | "low";
-            /**
-             * Weight
-             * @description The route's exposure share, if it has an exposure
-             */
-            weight: number | null;
-            /**
              * Region
-             * @description The region's name when the share covers a whole region (Greater China)
+             * @description The region's name when the link's figure covers a whole region that includes the source (Greater China)
              */
             region: string | null;
-            /**
-             * Evidence
-             * @description The weakest grade along the route
-             * @enum {string}
-             */
-            evidence: "public" | "reported" | "assumed";
-            /**
-             * Last Confirmed
-             * Format: date
-             * @description The oldest last confirmation along the route
-             */
-            last_confirmed: string;
-            /**
-             * Relationships
-             * @description From the entity outward
-             */
-            relationships: components["schemas"]["RelationshipLink"][];
-            /**
-             * Finding Ids
-             * @description The development's findings the reason relies on
-             */
-            finding_ids: string[];
-            /** Passages */
-            passages: components["schemas"]["ImpactPassage"][];
+            link: components["schemas"]["RelationshipLink"];
         };
         JsonValue: unknown;
         /**
@@ -3629,7 +3584,7 @@ export interface components {
             development_ids: string[];
             /**
              * Harmful
-             * @description How many of them are negative for the centre
+             * @description How many of them are adverse for the entity they are about; every indirect impact is, so this equals the number of developments
              */
             harmful: number;
         };
@@ -3743,6 +3698,21 @@ export interface components {
             quote: string | null;
             /** Detail */
             detail: string;
+            /**
+             * Reason
+             * @description One line from the stored facts: "has 12.2% of its loans in Hong Kong, 30 Jun 2026"
+             */
+            reason: string;
+            /**
+             * From To
+             * @description How strongly a material adverse event at `from` reaches `to`; null for a link that is not rated (belongs_to_sector)
+             */
+            from_to: ("Strong" | "Moderate" | "Weak") | null;
+            /**
+             * To From
+             * @description The same, from `to` to `from`
+             */
+            to_from: ("Strong" | "Moderate" | "Weak") | null;
             /** Figures */
             figures: components["schemas"]["RelationshipFigure"][];
         };
@@ -4433,61 +4403,32 @@ export interface components {
         SubjectImpact: {
             /** Development Id */
             development_id: string;
+            /** @description The entity reached */
             subject: components["schemas"]["SubjectRef"];
             /**
-             * Direction
+             * Level
              * @enum {string}
              */
-            direction: "negative" | "positive" | "mixed";
+            level: "Medium" | "Low";
+            /**
+             * Strength
+             * @description The link's strength from the source's end
+             * @enum {string}
+             */
+            strength: "Strong" | "Moderate" | "Weak";
+            /** @description The entity the development is about */
+            source: components["schemas"]["SubjectRef"];
             /**
              * Route
-             * @description Plain words: "via its Hong Kong loans, 12.2% of total"
+             * @description The link in plain words from the entity reached: "via its Hong Kong loans, 12.2% of total", "depended on by DBS for telecoms"
              */
             route: string;
             /**
-             * Why
-             * @description One or two sentences citing the development
-             */
-            why: string;
-            /**
-             * Confidence
-             * @enum {string}
-             */
-            confidence: "high" | "medium" | "low";
-            /**
-             * Weight
-             * @description The route's exposure share, if it has an exposure
-             */
-            weight: number | null;
-            /**
              * Region
-             * @description The region's name when the share covers a whole region (Greater China)
+             * @description The region's name when the link's figure covers a whole region that includes the source (Greater China)
              */
             region: string | null;
-            /**
-             * Evidence
-             * @description The weakest grade along the route
-             * @enum {string}
-             */
-            evidence: "public" | "reported" | "assumed";
-            /**
-             * Last Confirmed
-             * Format: date
-             * @description The oldest last confirmation along the route
-             */
-            last_confirmed: string;
-            /**
-             * Relationships
-             * @description From the entity outward
-             */
-            relationships: components["schemas"]["RelationshipLink"][];
-            /**
-             * Finding Ids
-             * @description The development's findings the reason relies on
-             */
-            finding_ids: string[];
-            /** Passages */
-            passages: components["schemas"]["ImpactPassage"][];
+            link: components["schemas"]["RelationshipLink"];
             development: components["schemas"]["DevelopmentSummary"];
         };
         /** SubjectIndicator */

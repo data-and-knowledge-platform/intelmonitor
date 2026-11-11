@@ -47,7 +47,7 @@ from intelmonitor.pipeline.corroboration import Corroboration, corroborations
 from intelmonitor.pipeline.detectors import Detection, live_events
 from intelmonitor.pipeline.diff import DevelopmentChange, development_changes, previous_run
 from intelmonitor.pipeline.facts import key_data, mapped_series, series_fact
-from intelmonitor.pipeline.impact import link_words
+from intelmonitor.pipeline.impact import link_words, route_text
 from intelmonitor.pipeline.indicators import compute_indicators
 from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
 from intelmonitor.pipeline.params import (
@@ -58,7 +58,13 @@ from intelmonitor.pipeline.params import (
 )
 from intelmonitor.pipeline.subjects import Subject, monitored_subjects
 from intelmonitor.pipeline.wording import day, fx_currency
-from intelmonitor.relationships import EVIDENCE_GRADES, RelType, links_from
+from intelmonitor.relationships import (
+    EVIDENCE_GRADES,
+    Relationship,
+    RelType,
+    links_from,
+    load_nodes,
+)
 from intelmonitor.seed import load_series
 from intelmonitor.store.series import read_observations
 
@@ -186,17 +192,16 @@ class EarlierMatter:
 
 @dataclass(frozen=True)
 class BriefImpact:
-    """An indirect impact on the subject (pipeline/impact.py), and whether one news outlet alone
-    reports the development behind it."""
+    """An indirect impact on the subject (pipeline/impact.py): its level, the link it comes
+    through in plain words and that link's reason, and whether one news outlet alone reports the
+    development behind it."""
 
     development_id: str
     title: str
     last_published: date
-    direction: str
+    level: str  # Medium or Low
     route: str
-    why: str
-    evidence: str
-    confidence: str
+    reason: str
     single_outlet: bool
 
 
@@ -286,30 +291,35 @@ def subject_impacts(
     gate: dict[str, Corroboration],
 ) -> list[BriefImpact]:
     """The subject's indirect impacts from developments that pass the source gate (`gate`, by id)
-    with a source after `since`."""
+    with a source after `since`. An impact whose link left the store since the run is skipped."""
     rows = conn.execute(
-        "SELECT i.development_id, d.title, d.last_published, i.direction, i.route, i.why, "
-        "i.evidence, i.confidence FROM development_impacts i JOIN developments d "
+        "SELECT i.development_id, d.title, d.last_published, i.source_id, i.level, r.data "
+        "FROM development_impacts i JOIN developments d "
         "ON d.run_id = i.run_id AND d.id = i.development_id "
+        "JOIN relationships r ON r.id = i.relationship_id "
         "WHERE i.run_id = ? AND i.subject_id = ? AND d.last_published > ? "
         "ORDER BY d.last_published DESC, i.development_id",
         (run_id, subject_id, since.isoformat()),
     ).fetchall()
-    return [
-        BriefImpact(
-            development_id=r["development_id"],
-            title=r["title"],
-            last_published=date.fromisoformat(r["last_published"][:10]),
-            direction=r["direction"],
-            route=r["route"],
-            why=r["why"],
-            evidence=r["evidence"],
-            confidence=r["confidence"],
-            single_outlet=backing.single_outlet,
+    links = [Relationship.model_validate_json(r["data"]) for r in rows]
+    ends = {i for link in links for i in (link.from_, link.to)}
+    nodes = load_nodes(conn, ends | {r["source_id"] for r in rows}) if rows else {}
+    found: list[BriefImpact] = []
+    for r, link in zip(rows, links, strict=True):
+        if (backing := gate.get(r["development_id"])) is None or not backing.shown:
+            continue
+        found.append(
+            BriefImpact(
+                development_id=r["development_id"],
+                title=r["title"],
+                last_published=date.fromisoformat(r["last_published"][:10]),
+                level=PRIORITY_LABELS[int(r["level"])],
+                route=route_text(link, r["source_id"], subject_id, nodes),
+                reason=link.reason,
+                single_outlet=backing.single_outlet,
+            )
         )
-        for r in rows
-        if (backing := gate.get(r["development_id"])) is not None and backing.shown
-    ]
+    return found
 
 
 def subject_upcoming(
@@ -650,12 +660,12 @@ def brief_prompt(inp: BriefInputs, fx: bool, problems: list[str]) -> str:
         parts.append(f"({hidden} more at lower priority not shown)")
     parts += [
         "",
-        "Indirect impacts: developments not about the subject that reach it through a stored "
-        "relationship (exposure, dependency, ownership):",
+        "Indirect impacts: adverse developments about a linked entity that reach the subject "
+        "through one stored link, at the level a fixed table gives (Medium or Low), with the "
+        "link's reason:",
     ]
     parts += [
-        f"I:{i.development_id} | {i.title} | {i.direction} for it | route: {i.route} | {i.why} | "
-        f"evidence {i.evidence}, confidence {i.confidence}"
+        f"I:{i.development_id} | {i.title} | {i.level} | route: {i.route} | link: {i.reason}"
         + (" | reported by one outlet" if i.single_outlet else "")
         for i in inp.impacts
     ] or ["none"]
@@ -761,7 +771,7 @@ def allowed_text(inp: BriefInputs) -> str:
     for d in inp.prompted:
         lines += [d.title, *d.findings]
     for i in inp.impacts:
-        lines += [i.title, i.route, i.why]
+        lines += [i.title, i.route, i.reason]
     lines += inp.events + ([inp.headline] if inp.headline else [])
     lines += [u.label for u in inp.upcoming] + inp.key_data + inp.links
     lines += [m.title for m in inp.earlier]

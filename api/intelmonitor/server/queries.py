@@ -244,7 +244,7 @@ def load_developments(conn: sqlite3.Connection, run: RunRef) -> RunDevelopments:
     indirect: dict[str, list[str]] = {}
     for r in conn.execute(
         "SELECT development_id, subject_id FROM development_impacts WHERE run_id = ? "
-        "ORDER BY development_id, rank",
+        "ORDER BY development_id, level DESC, subject_id",
         (run.id,),
     ):
         reached = indirect.setdefault(r["development_id"], [])

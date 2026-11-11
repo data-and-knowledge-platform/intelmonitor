@@ -5079,7 +5079,7 @@
             },
             "type": "array",
             "title": "Impacts",
-            "description": "Entities it reaches indirectly: direct links with a loan share, largest first, then region-level ones, then links without a share"
+            "description": "Entities it reaches indirectly: Medium before Low, stronger links first"
           },
           "triage": {
             "$ref": "#/components/schemas/Triage"
@@ -6735,36 +6735,6 @@
         "title": "ImagePart",
         "description": "An image part."
       },
-      "ImpactPassage": {
-        "properties": {
-          "document_id": {
-            "type": "string",
-            "title": "Document Id"
-          },
-          "domain": {
-            "type": "string",
-            "title": "Domain"
-          },
-          "published": {
-            "type": "string",
-            "format": "date",
-            "title": "Published"
-          },
-          "text": {
-            "type": "string",
-            "title": "Text"
-          }
-        },
-        "type": "object",
-        "required": [
-          "document_id",
-          "domain",
-          "published",
-          "text"
-        ],
-        "title": "ImpactPassage",
-        "description": "A passage from the development's sources that the impact's reason relies on."
-      },
       "IndicatorChange": {
         "properties": {
           "window": {
@@ -6997,47 +6967,35 @@
             "title": "Development Id"
           },
           "subject": {
-            "$ref": "#/components/schemas/SubjectRef"
+            "$ref": "#/components/schemas/SubjectRef",
+            "description": "The entity reached"
           },
-          "direction": {
+          "level": {
             "type": "string",
             "enum": [
-              "negative",
-              "positive",
-              "mixed"
+              "Medium",
+              "Low"
             ],
-            "title": "Direction"
+            "title": "Level"
+          },
+          "strength": {
+            "type": "string",
+            "enum": [
+              "Strong",
+              "Moderate",
+              "Weak"
+            ],
+            "title": "Strength",
+            "description": "The link's strength from the source's end"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SubjectRef",
+            "description": "The entity the development is about"
           },
           "route": {
             "type": "string",
             "title": "Route",
-            "description": "Plain words: \"via its Hong Kong loans, 12.2% of total\""
-          },
-          "why": {
-            "type": "string",
-            "title": "Why",
-            "description": "One or two sentences citing the development"
-          },
-          "confidence": {
-            "type": "string",
-            "enum": [
-              "high",
-              "medium",
-              "low"
-            ],
-            "title": "Confidence"
-          },
-          "weight": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Weight",
-            "description": "The route's exposure share, if it has an exposure"
+            "description": "The link in plain words from the entity reached: \"via its Hong Kong loans, 12.2% of total\", \"depended on by DBS for telecoms\""
           },
           "region": {
             "anyOf": [
@@ -7049,66 +7007,25 @@
               }
             ],
             "title": "Region",
-            "description": "The region's name when the share covers a whole region (Greater China)"
+            "description": "The region's name when the link's figure covers a whole region that includes the source (Greater China)"
           },
-          "evidence": {
-            "type": "string",
-            "enum": [
-              "public",
-              "reported",
-              "assumed"
-            ],
-            "title": "Evidence",
-            "description": "The weakest grade along the route"
-          },
-          "last_confirmed": {
-            "type": "string",
-            "format": "date",
-            "title": "Last Confirmed",
-            "description": "The oldest last confirmation along the route"
-          },
-          "relationships": {
-            "items": {
-              "$ref": "#/components/schemas/RelationshipLink"
-            },
-            "type": "array",
-            "title": "Relationships",
-            "description": "From the entity outward"
-          },
-          "finding_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Finding Ids",
-            "description": "The development's findings the reason relies on"
-          },
-          "passages": {
-            "items": {
-              "$ref": "#/components/schemas/ImpactPassage"
-            },
-            "type": "array",
-            "title": "Passages"
+          "link": {
+            "$ref": "#/components/schemas/RelationshipLink"
           }
         },
         "type": "object",
         "required": [
           "development_id",
           "subject",
-          "direction",
+          "level",
+          "strength",
+          "source",
           "route",
-          "why",
-          "confidence",
-          "weight",
           "region",
-          "evidence",
-          "last_confirmed",
-          "relationships",
-          "finding_ids",
-          "passages"
+          "link"
         ],
         "title": "IndirectImpact",
-        "description": "An entity a development reaches through stored relationships, as judged by Claude. Code\nwrites the route from the relationships; Claude only judged it and wrote why."
+        "description": "An entity a development reaches through one stored link, at the level the fixed table\ngives (pipeline/impact.py): the development is adverse for `source` at a direct level, and\nthe link's strength from the source's end turns that into `level`."
       },
       "JsonValue": {},
       "KeyData": {
@@ -8586,7 +8503,7 @@
           "harmful": {
             "type": "integer",
             "title": "Harmful",
-            "description": "How many of them are negative for the centre"
+            "description": "How many of them are adverse for the entity they are about; every indirect impact is, so this equals the number of developments"
           }
         },
         "type": "object",
@@ -8895,6 +8812,45 @@
             "type": "string",
             "title": "Detail"
           },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "One line from the stored facts: \"has 12.2% of its loans in Hong Kong, 30 Jun 2026\""
+          },
+          "from_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Strong",
+                  "Moderate",
+                  "Weak"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From To",
+            "description": "How strongly a material adverse event at `from` reaches `to`; null for a link that is not rated (belongs_to_sector)"
+          },
+          "to_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Strong",
+                  "Moderate",
+                  "Weak"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To From",
+            "description": "The same, from `to` to `from`"
+          },
           "figures": {
             "items": {
               "$ref": "#/components/schemas/RelationshipFigure"
@@ -8925,6 +8881,9 @@
           "page",
           "quote",
           "detail",
+          "reason",
+          "from_to",
+          "to_from",
           "figures"
         ],
         "title": "RelationshipLink",
@@ -10651,47 +10610,35 @@
             "title": "Development Id"
           },
           "subject": {
-            "$ref": "#/components/schemas/SubjectRef"
+            "$ref": "#/components/schemas/SubjectRef",
+            "description": "The entity reached"
           },
-          "direction": {
+          "level": {
             "type": "string",
             "enum": [
-              "negative",
-              "positive",
-              "mixed"
+              "Medium",
+              "Low"
             ],
-            "title": "Direction"
+            "title": "Level"
+          },
+          "strength": {
+            "type": "string",
+            "enum": [
+              "Strong",
+              "Moderate",
+              "Weak"
+            ],
+            "title": "Strength",
+            "description": "The link's strength from the source's end"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SubjectRef",
+            "description": "The entity the development is about"
           },
           "route": {
             "type": "string",
             "title": "Route",
-            "description": "Plain words: \"via its Hong Kong loans, 12.2% of total\""
-          },
-          "why": {
-            "type": "string",
-            "title": "Why",
-            "description": "One or two sentences citing the development"
-          },
-          "confidence": {
-            "type": "string",
-            "enum": [
-              "high",
-              "medium",
-              "low"
-            ],
-            "title": "Confidence"
-          },
-          "weight": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Weight",
-            "description": "The route's exposure share, if it has an exposure"
+            "description": "The link in plain words from the entity reached: \"via its Hong Kong loans, 12.2% of total\", \"depended on by DBS for telecoms\""
           },
           "region": {
             "anyOf": [
@@ -10703,46 +10650,10 @@
               }
             ],
             "title": "Region",
-            "description": "The region's name when the share covers a whole region (Greater China)"
+            "description": "The region's name when the link's figure covers a whole region that includes the source (Greater China)"
           },
-          "evidence": {
-            "type": "string",
-            "enum": [
-              "public",
-              "reported",
-              "assumed"
-            ],
-            "title": "Evidence",
-            "description": "The weakest grade along the route"
-          },
-          "last_confirmed": {
-            "type": "string",
-            "format": "date",
-            "title": "Last Confirmed",
-            "description": "The oldest last confirmation along the route"
-          },
-          "relationships": {
-            "items": {
-              "$ref": "#/components/schemas/RelationshipLink"
-            },
-            "type": "array",
-            "title": "Relationships",
-            "description": "From the entity outward"
-          },
-          "finding_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Finding Ids",
-            "description": "The development's findings the reason relies on"
-          },
-          "passages": {
-            "items": {
-              "$ref": "#/components/schemas/ImpactPassage"
-            },
-            "type": "array",
-            "title": "Passages"
+          "link": {
+            "$ref": "#/components/schemas/RelationshipLink"
           },
           "development": {
             "$ref": "#/components/schemas/DevelopmentSummary"
@@ -10752,17 +10663,12 @@
         "required": [
           "development_id",
           "subject",
-          "direction",
+          "level",
+          "strength",
+          "source",
           "route",
-          "why",
-          "confidence",
-          "weight",
           "region",
-          "evidence",
-          "last_confirmed",
-          "relationships",
-          "finding_ids",
-          "passages",
+          "link",
           "development"
         ],
         "title": "SubjectImpact",

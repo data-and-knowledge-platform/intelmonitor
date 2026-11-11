@@ -1,10 +1,11 @@
 """Step 12: graph nodes and edges for a run. Subjects, relationship endpoints and developments are
 nodes. Edges, each with a plain label:
 - the relationship store's links, typed in capitals (DEPENDS_ON, EXPOSED_TO, ...), among them
-  BELONGS_TO_SECTOR from an entity to its seed group;
+  BELONGS_TO_SECTOR from an entity to its seed group, each with its reason and its strength in
+  each direction (from_to, to_from) in its detail;
 - AFFECTS from a development to the subjects it happened to or that did it (development_subjects);
-- IMPACTS from a development to the entities it reaches indirectly, with the route
-  (development_impacts).
+- IMPACTS from a development to the entities it reaches indirectly, with the route, the level and
+  the link's strength (development_impacts).
 Claude Haiku tags each development with one theme, which the graph view colours and groups by."""
 
 import asyncio
@@ -15,10 +16,10 @@ from typing import Literal
 from pydantic import BaseModel
 
 from intelmonitor.pipeline.diff import DevelopmentChange
-from intelmonitor.pipeline.impact import relationship_label
+from intelmonitor.pipeline.impact import relationship_label, route_text
 from intelmonitor.pipeline.inference import Inference, StepFailed
-from intelmonitor.pipeline.params import HAIKU_MODEL
-from intelmonitor.relationships import Relationship
+from intelmonitor.pipeline.params import HAIKU_MODEL, PRIORITY_LABELS
+from intelmonitor.relationships import Relationship, load_nodes
 from intelmonitor.seed import load_subjects
 
 # The graph view's fixed themes, in the order their sectors sit around the centre.
@@ -68,9 +69,6 @@ async def development_themes(
     return themes
 
 
-# An indirect impact's confidence as an edge confidence.
-CONFIDENCE = {"high": 0.9, "medium": 0.6, "low": 0.3}
-
 type NodeRow = tuple[str, str, str, str, str]
 type EdgeRow = tuple[str, str, str, str, str, float, str, str]
 
@@ -91,9 +89,19 @@ async def store_graph(
     nodes += [(run_id, e.id, "entity", e.name, json.dumps({"kind": e.kind})) for e in seed.entities]
     for e in conn.execute("SELECT id, name, kind FROM relationship_endpoints"):
         nodes.append((run_id, e["id"], "endpoint", e["name"], json.dumps({"kind": e["kind"]})))
+    links: dict[str, Relationship] = {}
     for row in conn.execute("SELECT data FROM relationships ORDER BY id"):
         r = Relationship.model_validate_json(row["data"])
-        detail = {"relationship_id": r.id, "evidence": r.evidence, "weight": r.weight}
+        links[r.id] = r
+        t = r.transmission
+        detail: dict[str, object] = {
+            "relationship_id": r.id,
+            "evidence": r.evidence,
+            "weight": r.weight,
+            "reason": r.reason,
+            "from_to": t.from_to.strength if t else None,
+            "to_from": t.to_from.strength if t else None,
+        }
         edges.append(
             (
                 run_id,
@@ -136,15 +144,25 @@ async def store_graph(
                 "{}",
             )
         )
-    for i in conn.execute(
-        "SELECT development_id, subject_id, route, direction, confidence, relationship_ids "
+    impacts = conn.execute(
+        "SELECT development_id, subject_id, source_id, relationship_id, strength, level "
         "FROM development_impacts WHERE run_id = ?",
         (run_id,),
-    ):
+    ).fetchall()
+    ends = {e for i in impacts for e in (i["subject_id"], i["source_id"])}
+    ends |= {e for i in impacts if (r := links.get(i["relationship_id"])) for e in (r.from_, r.to)}
+    nodes_by_id = load_nodes(conn, ends) if impacts else {}
+    for i in impacts:
+        link = links.get(i["relationship_id"])
+        if link is None:  # the link left the store since the impact step
+            continue
+        route = route_text(link, i["source_id"], i["subject_id"], nodes_by_id)
         detail = {
-            "route": i["route"],
-            "direction": i["direction"],
-            "relationship_ids": json.loads(i["relationship_ids"]),
+            "route": route,
+            "level": PRIORITY_LABELS[i["level"]],
+            "strength": i["strength"],
+            "source_id": i["source_id"],
+            "link_id": link.id,
         }
         edges.append(
             (
@@ -152,9 +170,9 @@ async def store_graph(
                 f"dev:{i['development_id']}",
                 i["subject_id"],
                 "IMPACTS",
-                "claude",
-                CONFIDENCE[i["confidence"]],
-                f"indirectly affects, {i['route']}",
+                "table",
+                1.0,
+                f"indirectly affects, {route}",
                 json.dumps(detail),
             )
         )
