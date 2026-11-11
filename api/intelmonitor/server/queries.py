@@ -28,6 +28,8 @@ from intelmonitor.server.models import (
     Collection,
     DevelopmentSummary,
     EntityBrief,
+    FunctionDetail,
+    FunctionRef,
     RunRef,
     SourceTypeCount,
     SubjectDetail,
@@ -70,6 +72,19 @@ def subject_ref(subject_id: str) -> SubjectRef:
         logo_full=entity.logo_full if entity else None,
         icon=topic.icon if topic else None,
     )
+
+
+def functions() -> list[FunctionDetail]:
+    """MAS's five functions in seed order, with their topics and fixed watchlists."""
+    return [
+        FunctionDetail(id=f.id, name=f.name, topics=f.topics, watchlist=f.watchlist)
+        for f in load_subjects().functions
+    ]
+
+
+def function_ref(function_id: str) -> FunctionRef:
+    f = next(f for f in load_subjects().functions if f.id == function_id)
+    return FunctionRef(id=f.id, name=f.name)
 
 
 def subject_links(subject_id: str) -> SubjectLinks:
@@ -119,11 +134,13 @@ def description(subject_id: str) -> str:
 
 @dataclass(frozen=True)
 class SubjectPriority:
-    """A development's priority, adverse flag and tone for one of its subjects."""
+    """A development's priority, adverse flag and tone for one of its subjects, and how sure
+    screening was of the tag."""
 
     level: int
     adverse: bool
     tone: Tone
+    confidence: float
 
 
 def telling_tone(tones: Iterable[Tone]) -> Tone:
@@ -183,7 +200,7 @@ def load_developments(conn: sqlite3.Connection, run: RunRef) -> RunDevelopments:
     actors: dict[str, list[str]] = {}
     priorities: dict[str, dict[str, SubjectPriority]] = {}
     for r in conn.execute(
-        "SELECT development_id, subject_id, role, priority_level, adverse, tone "
+        "SELECT development_id, subject_id, role, priority_level, adverse, tone, confidence "
         "FROM development_subjects WHERE run_id = ? "
         "ORDER BY priority_level DESC, priority_score DESC, confidence DESC",
         (run.id,),
@@ -192,7 +209,7 @@ def load_developments(conn: sqlite3.Connection, run: RunRef) -> RunDevelopments:
         if r["role"] == "actor":
             actors.setdefault(r["development_id"], []).append(r["subject_id"])
         priorities.setdefault(r["development_id"], {})[r["subject_id"]] = SubjectPriority(
-            r["priority_level"], bool(r["adverse"]), r["tone"]
+            r["priority_level"], bool(r["adverse"]), r["tone"], r["confidence"]
         )
     documents: dict[str, dict[str, tuple[str, str]]] = {}
     jurisdictions: dict[str, set[str]] = {}
@@ -337,11 +354,13 @@ class Queries:
         return sorted(scoped, key=_display_key)
 
     def subject_summary(self, subject_id: str) -> SubjectSummary:
+        s = subject(subject_id)
         return SubjectSummary(
             **subject_ref(subject_id).model_dump(),
             aliases=aliases(subject_id),
-            members=list(subject(subject_id).members),
-            sidebar=subject(subject_id).sidebar,
+            members=list(s.members),
+            sidebar=s.sidebar,
+            function=function_ref(s.function) if s.function else None,
         )
 
     def subject_detail(self, subject_id: str) -> SubjectDetail:

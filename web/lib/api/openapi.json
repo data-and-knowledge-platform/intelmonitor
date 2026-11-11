@@ -30,6 +30,7 @@
     "/subjects": {
       "get": {
         "summary": "List Subjects",
+        "description": "The catalogue: every topic, group and entity, with a topic's function.",
         "operationId": "list_subjects",
         "responses": {
           "200": {
@@ -42,6 +43,88 @@
                   },
                   "type": "array",
                   "title": "Response List Subjects"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions": {
+      "get": {
+        "summary": "List Functions",
+        "description": "MAS's five functions, each with the topics it owns and its view's fixed watchlist.",
+        "operationId": "list_functions",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionDetail"
+                  },
+                  "type": "array",
+                  "title": "Response List Functions"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lists/{list_name}": {
+      "get": {
+        "summary": "Get List",
+        "description": "Every entity or every topic with its developments in the period counted by priority, its\ntop development, its New count and latest date, ranked High, Medium, then name. This week\nruns from the previous run's date; 4w and 3m are 28 and 91 days to the run date.",
+        "operationId": "get_list",
+        "parameters": [
+          {
+            "name": "list_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "entities",
+                "topics"
+              ],
+              "type": "string",
+              "title": "List Name"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "week",
+                "4w",
+                "3m"
+              ],
+              "type": "string",
+              "default": "week",
+              "title": "Period"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubjectList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -2402,6 +2485,58 @@
         ],
         "title": "FacetValue"
       },
+      "FunctionDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Topics",
+            "description": "Ids of the topics it owns, in seed order"
+          },
+          "watchlist": {
+            "$ref": "#/components/schemas/Watchlist",
+            "description": "The function view's preset: entity and topic ids, MAS always among them"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "topics",
+          "watchlist"
+        ],
+        "title": "FunctionDetail",
+        "description": "A function with the topics it owns and its view's fixed watchlist."
+      },
+      "FunctionRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "FunctionRef",
+        "description": "One of MAS's five functions, such as Financial Supervision."
+      },
       "Graph": {
         "properties": {
           "run": {
@@ -3095,6 +3230,188 @@
         "title": "LinkedRoute",
         "description": "How an institution links to the subject: one stored link, or two through a company it\nholds a stake in, written in plain words by code."
       },
+      "ListRow": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "topic",
+              "group",
+              "entity"
+            ],
+            "title": "Type"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "bank",
+                  "central_bank",
+                  "regulator",
+                  "agency",
+                  "market_infrastructure",
+                  "payment_system",
+                  "tech_provider",
+                  "asset_manager",
+                  "investor",
+                  "insurer",
+                  "payment_institution",
+                  "stablecoin_issuer",
+                  "digital_asset_firm",
+                  "country",
+                  "sector"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "logo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo",
+            "description": "Entity icon path in the web app, if one exists"
+          },
+          "logo_full": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Full",
+            "description": "Full entity logo path in the web app, if one exists"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "activity",
+                  "arrow-left-right",
+                  "ban",
+                  "banknote",
+                  "blocks",
+                  "brain-circuit",
+                  "briefcase",
+                  "building-2",
+                  "chart-pie",
+                  "clipboard-check",
+                  "credit-card",
+                  "fuel",
+                  "gauge",
+                  "gavel",
+                  "gem",
+                  "globe",
+                  "handshake",
+                  "landmark",
+                  "leaf",
+                  "life-buoy",
+                  "network",
+                  "percent",
+                  "piggy-bank",
+                  "scale",
+                  "scroll-text",
+                  "server",
+                  "shield",
+                  "siren",
+                  "trending-up",
+                  "umbrella"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon",
+            "description": "Topic glyph from the web icon library"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/SubjectRef"
+            },
+            "type": "array",
+            "title": "Groups",
+            "description": "An entity's groups in seed order, the first one shown; empty for topics"
+          },
+          "function": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FunctionRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The function that owns a topic; else null"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/PriorityCounts"
+          },
+          "top": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TopDevelopment"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when nothing falls in the period"
+          },
+          "new": {
+            "type": "integer",
+            "title": "New",
+            "description": "Shown developments new in the latest run, whatever the period"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest",
+            "description": "The latest last-published date among all its shown developments in the run"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "kind",
+          "groups",
+          "function",
+          "counts",
+          "top",
+          "new",
+          "latest"
+        ],
+        "title": "ListRow"
+      },
       "MarkedDevelopment": {
         "properties": {
           "development": {
@@ -3327,6 +3644,30 @@
         ],
         "title": "Passage",
         "description": "An excerpt of the source around a finding's quotes; highlights are offsets into `text`."
+      },
+      "PriorityCounts": {
+        "properties": {
+          "high": {
+            "type": "integer",
+            "title": "High"
+          },
+          "medium": {
+            "type": "integer",
+            "title": "Medium"
+          },
+          "low": {
+            "type": "integer",
+            "title": "Low"
+          }
+        },
+        "type": "object",
+        "required": [
+          "high",
+          "medium",
+          "low"
+        ],
+        "title": "PriorityCounts",
+        "description": "Developments in the period, each counted at this subject's own priority for it."
       },
       "Quote": {
         "properties": {
@@ -4978,6 +5319,17 @@
             "title": "Sidebar",
             "description": "A group shown as a sidebar heading"
           },
+          "function": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FunctionRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The function that owns a topic; else null"
+          },
           "description": {
             "type": "string",
             "title": "Description"
@@ -5002,6 +5354,7 @@
           "aliases",
           "members",
           "sidebar",
+          "function",
           "description",
           "domains",
           "links"
@@ -5282,6 +5635,45 @@
         ],
         "title": "SubjectLinks"
       },
+      "SubjectList": {
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/RunRef"
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "week",
+              "4w",
+              "3m"
+            ],
+            "title": "Period"
+          },
+          "since": {
+            "type": "string",
+            "format": "date",
+            "title": "Since",
+            "description": "The period's exclusive start: a development is in it when last published after this date"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ListRow"
+            },
+            "type": "array",
+            "title": "Rows",
+            "description": "Ranked by High count, Medium count, then name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run",
+          "period",
+          "since",
+          "rows"
+        ],
+        "title": "SubjectList",
+        "description": "Every entity or every topic with its figures for a period, from the latest run's shown\ndevelopments it is tagged to. Indirect impact never counts."
+      },
       "SubjectRef": {
         "properties": {
           "id": {
@@ -5541,6 +5933,17 @@
             "type": "boolean",
             "title": "Sidebar",
             "description": "A group shown as a sidebar heading"
+          },
+          "function": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FunctionRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The function that owns a topic; else null"
           }
         },
         "type": "object",
@@ -5551,7 +5954,8 @@
           "kind",
           "aliases",
           "members",
-          "sidebar"
+          "sidebar",
+          "function"
         ],
         "title": "SubjectSummary"
       },
@@ -5611,6 +6015,49 @@
           "runs"
         ],
         "title": "SubjectTrend"
+      },
+      "TopDevelopment": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Opens the development popup"
+          },
+          "headline": {
+            "type": "string",
+            "title": "Headline"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "Low",
+              "Medium",
+              "High"
+            ],
+            "title": "Priority",
+            "description": "For this subject; also the row's top priority and its band"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubjectRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Its highest-priority topic, then the highest screen score; null on Topics rows or when it has no topic"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "headline",
+          "priority",
+          "topic"
+        ],
+        "title": "TopDevelopment",
+        "description": "The subject's first development in the period in display order."
       },
       "TrendRun": {
         "properties": {
@@ -5740,6 +6187,30 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "Watchlist": {
+        "properties": {
+          "entities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Entities"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Topics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entities",
+          "topics"
+        ],
+        "title": "Watchlist"
       }
     }
   }

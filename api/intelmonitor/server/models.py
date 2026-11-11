@@ -29,6 +29,7 @@ from intelmonitor.seed import (
     SourceName,
     SubjectType,
     TopicIcon,
+    Watchlist,
 )
 from intelmonitor.store.series import Observation, Revision
 
@@ -69,10 +70,27 @@ class SubjectRef(BaseModel):
     )
 
 
+class FunctionRef(BaseModel):
+    """One of MAS's five functions, such as Financial Supervision."""
+
+    id: str
+    name: str
+
+
+class FunctionDetail(FunctionRef):
+    """A function with the topics it owns and its view's fixed watchlist."""
+
+    topics: list[str] = Field(description="Ids of the topics it owns, in seed order")
+    watchlist: Watchlist = Field(
+        description="The function view's preset: entity and topic ids, MAS always among them"
+    )
+
+
 class SubjectSummary(SubjectRef):
     aliases: list[str]
     members: list[str] = Field(description="Member entity ids, for a group; else empty")
     sidebar: bool = Field(description="A group shown as a sidebar heading")
+    function: FunctionRef | None = Field(description="The function that owns a topic; else null")
 
 
 class SubjectLinks(BaseModel):
@@ -220,6 +238,59 @@ class DevelopmentList(BaseModel):
         "most recent first within each"
     )
     facets: DevelopmentFacets
+
+
+# The Entities and Topics list pages (GET /lists/{list}).
+ListName = Literal["entities", "topics"]
+Period = Literal["week", "4w", "3m"]
+
+
+class PriorityCounts(BaseModel):
+    """Developments in the period, each counted at this subject's own priority for it."""
+
+    high: int
+    medium: int
+    low: int
+
+
+class TopDevelopment(BaseModel):
+    """The subject's first development in the period in display order."""
+
+    id: str = Field(description="Opens the development popup")
+    headline: str
+    priority: Priority = Field(
+        description="For this subject; also the row's top priority and its band"
+    )
+    topic: SubjectRef | None = Field(
+        description="Its highest-priority topic, then the highest screen score; null on Topics "
+        "rows or when it has no topic"
+    )
+
+
+class ListRow(SubjectRef):
+    groups: list[SubjectRef] = Field(
+        description="An entity's groups in seed order, the first one shown; empty for topics"
+    )
+    function: FunctionRef | None = Field(description="The function that owns a topic; else null")
+    counts: PriorityCounts
+    top: TopDevelopment | None = Field(description="Null when nothing falls in the period")
+    new: int = Field(description="Shown developments new in the latest run, whatever the period")
+    latest: date | None = Field(
+        description="The latest last-published date among all its shown developments in the run"
+    )
+
+
+class SubjectList(BaseModel):
+    """Every entity or every topic with its figures for a period, from the latest run's shown
+    developments it is tagged to. Indirect impact never counts."""
+
+    run: RunRef
+    period: Period
+    since: date = Field(
+        description="The period's exclusive start: a development is in it when last published "
+        "after this date"
+    )
+    rows: list[ListRow] = Field(description="Ranked by High count, Medium count, then name")
 
 
 class UpcomingItem(BaseModel):

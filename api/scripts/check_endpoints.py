@@ -11,7 +11,7 @@ import ssl
 import sys
 import time
 from collections.abc import Callable
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +30,21 @@ SAMPLE = [
 ]
 # What an entity or topic page carries, and nothing else.
 PAGE_FIELDS = {"subject", "run", "brief", "upcoming", "trend", "impacts"}
+# Seed facts the catalogue and the list pages must show.
+SEED_COUNTS = {"entity": 89, "topic": 30, "group": 17}
+FUNCTION_COUNT = 5
+PRESET_ENTITY = "mas"
+# What a catalogue entry carries; the count fields /subjects once had stay out.
+SUMMARY_FIELDS = {"id", "name", "type", "kind", "logo", "logo_full", "icon"} | {
+    "aliases",
+    "members",
+    "sidebar",
+    "function",
+}
+LISTS = {"entities": "entity", "topics": "topic"}
+PERIODS = ("week", "4w", "3m")
+PERIOD_DAYS = {"4w": 28, "3m": 91}
+LEVELS = ("high", "medium", "low")
 
 type Json = Any  # response bodies are checked field by field below
 
@@ -120,6 +135,102 @@ def check_evidence(c: Check, dev_id: str) -> None:
         need(doc["text"][q["start"] : q["end"]] == q["text"], "document: quote offsets")
 
 
+def check_catalogue(c: Check) -> str:
+    """/subjects holds the seed's subjects with a topic's function and no count fields, and
+    /functions the five functions, owning every topic once, with presets of seed ids and MAS."""
+    subjects = c.get("/subjects")
+    by_type = {t: [s for s in subjects if s["type"] == t] for t in SEED_COUNTS}
+    for t, n in SEED_COUNTS.items():
+        need(len(by_type[t]) == n, f"{n} {t} subjects, got {len(by_type[t])}")
+    for s in subjects:
+        need(set(s) == SUMMARY_FIELDS, f"{s['id']}: catalogue fields {sorted(s)}")
+        need((s["function"] is not None) == (s["type"] == "topic"), f"{s['id']}: function")
+    functions = c.get("/functions")
+    need(len(functions) == FUNCTION_COUNT, f"{FUNCTION_COUNT} functions")
+    names = {f["id"]: f["name"] for f in functions}
+    owner = {t: f["id"] for f in functions for t in f["topics"]}
+    need(sum(len(f["topics"]) for f in functions) == len(owner), "a topic in two functions")
+    topics = {s["id"]: s for s in by_type["topic"]}
+    need(set(owner) == set(topics), "functions own exactly the topics")
+    for tid, t in topics.items():
+        need(t["function"] == {"id": owner[tid], "name": names[owner[tid]]}, f"{tid}: function")
+    entities = {s["id"] for s in by_type["entity"]}
+    for f in functions:
+        w = f["watchlist"]
+        need(PRESET_ENTITY in w["entities"], f"{f['id']}: preset without {PRESET_ENTITY}")
+        need(set(w["entities"]) <= entities, f"{f['id']}: preset names a non-entity")
+        need(set(w["topics"]) <= set(topics), f"{f['id']}: preset names a non-topic")
+    detail = c.get(f"/subjects/{by_type['topic'][0]['id']}")
+    need(detail["function"] == by_type["topic"][0]["function"], "detail carries the function")
+    return f"{len(subjects)} subjects, {len(functions)} functions"
+
+
+def check_lists(c: Check) -> str:
+    """Both lists for each period: every entity or topic once, ranked High, Medium, then name;
+    `since` from the previous run; each top development at the row's highest level; counts
+    equal to the developments feed's priority facet for the sample; bad names refused."""
+    latest = c.get("/runs/latest")
+    as_of = date.fromisoformat(latest["as_of"])
+    # Run ids are their as-of dates; a first run, with no previous one, looks back 7 days.
+    previous = latest["previous_run_id"]
+    week = date.fromisoformat(previous) if previous else as_of - timedelta(days=7)
+    expected = {"week": week} | {p: as_of - timedelta(days=d) for p, d in PERIOD_DAYS.items()}
+    sizes: list[str] = []
+    for name, kind in LISTS.items():
+        by_period: dict[str, dict[str, Json]] = {}
+        for period in PERIODS:
+            body = c.get(f"/lists/{name}", params={"period": period})
+            rows = body["rows"]
+            label = f"{name} {period}"
+            need(body["period"] == period and body["run"]["id"] == latest["id"], f"{label}: run")
+            need(body["since"] == expected[period].isoformat(), f"{label}: since {body['since']}")
+            need(len(rows) == SEED_COUNTS[kind], f"{label}: {len(rows)} rows")
+            need(len({r["id"] for r in rows}) == len(rows), f"{label}: a repeated row")
+            need(all(r["type"] == kind for r in rows), f"{label}: a row of another type")
+            ranked = sorted(
+                rows,
+                key=lambda r: (-r["counts"]["high"], -r["counts"]["medium"], r["name"].casefold()),
+            )
+            need([r["id"] for r in ranked] == [r["id"] for r in rows], f"{label}: ranking")
+            for r in rows:
+                counts = r["counts"]
+                highest = next((lv for lv in LEVELS if counts[lv]), None)
+                top = r["top"]
+                need(
+                    (top["priority"].lower() if top else None) == highest,
+                    f"{label} {r['id']}: top priority",
+                )
+                if kind == "topic":
+                    need(not r["groups"] and r["function"], f"{label} {r['id']}: function")
+                    need(top is None or top["topic"] is None, f"{label} {r['id']}: top topic")
+                else:
+                    need(r["groups"] and r["function"] is None, f"{label} {r['id']}: groups")
+                    topic = top and top["topic"]
+                    need(not topic or topic["type"] == "topic", f"{label} {r['id']}: top topic")
+            by_period[period] = {r["id"]: r for r in rows}
+            sizes.append(f"{label} {sum(1 for r in rows if r['top'])}")
+        for sid, r in by_period["week"].items():
+            for period in PERIODS[1:]:
+                other = by_period[period][sid]
+                need((other["new"], other["latest"]) == (r["new"], r["latest"]), f"{sid}: new")
+            wider = by_period["3m"][sid]["counts"]
+            narrower = by_period["4w"][sid]["counts"]
+            need(all(wider[lv] >= narrower[lv] for lv in LEVELS), f"{sid}: 3m below 4w")
+        for sid in (s for s in SAMPLE if s in by_period["week"]):
+            for period in PERIODS:
+                days = (as_of - expected[period]).days
+                feed = c.get("/developments", params={"subject_id": sid, "days": days, "limit": 1})
+                facet = {v["value"].lower(): v["count"] for v in feed["facets"]["priority"]}
+                counts = by_period[period][sid]["counts"]
+                need(
+                    all(counts[lv] == facet.get(lv, 0) for lv in LEVELS),
+                    f"{sid} {period}: counts {counts} against the feed's {facet}",
+                )
+    c.get("/lists/groups", expect=422)
+    c.get("/lists/entities", params={"period": "1y"}, expect=422)
+    return "rows with a top development: " + ", ".join(sizes)
+
+
 def check_runs_and_sources(c: Check) -> str:
     runs = c.get("/runs")
     complete = [r for r in runs if r["status"] == "complete"]
@@ -142,6 +253,8 @@ def main() -> int:
     need(len(subjects) == len(all_subjects()), "every seeded subject")
 
     steps: list[tuple[str, Callable[[], object]]] = [
+        ("catalogue", lambda: check_catalogue(c)),
+        ("lists", lambda: check_lists(c)),
         *((f"subject {sid}", lambda sid=sid: check_subject(c, sid)) for sid in SAMPLE),
         ("runs and data sources", lambda: check_runs_and_sources(c)),
     ]

@@ -42,15 +42,18 @@ class Subject:
     description: str  # what counts as being about this subject; groups are never asked about
     members: tuple[str, ...]  # entity ids, for groups
     sidebar: bool = False  # a group shown as a sidebar heading
+    function: str | None = None  # the id of the MAS function that owns a topic
 
 
 @lru_cache
 def all_subjects() -> dict[str, Subject]:
     seed = load_subjects()
     names = {e.id: e.name for e in seed.entities}
+    owner = {t: f.id for f in seed.functions for t in f.topics}
     subjects: dict[str, Subject] = {}
     for t in seed.topics:
-        subjects[t.id] = Subject(t.id, t.name, "topic", None, f"the topic {t.name}: {t.covers}", ())
+        about = f"the topic {t.name}: {t.covers}"
+        subjects[t.id] = Subject(t.id, t.name, "topic", None, about, (), function=owner[t.id])
     for g in seed.groups:
         members = ", ".join(names[m] for m in g.members)
         subjects[g.id] = Subject(

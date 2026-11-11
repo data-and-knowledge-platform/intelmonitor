@@ -34,6 +34,7 @@ from intelmonitor.server.impacts import (
     subject_impacts,
 )
 from intelmonitor.server.linked import linked_institutions
+from intelmonitor.server.lists import subject_list
 from intelmonitor.server.models import (
     DataSources,
     DataSourceStats,
@@ -41,13 +42,16 @@ from intelmonitor.server.models import (
     DevelopmentList,
     DocumentDetail,
     EntityId,
+    FunctionDetail,
     Graph,
     LatestRun,
     LinkedInstitution,
     LinkType,
+    ListName,
     MaterialityLevel,
     MonitorPage,
     NodeType,
+    Period,
     RelatedDays,
     RelatedGraph,
     RunInfo,
@@ -57,6 +61,7 @@ from intelmonitor.server.models import (
     SubjectDetail,
     SubjectId,
     SubjectImpact,
+    SubjectList,
     SubjectSummary,
 )
 from intelmonitor.server.queries import (
@@ -64,6 +69,7 @@ from intelmonitor.server.queries import (
     NotFoundError,
     Queries,
     expand,
+    functions,
     peers,
     subject,
     subject_ref,
@@ -134,7 +140,22 @@ def health() -> dict[str, str]:
 
 @app.get("/subjects")
 def list_subjects(q: Q) -> list[SubjectSummary]:
+    """The catalogue: every topic, group and entity, with a topic's function."""
     return [q.subject_summary(s) for s in all_subjects()]
+
+
+@app.get("/functions")
+def list_functions() -> list[FunctionDetail]:
+    """MAS's five functions, each with the topics it owns and its view's fixed watchlist."""
+    return functions()
+
+
+@app.get("/lists/{list_name}")
+def get_list(q: Q, list_name: ListName, period: Period = "week") -> SubjectList:
+    """Every entity or every topic with its developments in the period counted by priority, its
+    top development, its New count and latest date, ranked High, Medium, then name. This week
+    runs from the previous run's date; 4w and 3m are 28 and 91 days to the run date."""
+    return subject_list(q, list_name, period)
 
 
 @app.get("/subjects/{subject_id}")

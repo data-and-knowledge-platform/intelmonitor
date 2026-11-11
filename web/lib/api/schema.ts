@@ -28,8 +28,53 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Subjects */
+        /**
+         * List Subjects
+         * @description The catalogue: every topic, group and entity, with a topic's function.
+         */
         get: operations["list_subjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/functions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Functions
+         * @description MAS's five functions, each with the topics it owns and its view's fixed watchlist.
+         */
+        get: operations["list_functions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lists/{list_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get List
+         * @description Every entity or every topic with its developments in the period counted by priority, its
+         *     top development, its New count and latest date, ranked High, Medium, then name. This week
+         *     runs from the previous run's date; 4w and 3m are 28 and 91 days to the run date.
+         */
+        get: operations["get_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1039,6 +1084,33 @@ export interface components {
              */
             count: number;
         };
+        /**
+         * FunctionDetail
+         * @description A function with the topics it owns and its view's fixed watchlist.
+         */
+        FunctionDetail: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Topics
+             * @description Ids of the topics it owns, in seed order
+             */
+            topics: string[];
+            /** @description The function view's preset: entity and topic ids, MAS always among them */
+            watchlist: components["schemas"]["Watchlist"];
+        };
+        /**
+         * FunctionRef
+         * @description One of MAS's five functions, such as Financial Supervision.
+         */
+        FunctionRef: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
         /** Graph */
         Graph: {
             run: components["schemas"]["RunRef"];
@@ -1315,6 +1387,55 @@ export interface components {
              */
             links: components["schemas"]["RelationshipLink"][];
         };
+        /** ListRow */
+        ListRow: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "topic" | "group" | "entity";
+            /** Kind */
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | null;
+            /**
+             * Logo
+             * @description Entity icon path in the web app, if one exists
+             */
+            logo?: string | null;
+            /**
+             * Logo Full
+             * @description Full entity logo path in the web app, if one exists
+             */
+            logo_full?: string | null;
+            /**
+             * Icon
+             * @description Topic glyph from the web icon library
+             */
+            icon?: ("activity" | "arrow-left-right" | "ban" | "banknote" | "blocks" | "brain-circuit" | "briefcase" | "building-2" | "chart-pie" | "clipboard-check" | "credit-card" | "fuel" | "gauge" | "gavel" | "gem" | "globe" | "handshake" | "landmark" | "leaf" | "life-buoy" | "network" | "percent" | "piggy-bank" | "scale" | "scroll-text" | "server" | "shield" | "siren" | "trending-up" | "umbrella") | null;
+            /**
+             * Groups
+             * @description An entity's groups in seed order, the first one shown; empty for topics
+             */
+            groups: components["schemas"]["SubjectRef"][];
+            /** @description The function that owns a topic; else null */
+            function: components["schemas"]["FunctionRef"] | null;
+            counts: components["schemas"]["PriorityCounts"];
+            /** @description Null when nothing falls in the period */
+            top: components["schemas"]["TopDevelopment"] | null;
+            /**
+             * New
+             * @description Shown developments new in the latest run, whatever the period
+             */
+            new: number;
+            /**
+             * Latest
+             * @description The latest last-published date among all its shown developments in the run
+             */
+            latest: string | null;
+        };
         /**
          * MarkedDevelopment
          * @description A development marked on the chart.
@@ -1446,6 +1567,18 @@ export interface components {
              * @description The document continues after `text`
              */
             clipped_end: boolean;
+        };
+        /**
+         * PriorityCounts
+         * @description Developments in the period, each counted at this subject's own priority for it.
+         */
+        PriorityCounts: {
+            /** High */
+            high: number;
+            /** Medium */
+            medium: number;
+            /** Low */
+            low: number;
         };
         /** Quote */
         Quote: {
@@ -2117,6 +2250,8 @@ export interface components {
              * @description A group shown as a sidebar heading
              */
             sidebar: boolean;
+            /** @description The function that owns a topic; else null */
+            function: components["schemas"]["FunctionRef"] | null;
             /** Description */
             description: string;
             /** Domains */
@@ -2242,6 +2377,30 @@ export interface components {
             /** Entities */
             entities: components["schemas"]["SubjectRef"][];
         };
+        /**
+         * SubjectList
+         * @description Every entity or every topic with its figures for a period, from the latest run's shown
+         *     developments it is tagged to. Indirect impact never counts.
+         */
+        SubjectList: {
+            run: components["schemas"]["RunRef"];
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "week" | "4w" | "3m";
+            /**
+             * Since
+             * Format: date
+             * @description The period's exclusive start: a development is in it when last published after this date
+             */
+            since: string;
+            /**
+             * Rows
+             * @description Ranked by High count, Medium count, then name
+             */
+            rows: components["schemas"]["ListRow"][];
+        };
         /** SubjectRef */
         SubjectRef: {
             /** Id */
@@ -2311,6 +2470,8 @@ export interface components {
              * @description A group shown as a sidebar heading
              */
             sidebar: boolean;
+            /** @description The function that owns a topic; else null */
+            function: components["schemas"]["FunctionRef"] | null;
         };
         /** SubjectTrend */
         SubjectTrend: {
@@ -2343,6 +2504,27 @@ export interface components {
              * @description Complete runs within the 12 months, oldest first; the last is the latest
              */
             runs: components["schemas"]["TrendRun"][];
+        };
+        /**
+         * TopDevelopment
+         * @description The subject's first development in the period in display order.
+         */
+        TopDevelopment: {
+            /**
+             * Id
+             * @description Opens the development popup
+             */
+            id: string;
+            /** Headline */
+            headline: string;
+            /**
+             * Priority
+             * @description For this subject; also the row's top priority and its band
+             * @enum {string}
+             */
+            priority: "Low" | "Medium" | "High";
+            /** @description Its highest-priority topic, then the highest screen score; null on Topics rows or when it has no topic */
+            topic: components["schemas"]["SubjectRef"] | null;
         };
         /** TrendRun */
         TrendRun: {
@@ -2394,6 +2576,13 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** Watchlist */
+        Watchlist: {
+            /** Entities */
+            entities: string[];
+            /** Topics */
+            topics: string[];
+        };
     };
     responses: never;
     parameters: never;
@@ -2441,6 +2630,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubjectSummary"][];
+                };
+            };
+        };
+    };
+    list_functions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FunctionDetail"][];
+                };
+            };
+        };
+    };
+    get_list: {
+        parameters: {
+            query?: {
+                period?: "week" | "4w" | "3m";
+            };
+            header?: never;
+            path: {
+                list_name: "entities" | "topics";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubjectList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
