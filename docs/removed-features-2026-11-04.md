@@ -122,6 +122,13 @@ Groups remain only to organise entities.
 - The group member list (`GroupMembers`) that a group's URL showed.
 - A group's name, its graph node and a search hit for it open the Entities list filtered to it (`/entities?group=<id>`), and so do old group URLs under `/entities`, `/topics` and `/monitors`.
 
+### The sidebar's subject tree (uncommitted, spec step 11)
+
+Recently viewed, the watchlist and the view switcher replace it; the Entities and Topics list pages list every subject.
+
+- The sidebar's Entities section, with the sidebar groups as collapsible headings, and its Topics section.
+- The collapsed sections kept in `localStorage["im.sidebar.closed"]`, which the app now removes once on load.
+
 ## Decided, not yet removed
 
 From the topics, watchlists and views plan (local map in `wayfind/topics-watchlists-views/`).

@@ -233,3 +233,16 @@
     max-height: 130px;
   }
 }
+
+/* The bookmark: a quiet icon, filled in the accent once on the Personal watchlist. */
+.lp-table :is(th, td).lp-watch {
+  width: 28px;
+  padding: 3px 0 3px var(--s-2);
+}
+/* The hit area stops at the table's right edge, so it adds no sideways scroll. */
+.lp-watch .btn-icon::after {
+  inset: -9px 0 -9px -9px;
+}
+.lp-watch .btn-icon.on {
+  color: var(--accent);
+}

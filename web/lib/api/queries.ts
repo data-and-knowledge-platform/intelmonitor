@@ -63,8 +63,9 @@ export const subjectsOptions = queryOptions({ queryKey: keys.subjects, queryFn: 
 export const useSubjects = () => useQuery(subjectsOptions);
 
 /** MAS's five functions in seed order, each with its topics and its view's fixed watchlist. */
-export const useFunctions = () =>
-  useQuery({ queryKey: keys.functions, queryFn: () => unwrap(api.GET("/functions")) });
+export const functionsOptions = queryOptions({ queryKey: keys.functions, queryFn: () => unwrap(api.GET("/functions")) });
+
+export const useFunctions = () => useQuery(functionsOptions);
 
 /** Which list page: GET /lists/entities or /lists/topics. */
 export type ListName = operations["get_list"]["parameters"]["path"]["list_name"];

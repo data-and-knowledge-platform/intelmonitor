@@ -131,7 +131,6 @@ test("IntelMonitor walkthrough", async ({ page }) => {
 
   const latest = await unwrap(api.GET("/runs/latest"));
   expect(latest.latest_news, "the latest run covers some news").toBeTruthy();
-  const subjects = await unwrap(api.GET("/subjects"));
   const month = await unwrap(api.GET("/developments", { params: { query: { subject_id: ["dbs"], days: 30 } } }));
   expect(month.developments.length, "DBS has developments this month").toBeGreaterThan(0);
 
@@ -160,10 +159,10 @@ test("IntelMonitor walkthrough", async ({ page }) => {
       await expect(nav.locator(".count.attn"), "no High since your last visit").toHaveCount(0);
       await expect(page.getByRole("link", { name: /^(Connections|Trend)$/ })).toHaveCount(0);
 
-      // The sidebar keeps Entities, with the groups as headings, and Topics.
-      const banks = subjects.find((g) => g.id === "banking");
-      if (!banks) throw new Error("the Banking group is missing");
-      await expect(nav.getByRole("button", { name: `Banking ${banks.members.length}`, exact: true })).toHaveAttribute("aria-expanded", "true");
+      // A first visit: Recently viewed holds the page just opened, the Personal watchlist holds MAS.
+      await expect(nav.getByRole("region", { name: "Recently viewed" }).getByRole("link")).toHaveText(["DBS"]);
+      await expect(nav.getByRole("region", { name: "Watchlist" }).getByRole("link")).toHaveText(["MAS"]);
+      await expect(nav.getByRole("button", { name: "View: Personal" })).toBeVisible();
       await expect(nav.locator("[aria-current=page]")).toHaveText("DBS");
 
       // Could affect and Shared with are on the Related tab, which the Related card's See all links opens.

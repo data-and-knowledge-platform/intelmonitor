@@ -2,13 +2,16 @@
 // priority, group or function, period) beside a table banded High, Medium and Low by each row's top
 // priority. The server cuts the period and ranks the rows (GET /lists/{list}); search, the filters
 // and the facet counts run here over the loaded rows. Period and filters live in the URL (search.ts).
+// Each row's bookmark adds it to or removes it from the Personal watchlist, whatever the view.
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { Bookmark } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import type { Schema } from "@/lib/api/client";
 import { useFunctions, useSubjectList, type ListName } from "@/lib/api/queries";
 import { addDays, shortDate } from "@/lib/format";
 import { subjectLink } from "@/lib/links";
+import { PERSONAL, usePersonalWatchlist, useView } from "@/lib/viewerState";
 import { developmentLink } from "@/components/developments/link";
 import { dateSpan, PRIORITIES } from "@/components/developments/labels";
 
@@ -27,6 +30,8 @@ export function ListPage({ list, search }: { list: ListName; search: ListSearch 
   const period = search.period ?? "week";
   const data = useSubjectList(list, period);
   const functions = useFunctions().data;
+  const personal = usePersonalWatchlist();
+  const onLabel = useView().view.id === PERSONAL ? "On watchlist" : "On Personal watchlist";
 
   // The group filter on Entities, the function filter on Topics.
   const facetKey = entities ? "group" : "function";
@@ -62,7 +67,7 @@ export function ListPage({ list, search }: { list: ListName; search: ListSearch 
 
   const total = res.rows.length;
   const span = dateSpan(addDays(res.since, 1), res.run.as_of, shortDate);
-  const cols = 8;
+  const cols = 9;
 
   return (
     <>
@@ -139,6 +144,9 @@ export function ListPage({ list, search }: { list: ListName; search: ListSearch 
                 <th scope="col" className="r">
                   Latest
                 </th>
+                <th scope="col" className="lp-watch">
+                  <span className="sr-only">Watchlist</span>
+                </th>
               </tr>
             </thead>
             {bands.map((b) => (
@@ -150,7 +158,16 @@ export function ListPage({ list, search }: { list: ListName; search: ListSearch 
                   </th>
                 </tr>
                 {b.rows.map((r) => (
-                  <ListRow key={r.id} row={r} entities={entities} />
+                  <ListRow
+                    key={r.id}
+                    row={r}
+                    entities={entities}
+                    watch={{
+                      on: personal.has(r.id),
+                      onLabel,
+                      toggle: () => (personal.has(r.id) ? personal.remove(r.id) : personal.add(r.id)),
+                    }}
+                  />
                 ))}
               </tbody>
             ))}
@@ -170,9 +187,13 @@ export function ListPage({ list, search }: { list: ListName; search: ListSearch 
   );
 }
 
+/** A row's bookmark: whether the subject is on the Personal watchlist, and how it reads when on. */
+type Watch = { on: boolean; onLabel: string; toggle: () => void };
+
 /** One row: name, first group or function, the period's counts, the top development (its popup
- *  shows the row's priority for it) with its topic on Entities, New and the latest date. */
-function ListRow({ row: r, entities }: { row: Row; entities: boolean }) {
+ *  shows the row's priority for it) with its topic on Entities, New, the latest date and the
+ *  bookmark. */
+function ListRow({ row: r, entities, watch }: { row: Row; entities: boolean; watch: Watch }) {
   return (
     <tr data-id={r.id}>
       <td className="lp-name">
@@ -194,6 +215,18 @@ function ListRow({ row: r, entities }: { row: Row; entities: boolean }) {
       </td>
       <td className={`lp-n lp-new${r.new ? " on" : ""}`}>{r.new}</td>
       <td className="lp-n lp-latest">{r.latest ? shortDate(r.latest) : ""}</td>
+      <td className="lp-watch">
+        <button
+          type="button"
+          className={`btn-icon${watch.on ? " on" : ""}`}
+          title={watch.on ? watch.onLabel : "Add to watchlist"}
+          aria-label={`${watch.on ? "Remove" : "Add"} ${r.name} ${watch.on ? "from" : "to"} watchlist`}
+          aria-pressed={watch.on}
+          onClick={watch.toggle}
+        >
+          <Bookmark size={16} fill={watch.on ? "currentColor" : "none"} aria-hidden="true" />
+        </button>
+      </td>
     </tr>
   );
 }

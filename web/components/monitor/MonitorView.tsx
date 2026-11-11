@@ -5,7 +5,8 @@
 // Related card, each full width; a subject with no stored links (most topics) has no Related card. Groups have
 // no page: their URL lands on the Entities list filtered to them (lib/links.ts placePage).
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { Bookmark, BookmarkPlus } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import type { Schema } from "@/lib/api/client";
 import { usePeers } from "@/lib/api/peers";
@@ -14,6 +15,7 @@ import { useHashScroll } from "@/lib/dom";
 import { SubjectLink } from "@/components/shell/SubjectLink";
 import { SubjectIcon } from "@/components/ui/SubjectIcon";
 import { subjectLink } from "@/lib/links";
+import { PERSONAL, recordView, usePersonalWatchlist, useView } from "@/lib/viewerState";
 
 import { SummaryBand } from "./overview/SummaryBand";
 import { useRelated } from "./Related";
@@ -56,10 +58,13 @@ function Overview({ page: p }: { page: Page }) {
 export type MonitorTab = "overview" | "developments" | "related" | "data";
 
 /**
- * The page head: logo, name and one line on what it is, over the tabs. Related shows when
- * something links to the subject, Data when it has listed series.
+ * The page head: logo, name and one line on what it is, and Add to watchlist, over the tabs.
+ * Related shows when something links to the subject, Data when it has listed series. Every tab
+ * renders it once its subject has loaded, so it records the page in Recently viewed.
  */
 export function MonitorHead({ page: p, view }: { page: Page; view: MonitorTab }) {
+  const id = p.subject.id;
+  useEffect(() => recordView(id), [id]);
   const indicators = useIndicators(p.subject.id, p.run.as_of);
   const related = useRelated(p);
   const hasData = p.trend || (indicators.data?.indicators.some((i) => i.series.listed) ?? false);
@@ -80,6 +85,7 @@ export function MonitorHead({ page: p, view }: { page: Page; view: MonitorTab })
             <Summary subject={p.subject} />
           </p>
         </div>
+        <WatchButton id={id} />
       </div>
       <nav className="mon-nav" aria-label="Monitor views">
         <Link {...subjectLink(p.subject)} activeOptions={{ exact: true }} aria-current={current("overview")}>
@@ -100,6 +106,29 @@ export function MonitorHead({ page: p, view }: { page: Page; view: MonitorTab })
         )}
       </nav>
     </div>
+  );
+}
+
+/**
+ * Adds the subject to the Personal watchlist, whatever the view. Once on it, the button reads "On
+ * watchlist" (in a function view, "On Personal watchlist") and "Remove from watchlist" on hover.
+ */
+function WatchButton({ id }: { id: string }) {
+  const personal = usePersonalWatchlist();
+  const { view } = useView();
+  if (!personal.has(id))
+    return (
+      <button type="button" className="btn watch-btn" aria-pressed="false" onClick={() => personal.add(id)}>
+        <BookmarkPlus size={16} aria-hidden="true" />
+        Add to watchlist
+      </button>
+    );
+  return (
+    <button type="button" className="btn watch-btn on" aria-pressed="true" onClick={() => personal.remove(id)}>
+      <Bookmark size={16} fill="currentColor" aria-hidden="true" />
+      <span className="watch-on">{view.id === PERSONAL ? "On watchlist" : "On Personal watchlist"}</span>
+      <span className="watch-off">Remove from watchlist</span>
+    </button>
   );
 }
 

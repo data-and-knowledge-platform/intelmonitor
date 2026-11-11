@@ -41,41 +41,41 @@ nav.side {
   flex-direction: column;
   padding: var(--s-1) var(--s-2) var(--s-4);
 }
-.navgroup {
+/* A section: an icon heading over its entries. */
+.navsec {
   display: flex;
   flex-direction: column;
+  padding-bottom: var(--s-3);
 }
 .navhead {
-  padding: var(--s-4) var(--s-2) var(--s-1);
-  font-size: var(--fs-meta);
-  line-height: var(--lh-meta);
-  font-weight: 500;
-  color: var(--ink2);
-}
-.navhead:first-child {
-  padding-top: var(--s-1);
-}
-/* Entities and Topics headings open and close their lists; the chevron follows the label. */
-.navhead-btn {
   display: flex;
   align-items: center;
-  gap: var(--s-1);
-  width: 100%;
+  gap: var(--s-2);
+  margin: 0;
+  padding: var(--s-2) var(--s-2) var(--s-1);
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  font-weight: 600;
+  color: var(--ink2);
+}
+.navsec:first-child .navhead {
+  padding-top: var(--s-1);
+}
+.navlock {
+  display: inline-flex;
+  margin-left: auto;
+  color: var(--ink3);
+}
+.navempty {
+  margin: 0;
+  padding: 2px var(--s-2) 2px 30px;
+  color: var(--ink3);
+}
+/* Watchlist entities and topics sit apart on a hairline, indented to the names. */
+.navrule {
+  margin: var(--s-1) var(--s-2) var(--s-1) 30px;
   border: 0;
-  background: none;
-  text-align: left;
-  font-family: inherit;
-  cursor: pointer;
-}
-.navhead-btn:hover {
-  color: var(--ink);
-}
-.navhead-btn .chev {
-  width: 12px;
-  transition: transform 0.15s ease-out;
-}
-.navhead-btn[aria-expanded="true"] .chev {
-  transform: rotate(90deg);
+  border-top: 1px solid var(--line-strong);
 }
 /* Long names wrap; the icon and the count stay on the first line. */
 .navitem {
@@ -124,17 +124,130 @@ nav.side {
   color: var(--ink3);
   font-variant-numeric: tabular-nums;
 }
-/* The chevron leads the row in a 16px slot so the labels line up with the sub rows' indent. */
-.navitem .chev {
-  width: 16px;
-  margin-top: 4px;
-  transition: transform 0.15s ease-out;
+/* Entries under Recently viewed and Watchlist start where their heading's text does. */
+.navitem.ind {
+  padding-left: 30px;
 }
-.navitem[aria-expanded="true"] .chev {
-  transform: rotate(90deg);
+/* A Personal entry's x shows on hover or focus, over room kept at the row's right end. */
+.navrow {
+  position: relative;
+  display: flex;
 }
-.navitem.sub {
-  padding-left: 32px;
+.navrow.removable .navitem {
+  padding-right: 30px;
+}
+.navrm {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  opacity: 0;
+}
+.navrow:hover .navrm,
+.navrm:focus-visible {
+  opacity: 1;
+}
+@media (any-pointer: coarse) {
+  .navrm {
+    top: 8px;
+    opacity: 1;
+  }
+}
+
+/* The foot: the view switcher, its menu opening upward. */
+.side-foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-2);
+  border-top: 1px solid var(--line);
+}
+.vsw {
+  position: relative;
+}
+.vsw-btn {
+  width: 100%;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0 var(--s-2);
+  border: 0;
+  border-radius: var(--r-ctl);
+  background: transparent;
+  color: var(--ink);
+  font: 500 var(--fs-body) / var(--lh-body) var(--font);
+  text-align: left;
+}
+.vsw-btn:hover,
+.vsw-btn[aria-expanded="true"] {
+  background: var(--hover);
+}
+.vsw-btn > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vsw-btn svg {
+  flex: none;
+  color: var(--ink2);
+}
+.vsw-btn svg:last-child {
+  color: var(--ink3);
+}
+.vsw-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + var(--s-1));
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  padding: var(--s-1);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-widget);
+  box-shadow: var(--shadow-pop);
+  animation: pop-fade 0.12s ease-out;
+}
+.vsw-menu button {
+  min-height: 32px;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  padding: 6px var(--s-2);
+  border: 0;
+  border-radius: var(--r-ctl);
+  background: transparent;
+  color: var(--ink);
+  font: 400 var(--fs-body) / var(--lh-body) var(--font);
+  text-align: left;
+}
+.vsw-menu button:hover,
+.vsw-menu button:focus-visible {
+  background: var(--hover);
+}
+.vsw-menu button:focus-visible {
+  outline-offset: -2px;
+}
+.vsw-menu button > span {
+  flex: 1;
+  min-width: 0;
+}
+.vsw-menu button svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--ink2);
+}
+.vsw-menu button .vsw-check {
+  color: var(--accent);
+}
+.vsw-sep {
+  height: 1px;
+  margin: var(--s-1) 6px;
+  background: var(--line);
 }
 
 /* A size container, so page layouts switch on the room beside the sidebar rather than on the

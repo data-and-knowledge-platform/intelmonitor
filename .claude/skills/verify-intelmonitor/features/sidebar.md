@@ -1,36 +1,37 @@
 # Sidebar
 
-The left navigation (`navigation "Main"`) opens with the `IntelMonitor` brand link, then `Entities` lists the sidebar groups (the MAS top 50 categories: Banking, Insurance, Asset management, Financial markets, Fintech, Digital assets, Technology, Investment) as collapsible headings with their member count; groups with `sidebar: false` in `subjects.yaml` (Singapore banks, Payment systems, countries, ...) are left out, and `Topics` lists the topics.
-The `Entities` and `Topics` headings are buttons (`aria-expanded`) that collapse their whole list; which are closed is kept in localStorage `im.sidebar.closed`, and opening an entity's or topic's page opens its section again.
+The left navigation (`navigation "Main"`, `web/components/shell/Sidebar.tsx`) opens with the `IntelMonitor` brand link, then three regions and the view switcher in its foot:
+
+- `region "Recently viewed"`: the last 5 entity or topic pages opened in this browser, newest first, shared by every view.
+- `region "Watchlist"`: the current view's watchlist, entities, a hairline, then topics, each alphabetical. In the Personal view each entry has `button "Remove <name> from watchlist"`, shown on hover; a function view's heading reads `Watchlist, fixed` (a lock) and has no remove buttons.
+- `region "All"`: `link "Entities 89"` and `link "Topics 30"` to the list pages.
+- `button "View: <view>"` at the bottom left opens `menu "Views"` upward: `menuitemradio "Personal"`, then the five functions from `GET /functions`.
+
+State lives in this browser only, in `localStorage["im.state.v1"]` (`web/lib/viewerState.ts`): `watchlist`, `recent` and `view`, each written only once the viewer acts.
 Long names wrap; nothing is cut off.
-There are no dashboards, profile button, Ask link or High counts.
-
-## Sub-features
-
-- `entity-groups` expands a group heading under Entities and opens a member's page; the group holding the current entity opens itself.
-- `topics` opens a topic's page.
-- `sections` collapses and reopens Entities and Topics.
 
 ## How to get to it (user POV)
 
 - Present on every page of the shell.
-- `IntelMonitor` brand link goes home, which lands on MAS's page.
-- `?` anywhere opens [Help](help.md).
+- `IntelMonitor` brand link goes home, which opens the first entity on the current watchlist (MAS on a first visit), else its first topic, else the Entities list.
+- "Add to watchlist" in a page head and the bookmark on a list row always change the Personal watchlist.
 
 ## Driving it with verify
 
 Preconditions:
 
 - `pnpm -C web verify doctor` is ok.
-- `pnpm -C web verify open home`, then drive with `agent-browser --session <session>`.
+- `pnpm -C web verify open home`, then drive with `agent-browser --session im-verify`.
 
-- **Expand a group.** Run `agent-browser snapshot -i -s nav`, then click `button "Banking 12"`. It reports `expanded=true` and member links appear, for example `link "DBS"`. The groups and members match `verify api /subjects` (`type: "group"`, `sidebar: true`, `members`).
-- **Open an entity.** Click a member link. URL becomes `/monitors/<id>`, the H1 is its name, and `document.querySelector("nav [aria-current=page]")` is that link.
-- **Current group opens itself.** Reload an entity page. Only the group holding it reports `expanded=true`.
-- **Collapse a section.** Click `button "Topics"`. It reports `expanded=false` and the topic links hide; a reload keeps it closed until a topic's page opens.
+- **Read the state.** `agent-browser eval '(() => localStorage.getItem("im.state.v1"))()'`. A first visit to `/` stores `{"recent":["mas"]}` only.
+- **Start fresh.** `eval '(() => localStorage.clear())()'`, then `open` a page: the module reads storage once per load.
+- **Remove an entry.** `hover` then `click` `button "Remove <name> from watchlist"`; the entry leaves and `watchlist` drops its id.
+- **Switch view.** Click `button "View: Personal"`, then a `menuitemradio`. Arrow keys move in the menu, Enter picks, Esc closes.
+- **Two tabs.** `agent-browser tab new <url>` opens a second tab in the same session; a change in one shows in the other without a reload. `tab t1` returns.
+- **Blocked storage.** A separate session with an init script whose `Storage.prototype.setItem` throws: `agent-browser --session im-blocked --init-script <file> open <url>`. The first watchlist change shows one notice; a reload starts from the defaults.
 
 ## Gotchas
 
-- The groups' open state is per page load; only the current entity's group reopens after a reload.
-- There is no Groups section and groups have no page; a group's URL lands on the Entities list filtered to it.
-- All, at the top, links to the Entities and Topics lists (`/entities`, `/topics`).
+- Groups have no page and are never on a watchlist; a stored group id or one that left the seed is hidden, and dropped on that field's next write.
+- A stored view that names no function reads as Personal.
+- The x is hidden until hover (always shown on touch screens), so `snapshot -i` lists it but a screenshot shows it only on hover.

@@ -843,3 +843,22 @@ select.input.sw-pick {
   }
 }
 
+
+/* Add to watchlist in the page head. Once added it reads as on, and offers removal on hover. */
+.watch-btn {
+  flex: none;
+}
+.watch-btn svg {
+  color: var(--ink2);
+}
+.watch-btn.on,
+.watch-btn.on svg {
+  color: var(--accent);
+}
+.watch-btn .watch-off,
+.watch-btn.on:hover .watch-on {
+  display: none;
+}
+.watch-btn.on:hover .watch-off {
+  display: inline;
+}
