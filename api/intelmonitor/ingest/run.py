@@ -41,6 +41,7 @@ from intelmonitor.ingest.parse import (
     unreverse_lines,
 )
 from intelmonitor.ingest.sources.official import (
+    API_FALLBACKS,
     OFFICIAL_SOURCES,
     SITE_SEARCHES,
     feed_backfill,
@@ -153,6 +154,16 @@ def run_ingest(
         with ThreadPoolExecutor(_PAGE_WORKERS) as pool:
             keep(d for d in pool.map(fetch, official.listings) if d is not None)
         failed = set(official.failed)
+        # An API source that failed is read through Exa instead, where it has a search set.
+        for source in official.failed:
+            if fallback := API_FALLBACKS.get(source):
+                try:
+                    docs = site_search_documents(http, settings.exa_api_key, fallback, window)
+                except FetchError as e:
+                    fail(f"official fallback search {source}", e)
+                    continue
+                log(f"official {source}: API failed, {len(docs)} read through Exa")
+                keep(docs)
         for site in SITE_SEARCHES:
             try:
                 keep(site_search_documents(http, settings.exa_api_key, site, window))

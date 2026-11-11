@@ -349,7 +349,11 @@ def hkma_listings(http: CachedHttp, window: Window) -> list[Listing]:
             params={"lang": "en", "pagesize": str(size), "offset": str(offset)},
             expect_json=True,
             vary=str(window.t0),
+            cache_errors=False,
         )
+        # The API sits behind a firewall that sometimes answers 405 with an HTML page.
+        if not response.ok:
+            raise FetchError(f"{HKMA_PRESS_RELEASES}: HTTP {response.status}")
         records = _HkmaResponse.model_validate_json(response.content).result.records
         for r in records:
             title = " ".join(r.title.replace("\ufeff", "").split())
@@ -716,6 +720,25 @@ def site_search_documents(
                 )
             )
     return docs
+
+
+def _hkma_release(doc: RawDocument) -> RawDocument | None:
+    """An HKMA press release as Exa returns it: its title without the site's name, and none for
+    a routine notice, which the API adapter drops too."""
+    title = doc.title.removeprefix("Hong Kong Monetary Authority - ")
+    return None if _HKMA_ROUTINE.match(title) else doc.model_copy(update={"title": title})
+
+
+# API sources that can be read through Exa when their API fails, by source.
+API_FALLBACKS: dict[str, SiteSearch] = {
+    "hkma": SiteSearch(
+        "hkma",
+        ["hkma.gov.hk/eng/news-and-media/press-releases"],
+        "Press releases",
+        "HKMA press release",
+        clean=_hkma_release,
+    ),
+}
 
 
 def feed_backfill(
