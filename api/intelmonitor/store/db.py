@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS meta (
 
 CREATE TABLE IF NOT EXISTS source_documents (
     id TEXT PRIMARY KEY,               -- sha256(canonical_url)[:16], stable across reruns
-    source TEXT NOT NULL,              -- mas, fed, ecb, hkma, bis, fsb, exa, tavily or detector
+    source TEXT NOT NULL,              -- an official adapter (mas, fed, fatf, ...), exa or detector
     collection TEXT NOT NULL,          -- dms, official, news, or data (detections)
     doc_type TEXT NOT NULL,            -- e.g. Media Releases, Speeches, News
     classification TEXT NOT NULL,      -- public for every POC document

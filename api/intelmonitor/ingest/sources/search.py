@@ -1,4 +1,4 @@
-"""News and gap search (Exa, Tavily), with queries generated from subjects.yaml.
+"""News and gap search (Exa), with queries generated from subjects.yaml.
 
 News searches are limited to NEWS_DOMAINS. Gap searches for thinly covered subjects add the
 subject's own domains, whose results are stored as official disclosures.
@@ -12,12 +12,10 @@ article URL that is days earlier than the date found wins (The Register's 2016 a
 dated 2026).
 """
 
-import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from email.utils import parsedate_to_datetime
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, Field
@@ -38,7 +36,6 @@ NEWS_DOMAINS = [
     "channelnewsasia.com",
     "scmp.com",
     "theedgesingapore.com",
-    "theedgemalaysia.com",
     "thestar.com.my",
     "bangkokpost.com",
     "nationthailand.com",
@@ -75,6 +72,9 @@ REPUTABLE_DOMAINS = [
     "therecord.media",
     "bleepingcomputer.com",
 ]
+# Subdomains counted as their own outlet rather than as their parent's: markets.ft.com carries
+# company press releases, not FT reporting, so it is an ordinary outlet, not reputable ft.com.
+SEPARATE_OUTLETS = ["markets.ft.com"]
 EXA_RESULTS_PER_QUERY = 5
 GAP_RESULTS_PER_QUERY = 10
 GAP_NEWS_RESULTS = 25
@@ -86,21 +86,6 @@ _NOT_ARTICLE = re.compile(
     r"|organisations)(/|$)"
     r"|/markets/companies/|/presented/"
 )
-
-
-_NEXT_DATA = re.compile(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', re.S)
-
-
-def _edge_created(html: str) -> datetime | None:
-    """The Edge Malaysia: the article's `created` epoch (ms) in its Next.js page data."""
-    match = _NEXT_DATA.search(html)
-    if not match:
-        return None
-    try:
-        created = json.loads(match.group(1))["props"]["pageProps"]["data"]["created"]
-    except (KeyError, TypeError, json.JSONDecodeError):
-        return None
-    return datetime.fromtimestamp(created / 1000, UTC) if isinstance(created, int) else None
 
 
 _PUBLISHED_META = re.compile(r'<meta[^>]+property="article:published_time"[^>]+content="([^"]+)"')
@@ -130,10 +115,7 @@ def _dcd_dateline(text: str) -> datetime | None:
 
 
 # Domains whose search-API dates are unreliable, with how to read the date from the page.
-PAGE_DATES: dict[str, Callable[[str], datetime | None]] = {
-    "theedgemalaysia.com": _edge_created,
-    "asiaasset.com": _meta_published,
-}
+PAGE_DATES: dict[str, Callable[[str], datetime | None]] = {"asiaasset.com": _meta_published}
 # The same for domains whose pages refuse our fetches (DCD sits behind a bot check): the date is
 # read from the article text the search API returned.
 TEXT_DATES: dict[str, Callable[[str], datetime | None]] = {"datacenterdynamics.com": _dcd_dateline}
@@ -263,59 +245,6 @@ def exa_search(
             doc = _search_doc(
                 "exa", r.url, r.title, datetime.fromisoformat(r.published_date), r.text, own_domains
             )
-            doc = doc and _with_page_date(http, doc)
-            if doc and window.contains(doc.published_at):
-                docs.append(doc)
-    return docs
-
-
-# --- Tavily --------------------------------------------------------------------------------
-
-TAVILY_SEARCH = "https://api.tavily.com/search"
-
-
-class _TavilyResult(BaseModel):
-    url: str
-    title: str | None = None
-    content: str | None = None
-    raw_content: str | None = None
-    published_date: str | None = None
-
-
-class _TavilyResponse(BaseModel):
-    results: list[_TavilyResult]
-
-
-def tavily_search(
-    http: CachedHttp,
-    api_key: str,
-    query: str,
-    window: Window,
-    domains: list[str],
-    num_results: int,
-    own_domains: list[str] | None = None,
-) -> list[RawDocument]:
-    body: dict[str, JSONValue] = {
-        "query": query,
-        "topic": "news",
-        "search_depth": "basic",
-        "max_results": num_results,
-        "start_date": str(window.start),
-        "end_date": str(window.t0),
-        "include_domains": list(domains),
-        "include_raw_content": "text",
-    }
-    response = http.post_json(
-        "tavily", TAVILY_SEARCH, body, headers={"Authorization": f"Bearer {api_key}"}
-    )
-    if not response.ok:
-        return []
-    docs: list[RawDocument] = []
-    for r in _TavilyResponse.model_validate_json(response.content).results:
-        text = r.raw_content or r.content
-        if r.published_date and text:
-            published = parsedate_to_datetime(r.published_date)
-            doc = _search_doc("tavily", r.url, r.title, published, text, own_domains)
             doc = doc and _with_page_date(http, doc)
             if doc and window.contains(doc.published_at):
                 docs.append(doc)

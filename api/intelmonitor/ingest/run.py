@@ -3,10 +3,10 @@ or with `--seed` for the SEED_DAYS ending at T0. A seed builds the history for t
 `--seed --subjects` builds it for newly added subjects only, through their news and gap searches.
 The weekly ingest then searches each week once.
 
-Order matters for dedup (the first copy of a document wins): official sources, then news
-searches, then gap searches for subjects that still have fewer than GAP_TARGET candidates, then
-search trends. T0 is fixed on the first run and stored in the meta table, so reruns send the same
-requests and are served entirely from the cache.
+Order matters for dedup (the first copy of a document wins): official sources (feeds, APIs and
+Exa searches over official sites), then news searches, then gap searches for subjects that still
+have fewer than GAP_TARGET candidates, then search trends. T0 is fixed on the first run and stored
+in the meta table, so reruns send the same requests and are served entirely from the cache.
 
 `im redate` applies the URL-date rule to documents stored before it existed, removing those it
 dates before the window.
@@ -38,7 +38,13 @@ from intelmonitor.ingest.parse import (
     domain_of,
     unreverse_lines,
 )
-from intelmonitor.ingest.sources.official import fetch_listing, official_listings
+from intelmonitor.ingest.sources.official import (
+    OFFICIAL_SOURCES,
+    SITE_SEARCHES,
+    fetch_listing,
+    official_listings,
+    site_search_documents,
+)
 from intelmonitor.ingest.sources.search import (
     EXA_RESULTS_PER_QUERY,
     GAP_NEWS_RESULTS,
@@ -49,7 +55,6 @@ from intelmonitor.ingest.sources.search import (
     gap_query,
     news_queries,
     subject_label,
-    tavily_search,
     url_dated,
 )
 from intelmonitor.ingest.sources.trends import fetch_trends
@@ -100,10 +105,13 @@ def run_ingest(
     # This run's unique documents, deduped like the store (canonical URL and content hash).
     seen: list[RawDocument] = []
     seen_keys: set[str] = set()
+    # Documents each source returned this run, stored now or before.
+    returned: Counter[str] = Counter()
     log(f"T0 {window.t0}, window {window.start} to {window.t0}")
 
     def keep(docs: Iterable[RawDocument]) -> None:
         for doc in docs:
+            returned[doc.source] += 1
             keys = {canonical_url(doc.url), content_hash(doc.text)}
             if not keys & seen_keys:
                 seen.append(doc)
@@ -118,11 +126,14 @@ def run_ingest(
         result.failures.append(f"{label}: {error}")
         log(f"failed: {label}: {error}")
 
-    # 1. Official sources: list the window, then fetch each page.
+    # 1. Official sources: list the window, then fetch each page; then search the official sites
+    # that have no feed.
     listings: list[Listing] = []
+    short_feeds: list[str] = []
     if subject_ids is None:
         try:
-            listings = official_listings(http, window)
+            found = official_listings(http, window)
+            listings, short_feeds = found.listings, found.short_feeds
         except FetchError as e:
             fail("official listings", e)
 
@@ -135,7 +146,22 @@ def run_ingest(
 
     with ThreadPoolExecutor(_PAGE_WORKERS) as pool:
         keep(d for d in pool.map(fetch, listings) if d is not None)
-    log(f"official: {len(listings)} listed, {sum(result.added.values())} stored")
+    if subject_ids is None:
+        failed: set[str] = set()
+        for site in SITE_SEARCHES:
+            try:
+                keep(site_search_documents(http, settings.exa_api_key, site, window))
+            except FetchError as e:
+                failed.add(site.source)
+                fail(f"official site search {site.source}", e)
+        # Quiet: reached, and returned nothing for the window. Failed searches are logged above.
+        quiet = [s for s in OFFICIAL_SOURCES if not returned[s] and s not in failed]
+        stored = sum(result.added.values())
+        log(f"official: {len(listings)} listed by feeds and APIs, {stored} stored with searches")
+        log(f"official returned by source: {dict(returned)}; stored: {dict(result.added)}")
+        log(f"official quiet: {quiet}")
+        if short_feeds:
+            log(f"feeds whose oldest item is after {window.start}: {short_feeds}")
 
     # 2. News: Exa over reputable domains, queries generated from subjects.yaml.
     seed = load_subjects()
@@ -155,10 +181,10 @@ def run_ingest(
             keep(batch)
     log(f"news: {len(queries)} queries, {result.added['exa']} stored")
 
-    # 3. Gaps: for thinly covered subjects, Tavily news, a wider Exa news search, and Exa on the
-    # subject's own domains. Only hits that name the subject are kept. Thin subjects are decided
-    # from this run's results (not the store), so a rerun picks the same subjects. Groups are not
-    # monitored, so only topics and entities get gap searches.
+    # 3. Gaps: for thinly covered subjects, a wider Exa news search and Exa on the subject's own
+    # domains. Only hits that name the subject are kept. Thin subjects are decided from this run's
+    # results (not the store), so a rerun picks the same subjects. Groups are not monitored, so
+    # only topics and entities get gap searches.
     counts = candidate_counts((d.title, d.text) for d in seen)
     matchers = {m.id: m for m in subject_matchers() if m.type != "group"}
     target = GAP_TARGET if seeding else WEEK_GAP_TARGET
@@ -175,9 +201,6 @@ def run_ingest(
         n = GAP_RESULTS_PER_QUERY
         docs: list[RawDocument] = []
         try:
-            docs += tavily_search(
-                http, settings.tavily_api_key, name, window, NEWS_DOMAINS + own, n, own
-            )
             phrase = gap_query(entity) if entity else f'"{name}"'
             docs += exa_search(
                 http, settings.exa_api_key, phrase, window, NEWS_DOMAINS, GAP_NEWS_RESULTS, own

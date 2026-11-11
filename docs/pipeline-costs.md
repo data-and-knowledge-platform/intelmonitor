@@ -14,7 +14,7 @@ Updated 11 Nov 2026 for the team's deck (spec steps 2a, 3 and 3a): indirect impa
 
 Sonnet stages are about 96% of the bill.
 Jev's stages on Haiku cost about $0.38 a week; the Sonnet route stage they replace cost about $1.70 a week.
-Exa and Tavily ingest costs are not included.
+Exa ingest costs are not included.
 
 ## Prices
 

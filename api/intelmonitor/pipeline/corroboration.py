@@ -2,7 +2,8 @@
 
 A development is shown when any of these holds, and unconfirmed otherwise:
 - MIN_OUTLETS or more distinct news outlets report it, counting an outlet by its parent domain
-  (markets.ft.com and ft.com are one outlet);
+  (www.ft.com and ft.com are one outlet), except SEPARATE_OUTLETS, which count on their own
+  (markets.ft.com press releases are an ordinary outlet, not ft.com);
 - a reputable outlet (REPUTABLE_DOMAINS, matched on parent domain) reports it;
 - an official, research or data source backs it (the entity's own site, careers and docs pages
   included, is stored as official).
@@ -16,7 +17,7 @@ import sqlite3
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from intelmonitor.ingest.sources.search import REPUTABLE_DOMAINS
+from intelmonitor.ingest.sources.search import REPUTABLE_DOMAINS, SEPARATE_OUTLETS
 
 MIN_OUTLETS = 2
 # Collections that back a development on their own: an official body, a researcher or a series.
@@ -27,9 +28,14 @@ _SUFFIX_LABELS = {"com", "co", "net", "org", "gov", "edu", "ac", "go", "or", "ne
 
 
 def outlet(domain: str) -> str:
-    """The parent domain a source's domain belongs to: markets.ft.com is ft.com,
-    www.businesstimes.com.sg is businesstimes.com.sg."""
-    labels = domain.lower().removeprefix("www.").split(".")
+    """The parent domain a source's domain belongs to: www.ft.com is ft.com,
+    www.businesstimes.com.sg is businesstimes.com.sg. A domain under SEPARATE_OUTLETS is that
+    outlet: markets.ft.com stays markets.ft.com."""
+    domain = domain.lower().removeprefix("www.")
+    for separate in SEPARATE_OUTLETS:
+        if domain == separate or domain.endswith("." + separate):
+            return separate
+    labels = domain.split(".")
     keep = 3 if len(labels) >= 3 and len(labels[-1]) == 2 and labels[-2] in _SUFFIX_LABELS else 2
     return ".".join(labels[-keep:])
 

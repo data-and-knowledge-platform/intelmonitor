@@ -63,6 +63,14 @@ Slide 8 of the team's deck of 10 Nov 2026 replaces it with a fixed table of the 
 - Impacts from developments that are not adverse for the entity they are about.
 - `development_impacts` loses `rank`, `direction`, `route`, `why`, `confidence`, `relationship_ids`, `weight`, `evidence`, `finding_ids` and `passages`; stores made earlier recreate the table empty when opened.
 
+### Tavily and The Edge Malaysia (uncommitted, spec step 4)
+
+- Tavily search, used only in the gap search for thinly covered subjects; the gap search keeps its two Exa searches.
+  The 40 stored Tavily documents stay.
+- theedgemalaysia.com as a news source; its search results were mostly old archive pages.
+  Its page-date reader went with it.
+- markets.ft.com company press releases no longer count as reputable ft.com; they are an ordinary outlet.
+
 ## Decided, not yet removed
 
 From the topics, watchlists and views plan (local map in `wayfind/topics-watchlists-views/`).
@@ -81,8 +89,6 @@ From the topics, watchlists and views plan (local map in `wayfind/topics-watchli
 - Standing questions and their answers (focus areas), with the answers stage and the answer drawer.
 - The Ask page and the "Ask about" button.
 - Dismissing and flagging developments, the last per-viewer state on the server.
-- Tavily search, used only in the gap search for thinly covered subjects; the gap search keeps its two Exa searches.
-- theedgemalaysia.com as a news source; its search results were mostly old archive pages.
 
 ## Visits per role, local store
 

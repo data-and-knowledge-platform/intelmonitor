@@ -28,7 +28,6 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-5-5"
 
     exa_api_key: str = ""
-    tavily_api_key: str = ""
 
     fred_api_key: str = ""
     coingecko_api_key: str = ""

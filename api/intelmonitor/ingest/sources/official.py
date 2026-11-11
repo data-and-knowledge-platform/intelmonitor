@@ -1,5 +1,9 @@
-"""Official sources with no API key: MAS search API, RSS feeds (Fed, ECB, BIS, FSB), HKMA API,
-and the status pages of the cloud providers (AWS, Azure, Google Cloud, Oracle Cloud, Cloudflare).
+"""Official sources, stored as `official` (or `dms`), so each backs a development alone.
+
+With no API key: MAS search API, RSS feeds (Fed, ECB, BIS, FSB, Bank of England, EBA, ESMA, NY Fed
+Liberty Street, Thunes), HKMA API, and the status pages of the cloud providers
+(AWS, Azure, Google Cloud, Oracle Cloud, Cloudflare). Sites with no feed, or that refuse our
+fetches, are searched with Exa over their domain (SITE_SEARCHES), which returns the text too.
 
 Each adapter lists the window's items; `fetch_listing` then fetches and parses each page. Status
 page items carry their own text, so they need no fetch. A listing request whose URL does not
@@ -10,6 +14,7 @@ rerun replays the cache.
 import html
 import re
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from email.utils import parsedate_to_datetime
@@ -20,6 +25,7 @@ from pydantic import BaseModel, Field, TypeAdapter
 from intelmonitor.ingest.http import CachedHttp
 from intelmonitor.ingest.models import MIN_TEXT_CHARS, Listing, RawDocument, Window
 from intelmonitor.ingest.parse import response_text
+from intelmonitor.ingest.sources.search import exa_search
 from intelmonitor.store.documents import Collection
 
 # --- MAS -----------------------------------------------------------------------------------
@@ -122,6 +128,18 @@ FEEDS = [
     Feed("bis", "dms", "Central bankers' speeches", "https://www.bis.org/doclist/cbspeeches.rss"),
     Feed("bis", "dms", "Press releases", "https://www.bis.org/doclist/all_pressrels.rss"),
     Feed("fsb", "dms", "Publications", "https://www.fsb.org/feed/", paged=True),
+    Feed("boe", "official", "News", "https://www.bankofengland.co.uk/rss/news"),
+    Feed("boe", "official", "Speeches", "https://www.bankofengland.co.uk/rss/speeches"),
+    Feed("eba", "official", "Press releases", "https://www.eba.europa.eu/news-press/news/rss.xml"),
+    Feed("esma", "official", "News", "https://www.esma.europa.eu/rss.xml"),
+    Feed(
+        "nyfed",
+        "official",
+        "Liberty Street Economics",
+        "https://libertystreeteconomics.newyorkfed.org/feed/",
+        paged=True,
+    ),
+    Feed("thunes", "official", "News", "https://www.thunes.com/feed/", paged=True),
 ]
 _MAX_FEED_PAGES = 6
 
@@ -146,23 +164,34 @@ def _feed_items(content: bytes) -> list[ET.Element]:
     return [e for e in root.iter() if e.tag.rsplit("}", 1)[-1] == "item"]
 
 
+_TIME_DATETIME = re.compile(r'datetime="([^"]+)"')
+
+
 def _feed_date(item: ET.Element) -> datetime | None:
+    """An item's pubDate or dc:date, else the first <time datetime> in its description (ESMA's
+    items carry no date element)."""
     if raw := _child(item, "pubDate"):
         return parsedate_to_datetime(raw)
     if raw := _child(item, "date"):
         return datetime.fromisoformat(raw)
+    if match := _TIME_DATETIME.search(_child(item, "description")):
+        return datetime.fromisoformat(match.group(1))
     return None
 
 
-def feed_listings(http: CachedHttp, feed: Feed, window: Window) -> list[Listing]:
+def feed_listings(http: CachedHttp, feed: Feed, window: Window) -> tuple[list[Listing], bool]:
+    """The window's items, and whether the feed reached back past the window start (a feed that
+    holds only its latest items may miss the start of an older window)."""
     listings: list[Listing] = []
+    oldest: datetime | None = None
     for page in range(1, (_MAX_FEED_PAGES if feed.paged else 1) + 1):
         url = feed.url if page == 1 else f"{feed.url}?paged={page}"
         response = http.get(feed.source, url, vary=str(window.t0))
         if not response.ok:
+            oldest = None
             break
         items = _feed_items(response.content)
-        oldest: datetime | None = None
+        oldest = None
         for item in items:
             published = _feed_date(item)
             if published is None:
@@ -181,7 +210,7 @@ def feed_listings(http: CachedHttp, feed: Feed, window: Window) -> list[Listing]
                 )
         if oldest is None or oldest.date() < window.start:
             break
-    return listings
+    return listings, oldest is not None and oldest.date() < window.start
 
 
 # --- HKMA ----------------------------------------------------------------------------------
@@ -451,6 +480,124 @@ def status_listings(http: CachedHttp, window: Window) -> list[Listing]:
     return listings + cloudflare_listings(http, window)
 
 
+# --- Exa over an official site ------------------------------------------------------------
+# Official sites with no usable feed, or that refuse our fetches (FATF, FCA, Treasury, IADI), are
+# searched once per window over their own domain. Exa returns each page's text, so nothing is
+# fetched, and every result is stored as official under the site's source name. Exa's search
+# reaches past windows, which a feed holding only its latest items does not (sc.com's feed holds
+# ten items and ignores ?paged=).
+
+_DBS_HEADING = re.compile(r"^# (.+)$", re.MULTILINE)
+_DBS_LANGUAGE_LINK = re.compile(r"\s*\|\s*(English|繁體|简体|中文)\s*$")
+_DBS_DATELINE = re.compile(r"^[A-Z][^\n]*?, (\d{1,2} [A-Z][a-z]+ 20\d\d)\s+[-–]\s", re.MULTILINE)
+
+
+def _day(text: str) -> datetime | None:
+    """A date written "28 Oct 2026" or "28 October 2026", as midnight UTC."""
+    for pattern in ("%d %b %Y", "%d %B %Y"):
+        try:
+            return datetime.strptime(text, pattern).replace(tzinfo=UTC)
+        except ValueError:
+            continue
+    return None
+
+
+def _dbs_release(doc: RawDocument) -> RawDocument | None:
+    """A DBS newsroom release titled from its "# " heading and dated from its dateline
+    ("Singapore, 28 Oct 2026 - "): Exa titles every release "NewsDetail" and may date it from a
+    date in the text. Chinese copies, whose heading links back to "English", and pages with no
+    heading or dateline are dropped."""
+    heading, dateline = _DBS_HEADING.search(doc.text), _DBS_DATELINE.search(doc.text)
+    published = _day(dateline.group(1)) if dateline else None
+    if heading is None or published is None:
+        return None
+    title = heading.group(1).strip()
+    if link := _DBS_LANGUAGE_LINK.search(title):
+        if link.group(1) == "English":
+            return None
+        title = title[: link.start()]
+    return doc.model_copy(update={"title": title, "published_at": published})
+
+
+@dataclass(frozen=True)
+class SiteSearch:
+    source: str
+    sites: list[str]  # domains, or domains with a path prefix, which Exa's includeDomains accepts
+    doc_type: str
+    query: str
+    skip: re.Pattern[str] | None = None  # result URLs that are not documents (listing pages)
+    # Corrects a result's title or date from its text, or drops it (None).
+    clean: Callable[[RawDocument], RawDocument | None] | None = None
+
+
+SITE_SEARCHES = [
+    # English only: the French copies repeat the same publications.
+    SiteSearch(
+        "fatf", ["fatf-gafi.org/en"], "Publications", "FATF statement, report or plenary outcome"
+    ),
+    SiteSearch(
+        "us-treasury",
+        ["home.treasury.gov"],
+        "Press releases",
+        "Treasury press release on sanctions, debt or financial policy",
+    ),
+    # Press releases, statements and news stories: /news/warnings/ is daily clone-firm notices.
+    SiteSearch(
+        "fca",
+        [
+            "fca.org.uk/news/press-releases",
+            "fca.org.uk/news/statements",
+            "fca.org.uk/news/news-stories",
+        ],
+        "News",
+        "FCA press release, statement or fine",
+    ),
+    # The dated posts sit under /YYYY/MM/; the news-and-media section pages only list them.
+    SiteSearch(
+        "iadi",
+        ["iadi.org"],
+        "News",
+        "IADI deposit insurance news or publication",
+        skip=re.compile(r"/news-and-media/[^/]+/?$"),
+    ),
+    SiteSearch("sgx", ["links.sgx.com"], "Announcements", "SGX-listed company announcement"),
+    SiteSearch(
+        "police", ["police.gov.sg"], "News releases", "police news release on scams or fraud"
+    ),
+    SiteSearch("mot", ["mot.gov.sg"], "Press releases", "Ministry of Transport press release"),
+    # The newsroom only: dbs.com also serves product pages and Taiwanese fund notices.
+    SiteSearch(
+        "dbs", ["dbs.com/newsroom"], "Press releases", "DBS press release", clean=_dbs_release
+    ),
+    SiteSearch(
+        "sc",
+        ["sc.com"],
+        "News",
+        "Standard Chartered press release, market outlook or research",
+    ),
+    SiteSearch("adt", ["newsroom.adt.com"], "News releases", "ADT news release"),
+]
+SITE_RESULTS_PER_QUERY = 10
+
+
+def site_search_documents(
+    http: CachedHttp, api_key: str, site: SiteSearch, window: Window
+) -> list[RawDocument]:
+    """The window's pages from one SITE_SEARCHES site, as official documents."""
+    own = list(dict.fromkeys(s.split("/")[0] for s in site.sites))
+    found = exa_search(http, api_key, site.query, window, site.sites, SITE_RESULTS_PER_QUERY, own)
+    docs: list[RawDocument] = []
+    for doc in found:
+        if site.skip and site.skip.search(doc.url):
+            continue
+        cleaned = site.clean(doc) if site.clean else doc
+        if cleaned and window.contains(cleaned.published_at):
+            docs.append(
+                cleaned.model_copy(update={"source": site.source, "doc_type": site.doc_type})
+            )
+    return docs
+
+
 # --- Pages ---------------------------------------------------------------------------------
 
 
@@ -471,9 +618,36 @@ def fetch_listing(http: CachedHttp, listing: Listing) -> RawDocument | None:
     return RawDocument(**listing.model_dump(exclude={"text"}), text=text)
 
 
-def official_listings(http: CachedHttp, window: Window) -> list[Listing]:
+@dataclass(frozen=True)
+class OfficialListings:
+    listings: list[Listing]
+    short_feeds: list[str]  # feeds whose oldest item is newer than the window start
+
+
+def official_listings(http: CachedHttp, window: Window) -> OfficialListings:
     listings = mas_listings(http, window)
+    short: list[str] = []
     for feed in FEEDS:
-        listings += feed_listings(http, feed, window)
+        found, reaches_start = feed_listings(http, feed, window)
+        listings += found
+        if not reaches_start:
+            short.append(f"{feed.source} {feed.doc_type}")
     listings += hkma_listings(http, window)
-    return listings + status_listings(http, window)
+    return OfficialListings(listings + status_listings(http, window), short)
+
+
+# Every official adapter's source name, so the ingest log can list those that stored nothing.
+OFFICIAL_SOURCES = list(
+    dict.fromkeys(
+        [
+            "mas",
+            *(f.source for f in FEEDS),
+            "hkma",
+            *(f.source for f in STATUS_FEEDS),
+            "azure",
+            "google-cloud",
+            "cloudflare",
+            *(s.source for s in SITE_SEARCHES),
+        ]
+    )
+)
