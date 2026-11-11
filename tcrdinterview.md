@@ -70,3 +70,23 @@ if its via a email then maybe they will open  for major incidents.
 BD looks across all risk areas . tcrd focuses on tech. 
 
 Comparison feature would be helpful.
+
+
+Finstar framework, threat/risk assement framework , green yellow orange red. 
+
+share price not important. 
+
+high severity (php vuneralbiliuty 2/3 of websites)
+
+title of development needs improvement, example is the " Microsoft attributed the Sweden Central incident to a metadata backend service timing out on its database and caching layers, after an internal process raised request volumes and automated health-check restarts cut healthy instances." 
+
+not clear what sweden central is. better title would be " azure outage cause of incident in sweden" 
+
+only cisa and azure development deemed relevant to the tcrd team. rest shouldnt it be considered high, [need better framework to determine what is high and what is not] better filter. 
+
+3rd party service providers. 
+
+build impact analysis in a graphical manner. incident to entity. 
+
+
+priority based on the  impact to entities in the scope of singapore. standard chartered uk layoff news not high but standard chartered singapore layoff new is high.
