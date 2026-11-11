@@ -484,7 +484,7 @@ class _Detector(BaseModel):
     name: str  # what the rule watches for, as the evidence drawer shows it
     series: str  # pattern over series ids (fnmatch, `*` spans dots)
     category: DetectorCategory
-    materiality: MaterialityName  # the level its developments get, instead of Jev's score
+    materiality: MaterialityName  # the level its developments get, instead of a rating
     # Evaluated only at points where the series' value meets this; the rest never fire.
     when: LevelCondition | None = None
 

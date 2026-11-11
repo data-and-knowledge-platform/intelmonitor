@@ -755,7 +755,7 @@ class DevelopmentDetail(DevelopmentSummary):
     materiality_confidence: float
     materiality_rule: str | None = Field(
         description='The detector whose rule set the level, by name ("Fed funds rate change"); '
-        "null when Jev scored it"
+        "null when the model rated it"
     )
     subject_confidence: list[SubjectConfidence]
     tag_feedback: list[TagFeedback] = Field(description="Tags the analyst removed, oldest first")
@@ -850,7 +850,7 @@ class GraphEdge(BaseModel):
     target: str
     type: LinkType
     label: str = Field(description='The link in plain words: "depends on, for cloud services"')
-    origin: str = Field(description="relationships, seed, jev, claude or detector")
+    origin: str = Field(description="relationships, seed, claude or detector; jev in older runs")
     confidence: float
     relationship_id: str | None = Field(description="A stored relationship's id")
     route: str | None = Field(description="IMPACTS: the route in plain words")

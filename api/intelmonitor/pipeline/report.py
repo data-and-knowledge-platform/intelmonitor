@@ -17,12 +17,7 @@ from intelmonitor.pipeline.answers import load_run_developments
 from intelmonitor.pipeline.extract import locate_quote
 from intelmonitor.pipeline.facts import SeriesFact
 from intelmonitor.pipeline.notes import stored_note_problems
-from intelmonitor.pipeline.params import (
-    NEEDS_ATTENTION_LEVEL,
-    PRIORITY_LABELS,
-    ROUTE_HIGH,
-    ROUTE_LOW,
-)
+from intelmonitor.pipeline.params import NEEDS_ATTENTION_LEVEL, PRIORITY_LABELS
 from intelmonitor.pipeline.subjects import monitored_subjects, questions_for
 from intelmonitor.store.db import connect, get_meta
 
@@ -89,10 +84,13 @@ def _checks(conn: sqlite3.Connection, runs: list[sqlite3.Row]) -> list[str]:
         )
     )
 
+    # A refusal is a recorded outcome: a document refused on both Haiku and Sonnet, or a
+    # development and subject pair Claude declined to rate, has only refused records.
     refs = {
         (r["stage"], r["input_ref"])
         for r in conn.execute(
-            "SELECT DISTINCT stage, input_ref FROM inference_records WHERE status = 'ok'"
+            "SELECT DISTINCT stage, input_ref FROM inference_records "
+            "WHERE status IN ('ok', 'refused')"
         )
     }
     needed: list[tuple[str, str]] = [
@@ -110,9 +108,10 @@ def _checks(conn: sqlite3.Connection, runs: list[sqlite3.Row]) -> list[str]:
         ("answer", f"subject:{r['subject_id']}")
         for r in conn.execute("SELECT DISTINCT subject_id FROM question_answers")
     ]
-    # Developments made only of detections take their rule's level without a Jev call, and those
-    # with no subject they happened to or that did them are not scored. Runs computed before
-    # per-subject priority scored materiality once per development.
+    # Developments made only of detections take their rule's level without a model call, and those
+    # with no subject they happened to or that did them are not rated. Priority is recorded per
+    # development and subject (dev:<id>:<findings>:<subject>); runs computed before that recorded
+    # one call per development, and runs before per-subject priority scored materiality.
     for r in conn.execute(
         "SELECT d.id, count(s.finding_id) AS n FROM developments d JOIN development_sources s "
         "ON s.run_id = d.run_id AND s.development_id = d.id WHERE EXISTS (SELECT 1 FROM "
@@ -121,10 +120,13 @@ def _checks(conn: sqlite3.Connection, runs: list[sqlite3.Row]) -> list[str]:
         "HAVING sum(s.document_id NOT IN (SELECT document_id FROM detections)) > 0"
     ):
         needed.append(("priority", f"dev:{r['id']}:{r['n']}"))
+    rated = {
+        ":".join(ref.split(":")[:3]) for stage, ref in refs if stage in ("priority", "materiality")
+    }
     missing_records = [
         (stage, ref)
         for stage, ref in needed
-        if (stage, ref) not in refs and not (stage == "priority" and ("materiality", ref) in refs)
+        if (stage, ref) not in refs and not (stage == "priority" and ref in rated)
     ]
     rows.append(
         (
@@ -192,46 +194,23 @@ def _documents(conn: sqlite3.Connection, runs: list[sqlite3.Row]) -> list[str]:
 def _screening(conn: sqlite3.Connection) -> list[str]:
     tags = conn.execute("SELECT * FROM document_tags").fetchall()
     relevant = sum(t["relevant"] for t in tags)
-    rel_jev = sum(t["relevance_source"] == "jev" for t in tags)
-    subject_direct = subject_routed = 0
-    for t in tags:
-        if t["relevance"] <= ROUTE_LOW:
-            continue  # archived on relevance; subject tags were not used
-        for p in json.loads(t["subject_scores"]).values():
-            if ROUTE_LOW < p < ROUTE_HIGH:
-                subject_routed += 1
-            else:
-                subject_direct += 1
-    routed_claude = conn.execute(
-        "SELECT count(*) FROM document_subjects WHERE source = 'claude'"
-    ).fetchone()[0]
+    refused = sum(t["relevance_source"] == "refused" for t in tags)
+    tagged = conn.execute("SELECT count(*) FROM document_subjects").fetchone()[0]
     truncated = sum(t["truncated"] for t in tags)
     categories = Counter(t["category"] for t in tags if t["relevant"])
     return [
-        "## Screening and routing",
+        "## Screening",
         "",
-        f"Thresholds: clear no at or below {ROUTE_LOW}, clear yes at or above {ROUTE_HIGH}; "
-        "the band in between goes to Claude.",
+        "One Claude Haiku call per document decides relevance, subjects, category, stage and "
+        "jurisdictions.",
         "",
         _table(
             ["Measure", "Value"],
             [
                 ["Documents screened", len(tags)],
                 ["Relevant", f"{relevant} ({_pct(relevant, len(tags))})"],
-                ["Relevance decided by Jev directly", f"{rel_jev} ({_pct(rel_jev, len(tags))})"],
-                [
-                    "Relevance routed to Claude",
-                    f"{len(tags) - rel_jev} ({_pct(len(tags) - rel_jev, len(tags))})",
-                ],
-                [
-                    "Subject tags decided by Jev directly",
-                    f"{subject_direct} ({_pct(subject_direct, subject_direct + subject_routed)})",
-                ],
-                [
-                    "Subject tags routed to Claude",
-                    f"{subject_routed} ({_pct(subject_routed, subject_direct + subject_routed)}), "
-                    f"{routed_claude} kept",
-                ],
+                ["Declined by Claude, counted not relevant", refused],
+                ["Subject tags", tagged],
                 ["Screened on title plus leading chunks", truncated],
             ],
         ),
@@ -330,13 +309,15 @@ def _developments(conn: sqlite3.Connection, runs: list[sqlite3.Row]) -> list[str
             ]
         )
     same = conn.execute(
-        "SELECT count(*), sum(json_extract(output, '$.same_event.noul') >= 0.5) FROM "
+        # Jev's records hold a probability, Haiku's a bool.
+        "SELECT count(*), sum(json_extract(output, '$.same_event') = 1 "
+        "OR json_extract(output, '$.same_event.noul') >= 0.5) FROM "
         "inference_records WHERE stage = 'same_event' AND status = 'ok'"
     ).fetchone()
     return [
         "## Developments and merges",
         "",
-        f"Same-event pairs judged by Jev: {same[0]}, of which {same[1] or 0} merged.",
+        f"Same-event pairs judged: {same[0]}, of which {same[1] or 0} merged.",
         "",
         _table(
             [
@@ -474,25 +455,26 @@ def _spot_check(conn: sqlite3.Connection) -> list[str]:
 
 def _usage(conn: sqlite3.Connection) -> list[str]:
     rows = conn.execute(
-        "SELECT engine, stage, count(*) AS calls, sum(status = 'error') AS errors, "
+        "SELECT model, stage, count(*) AS calls, sum(status = 'error') AS errors, "
         "sum(input_tokens) AS tin, sum(output_tokens) AS tout, sum(cost_usd) AS cost, "
         "group_concat(DISTINCT model_version) AS versions FROM inference_records "
-        "GROUP BY engine, stage ORDER BY engine, stage"
+        "GROUP BY model, stage ORDER BY model, stage"
     ).fetchall()
     totals = conn.execute(
-        "SELECT engine, count(*), sum(input_tokens), sum(output_tokens), sum(cost_usd) "
-        "FROM inference_records GROUP BY engine ORDER BY engine"
+        "SELECT model, count(*), sum(input_tokens), sum(output_tokens), sum(cost_usd) "
+        "FROM inference_records GROUP BY model ORDER BY model"
     ).fetchall()
     return [
         "## Model calls, tokens and cost",
         "",
-        "Every Jev and Claude call writes an inference record; reruns are served from them. "
-        "Claude cost is the list-price equivalent the Agent SDK reports (the calls run on the "
-        "Claude subscription). Jev on OpenRouter reports tokens but not cost.",
+        "Every model call writes an inference record; reruns are served from them. Cost is "
+        "priced from the API's token counts, or for calls on the Claude login the list-price "
+        "equivalent the Agent SDK reports. Older stores also hold Jev calls, which report "
+        "tokens but not cost.",
         "",
         _table(
             [
-                "Engine",
+                "Model",
                 "Stage",
                 "Calls",
                 "Errors",
@@ -503,7 +485,7 @@ def _usage(conn: sqlite3.Connection) -> list[str]:
             ],
             [
                 [
-                    r["engine"],
+                    r["model"],
                     r["stage"],
                     r["calls"],
                     r["errors"],
@@ -517,7 +499,7 @@ def _usage(conn: sqlite3.Connection) -> list[str]:
         ),
         "",
         _table(
-            ["Engine", "Calls", "Input tokens", "Output tokens", "Cost (USD)"],
+            ["Model", "Calls", "Input tokens", "Output tokens", "Cost (USD)"],
             [
                 [
                     r[0],

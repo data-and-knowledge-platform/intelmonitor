@@ -27,10 +27,6 @@ class Settings(BaseSettings):
     agent_enabled: bool = False
     anthropic_model: str = "claude-sonnet-5-5"
 
-    openrouter_api_key: str
-    typesafe_base_url: str = "https://openrouter.ai/api"
-    typesafe_default_model: str = "jev-1.13"
-
     exa_api_key: str = ""
     tavily_api_key: str = ""
 
@@ -48,4 +44,4 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     """Process-wide settings. Environment variables override values in .env."""
-    return Settings()  # pyright: ignore[reportCallIssue]  # required fields come from .env
+    return Settings()

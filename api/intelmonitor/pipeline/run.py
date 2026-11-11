@@ -112,7 +112,9 @@ async def compute_run(
         devs, merge = await build_developments(inf, conn, run_id, as_of)
         step(
             f"{merge.developments} developments from {merge.findings} findings "
-            f"({merge.merged_pairs}/{merge.pairs} candidate pairs merged), {merge.high} High"
+            f"({merge.merged_pairs}/{merge.pairs} candidate pairs merged), {merge.high} High; "
+            f"left out {merge.promotional} promotional and {merge.price_move} price-move findings; "
+            f"{merge.priority_refused} priority ratings refused"
         )
         heads = await write_headlines(inf, conn, run_id)
         step(

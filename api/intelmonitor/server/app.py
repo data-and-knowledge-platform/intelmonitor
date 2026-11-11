@@ -19,8 +19,8 @@ from intelmonitor.pipeline.custom import SeriesChoiceError
 from intelmonitor.pipeline.params import (
     MATERIAL_LEVEL,
     NEEDS_ATTENTION_LEVEL,
+    PRIORITY_DEFINITIONS,
     PRIORITY_LABELS,
-    PRIORITY_RUBRIC,
 )
 from intelmonitor.pipeline.subjects import all_subjects
 from intelmonitor.seed import load_detectors
@@ -748,7 +748,7 @@ def materiality_levels(q: Q) -> list[MaterialityLevel]:
         MaterialityLevel(
             level=level,
             name=name,
-            description=PRIORITY_RUBRIC[level],
+            description=PRIORITY_DEFINITIONS[level],
             material=level >= MATERIAL_LEVEL,
             needs_attention=level >= NEEDS_ATTENTION_LEVEL,
             developments=counts[level],

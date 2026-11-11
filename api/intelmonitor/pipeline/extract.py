@@ -1,7 +1,12 @@
 """Step 4: Claude extracts findings from each relevant document, and code keeps only the quotes it
 can find verbatim in the document text (findings left without one are dropped). Each finding says
 how it involves each subject (its role, whether it reports the cause of harm to it, and the
-tone) and whether it is promotional (prd.md sections 7 and 8)."""
+tone), whether it is promotional and whether it only reports a share price or index move
+(prd.md sections 7 and 8). Promotional and price-move findings are stored but never join a
+development (pipeline/developments.py).
+
+The fixed instructions are in the system prompt, the same on every call so it is cached; the user
+prompt holds the document and its tagged subjects."""
 
 import asyncio
 import json
@@ -53,6 +58,7 @@ class ExtractedFinding(BaseModel):
     statement: str
     subjects: list[SubjectRole]
     promotional: bool
+    price_move: bool
     category: Category
     event_date: str | None
     dates: list[MentionedDate]
@@ -63,25 +69,13 @@ class Extraction(BaseModel):
     findings: list[ExtractedFinding]
 
 
-EXTRACT_SYSTEM = (
-    "You extract findings for a financial supervisor's monitoring dashboard. Every finding must "
-    "be supported by exact quotes from the document. Never invent facts or quotes."
-)
-
-
-def extract_prompt(doc: SourceDocument, subject_ids: list[str]) -> str:
-    subjects = monitored_subjects()
-    listed = "\n".join(f"- {sid}: {subjects[sid].description}" for sid in subject_ids)
+def _extract_system() -> str:
     categories = "\n".join(f"- {k}: {v}" for k, v in CATEGORIES.items())
-    return f"""<document>
-Title: {doc.title}
-Source: {doc.domain} ({doc.doc_type}), published {doc.published_at:%Y-%m-%d}
+    return f"""\
+You extract findings for a financial supervisor's monitoring dashboard. Every finding must be
+supported by exact quotes from the document. Never invent facts or quotes.
 
-{doc.text[:EXTRACT_MAX_CHARS]}
-</document>
-
-Extract the material developments this document reports about these tracked subjects:
-{listed}
+The user gives a document and the tracked subjects to extract for.
 
 Return up to 5 findings, one per distinct development. Skip background, history, boilerplate and
 anything not about the listed subjects. Return no findings if nothing material is reported.
@@ -89,7 +83,7 @@ anything not about the listed subjects. Return no findings if nothing material i
 For each finding:
 - statement: one factual, self-contained sentence of at most 35 words (who did what, when).
 - subjects: each listed subject the finding involves, with:
-  - subject: its id above. Use only these ids.
+  - subject: its id as listed. Use only the listed ids.
   - role, one of:
     - affected: the development happened to the subject or directly changes its business,
       finances, operations or obligations, such as an outage at it, a penalty on it, its
@@ -130,6 +124,12 @@ For each finding:
 - promotional: true when the finding is marketing or routine product news: a product, service
   or campaign launch, an award, a sponsorship, a customer offer, or a pilot or partnership with
   no material consequence yet.
+- price_move: true when the finding only reports a move in the share price, market value or
+  index level of a named company or index, or an analyst's price target or rating. Bond yields,
+  currencies, depegs, fund flows and market-wide shocks are not price moves. An index move is a
+  routine price move when it is a day's or month's ordinary gain or loss; a sharp fall or rise
+  across a market (a plunge of several percent, a multi-month or multi-year low or high, a
+  selloff across markets) is a market-wide shock and is not a price move.
 - category, one of:
 {categories}
 - event_date: the date the development happened, YYYY-MM-DD, or null if the text does not say.
@@ -138,6 +138,23 @@ For each finding:
   leave out dates without a specific day.
 - quotes: 1 to 3 passages copied character for character from the document text that support
   the statement, each one or two full sentences. No ellipses, no paraphrase, no added words."""
+
+
+EXTRACT_SYSTEM = _extract_system()
+
+
+def extract_prompt(doc: SourceDocument, subject_ids: list[str]) -> str:
+    subjects = monitored_subjects()
+    listed = "\n".join(f"- {sid}: {subjects[sid].description}" for sid in subject_ids)
+    return f"""<document>
+Title: {doc.title}
+Source: {doc.domain} ({doc.doc_type}), published {doc.published_at:%Y-%m-%d}
+
+{doc.text[:EXTRACT_MAX_CHARS]}
+</document>
+
+Extract the material developments this document reports about these tracked subjects:
+{listed}"""
 
 
 @dataclass(frozen=True)
@@ -210,6 +227,7 @@ class Finding:
     event_date: str | None
     roles: dict[str, FindingRole]  # by subject id, in the order Claude gave them
     promotional: bool
+    price_move: bool
     quotes: list[VerifiedQuote]
     dates: list[MentionedDate]
 
@@ -239,6 +257,7 @@ def verify(doc: SourceDocument, allowed: set[str], extraction: Extraction) -> li
                 event_date=_valid_date(f.event_date),
                 roles=roles,
                 promotional=f.promotional,
+                price_move=f.price_move,
                 quotes=quotes,
                 dates=dates,
             )
@@ -250,7 +269,7 @@ def store_findings(conn: sqlite3.Connection, doc_id: str, findings: list[Finding
     conn.execute("DELETE FROM findings WHERE document_id = ?", (doc_id,))
     conn.executemany(
         "INSERT INTO findings (id, document_id, statement, category, event_date, subjects, "
-        "roles, promotional, quotes, dates) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "roles, promotional, price_move, quotes, dates) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
             (
                 f.id,
@@ -261,6 +280,7 @@ def store_findings(conn: sqlite3.Connection, doc_id: str, findings: list[Finding
                 json.dumps(list(f.roles)),
                 json.dumps({s: r.model_dump() for s, r in f.roles.items()}),
                 int(f.promotional),
+                int(f.price_move),
                 json.dumps([q.__dict__ for q in f.quotes]),
                 json.dumps([d.model_dump() for d in f.dates]),
             )

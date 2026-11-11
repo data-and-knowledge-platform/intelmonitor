@@ -1,15 +1,16 @@
-"""Pipeline tuning: routing thresholds, budgets and concurrency, all in one place."""
+"""Pipeline tuning: models, budgets, prompts and concurrency, all in one place."""
 
 from datetime import date
 from typing import Literal
 
-# Confidence routing for Jev nouls (relevance and subject tags): at or above HIGH is a clear yes,
-# at or below LOW a clear no, and the band in between goes to Claude.
-ROUTE_LOW = 0.3
-ROUTE_HIGH = 0.7
+# Screen, same_event, theme and custom_match run on Claude Haiku 5.5 with thinking off; a Haiku
+# refusal is retried once on REFUSAL_FALLBACK_MODEL (pipeline/inference.py). The other stages run
+# on settings.anthropic_model.
+HAIKU_MODEL = "claude-haiku-5-5"
+REFUSAL_FALLBACK_MODEL = "claude-sonnet-5-5"
 
-# Jev's context on OpenRouter is 32k tokens. Documents longer than this state budget are screened
-# on their title plus leading chunks (about 4 characters per token).
+# Documents longer than this state budget are screened on their title plus leading chunks, to
+# keep the screen's cost down (about 4 characters per token).
 SCREEN_STATE_TOKENS = 24_000
 CHARS_PER_TOKEN = 4
 
@@ -18,38 +19,89 @@ EXTRACT_MAX_CHARS = 200_000
 
 # Same-event candidates: findings sharing a subject, event dates within MERGE_WINDOW_DAYS, cosine
 # similarity at or above MERGE_MIN_SIMILARITY, at most MERGE_MAX_NEIGHBOURS per finding.
-# Jev decides each pair; SAME_EVENT_THRESHOLD or more merges them.
+# Haiku decides each pair.
 MERGE_WINDOW_DAYS = 10
 MERGE_MIN_SIMILARITY = 0.6
 MERGE_MAX_NEIGHBOURS = 5
-SAME_EVENT_THRESHOLD = 0.5
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 
-# Priority labels, indexed by level 0 to 2. Jev scores a development's priority for each subject it
-# happened to or that did it, against PRIORITY_RUBRIC; the development's level is its highest.
+# Priority labels, indexed by level 0 to 2. Claude rates a development's priority for each entity
+# it happened to or that did it, with PRIORITY_PROMPT; the development's level is its highest.
 Priority = Literal["Low", "Medium", "High"]
 PRIORITY_LABELS: list[Priority] = ["Low", "Medium", "High"]
-# What each level means, in the same order: Jev scores against these, and Help shows them. They
-# follow the supervisors' guideline: where it happened (pipeline/singapore.py says how each
-# institution links to Singapore) and whether it is an incident or a development. Adverse is a
-# separate flag.
-PRIORITY_RUBRIC: list[str] = [
-    "no effect on financial institutions in Singapore: news about a foreign institution or third "
-    "party with no strong link to Singapore, Singapore news outside the financial landscape, or "
-    "routine, promotional or barely about this subject",
-    "a development at a financial institution in Singapore (results, strategy, deals, "
-    "appointments, a new rule, guidance or consultation that applies to it), or a development "
-    "at a foreign institution or third party strongly linked to Singapore",
-    "an incident at a financial institution in Singapore, or at a foreign institution or third "
-    "party strongly linked to Singapore: an outage, cyberattack or data breach, fraud, "
-    "enforcement action or penalty, a large loss, a failure or a rescue; or a development at a "
-    "financial institution in Singapore serious enough to change its position",
+# The team's direct H/M/L prompt (deck of 10 Nov 2026, slide 7), as written, with the subject's
+# name in {entity} and its Singapore phrase (pipeline/subjects.py) where the slide says "the
+# subject's Singapore branch" or "the Singapore branch". Fill it with `priority_system`.
+PRIORITY_PROMPT = """\
+You are a risk analyst at the Monetary Authority of Singapore. You will be given a news finding \
+about a financial institution (the "subject"): {entity}. Classify the finding's priority as High, \
+Medium, or Low using the definitions below.
+
+## Priority levels
+
+High (Significant or Critical)
+- Significant: a material change for {singapore}, whether a threat or an opportunity. Examples: \
+an incident, an enforcement action, a loss or failure at {singapore}, a binding decision that \
+changes what {singapore} must do, a major deal involving {singapore}, or a market shock \
+{singapore} is exposed to.
+- Critical: severe, urgent or systemic for {singapore} or for Singapore's financial system, and \
+needs immediate attention.
+
+Medium (Notable)
+- Worth knowing: a moderate change for the subject. Examples: new guidance, a consultation, a \
+results update, or a larger event that reaches the subject or Singapore only indirectly.
+- Also use Medium for a material event at the subject's head office or another branch that could \
+plausibly reach {singapore} but has not yet been shown to.
+
+Low (Minor or Trivial)
+- Minor: small or expected. Examples: routine statistics, speeches, FAQs, procedural notices, \
+product and promotional news, or a foreign event with little route to Singapore.
+- Trivial: routine, promotional, or barely about the subject, with no consequence for it or for \
+Singapore.
+
+## Rules
+1. High is reserved for findings that affect {singapore} or Singapore's financial system. A \
+serious event elsewhere in the group is High only if the finding shows it directly affects \
+{singapore} (e.g. its capital, liquidity, operations, staff, customers, or licence).
+2. If no Singapore link is stated or clearly implied, do not assume one.
+3. Judge only from the finding provided. Do not use outside knowledge.
+
+## Output
+Respond with JSON only, no other text:
+{{"priority": "High" | "Medium" | "Low", "reason": "<one sentence, citing the Singapore link if \
+High>"}}"""
+SINGAPORE_SYSTEM = "Singapore's financial system"
+# The priority call thinks at this effort on Sonnet 5.5.
+PRIORITY_EFFORT: Literal["medium"] = "medium"
+
+
+def priority_system(entity: str, singapore: str) -> str:
+    """PRIORITY_PROMPT for one subject. Where the phrase is Singapore's financial system itself,
+    "the phrase or (for) Singapore's financial system" names it once."""
+    text = PRIORITY_PROMPT.format(entity=entity, singapore=singapore)
+    if singapore == SINGAPORE_SYSTEM:
+        for joiner in (" or for ", " or "):
+            text = text.replace(f"{SINGAPORE_SYSTEM}{joiner}{SINGAPORE_SYSTEM}", SINGAPORE_SYSTEM)
+    return text
+
+
+# Slide 7's definition of each level, in the same order, as Help shows them.
+PRIORITY_DEFINITIONS: list[str] = [
+    "Minor: small or expected, such as routine statistics, speeches, FAQs, procedural notices, "
+    "product and promotional news, or a foreign event with little route to Singapore. Trivial: "
+    "routine, promotional, or barely about the subject, with no consequence for it or for "
+    "Singapore.",
+    "Worth knowing: a moderate change for the subject, such as new guidance, a consultation, a "
+    "results update, or a larger event that reaches the subject or Singapore only indirectly; "
+    "or a material event at the subject's head office or another branch that could plausibly "
+    "reach the Singapore branch but has not yet been shown to.",
+    "Significant: a material change for the subject's Singapore branch, whether a threat or an "
+    "opportunity. Critical: severe, urgent or systemic for the Singapore branch or for "
+    "Singapore's financial system, and needs immediate attention.",
 ]
 # Needs attention is High; Watch, the impact step and "material" start at Medium.
 NEEDS_ATTENTION_LEVEL = 2
 MATERIAL_LEVEL = 1
-# Below this probability on its top label, Jev is unsure and Claude decides instead.
-PRIORITY_SURE = 0.6
 
 
 def display_key(
@@ -62,19 +114,14 @@ def display_key(
     return (-level, level > 0 and not adverse, -last_published.toordinal(), development_id)
 
 
-# Promotional and product news is Low.
-PROMOTIONAL_MAX_LEVEL = 0
-# A source reports on a jurisdiction when Jev scores it at least this likely.
+# A source reports on a jurisdiction when its screen scores it at least this: 1.0 when the screen
+# lists it, a probability in older stores.
 JURISDICTION_THRESHOLD = 0.5
-# Market moves (prices, indices, flows) are never High, and Low unless a Singapore financial
-# institution or Singapore market is involved (pipeline/singapore.py).
-MARKET_MAX_LEVEL = 1
 
 # Run 1 is computed as of T0 minus this many days, Run 2 as of T0.
 RUN_SPACING_DAYS = 7
 
 # Concurrent model calls. On the API (settings.claude_via_api, the default), the API's rate limits
 # are the cap; Claude on the login is capped to stay within the subscription allowance.
-JEV_CONCURRENCY = 8
 CLAUDE_CONCURRENCY = 4
 CLAUDE_API_CONCURRENCY = 16

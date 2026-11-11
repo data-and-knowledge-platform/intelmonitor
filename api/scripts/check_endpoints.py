@@ -2,7 +2,7 @@
 returns data. Writes artifacts/api-check/<timestamp>/results.json.
 
 Usage (from api/): uv run python scripts/check_endpoints.py [--base https://intelmonitor.api.localhost]
-The custom question check makes Claude and Jev calls the first time; reruns hit the cache. The
+The custom question check makes Claude calls the first time; reruns hit the cache. The
 AG-UI check runs the Generate agent, one Claude session. The Run now check recomputes Run 2
 from cache and adds a Run now execution to the run history.
 """

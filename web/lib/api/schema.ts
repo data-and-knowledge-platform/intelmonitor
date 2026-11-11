@@ -2010,7 +2010,7 @@ export interface components {
             materiality_confidence: number;
             /**
              * Materiality Rule
-             * @description The detector whose rule set the level, by name ("Fed funds rate change"); null when Jev scored it
+             * @description The detector whose rule set the level, by name ("Fed funds rate change"); null when the model rated it
              */
             materiality_rule: string | null;
             /** Subject Confidence */
@@ -2717,7 +2717,7 @@ export interface components {
             label: string;
             /**
              * Origin
-             * @description relationships, seed, jev, claude or detector
+             * @description relationships, seed, claude or detector; jev in older runs
              */
             origin: string;
             /** Confidence */

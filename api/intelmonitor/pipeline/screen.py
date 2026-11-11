@@ -1,6 +1,7 @@
-"""Steps 2 and 3: Jev screens and tags each document in one fan-out call, and the uncertain band
-on relevance and subject tags is routed to Claude. Results go to document_tags and
-document_subjects, shared by every run."""
+"""Steps 2 and 3: one Claude Haiku call per document decides whether it is relevant, which
+subjects it is materially about (most central first), its category, its regulatory stage and the
+jurisdictions it reports on. Results go to document_tags and document_subjects, shared by every
+run."""
 
 import asyncio
 import json
@@ -8,20 +9,11 @@ import sqlite3
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import BaseModel
-from typesafe_sdk import Choice, Noul
+from pydantic import BaseModel, Field, JsonValue, create_model
 
-from intelmonitor.pipeline.inference import (
-    ClaudeRefused,
-    Inference,
-    JevAnswers,
-    JevQuestion,
-    StepFailed,
-    choice,
-    noul,
-)
-from intelmonitor.pipeline.params import CHARS_PER_TOKEN, ROUTE_HIGH, ROUTE_LOW, SCREEN_STATE_TOKENS
-from intelmonitor.pipeline.subjects import Subject, monitored_subjects
+from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
+from intelmonitor.pipeline.params import CHARS_PER_TOKEN, HAIKU_MODEL, SCREEN_STATE_TOKENS
+from intelmonitor.pipeline.subjects import monitored_subjects
 from intelmonitor.seed import load_subjects
 from intelmonitor.store.documents import SourceDocument
 
@@ -48,7 +40,8 @@ Category = Literal[
     "other",
 ]
 
-STAGES: dict[str, str] = {
+Stage = Literal["signal", "consultation", "proposed", "enacted", "enforced"]
+STAGES: dict[Stage, str] = {
     "signal": "A speech, statement or report hinting at future regulation",
     "consultation": "A consultation paper or request for comment",
     "proposed": "A proposed or draft rule, bill or framework",
@@ -56,7 +49,11 @@ STAGES: dict[str, str] = {
     "enforced": "Enforcement: a penalty, sanction, licence action or supervisory finding",
 }
 
-JURISDICTIONS: dict[str, str] = {
+Jurisdiction = Literal[
+    "sg", "my", "id", "th", "vn", "hk", "cn", "tw", "in", "au", "kr", "us", "eu", "uk", "jp", "intl"
+]
+
+JURISDICTIONS: dict[Jurisdiction, str] = {
     "sg": "Singapore",
     "my": "Malaysia",
     "id": "Indonesia",
@@ -74,10 +71,6 @@ JURISDICTIONS: dict[str, str] = {
     "jp": "Japan",
     "intl": "international bodies such as the BIS, FSB, Basel Committee, IMF or FATF",
 }
-
-Jurisdiction = Literal[
-    "sg", "my", "id", "th", "vn", "hk", "cn", "tw", "in", "au", "kr", "us", "eu", "uk", "jp", "intl"
-]
 
 # Display names for JURISDICTIONS, which are phrased for the screening prompt.
 JURISDICTION_NAMES: dict[Jurisdiction, str] = {
@@ -120,32 +113,50 @@ def relevance_criterion() -> str:
 
 
 @lru_cache
-def screen_questions() -> dict[str, JevQuestion]:
-    questions: dict[str, JevQuestion] = {
-        "relevant": Noul(instructions=f"Is this document relevant? {relevance_criterion()}"),
-    }
-    for s in monitored_subjects().values():
-        questions[f"subject:{s.id}"] = Noul(
-            instructions=f"Is this document materially about {s.description}?"
-        )
-    questions["category"] = Choice(
-        instructions="What kind of development does this document mainly report?",
-        criteria=dict(CATEGORIES),
-    )
-    for code, name in JURISDICTIONS.items():
-        questions[f"jurisdiction:{code}"] = Noul(
-            instructions=f"Does this document report actions, events or policy in {name}?"
-        )
-    questions["stage"] = Choice(
-        instructions="If this document is about regulation, what stage has it reached?",
-        criteria=dict(STAGES),
-    )
-    return questions
+def screen_system() -> str:
+    """The fixed part of every screen call, byte for byte the same on each so it is cached: the
+    task, the relevance criterion, the subjects, categories, stages and jurisdictions."""
+    listed = monitored_subjects().values()
+    entities = "\n".join(f"- {s.id}: {s.description}" for s in listed if s.type == "entity")
+    topics = "\n".join(f"- {s.id}: {s.description}" for s in listed if s.type == "topic")
+    categories = "\n".join(f"- {k}: {v}" for k, v in CATEGORIES.items())
+    stages = "\n".join(f"- {k}: {v}" for k, v in STAGES.items())
+    places = "\n".join(f"- {k}: {v}" for k, v in JURISDICTIONS.items())
+    return f"""\
+You screen documents for the monitoring dashboard of supervisors at the Monetary Authority of \
+Singapore. Decide strictly from the document text.
+
+relevant: is the document relevant? {relevance_criterion()}
+
+subjects: the ids of the entities and topics below that the document is materially about, the \
+most central first:
+- every entity the document reports a development at, by or for (its results, a launch, a deal, \
+an appointment, a penalty, an outage), or whose economy, markets or policy it reports on;
+- every topic that development falls under.
+Leave out an entity that is only quoted, cited as a source, named in a list or mentioned in \
+passing. Use only these ids, and leave the list empty when the document is not relevant.
+
+Entities:
+{entities}
+
+Topics:
+{topics}
+
+category: what kind of development the document mainly reports, one of:
+{categories}
+
+stage: when the category is regulatory, the stage the regulation has reached, one of:
+{stages}
+Otherwise null.
+
+jurisdictions: the codes of the places whose actions, events or policy the document reports, \
+from:
+{places}"""
 
 
 def screen_state(doc: SourceDocument) -> tuple[str, bool]:
-    """Title, provenance and text for Jev. Text beyond the state budget is cut at a paragraph
-    boundary, so long documents are screened on their title plus leading chunks."""
+    """Title, provenance and text for the screen. Text beyond the state budget is cut at a
+    paragraph boundary, so long documents are screened on their title plus leading chunks."""
     header = (
         f"Title: {doc.title}\nSource: {doc.domain} ({doc.doc_type}), published "
         f"{doc.published_at:%Y-%m-%d}\n\n"
@@ -164,110 +175,73 @@ def screen_state(doc: SourceDocument) -> tuple[str, bool]:
     return header + text, True
 
 
-class RouteDecision(BaseModel):
+class ScreenReply(BaseModel):
     relevant: bool
-    subjects: list[str]
+    subjects: list[str] = Field(description="Subject ids, the most central first")
+    category: Category
+    stage: Stage | None
+    jurisdictions: list[Jurisdiction]
 
 
-ROUTE_SYSTEM = (
-    "You review borderline screening decisions for a financial supervisor's monitoring "
-    "dashboard. Decide strictly from the document text."
-)
-
-
-def route_prompt(state: str, check_relevance: bool, uncertain: list[Subject]) -> str:
-    parts = [f"<document>\n{state}\n</document>\n"]
-    if check_relevance:
-        parts.append(f"1. Is this document relevant? {relevance_criterion()}\n")
-    else:
-        parts.append("1. The document is already judged relevant: return relevant = true.\n")
-    if uncertain:
-        listed = "\n".join(f"- {s.id}: {s.description}" for s in uncertain)
-        parts.append(
-            "2. Which of these subjects is the document materially about? Return only the ids "
-            f"that apply (possibly none).\n{listed}\n"
-        )
-    else:
-        parts.append("2. Return an empty subjects list.\n")
-    return "\n".join(parts)
+@lru_cache
+def screen_reply() -> type[ScreenReply]:
+    """ScreenReply with its subject ids limited to the monitored subjects' ids in the schema, so
+    Haiku cannot answer with a jurisdiction code (uk, intl) or an id the seed does not have."""
+    ids: list[JsonValue] = list(monitored_subjects())
+    return create_model(
+        "ScreenReply",
+        __base__=ScreenReply,
+        subjects=(
+            list[str],
+            Field(
+                description="Subject ids, the most central first",
+                json_schema_extra={"items": {"type": "string", "enum": ids}},
+            ),
+        ),
+    )
 
 
 class DocumentScreen(BaseModel):
-    """The final screening outcome for one document."""
+    """The screening outcome for one document."""
 
-    relevance: float
     relevant: bool
-    relevance_source: Literal["jev", "claude"]
-    category: str
-    category_confidence: float
-    stage: str | None
-    stage_confidence: float | None
-    subject_scores: dict[str, float]
-    jurisdictions: dict[str, float]
-    subjects: dict[str, Literal["jev", "claude"]]  # tagged subject id -> who decided
+    refused: bool  # Claude declined the document; it counts as not relevant
+    category: Category
+    stage: Stage | None
+    # Tagged subject id -> its score from its place in the list: 1 for the most central, then
+    # 1/2, 1/3 and so on, which the list pages break ties on.
+    subjects: dict[str, float]
+    jurisdictions: list[Jurisdiction]
     screened_chars: int
     truncated: bool
 
 
 async def screen_document(inf: Inference, doc: SourceDocument) -> DocumentScreen:
     state, truncated = screen_state(doc)
-    answers: JevAnswers = await inf.jev(
-        "screen", f"doc:{doc.id}", state, screen_questions(), confidence_of="relevant"
-    )
-    relevance = noul(answers, "relevant")
-    scores = {s: noul(answers, f"subject:{s}") for s in monitored_subjects()}
-    category = choice(answers, "category")
-    stage = choice(answers, "stage")
-    is_regulatory = category.choice == "regulatory"
-
-    relevant = relevance >= ROUTE_HIGH
-    relevance_source: Literal["jev", "claude"] = "jev"
-    subjects: dict[str, Literal["jev", "claude"]] = {
-        s: "jev" for s, p in scores.items() if p >= ROUTE_HIGH
-    }
-    uncertain = [monitored_subjects()[s] for s, p in scores.items() if ROUTE_LOW < p < ROUTE_HIGH]
-    # A clear "not relevant" next to a clear subject tag is a conflict, so it is uncertain too.
-    conflict = relevance <= ROUTE_LOW and bool(subjects)
-    check_relevance = ROUTE_LOW < relevance < ROUTE_HIGH or conflict
-    if check_relevance or (relevance > ROUTE_LOW and uncertain):
-        try:
-            decision = await inf.claude(
-                "route",
-                f"doc:{doc.id}",
-                route_prompt(state, check_relevance, uncertain),
-                RouteDecision,
-                ROUTE_SYSTEM,
-            )
-        except ClaudeRefused:
-            decision = None
-        if decision is None:
-            # Claude declined this document, so Jev decides the band itself at an even split.
-            relevant = relevant or (check_relevance and relevance >= 0.5)
-            subjects |= {s.id: "jev" for s in uncertain if scores[s.id] >= 0.5}
-        else:
-            if check_relevance:
-                relevant = decision.relevant
-                relevance_source = "claude"
-            allowed = {s.id for s in uncertain}
-            subjects |= {s: "claude" for s in decision.subjects if s in allowed}
-
+    try:
+        reply = await inf.claude(
+            "screen", f"doc:{doc.id}", state, screen_reply(), screen_system(), model=HAIKU_MODEL
+        )
+    except ClaudeRefused:
+        reply = None
+    known = monitored_subjects()
+    ids = list(dict.fromkeys(s for s in reply.subjects if s in known)) if reply else []
+    relevant = reply is not None and reply.relevant
     return DocumentScreen(
-        relevance=relevance,
         relevant=relevant,
-        relevance_source=relevance_source,
-        category=category.choice,
-        category_confidence=category.confidence,
-        stage=stage.choice if is_regulatory else None,
-        stage_confidence=stage.confidence if is_regulatory else None,
-        subject_scores=scores,
-        jurisdictions={c: noul(answers, f"jurisdiction:{c}") for c in JURISDICTIONS},
-        subjects=subjects if relevant else {},
+        refused=reply is None,
+        category=reply.category if reply else "other",
+        stage=reply.stage if reply and reply.category == "regulatory" else None,
+        subjects={s: 1 / (i + 1) for i, s in enumerate(ids)} if relevant else {},
+        jurisdictions=list(dict.fromkeys(reply.jurisdictions)) if reply else [],
         screened_chars=len(state),
         truncated=truncated,
     )
 
 
 def store_screen(conn: sqlite3.Connection, doc_id: str, s: DocumentScreen) -> None:
+    """The screen's yes or no is stored as relevance 1 or 0 and each listed place as 1, in the
+    columns that held Jev's probabilities."""
     conn.execute(
         "INSERT OR REPLACE INTO document_tags (document_id, relevance, relevant, "
         "relevance_source, category, category_confidence, stage, stage_confidence, "
@@ -275,15 +249,15 @@ def store_screen(conn: sqlite3.Connection, doc_id: str, s: DocumentScreen) -> No
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             doc_id,
-            s.relevance,
+            float(s.relevant),
             int(s.relevant),
-            s.relevance_source,
+            "refused" if s.refused else "claude",
             s.category,
-            s.category_confidence,
+            1.0,
             s.stage,
-            s.stage_confidence,
-            json.dumps(s.subject_scores),
-            json.dumps(s.jurisdictions),
+            1.0 if s.stage else None,
+            json.dumps(s.subjects),
+            json.dumps(dict.fromkeys(s.jurisdictions, 1.0)),
             s.screened_chars,
             int(s.truncated),
         ),
@@ -291,8 +265,8 @@ def store_screen(conn: sqlite3.Connection, doc_id: str, s: DocumentScreen) -> No
     conn.execute("DELETE FROM document_subjects WHERE document_id = ?", (doc_id,))
     conn.executemany(
         "INSERT INTO document_subjects (document_id, subject_id, confidence, source) "
-        "VALUES (?, ?, ?, ?)",
-        [(doc_id, sid, s.subject_scores[sid], src) for sid, src in s.subjects.items()],
+        "VALUES (?, ?, ?, 'claude')",
+        [(doc_id, sid, score) for sid, score in s.subjects.items()],
     )
     conn.commit()
 

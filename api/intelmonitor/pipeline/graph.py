@@ -5,18 +5,19 @@ nodes. Edges, each with a plain label:
 - AFFECTS from a development to the subjects it happened to or that did it (development_subjects);
 - IMPACTS from a development to the entities it reaches indirectly, with the route
   (development_impacts).
-Jev tags each development with one theme, which the graph view colours and groups by."""
+Claude Haiku tags each development with one theme, which the graph view colours and groups by."""
 
 import asyncio
 import json
 import sqlite3
 from typing import Literal
 
-from typesafe_sdk import Choice
+from pydantic import BaseModel
 
 from intelmonitor.pipeline.diff import DevelopmentChange
 from intelmonitor.pipeline.impact import relationship_label
-from intelmonitor.pipeline.inference import Inference, StepFailed, choice
+from intelmonitor.pipeline.inference import Inference, StepFailed
+from intelmonitor.pipeline.params import HAIKU_MODEL
 from intelmonitor.relationships import Relationship
 from intelmonitor.seed import load_subjects
 
@@ -30,25 +31,36 @@ THEMES: dict[str, str] = {
     "markets": "Earnings, capital, share prices, ratings, analyst calls or market moves",
     "macro": "Monetary policy, rates, growth, FX, trade, tariffs, sanctions or conflicts",
 }
-THEME = Choice(instructions="What is this development mainly about?", criteria=dict(THEMES))
+THEME_SYSTEM = "What is this development mainly about? Pick one theme:\n" + "\n".join(
+    f"- {k}: {v}" for k, v in THEMES.items()
+)
+
+
+class ThemeReply(BaseModel):
+    theme: Theme
 
 
 async def development_themes(
     inf: Inference, conn: sqlite3.Connection, run_id: str
 ) -> dict[str, str]:
-    """Theme per development id, one Jev call on each development's statement."""
+    """Theme per development id, one Haiku call on each development's statement."""
     rows = conn.execute("SELECT id, title FROM developments WHERE run_id = ?", (run_id,)).fetchall()
     failures: list[str] = []
 
     async def tag(r: sqlite3.Row) -> tuple[str, str]:
         try:
-            answers = await inf.jev(
-                "theme", f"dev:{r['id']}", f"Development: {r['title']}", {"theme": THEME}
+            reply = await inf.claude(
+                "theme",
+                f"dev:{r['id']}",
+                f"Development: {r['title']}",
+                ThemeReply,
+                THEME_SYSTEM,
+                model=HAIKU_MODEL,
             )
         except Exception as error:
             failures.append(f"{r['id']}: {type(error).__name__}: {error}")
             return r["id"], ""
-        return r["id"], choice(answers, "theme").choice
+        return r["id"], reply.theme
 
     themes = dict(await asyncio.gather(*(tag(r) for r in rows)))
     if failures:

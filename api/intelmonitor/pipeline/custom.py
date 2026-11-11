@@ -1,7 +1,7 @@
 """Step 8: custom standing questions. Claude turns what the user typed into a question config,
 then the answer job runs on demand over the stored corpus for every complete run, oldest first:
-Jev scores each document tagged to the subject inside the lookback ("Does this document help
-answer: ...?"), and Claude answers from the top matches, citing the run's developments. When
+Claude Haiku judges each document tagged to the subject inside the lookback ("Does this document
+help answer: ...?"), and Claude answers from the top matches, citing the run's developments. When
 nothing in the lookback matches, the answer is Stable and cites the latest earlier matches, so a
 quiet question still shows where things stand. The answer prompt calls the lookback the window
 and asks answers to name it plainly ("in the last 14 days").
@@ -18,12 +18,12 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from pydantic import BaseModel, ConfigDict, Field
-from typesafe_sdk import Noul
 
 from intelmonitor.pipeline.answers import FX_WORDING, State, answer_problems, scope
 from intelmonitor.pipeline.facts import SeriesFact, SubjectFacts, subject_facts
 from intelmonitor.pipeline.feedback import removed_tags
-from intelmonitor.pipeline.inference import Inference, noul
+from intelmonitor.pipeline.inference import Inference
+from intelmonitor.pipeline.params import HAIKU_MODEL
 from intelmonitor.pipeline.subjects import all_subjects, monitored_subjects
 from intelmonitor.pipeline.wording import day, fx_currency
 from intelmonitor.seed import QuestionDef, SeriesDef, load_series
@@ -241,20 +241,27 @@ def _document_state(c: Candidate) -> str:
     return f"{c.title}\nPublished {c.published} by {c.domain}.\nFindings:\n{findings}"
 
 
+class Helps(BaseModel):
+    helps: bool
+
+
 async def match(inf: Inference, question: str, c: Candidate) -> float:
-    answers = await inf.jev(
+    """1.0 when Haiku says the document helps answer the question, else 0.0."""
+    reply = await inf.claude(
         "custom_match",
         f"doc:{c.document_id}",
         _document_state(c),
-        {"helps": Noul(instructions=f"Does this document help answer: {question}")},
+        Helps,
+        f"Does this document help answer: {question}",
+        model=HAIKU_MODEL,
     )
-    return noul(answers, "helps")
+    return float(reply.helps)
 
 
 async def best(
     inf: Inference, question: str, found: list[Candidate], limit: int
 ) -> list[Candidate]:
-    """The `limit` candidates Jev scores as most helpful, at least MIN_MATCH."""
+    """The `limit` candidates Haiku says help, at least MIN_MATCH, in candidate order."""
     scores = await asyncio.gather(*(match(inf, question, c) for c in found))
     ranked = sorted(zip(scores, found, strict=True), key=lambda p: -p[0])
     return [c for s, c in ranked if s >= MIN_MATCH][:limit]

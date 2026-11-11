@@ -243,7 +243,7 @@ def openapi(
 
 @app.command()
 def smoke() -> None:
-    """Make one Jev call and one Claude Agent SDK call and print both structured answers."""
+    """Make one Claude Haiku call and one call on the default model and print both answers."""
     from intelmonitor.smoke import run_smoke
 
     asyncio.run(run_smoke())

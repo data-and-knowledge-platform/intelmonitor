@@ -71,24 +71,24 @@ CREATE INDEX IF NOT EXISTS run_log_run ON run_log (run_id);
 
 CREATE TABLE IF NOT EXISTS document_tags (
     document_id TEXT PRIMARY KEY REFERENCES source_documents (id),
-    relevance REAL NOT NULL,           -- Jev noul
-    relevant INTEGER NOT NULL,         -- final decision after routing
-    relevance_source TEXT NOT NULL,    -- jev or claude
+    relevance REAL NOT NULL,           -- 1 or 0 from the Haiku screen; Jev's probability before
+    relevant INTEGER NOT NULL,         -- the final decision
+    relevance_source TEXT NOT NULL,    -- claude, or refused when Claude declined; jev before
     category TEXT NOT NULL,
-    category_confidence REAL NOT NULL,
+    category_confidence REAL NOT NULL, -- 1 from the Haiku screen
     stage TEXT,                        -- only for regulatory items
     stage_confidence REAL,
-    subject_scores TEXT NOT NULL,      -- JSON {subject_id: noul}
-    jurisdictions TEXT NOT NULL,       -- JSON {jurisdiction: noul}
-    screened_chars INTEGER NOT NULL,   -- characters of text Jev saw
+    subject_scores TEXT NOT NULL,      -- JSON {subject_id: score}, 1/n for the nth listed tag
+    jurisdictions TEXT NOT NULL,       -- JSON {jurisdiction: 1}; probabilities in older stores
+    screened_chars INTEGER NOT NULL,   -- characters of text the screen saw
     truncated INTEGER NOT NULL         -- 1 when screened on title plus leading chunks
 );
 
 CREATE TABLE IF NOT EXISTS document_subjects (
     document_id TEXT NOT NULL REFERENCES source_documents (id),
     subject_id TEXT NOT NULL,
-    confidence REAL NOT NULL,          -- Jev noul, or 1.0 / 0.0 when Claude decided
-    source TEXT NOT NULL,              -- jev or claude
+    confidence REAL NOT NULL,          -- the tag's subject_scores score
+    source TEXT NOT NULL,              -- claude or detector; jev in older stores
     PRIMARY KEY (document_id, subject_id)
 );
 
@@ -104,7 +104,10 @@ CREATE TABLE IF NOT EXISTS findings (
     -- JSON {subject_id: {role, adverse, tone}} from extraction: role is affected, actor,
     -- commentator or mentioned. Empty for detections, whose subjects are all affected.
     roles TEXT NOT NULL DEFAULT '{}',
-    promotional INTEGER NOT NULL DEFAULT 0 -- 1 for marketing or routine product news
+    promotional INTEGER NOT NULL DEFAULT 0, -- 1 for marketing or routine product news
+    -- 1 when it only reports a share price, market value or index move, or an analyst's price
+    -- target or rating. Promotional and price-move findings never join a development.
+    price_move INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS findings_document ON findings (document_id);
 
@@ -131,13 +134,14 @@ CREATE TABLE IF NOT EXISTS development_subjects (
     development_id TEXT NOT NULL,
     subject_id TEXT NOT NULL,
     confidence REAL NOT NULL,          -- the screening tag's confidence
-    source TEXT NOT NULL,              -- who tagged it: jev, claude or detector
+    source TEXT NOT NULL,              -- who tagged it: claude or detector; jev in older stores
     role TEXT NOT NULL DEFAULT 'affected', -- affected or actor
     adverse INTEGER NOT NULL DEFAULT 0, -- 1 when a finding says something bad happened to it
     tone TEXT NOT NULL DEFAULT 'neutral', -- positive, negative or neutral, for this subject
     priority_level INTEGER NOT NULL DEFAULT 0, -- 0 Low, 1 Medium, 2 High, for this subject
-    priority_score REAL NOT NULL DEFAULT 0, -- Jev expected score
-    priority_confidence REAL NOT NULL DEFAULT 0,
+    priority_score REAL NOT NULL DEFAULT 0, -- the level; Jev's expected score in older runs
+    priority_confidence REAL NOT NULL DEFAULT 0, -- 1.0 once rated
+    priority_reason TEXT NOT NULL DEFAULT '', -- the rating's one sentence on why
     PRIMARY KEY (run_id, development_id, subject_id)
 );
 
@@ -227,7 +231,7 @@ CREATE TABLE IF NOT EXISTS graph_edges (
     from_id TEXT NOT NULL,
     to_id TEXT NOT NULL,
     type TEXT NOT NULL,                -- a relationship type in capitals, AFFECTS or IMPACTS
-    source TEXT NOT NULL,              -- relationships, seed, jev, claude or detector
+    source TEXT NOT NULL,              -- relationships, seed, claude or detector; jev when older
     confidence REAL NOT NULL,
     label TEXT NOT NULL DEFAULT '',    -- the link in plain words
     detail TEXT NOT NULL DEFAULT '{}', -- JSON: relationship id, or an impact's route
@@ -237,8 +241,8 @@ CREATE TABLE IF NOT EXISTS graph_edges (
 CREATE TABLE IF NOT EXISTS inference_records (
     id INTEGER PRIMARY KEY,
     run_id TEXT,                       -- the run that made the call
-    stage TEXT NOT NULL,               -- screen, route, extract, same_event, priority, answer
-    engine TEXT NOT NULL,              -- jev or claude
+    stage TEXT NOT NULL,               -- screen, extract, same_event, priority, theme, ...
+    engine TEXT NOT NULL,              -- claude; jev in older stores
     model TEXT NOT NULL,               -- requested model
     model_version TEXT,                -- model reported by the response
     input_ref TEXT NOT NULL,           -- e.g. doc:<id>, pair:<a>|<b>, subject:<id>
@@ -546,7 +550,7 @@ ADDED_COLUMNS = [
     ("custom_questions", "series_ids", "TEXT NOT NULL DEFAULT '[]'"),
     ("custom_question_answers", "series_ids", "TEXT NOT NULL DEFAULT '[]'"),
     ("custom_question_answers", "facts", "TEXT NOT NULL DEFAULT '[]'"),
-    # The detector whose rule set the level; null when Jev scored it (pipeline/developments.py).
+    # The detector whose rule set the level; null when the rating set it (pipeline/developments.py).
     ("developments", "materiality_rule", "TEXT"),
     # Roles, adverse and priority per subject (phase1-plan.md, item A).
     ("findings", "roles", "TEXT NOT NULL DEFAULT '{}'"),
@@ -575,6 +579,9 @@ ADDED_COLUMNS = [
     # Display headline and key points (pipeline/headlines.py); null until written or if refused.
     ("developments", "headline", "TEXT"),
     ("developments", "points", "TEXT"),  # JSON list
+    # Dropped findings and the priority reason (pipeline/developments.py).
+    ("findings", "price_move", "INTEGER NOT NULL DEFAULT 0"),
+    ("development_subjects", "priority_reason", "TEXT NOT NULL DEFAULT ''"),
 ]
 
 

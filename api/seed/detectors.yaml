@@ -5,7 +5,7 @@
 #
 # Every detector applies to each series its `series` pattern matches (`*` spans dots), and gives its
 # developments the `materiality` level (low, medium or high priority) instead
-# of a Jev score; merged with news, a development keeps the higher of the two.
+# of a Claude rating; merged with news, each subject the rule measured keeps the higher of the two.
 # A condition that holds for several observations in a row is one event, dated by its first.
 #
 # kind:

@@ -1,5 +1,5 @@
 """V2: the current pipeline in its own copy of the frozen store. Every stage up to the answers is
-replayed from recorded model calls only (no Jev or Claude call may be live), then the answer step
+replayed from recorded model calls only (no model call may be live), then the answer step
 runs for the evaluated subjects on Sonnet 5.5, at the base run and then the scored run, so the
 scored answers see the base answers as their previous run, as in `im run`.
 
@@ -47,8 +47,8 @@ from intelmonitor.store.documents import list_documents
 
 V2_DB = EVAL_DIR / "db" / "v2.db"
 META = EVAL_DIR / "v2" / "run.json"
-# Stop before the custom path sends more than this many live Jev calls in one run.
-MAX_LIVE_JEV = 80
+# Stop before the custom path sends more than this many live Haiku match calls in one run.
+MAX_LIVE_MATCH = 80
 
 
 @contextmanager
@@ -193,8 +193,8 @@ async def run() -> None:
             since = as_of - timedelta(days=config.lookback_days)
             found = candidates(conn, run_id, config, since, as_of)
             print("custom candidates", run_id, len(found))
-            if len(found) > MAX_LIVE_JEV:
-                raise RuntimeError(f"custom path would make {len(found)} live Jev calls")
+            if len(found) > MAX_LIVE_MATCH:
+                raise RuntimeError(f"custom path would make {len(found)} live match calls")
             a = await answer_run(conn, EXPOSURE_ID, run_id, as_of, config, previous, before)
             previous = (a.state, a.summary)
             custom[run_id] = {

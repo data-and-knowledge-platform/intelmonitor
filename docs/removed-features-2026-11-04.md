@@ -33,6 +33,24 @@ Replaced by MAS's 30 topics (`MAS Topics 30 - Sheet1.csv`), which are for all MA
 - No replacement for the angles the 30 do not name: technology risk regulation (TRM, DORA, CII codes) and third-party concentration risk.
 - Role-specific topic picks: the TCRD and FMD presets no longer preselect any topic.
 
+### Jev (uncommitted, spec step 3)
+
+Jev (TypeSafe System One through OpenRouter) is no longer used; Claude takes over its pipeline stages.
+
+- `pipeline/jev.py`, `Inference.jev`, the `typesafe-sdk` dependency and the OpenRouter settings (`OPENROUTER_API_KEY`, `TYPESAFE_BASE_URL`, `TYPESAFE_DEFAULT_MODEL`).
+- Screen, same_event, theme and custom_match now run on Claude Haiku 5.5, one structured call each, with thinking off.
+- The route stage, which sent Jev's uncertain screening band to Claude, and its thresholds `ROUTE_LOW` and `ROUTE_HIGH`.
+- `SAME_EVENT_THRESHOLD`, `PRIORITY_SURE`, `JEV_CONCURRENCY` and the `priority_check` stage.
+
+### Priority rubric and caps (uncommitted, spec step 3)
+
+Slide 7 of the team's deck of 10 Nov 2026 replaces the priority rubric.
+
+- `PRIORITY_RUBRIC` and `PRIORITY_GUIDE`: priority is one Claude Sonnet 5.5 call per development and entity, with a reason.
+- Each institution's standing Singapore link in the priority prompt (`pipeline/singapore.py`, `Development.singapore`).
+- The caps "promotional news is Low" (`PROMOTIONAL_MAX_LEVEL`) and "market moves are never High" (`MARKET_MAX_LEVEL`).
+- Promotional findings and findings that only report a share price or index move (`price_move`) are kept in `findings` but no longer join a development.
+
 ## Decided, not yet removed
 
 From the topics, watchlists and views plan (local map in `wayfind/topics-watchlists-views/`).
@@ -51,7 +69,6 @@ From the topics, watchlists and views plan (local map in `wayfind/topics-watchli
 - Standing questions and their answers (focus areas), with the answers stage and the answer drawer.
 - The Ask page and the "Ask about" button.
 - Dismissing and flagging developments, the last per-viewer state on the server.
-- Jev (TypeSafe through OpenRouter); Claude takes over its pipeline stages.
 - Tavily search, used only in the gap search for thinly covered subjects; the gap search keeps its two Exa searches.
 - theedgemalaysia.com as a news source; its search results were mostly old archive pages.
 

@@ -1,4 +1,4 @@
-"""Subjects as the pipeline sees them: one flat list with descriptions for Jev and Claude.
+"""Subjects as the pipeline sees them: one flat list with descriptions for Claude.
 
 Topics and entities are monitored: screening asks about them, developments are tagged to them and
 priority scores them. Groups are peer sets of entities (sidebar headings, dashboards, peer
@@ -9,6 +9,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache
 
+from intelmonitor.pipeline.params import SINGAPORE_SYSTEM
 from intelmonitor.seed import EntityKind, QuestionDef, SubjectType, load_questions, load_subjects
 
 _KIND_LABEL: dict[EntityKind, str] = {
@@ -91,6 +92,36 @@ def all_subjects() -> dict[str, Subject]:
 def monitored_subjects() -> dict[str, Subject]:
     """Topics and entities, in seed order: what screening asks about and developments carry."""
     return {i: s for i, s in all_subjects().items() if s.type != "group"}
+
+
+# What the priority prompt calls "the subject's Singapore branch", per entity: the Singapore unit,
+# services or system an event must reach to be High for it.
+SINGAPORE_HOME = "the subject itself, a Singapore institution, its overseas units included"
+SINGAPORE_BRANCH = "the subject's Singapore branch or subsidiary"
+SINGAPORE_SERVICES = "the subject's services to financial institutions in Singapore"
+_SERVICE_KINDS: tuple[EntityKind, ...] = (
+    "tech_provider",
+    "payment_system",
+    "market_infrastructure",
+)
+_SYSTEM_KINDS: tuple[EntityKind, ...] = ("country", "sector", "central_bank", "regulator")
+
+
+@lru_cache
+def singapore_phrase(subject_id: str) -> str:
+    """The Singapore phrase for a subject, from the seed: Singapore's financial system for a
+    country, sector, central bank or regulator (MAS included), and for a topic; else the whole
+    institution when its home is Singapore; else a tech provider, payment system or market
+    infrastructure's services to financial institutions in Singapore; any other institution's
+    Singapore branch or subsidiary."""
+    entity = next((e for e in load_subjects().entities if e.id == subject_id), None)
+    if entity is None or entity.kind in _SYSTEM_KINDS:
+        return SINGAPORE_SYSTEM
+    if entity.home == "singapore":
+        return SINGAPORE_HOME
+    if entity.kind in _SERVICE_KINDS:
+        return SINGAPORE_SERVICES
+    return SINGAPORE_BRANCH
 
 
 def resolve_groups(subject_ids: Iterable[str]) -> list[str]:

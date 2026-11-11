@@ -1,4 +1,5 @@
-"""Which subjects a document mentions, by name, alias or keyword (a cheap pre-filter for Jev).
+"""Which subjects a document mentions, by name, alias or keyword (a cheap pre-filter before the
+screen).
 
 - Entity: its name or an alias, case-sensitive ("Fed", "Circle", "MAS" are proper nouns).
 - Topic: its name or a keyword, case-insensitive.

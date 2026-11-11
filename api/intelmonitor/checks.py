@@ -19,7 +19,7 @@ to each bank (phase1-decisions.md, S3).
 import json
 import sqlite3
 import tempfile
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from contextlib import closing, contextmanager
 from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
@@ -31,7 +31,7 @@ from intelmonitor.ingest.http import CachedHttp
 from intelmonitor.ingest.series.collect import DEFAULT_FLOOR, SeriesFetchResult, fetch_series
 from intelmonitor.pipeline.detectors import store_detections
 from intelmonitor.pipeline.developments import build_developments
-from intelmonitor.pipeline.inference import Inference, JevAnswers, JevQuestion
+from intelmonitor.pipeline.inference import Inference
 from intelmonitor.pipeline.params import PRIORITY_LABELS
 from intelmonitor.pipeline.run import compute_run, run_dates
 from intelmonitor.seed import load_series
@@ -68,16 +68,6 @@ class ModelCallError(RuntimeError):
 class NoModelCalls(Inference):
     """Fails the check on any model call: a development made only of a detection takes its rule's
     level without one."""
-
-    async def jev(
-        self,
-        stage: str,
-        input_ref: str,
-        state: str,
-        questions: Mapping[str, JevQuestion],
-        confidence_of: str | None = None,
-    ) -> JevAnswers:
-        raise ModelCallError(f"the check made a Jev call: {stage} {input_ref}")
 
     async def claude[T: BaseModel](
         self,

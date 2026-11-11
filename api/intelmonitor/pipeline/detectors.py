@@ -7,7 +7,7 @@ more than a size), keyed by its detector, series and first period. `store_detect
 event once as a source document in the data collection, with a sentence written by code and one
 finding tagged to the series' primary subjects (a group's members for a group), so the run's
 merge, materiality, triage, alerts and search take it like any other development. Only the rule's
-priority differs: developments.py reads it from the seed instead of asking Jev.
+priority differs: developments.py reads it from the seed instead of asking Claude.
 """
 
 import bisect
