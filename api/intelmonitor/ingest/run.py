@@ -1,7 +1,8 @@
-"""`im ingest`: fetch, cache, parse and dedup the corpus for the week ending at T0 (WEEK_DAYS),
-or with `--seed` for the SEED_DAYS ending at T0. A seed builds the history for the first runs;
+"""`im ingest`: fetch, cache, parse and dedup the corpus for the WEEK_DAYS ending at T0, or with
+`--seed` for the SEED_DAYS ending at T0. A seed builds the history for the first runs;
 `--seed --subjects` builds it for newly added subjects only, through their news and gap searches.
-The weekly ingest then searches each week once.
+The weekly ingest then searches each week once; `im weekly` runs it for each week, Monday to
+Sunday, with T0 the Sunday.
 
 Order matters for dedup (the first copy of a document wins): official sources (feeds, APIs and
 Exa searches over official sites), then news searches, then gap searches for subjects that still
@@ -92,12 +93,16 @@ def run_ingest(
     seeding: bool = False,
     subject_ids: set[str] | None = None,
     log: Callable[[str], None] = print,
+    *,
+    days: int | None = None,
 ) -> IngestResult:
-    """The weekly ingest, or when `seeding` the SEED_DAYS history. Seeding `subject_ids` runs only
+    """The weekly ingest, or when `seeding` the SEED_DAYS history; `days` sets another window
+    length (`im weekly` shortens the week the corpus starts in). Seeding `subject_ids` runs only
     their news and gap searches: official sources and trends are not per subject."""
     settings = get_settings()
     conn = connect()
-    window = Window(resolve_t0(conn, t0_override), SEED_DAYS if seeding else WEEK_DAYS)
+    length = days or (SEED_DAYS if seeding else WEEK_DAYS)
+    window = Window(resolve_t0(conn, t0_override), length)
     if seeding:
         extend_corpus(conn, window)
     result = IngestResult(t0=window.t0)
@@ -273,7 +278,7 @@ def redate_stored(conn: sqlite3.Connection) -> list[Redated]:
     Returns what changed; the affected runs must be recomputed afterwards."""
     start = corpus_start(conn)
     if start is None:
-        raise RuntimeError("no T0 in the store: run `im ingest` first")
+        raise RuntimeError("no corpus start in the store: run `im ingest --seed` first")
     changed: list[Redated] = []
     for doc in list_documents(conn):
         now = url_dated(doc.url, doc.published_at)

@@ -119,6 +119,62 @@ def run(
 
 
 @app.command()
+def weekly(
+    max_weeks: Annotated[
+        int, typer.Option("--max-weeks", min=1, help="Run at most this many weeks, oldest first")
+    ] = 4,
+) -> None:
+    """For each complete week (Monday to Sunday UTC) since the last complete run, or since the
+    corpus start, oldest first: ingest that week's window with the Sunday as T0, then compute its
+    run, dated the Sunday. Fetches the measured series once first. Exits 0 when no week is due."""
+    from datetime import UTC, date, datetime
+
+    from intelmonitor.ingest.models import corpus_start, week_window
+    from intelmonitor.ingest.run import run_ingest
+    from intelmonitor.ingest.series.collect import fetch_series
+    from intelmonitor.pipeline.run import compute_run, weekly_dates
+    from intelmonitor.store.db import connect
+
+    conn = connect()
+    weeks = weekly_dates(conn, datetime.now(UTC).date())
+    if not weeks:
+        typer.echo("no complete week since the last complete run")
+        return
+    due = weeks[:max_weeks]
+    typer.echo(f"{len(weeks)} weeks due, running {', '.join(map(str, due))}\n")
+    fetch_series(conn, date.today(), log=typer.echo)
+    for sunday in due:
+        window = week_window(sunday, corpus_start(conn))
+        typer.echo(f"\nweek {window.start} to {sunday}")
+        result = run_ingest(sunday, days=window.days, log=typer.echo)
+        typer.echo(
+            f"added {sum(result.added.values())} {dict(result.added)}, "
+            f"{result.duplicates} duplicates, {len(result.failures)} failures\n"
+        )
+        asyncio.run(compute_run(sunday, lambda line: typer.echo(line)))
+    if left := weeks[len(due) :]:
+        typer.echo(f"\n{len(left)} weeks still due, from {left[0]}: run `im weekly` again")
+
+
+@app.command("clear-runs")
+def clear_runs(
+    yes: Annotated[bool, typer.Option("--yes", help="Do not ask for confirmation")] = False,
+) -> None:
+    """Delete every stored run with its per-run rows, in one transaction. Documents, their tags
+    and findings, inference_records, series and run_log stay. Back up the store first."""
+    from intelmonitor.pipeline.run import clear_runs as clear
+    from intelmonitor.store.db import connect
+
+    conn = connect()
+    runs = conn.execute("SELECT count(*) FROM runs").fetchone()[0]
+    if not yes:
+        typer.confirm(f"Delete all {runs} runs and their per-run rows?", abort=True)
+    deleted = clear(conn)
+    for table, count in deleted.items():
+        typer.echo(f"{table}: {count} rows deleted")
+
+
+@app.command()
 def headlines(
     as_of: Annotated[str | None, typer.Option("--as-of", help="Run date, YYYY-MM-DD")] = None,
     all_: Annotated[bool, typer.Option("--all", help="Every complete run, oldest first")] = False,

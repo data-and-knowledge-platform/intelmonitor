@@ -16,7 +16,8 @@ words for the graph, the briefs, the Linked section and the API.
 """
 
 import sqlite3
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 
 from intelmonitor.pipeline.params import INDIRECT_FROM_LOW, INDIRECT_TABLE
 from intelmonitor.relationships import (
@@ -327,6 +328,10 @@ class ImpactStats:
     impacts: int = 0  # rows stored, under INDIRECT_FROM_LOW
     without_low: int = 0  # rows with INDIRECT_FROM_LOW off
     with_low: int = 0  # rows with it on
+    without_low_by: Counter[str] = field(default_factory=Counter[str])  # by reached entity
+    with_low_by: Counter[str] = field(default_factory=Counter[str])
+    # (development id, row) for entities reached only with INDIRECT_FROM_LOW on, by development
+    low_only: list[tuple[str, Reached]] = field(default_factory=list[tuple[str, Reached]])
 
 
 def store_impacts(conn: sqlite3.Connection, run_id: str) -> ImpactStats:
@@ -347,6 +352,10 @@ def store_impacts(conn: sqlite3.Connection, run_id: str) -> ImpactStats:
         found = {low: reached(conn, tagged, from_low=low) for low in (False, True)}
         stats.without_low += len(found[False])
         stats.with_low += len(found[True])
+        stats.without_low_by.update(r.subject_id for r in found[False])
+        stats.with_low_by.update(r.subject_id for r in found[True])
+        reached_without = {r.subject_id for r in found[False]}
+        stats.low_only += [(dev_id, r) for r in found[True] if r.subject_id not in reached_without]
         rows += [(dev_id, r) for r in found[INDIRECT_FROM_LOW]]
         stats.developments += bool(found[INDIRECT_FROM_LOW])
     stats.impacts = len(rows)

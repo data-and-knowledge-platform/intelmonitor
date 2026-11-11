@@ -99,10 +99,13 @@ def _detection_roles(subjects: list[str], tone: Tone) -> dict[str, FindingRole]:
     return {s: FindingRole(role="affected", adverse=False, tone=tone) for s in subjects}
 
 
-def load_findings(conn: sqlite3.Connection, as_of: date) -> list[RunFinding]:
-    """Findings in documents published by the date: screened documents' findings with their
-    roles, and detections with their rule's level. A detection whose detector has left the
-    seed is left out; one stored tagged to a group counts for the group's members."""
+def load_findings(
+    conn: sqlite3.Connection, as_of: date, start: date | None = None
+) -> list[RunFinding]:
+    """Findings in documents published by the date, and on or after `start` when given:
+    screened documents' findings with their roles, and detections with their rule's level. A
+    detection whose detector has left the seed is left out; one stored tagged to a group counts
+    for the group's members."""
     detectors = {d.id: d for d in load_detectors().detectors}
     rows = conn.execute(
         "SELECT f.*, d.published_at, d.collection, d.domain, d.title, t.stage, "
@@ -111,10 +114,10 @@ def load_findings(conn: sqlite3.Connection, as_of: date) -> list[RunFinding]:
         "JOIN source_documents d ON d.id = f.document_id "
         "LEFT JOIN document_tags t ON t.document_id = f.document_id "
         "LEFT JOIN detections k ON k.document_id = f.document_id "
-        "WHERE substr(d.published_at, 1, 10) <= ? "
+        "WHERE substr(d.published_at, 1, 10) BETWEEN ? AND ? "
         "AND (t.document_id IS NOT NULL OR k.document_id IS NOT NULL) "
         "ORDER BY d.published_at, f.id",
-        (as_of.isoformat(),),
+        ((start or date.min).isoformat(), as_of.isoformat()),
     ).fetchall()
     return [
         RunFinding(
@@ -501,9 +504,10 @@ async def score_priorities(inf: Inference, devs: list[Development]) -> None:
 
 
 async def build_developments(
-    inf: Inference, conn: sqlite3.Connection, run_id: str, as_of: date
+    inf: Inference, conn: sqlite3.Connection, run_id: str, as_of: date, start: date | None = None
 ) -> tuple[list[Development], MergeStats]:
-    findings = load_findings(conn, as_of)
+    """The run's developments from the findings published from `start` (when given) to `as_of`."""
+    findings = load_findings(conn, as_of, start)
     devs, stats = await merge(inf, [f for f in findings if not (f.promotional or f.price_move)])
     stats.promotional = sum(f.promotional for f in findings)
     stats.price_move = sum(f.price_move for f in findings)

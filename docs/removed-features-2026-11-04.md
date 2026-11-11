@@ -71,6 +71,11 @@ Slide 8 of the team's deck of 10 Nov 2026 replaces it with a fixed table of the 
   Its page-date reader went with it.
 - markets.ft.com company press releases no longer count as reputable ft.com; they are an ordinary outlet.
 
+### Overlapping weekly windows (uncommitted, spec step 5)
+
+- The 10-day weekly ingest window that overlapped the previous week by 3 days; a week is now exactly Monday to Sunday (UTC), with T0 the Sunday, and `im weekly` ingests and computes each week in turn.
+- Documents published before the corpus start (`corpus_start`, 1 Oct 2026 after the rebuild) stay stored but no run reads them.
+
 ## Decided, not yet removed
 
 From the topics, watchlists and views plan (local map in `wayfind/topics-watchlists-views/`).

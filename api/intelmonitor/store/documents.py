@@ -53,6 +53,13 @@ def list_documents(conn: sqlite3.Connection) -> list[SourceDocument]:
 
 
 def first_document_day(conn: sqlite3.Connection) -> date | None:
-    """The day of the earliest stored document: nothing was collected before it."""
-    row = conn.execute("SELECT min(substr(published_at, 1, 10)) FROM source_documents").fetchone()
+    """The day of the earliest stored document published on or after the corpus start (meta
+    `corpus_start`), when one is set: runs read nothing before it, so nothing was collected
+    before that day as far as they know."""
+    start = get_meta(conn, "corpus_start") or ""
+    row = conn.execute(
+        "SELECT min(substr(published_at, 1, 10)) FROM source_documents "
+        "WHERE substr(published_at, 1, 10) >= ?",
+        (start,),
+    ).fetchone()
     return date.fromisoformat(row[0]) if row[0] else None

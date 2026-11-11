@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS source_documents (
 CREATE INDEX IF NOT EXISTS source_documents_published ON source_documents (published_at);
 
 -- Pipeline. Screening, tags and findings are per document and shared by every run; everything
--- keyed by run_id is rebuilt for that run from the documents published on or before its date.
+-- keyed by run_id is rebuilt for that run from the documents published from the corpus start
+-- (meta corpus_start) to its date.
 
 CREATE TABLE IF NOT EXISTS runs (
     id TEXT PRIMARY KEY,               -- the as-of date, YYYY-MM-DD
