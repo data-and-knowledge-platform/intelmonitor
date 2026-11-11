@@ -264,9 +264,7 @@ function Facet({
             onClick={() => onSelect(selected === o.id ? undefined : o.id)}
           >
             {o.dot && <span className={`lp-dot ${o.dot}`} aria-hidden="true" />}
-            <span className="lp-opt-name" title={o.name}>
-              {o.name}
-            </span>
+            <span className="lp-opt-name">{o.name}</span>
             <span className="lp-opt-n">{o.count}</span>
           </button>
         ))}

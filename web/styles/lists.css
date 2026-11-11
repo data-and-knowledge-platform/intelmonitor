@@ -31,7 +31,7 @@
   padding: 0 var(--s-6) var(--s-7);
 }
 
-/* Facets: the search field, then groups of options with their counts. */
+/* Facets: the search field, then groups of options with their counts. Long option names wrap. */
 .lp-facets {
   position: sticky;
   top: calc(56px + var(--s-3));
@@ -59,11 +59,11 @@
 }
 .lp-opt {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   width: 100%;
   min-height: 26px;
-  padding: 0 6px;
+  padding: 3px 6px;
   border: 0;
   border-radius: var(--r-badge);
   background: none;
@@ -85,9 +85,6 @@
 .lp-opt-name {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .lp-opt-n {
   flex: none;
@@ -101,6 +98,9 @@
   width: 8px;
   height: 8px;
   border-radius: 2px;
+}
+.lp-opt .lp-dot {
+  margin-top: calc((var(--lh-body) - 8px) / 2);
 }
 .lp-dot.High {
   background: var(--attn);
