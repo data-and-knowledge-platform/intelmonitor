@@ -56,7 +56,7 @@ from intelmonitor.seed import load_detectors
 from intelmonitor.store import search
 
 # Primary sources first: a measured value ranks after official text and before news reporting it.
-_COLLECTION_RANK = {"dms": 0, "official": 1, "data": 2, "news": 3}
+COLLECTION_RANK = {"dms": 0, "official": 1, "data": 2, "news": 3}
 _ROLES = TypeAdapter(dict[str, FindingRole])
 
 
@@ -89,7 +89,7 @@ class RunFinding:
     @property
     def rank(self) -> tuple[int, date, str]:
         """Primary sources first, then earliest."""
-        return (_COLLECTION_RANK.get(self.collection, 4), self.published, self.id)
+        return (COLLECTION_RANK.get(self.collection, 4), self.published, self.id)
 
 
 def _detection_roles(subjects: list[str], tone: Tone) -> dict[str, FindingRole]:

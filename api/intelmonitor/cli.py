@@ -11,6 +11,8 @@ series_app = typer.Typer(no_args_is_help=True, help="Fetch measured series (api/
 app.add_typer(series_app, name="series")
 check_app = typer.Typer(no_args_is_help=True, help="Checks the walkthrough runs on fixture data.")
 app.add_typer(check_app, name="check")
+export_app = typer.Typer(no_args_is_help=True, help="Export what the runs stored, for the team.")
+app.add_typer(export_app, name="export")
 
 
 @app.command()
@@ -259,6 +261,23 @@ def check_detector() -> None:
     from intelmonitor.checks import detector_check
 
     typer.echo(asyncio.run(detector_check()).model_dump_json(indent=1))
+
+
+@export_app.command("labels")
+def export_labels(
+    out: Annotated[str, typer.Option("--out", help="The .xlsx file to write")],
+) -> None:
+    """Write the runs' labels to an Excel workbook: Direct, Indirect, Links and Dropped sheets
+    (ticket 24). Opens the store read-only and calls no model."""
+    from pathlib import Path
+
+    from intelmonitor.export import export_labels as export
+    from intelmonitor.store.db import DB_PATH
+
+    if not out.endswith(".xlsx"):
+        raise typer.BadParameter("--out must name an .xlsx file")
+    counts = export(DB_PATH, Path(out))
+    typer.echo(f"wrote {out}: " + ", ".join(f"{n} {name}" for name, n in counts.items()))
 
 
 @app.command()
