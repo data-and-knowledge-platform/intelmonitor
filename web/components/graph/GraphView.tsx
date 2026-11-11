@@ -10,8 +10,8 @@ import { Fragment, useCallback, useState } from "react";
 import type { Schema } from "@/lib/api/client";
 import { useGraph, type GraphQuery } from "@/lib/api/queries";
 import { plural } from "@/lib/format";
-import { monitorLink } from "@/lib/widgets";
-import { evidenceLink } from "@/components/shell/Evidence";
+import { monitorLink } from "@/lib/links";
+import { developmentLink } from "@/components/developments/link";
 import { PriorityBadge } from "@/components/developments/labels";
 
 import { FilterMenu, toggle } from "./FilterMenu";
@@ -148,7 +148,7 @@ const GROUP_LABEL: Record<NodeType, string> = {
 /** A node's link: a development opens its popup over the graph, a subject its monitor page. */
 const linkOf = (nodeId: string) =>
   nodeId.startsWith(DEV_PREFIX)
-    ? evidenceLink.development(nodeId.slice(DEV_PREFIX.length))
+    ? developmentLink(nodeId.slice(DEV_PREFIX.length))
     : { ...monitorLink(nodeId), resetScroll: false };
 
 /** The group a node is listed under: its type, or for a development its theme when it has one. */

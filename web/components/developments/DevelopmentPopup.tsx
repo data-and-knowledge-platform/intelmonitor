@@ -1,22 +1,20 @@
 // A development in a popup over the page it was opened from (the user's sketch, after mock u1
-// option B), the size of the New dashboard popup. The header holds its labels for the subjects in
+// option B). The header holds its labels for the subjects in
 // view, the headline, its key points (the full title when it has none), and the close button;
 // below, "Who it impacts" over "Connections" (the claims and the graph snippet) on the left, and
 // the sources down the right. Each column scrolls inside the popup; under 1024 px they stack.
 //
 // The popup lives in the URL (`?development=<id>&scope=...`, built by link.ts), so a shared link and
 // browser Back work. Close, Esc and a backdrop click go back to the entry it was opened over, or drop
-// the parameters when the link was loaded fresh. Opening it marks the development read. An old
-// `?evidence=<id>` link opens the popup in its place.
+// the parameters when the link was loaded fresh. An old `?evidence=<id>` link opens the popup in its place.
 import { useLocation, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import type { Schema } from "@/lib/api/client";
-import { useDevelopment, useSetTriage, type TriageChange } from "@/lib/api/queries";
+import { useDevelopment } from "@/lib/api/queries";
 import { capitalize, longDate } from "@/lib/format";
 import { Dotted } from "@/components/monitor/parts";
 import { CloseButton, Modal } from "@/components/ui/Modal";
-import { useToast } from "@/components/ui/Toast";
 
 import { ImpactGraph, WhoItImpacts } from "./Impacts";
 import { AdverseTone, dateSpan, names, PriorityBadge, sourceCountText, UnconfirmedMark } from "./labels";
@@ -30,7 +28,7 @@ export function DevelopmentPopup() {
   const navigate = useNavigate();
   const router = useRouter();
   const id = search.development;
-  const scope = parseScope(search.scope) ?? scopeHere({ pathname: location.pathname, search: location.searchStr });
+  const scope = parseScope(search.scope) ?? scopeHere(location);
   const opener = useRef<HTMLElement | null>(null);
 
   const close = () => {
@@ -65,12 +63,11 @@ export function DevelopmentPopup() {
 }
 
 function DevelopmentView({ id, scope, onClose }: { id: string; scope: ViewScope; onClose: () => void }) {
-  const query = scope.subject ? { subject_id: [scope.subject] } : scope.dashboard ? { dashboard_id: scope.dashboard } : undefined;
+  const query = scope.subject ? { subject_id: [scope.subject] } : undefined;
   const development = useDevelopment(id, query);
   const heading = useRef<HTMLHeadingElement>(null);
   const d = development.data;
 
-  useMarkRead(d);
   // The title takes focus once loaded, after the dialog has opened.
   const loaded = d !== undefined;
   useEffect(() => {
@@ -115,7 +112,6 @@ function Head({
   scope: ViewScope;
   headingRef: React.Ref<HTMLHeadingElement>;
 }) {
-  const restore = useRestore(d);
   // Say whose priority it is when the subjects disagree.
   const differ = new Set(d.direct_subjects.map((s) => s.priority)).size > 1;
   const viewed = d.direct_subjects.find((s) => s.subject.id === scope.subject)?.subject.name;
@@ -154,14 +150,6 @@ function Head({
       ) : (
         d.headline !== d.title && <p className="dp-points">{d.title}</p>
       )}
-      {d.triage.dismissed && (
-        <div className="dp-acts">
-          <span className="meta">{d.triage.not_relevant ? "Marked not relevant." : "Dismissed."}</span>
-          <button type="button" className="btn btn-sm" onClick={restore}>
-            Restore to feed
-          </button>
-        </div>
-      )}
     </header>
   );
 }
@@ -171,28 +159,4 @@ function jumpToSources(e: React.MouseEvent<HTMLAnchorElement>) {
   const sources = document.getElementById("sources");
   sources?.scrollIntoView({ block: "start" });
   sources?.querySelector<HTMLElement>("[role=tab][aria-selected=true]")?.focus({ preventScroll: true });
-}
-
-/** Restore for a development dismissed earlier, with a toast that can undo it. */
-function useRestore(d: Schema<"DevelopmentDetail">) {
-  const setTriage = useSetTriage();
-  const toast = useToast();
-  return () => {
-    const undo: TriageChange = { dismissed: d.triage.dismissed, not_relevant: d.triage.not_relevant };
-    setTriage.mutate({ id: d.id, change: { dismissed: false, not_relevant: false } });
-    toast({ message: "Restored to your feed.", action: { label: "Undo", run: () => setTriage.mutate({ id: d.id, change: undo }) } });
-  };
-}
-
-/** Opening a development marks it read, once per popup. */
-function useMarkRead(d: Schema<"DevelopmentDetail"> | undefined) {
-  const setTriage = useSetTriage();
-  const done = useRef<string | null>(null);
-  const mark = useEffectEvent((id: string) => setTriage.mutate({ id, change: { read: true } }));
-  const target = d && !d.triage.read ? d.id : null;
-  useEffect(() => {
-    if (target === null || done.current === target) return;
-    done.current = target;
-    mark(target);
-  }, [target]);
 }

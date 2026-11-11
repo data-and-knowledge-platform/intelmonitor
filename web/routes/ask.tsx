@@ -1,18 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { AskView } from "@/components/ask/AskView";
-
-// `/ask` asks a question; `/ask?about=<subject id>` starts it about that subject (the monitor
-// page's "Ask about" button).
+// The Ask page is gone; old links land on the home page.
 export const Route = createFileRoute("/ask")({
-  validateSearch: (search): { about?: string } => ({
-    ...search,
-    about: typeof search.about === "string" ? search.about : undefined,
-  }),
-  component: AskPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/", replace: true });
+  },
 });
-
-function AskPage() {
-  const { about } = Route.useSearch();
-  return <AskView key={about ?? ""} aboutId={about} />;
-}

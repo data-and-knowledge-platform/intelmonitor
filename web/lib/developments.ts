@@ -98,11 +98,11 @@ export function selected(params: URLSearchParams, facet: FacetId): string[] {
 export const filtered = (params: URLSearchParams) =>
   FACETS.some((f) => selected(params, f.id).length > 0) || Boolean(params.get("q")?.trim());
 
-/** The feed's scope: some subjects or a dashboard. */
-export type FeedScope = { subject_id: string[] } | { dashboard_id: string };
+/** The feed's scope: some subjects. */
+export type FeedScope = { subject_id: string[] };
 
-/** The API query for the feed's parameters over a scope. Dismissed ones are left out unless `dismissed`, unconfirmed ones unless the URL asks. */
-export function listQuery(scope: FeedScope, params: URLSearchParams, dismissed = false): DevelopmentsQuery {
+/** The API query for the feed's parameters over a scope. Unconfirmed ones are left out unless the URL asks. */
+export function listQuery(scope: FeedScope, params: URLSearchParams): DevelopmentsQuery {
   const period = periodOf(params);
   const adverse = selected(params, "adverse")[0];
   return {
@@ -114,7 +114,6 @@ export function listQuery(scope: FeedScope, params: URLSearchParams, dismissed =
     tone: selected(params, "tone").filter(isTone),
     category: selected(params, "category").filter(isCategory),
     source: selected(params, "source").filter(isCollection),
-    dismissed: dismissed ? null : false,
     unconfirmed: showsUnconfirmed(params),
   };
 }

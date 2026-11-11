@@ -2,7 +2,7 @@
 
 The top bar holds full text search over entities, topics, developments and documents, and `Week to <d Mon> · updated weekly`: the end of the week the latest weekly run covers.
 An entity or topic result opens its page; a development or document result opens the development's popup over the current page.
-The run status chip, Runs popover, Run now and the alerts bell are hidden for the testing sessions.
+The run chip, Run now, the alerts bell and the Following dialog are gone; runs are scheduled weekly on the server.
 
 ## Sub-features
 
@@ -38,5 +38,3 @@ Preconditions:
 
 - A mouse pointer resting over where the results list opens hijacks the highlight on hover. Move the mouse away (`ab mouse move 700 850`) before keyboard assertions, or Enter opens the hovered hit.
 - `snapshot -i` omits the `group` roles of search results; query `#search-results` or use a full `snapshot`.
-- Opening a development hit marks it read, like any other way of opening it.
-- The run chip, Runs popover, alerts bell and Following dialog are parked in `TopBar.tsx` (`RunsAndAlerts`), not deleted; `verify api /runs`, `/runs/status` and `/alerts` still answer.

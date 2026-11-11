@@ -76,6 +76,24 @@ Slide 8 of the team's deck of 10 Nov 2026 replaces it with a fixed table of the 
 - The 10-day weekly ingest window that overlapped the previous week by 3 days; a week is now exactly Monday to Sunday (UTC), with T0 the Sunday, and `im weekly` ingests and computes each week in turn.
 - Documents published before the corpus start (`corpus_start`, 1 Oct 2026 after the rebuild) stay stored but no run reads them.
 
+### The web app's side of the plan's removals (uncommitted, spec step 6)
+
+The web app no longer reads or writes any of the features listed under "Decided, not yet removed" except group pages, which go in step 10; their API endpoints, pipeline hooks and stored rows go in step 7.
+
+- Dashboard pages, widgets, the AI dashboard generator (and its `@ag-ui` packages), the new-dashboard picker and the sidebar's Dashboards list; `/dashboards/<id>` lands on the home page.
+- Onboarding (`/setup`, which lands on the home page), the profile menu and role switch, the tour and visit logging.
+- The run chip, Run now, the alerts bell and the Following dialog in the top bar.
+- Notes, custom questions, analyst feedback (Mark wrong, tag removal, Restore after Not relevant), and the answer drawer (`?answer=`) for standing questions.
+- The parked What changed section and every read mark: opening a development no longer marks it read, and New and Updated always show, from the latest run.
+- The `/developments` feed page (it lands on the home page), Show all, Show dismissed and Restore to feed.
+- "N High since your last visit" in the sidebar, and "since your last visit" in Help.
+- Home opens MAS's page until the watchlists land.
+- Data sources has no entry until the sidebar gives it one; Help keeps its `?` shortcut.
+
+### The Ask page and the "Ask about" button (uncommitted, spec step 6)
+
+- `/ask` (it lands on the home page), its mocked answers, and the "Ask about <name>" button in an entity or topic page's head.
+
 ## Decided, not yet removed
 
 From the topics, watchlists and views plan (local map in `wayfind/topics-watchlists-views/`).
@@ -92,7 +110,6 @@ From the topics, watchlists and views plan (local map in `wayfind/topics-watchli
 - "Run now" in the web app; runs are to be scheduled weekly on the server.
 - Group pages; groups remain only as headings that organise entities.
 - Standing questions and their answers (focus areas), with the answers stage and the answer drawer.
-- The Ask page and the "Ask about" button.
 - Dismissing and flagging developments, the last per-viewer state on the server.
 
 ## Visits per role, local store

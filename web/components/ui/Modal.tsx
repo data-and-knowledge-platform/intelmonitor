@@ -72,7 +72,7 @@ export function Modal({
   );
 }
 
-/** The 28px ghost close button for modal, sheet and drawer headers. */
+/** The 28px ghost close button for modal and sheet headers. */
 export function CloseButton({ onClick, label = "Close" }: { onClick: () => void; label?: string }) {
   return (
     <button type="button" className="btn-icon close" aria-label={label} onClick={onClick}>

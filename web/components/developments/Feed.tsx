@@ -1,14 +1,13 @@
-// The development feed for a scope (some subjects or a dashboard), used by the developments page,
-// the dashboard and the monitor page's Developments tab: a period control (Today, This week, This
-// month, All time), the facet filters, and the rows under one column header in the API's order
-// (High adverse, other High, Medium adverse, other Medium, the rest; newest first in each). The
-// period and filters live in the URL, so closing a development popup returns to the same list.
-// Dismissed rows are left out, with a way to show them at the end; unconfirmed ones are left out
-// unless "Show unconfirmed" in the filter bar is on.
+// The development feed for some subjects, on a subject page's Developments tab: a period control
+// (Today, This week, This month, All time), the facet filters, and the rows under one column header
+// in the API's order (High adverse, other High, Medium adverse, other Medium, the rest; newest first
+// in each). The period and filters live in the URL, so closing a development popup returns to the
+// same list. Unconfirmed ones are left out unless "Show unconfirmed" in the filter bar is on. New
+// and Updated mark what the latest run added or updated; the footer names that run's date.
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, type ReactNode } from "react";
 
-import { useDevelopments } from "@/lib/api/queries";
+import { useDevelopments, useLatestRun } from "@/lib/api/queries";
 import { filtered, listQuery, PERIODS, periodOf, withoutFilters, withPeriod, type FeedScope } from "@/lib/developments";
 import { shortDate } from "@/lib/format";
 import { usePathname, useSearchParams } from "@/lib/router";
@@ -21,37 +20,27 @@ export function Feed({
   scope,
   view,
   words = false,
-  cap,
-  more,
 }: {
   scope: FeedScope;
   /** The subjects in view, whose priority each development's popup shows. */
   view: ViewScope;
   words?: boolean;
-  /** Rows before "Show N more". */
-  cap?: number;
-  /** A list page for every row: past the cap, "Show all N" opens it with the same period and filters. */
-  more?: string;
 }) {
   const params = useSearchParams();
   const pathname = usePathname();
   const navigate = useNavigate();
-  const [dismissed, setDismissed] = useState(false);
-  const [all, setAll] = useState(false);
-  const list = useDevelopments(listQuery(scope, params, dismissed));
+  const list = useDevelopments(listQuery(scope, params));
+  const run = useLatestRun().data;
   // Filters replace the history entry, so Back leaves the page rather than undoing a filter.
   const onParams = useCallback(
     (next: URLSearchParams) => {
-      setAll(false);
       void navigate({ href: `${pathname}${next.size ? `?${next}` : ""}`, replace: true, resetScroll: false });
     },
     [navigate, pathname],
   );
   const period = periodOf(params);
   const data = list.data;
-  // A row dismissed on its page leaves at once; the refetch brings the counts.
-  const rows = data?.developments.filter((d) => dismissed || !d.dismissed) ?? [];
-  const visible = cap && !all ? rows.slice(0, cap) : rows;
+  const rows = data?.developments ?? [];
   const count = (value: string) => data?.facets.date.find((v) => v.value === value)?.count;
 
   return (
@@ -75,50 +64,20 @@ export function Feed({
         <>
           <FeedHeader />
           <ol className="frows">
-            {visible.map((d) => (
+            {rows.map((d) => (
               <FeedRow key={d.id} development={d} scope={view} />
             ))}
           </ol>
         </>
       )}
-      {data && (
+      {data && run && (
         <div className="feed-foot">
-          {rows.length > visible.length &&
-            (more ? (
-              <ShowAll href={withParams(more, params)} count={rows.length} />
-            ) : (
-              <button type="button" className="btn btn-sm" onClick={() => setAll(true)}>
-                Show {rows.length - visible.length} more
-              </button>
-            ))}
-          {data.dismissed > 0 && (
-            <button type="button" className="link" aria-pressed={dismissed} onClick={() => setDismissed((x) => !x)}>
-              {dismissed ? "Hide dismissed" : `Show dismissed (${data.dismissed})`}
-            </button>
-          )}
           <span className="meta push">
-            New: first reported after {shortDate(data.since)}. Updated: new reports since then.
+            New: added in the run of {shortDate(run.as_of)}. Updated: new reports in that run.
           </span>
         </div>
       )}
     </div>
-  );
-}
-
-/** `path` (which may carry a query) with the feed's parameters added. */
-function withParams(path: string, params: URLSearchParams): string {
-  const [base, query] = path.split("?");
-  const next = new URLSearchParams(query);
-  for (const [k, v] of params) next.append(k, v);
-  return next.size ? `${base}?${next}` : base;
-}
-
-/** "Show all N", the link to the full list. */
-function ShowAll({ href, count }: { href: string; count: number }) {
-  return (
-    <HrefLink href={href} className="btn btn-sm">
-      Show all {count}
-    </HrefLink>
   );
 }
 

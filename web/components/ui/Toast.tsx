@@ -12,9 +12,6 @@ interface ToastSpec {
   duration?: number;
 }
 
-/** The duration for a delete whose Undo is the only way back, such as a note or a dashboard. */
-export const DELETE_UNDO_MS = 8000;
-
 const ToastContext = createContext<(toast: ToastSpec) => void>(() => {});
 
 /** Usage: `const toast = useToast(); toast({ message: "Removed Watchlist", action: { label: "Undo", run } })`. */

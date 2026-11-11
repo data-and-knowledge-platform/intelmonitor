@@ -1,15 +1,14 @@
-// The Phase 1 walkthrough against the running dev servers: onboarding, the fixed dashboard, the
-// feed, a development's popup, editing and making dashboards, the sidebar, an entity page, search,
-// switching role and Help, then two scripted pipeline checks. It reads what the pipeline produced
-// through the API to decide what to click and what to expect. It writes to the live store (a
-// profile, dashboards, follows, visits, read marks), so it backs the store up first and puts it
-// back at the end, and can run again.
+// The walkthrough against the running dev servers: an entity page and its tabs, a development's
+// popup and the old links that open it, search, Help and the narrow window, then two scripted
+// pipeline checks. It reads what the pipeline produced through the API to decide what to click and
+// what to expect. The web app only reads the API: the walkthrough logs every API request the page
+// makes to requests.json and fails on any that is not a GET or that reaches a removed endpoint.
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { api } from "../lib/api/client";
+import { api, API_URL } from "../lib/api/client";
 import { shortDate } from "../lib/format";
 
 import { runDir, screenshotName, STEPS } from "./steps";
@@ -44,7 +43,6 @@ interface DetectorCheck {
 }
 
 const ROOT = path.resolve(import.meta.dirname, "../..");
-const STORE = path.join(ROOT, "data/intelmonitor.db");
 
 /** Runs `uv run im check <name>` in api/ and returns what it prints. */
 const imCheck = (name: string) => execFileSync("uv", ["run", "im", "check", name], { cwd: path.join(ROOT, "api"), encoding: "utf8" });
@@ -61,24 +59,12 @@ async function unwrap<T>(request: Promise<{ data?: T; error?: unknown; response:
   return data;
 }
 
-/** SQLite's online backup of the live store, safe while the API serves it (as `verify store save`). */
-function backupStore(label: string): string {
-  const dir = path.join(ROOT, "data/verify-snapshots");
-  mkdirSync(dir, { recursive: true });
-  const file = path.join(dir, `${label}-e2e.db`);
-  execFileSync("sqlite3", [STORE, `.backup '${file}'`]);
-  return file;
-}
-
-const restoreStore = (file: string) => execFileSync("sqlite3", [STORE, `.restore '${file}'`]);
-
 const PRIORITIES = ["High", "Medium", "Low"];
 
 /** The feed rows' priority badges, top to bottom. */
 const badges = (feed: Locator) => feed.locator(".frow .fstat .badge:not(.b-new)").allTextContents();
 
 type Listed = { priority: string }[];
-type Watch = { new_high: number; top: { priority: string; last_published: string } | null; subject: { name: string } };
 
 /** The feed's column header, then the shown rows' priority badges, High first, as the API lists them. */
 async function expectOrdered(feed: Locator, shown: Listed) {
@@ -86,29 +72,49 @@ async function expectOrdered(feed: Locator, shown: Listed) {
   await expect(feed.locator(".frow .fstat .badge:not(.b-new)")).toHaveText(shown.map((d) => d.priority));
 }
 
-/** The watchlist's rows before Show all: up to 3 entities with a development this month (4 when that is all), most new High first. */
-function watchShown(watchlist: Watch[]): string[] {
-  const rank = (w: Watch) => (w.top ? PRIORITIES.indexOf(w.top.priority) : 3);
-  return [...watchlist]
-    .sort((a, b) => b.new_high - a.new_high || rank(a) - rank(b) || (a.top && b.top ? b.top.last_published.localeCompare(a.top.last_published) : 0))
-    .filter((w) => w.top)
-    .filter((_, i, active) => i < (active.length === 4 ? 4 : 3))
-    .map((w) => w.subject.name);
-}
-
-/** The id in a `/dashboards/<id>` URL. */
-const dashboardIn = (url: string) => new URL(url).pathname.match(/^\/dashboards\/([^/]+)$/)?.[1] ?? "";
-
 /** A URL with a development's popup open over a page whose path matches `page`. */
 const popupUrl = (page: string, id: string) => new RegExp(`${page}\\?(.*&)?development=${id}(&|$)`);
 
-test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
+/** One API request the page made, as requests.json lists it. */
+interface Logged {
+  method: string;
+  path: string;
+  status: number;
+}
+
+// Endpoints of removed features (spec step 6); the page must not call them.
+const REMOVED_PATHS = [
+  /^\/dashboards/,
+  /^\/widgets/,
+  /^\/agent/,
+  /^\/profiles?(\/|$)/,
+  /^\/onboarding/,
+  /^\/visits/,
+  /^\/follows/,
+  /^\/notes/,
+  /^\/custom-questions/,
+  /^\/feedback/,
+  /^\/reviews/,
+  /^\/what-changed/,
+  /^\/alerts/,
+  /^\/runs\/(now|status)/,
+  /^\/subjects\/[^/]+\/(answers|facts)/,
+  /^\/developments\/[^/]+\/triage/,
+];
+// Query parameters of removed features on GET /developments.
+const REMOVED_PARAMS = ["dashboard_id", "dismissed", "since", "changed"];
+
+test("IntelMonitor walkthrough", async ({ page }) => {
   test.setTimeout(15 * 60_000);
   const dir = runDir();
   mkdirSync(path.join(dir, "steps"), { recursive: true });
-  const stamp = path.basename(dir);
   const pageErrors: string[] = [];
   page.on("pageerror", (e) => pageErrors.push(e.message));
+  const requests: Logged[] = [];
+  page.on("response", (r) => {
+    const url = new URL(r.url());
+    if (url.origin === new URL(API_URL).origin) requests.push({ method: r.request().method(), path: `${url.pathname}${url.search}`, status: r.status() });
+  });
 
   let index = 0;
   const step = async (title: (typeof STEPS)[number], body: () => Promise<void>) => {
@@ -126,278 +132,40 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
   const latest = await unwrap(api.GET("/runs/latest"));
   expect(latest.latest_news, "the latest run covers some news").toBeTruthy();
   const subjects = await unwrap(api.GET("/subjects"));
-  const profileAtStart = await unwrap(api.GET("/profile"));
-  const backup = backupStore(stamp);
+  const month = await unwrap(api.GET("/developments", { params: { query: { subject_id: ["dbs"], days: 30 } } }));
+  expect(month.developments.length, "DBS has developments this month").toBeGreaterThan(0);
 
-  // Set by the steps that create them, read by the later ones.
-  let dashboardId = "";
-  let dashboardName = "";
+  // Set by the steps that reach them, read by the later ones.
   let feedUrl = "";
 
   try {
     await step(STEPS[0], async () => {
-      // A first visit lands on onboarding; with a role already picked, Add a role opens the same page.
-      await page.goto(profileAtStart.role === null ? "/" : "/setup");
-      await expect(page).toHaveURL(/\/setup$/);
-      await expect(page.getByRole("heading", { level: 1, name: "What is your role?" })).toBeVisible();
-      await expect(page.getByRole("navigation", { name: "Main" }), "onboarding has no sidebar").toHaveCount(0);
-
-      await page.getByRole("link", { name: /^Technology and cyber risk supervisor/ }).click();
-      await expect(page).toHaveURL(/role=tech_cyber_supervisor/);
-      // The page says "first" only when no role is picked yet.
-      const heading = profileAtStart.role === null ? "Your first dashboard" : "Your new dashboard";
-      await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
-      const suggestions = await unwrap(api.GET("/onboarding/suggestions", { params: { query: { role: "tech_cyber_supervisor" } } }));
-      const ticked = page.locator(".picker-rows input:checked");
-      await expect(ticked, "the role's suggestions start ticked").toHaveCount(suggestions.picks.length);
-      const preview = page.locator(".setup-preview-count");
-      await expect(preview).toHaveText(/^\d+ developments?, (\d+ High|none High)$/);
-
-      // Trim one pick: the count and the preview follow.
-      const singtel = page.getByRole("checkbox", { name: /^Singtel/ });
-      await expect(singtel).toBeChecked();
-      const previewCall = page.waitForResponse((r) => r.url().includes("/developments?") && r.url().includes("days=7"));
-      await singtel.uncheck();
-      await previewCall;
-      await expect(ticked).toHaveCount(suggestions.picks.length - 1);
-      await expect(preview).toHaveText(/^\d+ developments?, /);
-
-      dashboardName = `E2E ${stamp}`;
-      await page.getByRole("textbox", { name: "Dashboard name" }).fill(dashboardName);
-      await page.getByRole("button", { name: "Create dashboard" }).click();
-      await expect(page).toHaveURL(/\/dashboards\/[^/]+$/);
-      dashboardId = dashboardIn(page.url());
-      await expect(page.getByRole("heading", { level: 1, name: dashboardName })).toBeVisible();
-
-      const profile = await unwrap(api.GET("/profile"));
-      expect([profile.role, profile.default_dashboard_id]).toEqual(["tech_cyber_supervisor", dashboardId]);
-      const dashboard = await unwrap(api.GET("/dashboards/{dashboard_id}", { params: { path: { dashboard_id: dashboardId } } }));
-      expect(new Set(dashboard.subject_ids)).toEqual(new Set(suggestions.picks.filter((id) => id !== "singtel")));
-    });
-
-    await step(STEPS[1], async () => {
-      const overview = await unwrap(api.GET("/dashboards/{dashboard_id}/overview", { params: { path: { dashboard_id: dashboardId } } }));
-      const list = await unwrap(api.GET("/developments", { params: { query: { dashboard_id: dashboardId, days: 30, dismissed: false } } }));
-
-      // One date in the top bar, and none of the parked controls anywhere.
-      await expect(page.locator(".topbar .updated")).toHaveText(`Week to ${shortDate(latest.as_of)} · updated weekly`);
-      for (const name of ["Add widget", "Edit", "Done", "Run now", "Mark all reviewed", "Mark reviewed", "Follow", "Generate"]) {
-        await expect(page.getByRole("button", { name, exact: true }), `no ${name} button`).toHaveCount(0);
-      }
-      await expect(page.getByRole("button", { name: /^(Alerts|Show runs|Monitoring)/ })).toHaveCount(0);
-      await expect(page.locator("dialog.tour"), "no tour starts").toHaveCount(0);
-      await expect(page.locator("[data-widget-id]"), "no widget grid").toHaveCount(0);
-
-      // Watchlist: the busiest entities with developments this month, each with its new High count and
-      // its top development in full; Show all lists every entity.
-      const watch = page.getByRole("region", { name: "Watchlist" });
-      const rows = watch.locator("tbody tr");
-      const names = watchShown(overview.watchlist);
-      await expect(rows.getByRole("rowheader")).toHaveText(names);
-      for (const [i, name] of names.entries()) {
-        const w = overview.watchlist.find((x) => x.subject.name === name);
-        if (!w?.top) throw new Error(`${name} has no top development`);
-        await expect(rows.nth(i).locator(".wl-cnt")).toHaveText(w.new_high > 0 ? `${w.new_high} new High` : "None");
-        await expect(rows.nth(i).getByRole("link", { name: w.top.headline, exact: true })).toBeVisible();
-      }
-      if (names.length < overview.watchlist.length) {
-        await watch.getByRole("button", { name: `Show all ${overview.watchlist.length} entities` }).click();
-        await expect(rows).toHaveCount(overview.watchlist.length);
-        await watch.getByRole("button", { name: "Show fewer" }).click();
-        await expect(rows).toHaveCount(names.length);
-      }
-
-      // The feed: the API's order, priority first, New on unread new rows, 15 rows then Show all.
-      const feed = page.getByRole("region", { name: "Latest developments" });
-      const shown = list.developments.slice(0, 15);
-      await expect(feed.locator(".frow")).toHaveCount(shown.length);
-      await expect(feed.locator(".frow .ftitle").first()).toHaveText(shown[0].headline);
-      const ranks = (await badges(feed)).map((b) => PRIORITIES.indexOf(b));
-      expect(ranks, "highest priority first").toEqual([...ranks].sort((a, b) => a - b));
-      await expect(feed.locator(".frow .b-new")).toHaveCount(shown.filter((d) => d.change === "new" && !d.read).length);
-      await expectOrdered(feed, shown);
-      await expect(feed.locator(".mon-sec-head .meta")).toContainText(overview.new_count > 0 ? `${overview.new_count} new since` : "Nothing new since");
-
-      // Upcoming dates in full, each label a link to its development, then the development's title.
-      const upcoming = page.getByRole("region", { name: "Upcoming dates" });
-      if (overview.upcoming.length === 0) await expect(upcoming).toContainText("No upcoming dates in this dashboard's news.");
-      else {
-        const [u] = overview.upcoming;
-        await expect(upcoming.locator("li")).toHaveCount(overview.upcoming.length);
-        await expect(upcoming.locator(".up-label").first()).toHaveText(u.label);
-        await expect(upcoming.locator(".up-label").first()).toHaveAttribute("href", popupUrl(`/dashboards/${dashboardId}`, u.development_id));
-        await expect(upcoming.locator(".up-about").first()).toHaveText(u.development_title);
-        await expect(upcoming, "no long From: lines").not.toContainText("From:");
-      }
-    });
-
-    await step(STEPS[2], async () => {
-      const feed = page.getByRole("region", { name: "Latest developments" });
-      const all = await unwrap(api.GET("/developments", { params: { query: { dashboard_id: dashboardId, days: 30, dismissed: false } } }));
-      expect(all.developments.length, "the month has more rows than the dashboard shows").toBeGreaterThan(15);
-      await feed.getByRole("link", { name: `Show all ${all.developments.length}` }).click();
-      await expect(page).toHaveURL(new RegExp(`/developments\\?dashboard=${dashboardId}$`));
-      await expect(page.getByRole("heading", { level: 1, name: "Developments" })).toBeVisible();
-      await expect(page.locator(".frow")).toHaveCount(all.developments.length);
-      await expectOrdered(page.locator(".feed"), all.developments);
-      await page.goBack();
-      await expect(page).toHaveURL(new RegExp(`/dashboards/${dashboardId}$`));
-
-      // This week, then High only: the URL holds both, a reload keeps them, every row is High.
-      await feed.getByRole("group", { name: "Period" }).getByRole("button", { name: /^This week/ }).click();
-      await expect(page).toHaveURL(/days=7/);
-      await feed.getByRole("button", { name: /^Priority/ }).click();
-      await page.getByRole("dialog", { name: "Priority" }).getByRole("checkbox", { name: /^High/ }).check();
-      await expect(page).toHaveURL(/priority=High/);
-      await page.keyboard.press("Escape");
-      await page.reload();
-      await expect(feed.getByRole("group", { name: "Period" }).getByRole("button", { name: /^This week/ })).toHaveAttribute("aria-pressed", "true");
-      await expect(feed.getByRole("button", { name: /^Priority: High/ })).toBeVisible();
-      const high = await unwrap(
-        api.GET("/developments", { params: { query: { dashboard_id: dashboardId, days: 7, priority: ["High"], dismissed: false } } }),
-      );
-      await expect(feed.locator(".frow")).toHaveCount(Math.min(high.developments.length, 15));
-      expect(new Set(await badges(feed)), "only High rows").toEqual(new Set(high.developments.length ? ["High"] : []));
-      feedUrl = page.url();
-    });
-
-    await step(STEPS[3], async () => {
-      const feed = page.getByRole("region", { name: "Latest developments" });
-      const rows = await unwrap(
-        api.GET("/developments", { params: { query: { dashboard_id: dashboardId, days: 7, priority: ["High"], dismissed: false } } }),
-      );
-      const d = rows.developments[0];
-      expect(d, "this week has a High development").toBeTruthy();
-      const link = feed.getByRole("link", { name: d.headline, exact: true });
-      await link.click();
-      await expect(page).toHaveURL(popupUrl(`/dashboards/${dashboardId}`, d.id));
-      const popup = page.getByRole("dialog", { name: d.headline });
-      await expect(popup.getByRole("heading", { level: 2, name: d.headline })).toBeFocused();
-      await expect(popup.getByRole("button", { name: "Close development" })).toBeVisible();
-      await expect(popup.getByRole("button", { name: /^Back/ })).toHaveCount(0);
-      await expect(popup.getByRole("heading", { name: "Who it impacts" })).toBeVisible();
-      await expect(popup.getByRole("heading", { name: "Connections" })).toBeVisible();
-      await expect(popup.getByRole("button", { name: /^(Dismiss|Not relevant)$/ })).toHaveCount(0);
-      for (const word of ["materiality", "Tagged to", "tagged by", "Needs attention"]) {
-        await expect(popup, `no "${word}"`).not.toContainText(word, { ignoreCase: true });
-      }
-      // The New dashboard popup's size: 80% of the screen.
-      const box = await popup.boundingBox();
-      const view = page.viewportSize();
-      expect(box && view && Math.round(box.width) === Math.round(Math.min(1400, Math.max(900, view.width * 0.8))), "80% wide").toBe(true);
-
-      await page.keyboard.press("Escape");
-      await expect(page).toHaveURL(feedUrl);
-      await expect(popup).toHaveCount(0);
-      await expect(link, "focus returns to the row").toBeFocused();
-      const after = await unwrap(api.GET("/developments", { params: { query: { dashboard_id: dashboardId, days: 7, priority: ["High"] } } }));
-      expect(after.developments.find((x) => x.id === d.id)?.read, "opening it marked it read").toBe(true);
-      await expect(feed.locator(".frow").filter({ hasText: d.headline }).locator(".b-new")).toHaveCount(0);
-
-      // The development's old page address opens the popup on the dashboard; close drops it.
-      await page.goto(`/developments/${d.id}?dashboard=${dashboardId}`);
-      await expect(page).toHaveURL(popupUrl(`/dashboards/${dashboardId}`, d.id));
-      await expect(popup).toBeVisible();
-      await popup.getByRole("button", { name: "Close development" }).click();
-      await expect(page).toHaveURL(new RegExp(`/dashboards/${dashboardId}$`));
-      await page.goto(feedUrl);
-    });
-    await step(STEPS[4], async () => {
-      const feed = page.getByRole("region", { name: "Latest developments" });
-      const title = (await feed.locator(".frow .ftitle").first().textContent()) ?? "";
-      await feed.getByRole("link", { name: title, exact: true }).click();
-      const popup = page.getByRole("dialog", { name: title });
-      await expect(popup).toBeVisible();
-      const id = new URL(page.url()).searchParams.get("development") ?? "";
-      const d = await unwrap(api.GET("/developments/{development_id}", { params: { path: { development_id: id } } }));
-      // The key points sit under the headline, as the API gives them; the full title only when there are none.
-      if (d.points.length > 0) await expect(popup.locator("ul.dp-points li")).toHaveText(d.points);
-      else if (d.headline !== d.title) await expect(popup.locator(".dp-points")).toHaveText(d.title);
-      await popup.getByRole("button", { name: "Close development" }).click();
-      await expect(page).toHaveURL(feedUrl);
-      await expect(feed.getByRole("link", { name: title, exact: true }), "back in the feed").toBeVisible();
-    });
-
-    await step(STEPS[5], async () => {
-      await page.goto(`/dashboards/${dashboardId}`);
-      await page.getByRole("button", { name: "Edit dashboard" }).click();
-      const dialog = page.getByRole("dialog", { name: "Edit dashboard" });
-      await expect(dialog.getByRole("textbox", { name: "Dashboard name" })).toHaveValue(dashboardName);
-      const singtel = dialog.getByRole("checkbox", { name: /^Singtel/ });
-      await expect(singtel).not.toBeChecked();
-      await singtel.check();
-      const saved = page.waitForResponse((r) => r.url().endsWith(`/dashboards/${dashboardId}`) && r.request().method() === "PUT");
-      await dialog.getByRole("button", { name: "Save" }).click();
-      await saved;
-      await expect(dialog).toHaveCount(0);
-      const dashboard = await unwrap(api.GET("/dashboards/{dashboard_id}", { params: { path: { dashboard_id: dashboardId } } }));
-      expect(dashboard.subject_ids).toContain("singtel");
-      // Singtel may sit past the compact watchlist's first rows; Show all lists every entity.
-      const watch = page.getByRole("region", { name: "Watchlist" });
-      const overview = await unwrap(api.GET("/dashboards/{dashboard_id}/overview", { params: { path: { dashboard_id: dashboardId } } }));
-      if (!watchShown(overview.watchlist).includes("Singtel")) await watch.getByRole("button", { name: `Show all ${overview.watchlist.length} entities` }).click();
-      await expect(watch.getByRole("rowheader", { name: "Singtel" })).toBeVisible();
-    });
-
-    await step(STEPS[6], async () => {
-      const nav = page.getByRole("navigation", { name: "Main" });
-      await nav.getByRole("button", { name: "New dashboard" }).click();
-      const dialog = page.getByRole("dialog", { name: "New dashboard" });
-      await expect(dialog.getByRole("button", { name: "Create dashboard" })).toBeDisabled();
-      await dialog.getByRole("button", { name: "Add all Exchanges" }).click();
-      await expect(dialog.getByRole("textbox", { name: "Dashboard name" })).toHaveValue("Exchanges");
-      await expect(dialog.getByRole("status")).toHaveText("2 entities");
-      await dialog.getByRole("button", { name: "Create dashboard" }).click();
-      await page.waitForURL((u) => /^\/dashboards\/[^/]+$/.test(u.pathname) && u.pathname !== `/dashboards/${dashboardId}`);
-      const id = dashboardIn(page.url());
-      await expect(page.getByRole("heading", { level: 1, name: "Exchanges" })).toBeVisible();
-      const overview = await unwrap(api.GET("/dashboards/{dashboard_id}/overview", { params: { path: { dashboard_id: id } } }));
-      expect(overview.watchlist.map((w) => w.subject.name).sort()).toEqual(["HKEX", "SGX"]);
-      const watch = page.getByRole("region", { name: "Watchlist" });
-      const names = watchShown(overview.watchlist);
-      if (names.length > 0) await expect(watch.getByRole("rowheader")).toHaveText(names);
-      else await expect(watch).toContainText("Nothing this month for these entities.");
-      await expect(nav.locator(`[data-dashboard-id="${id}"] a`)).toHaveAttribute("aria-current", "page");
-    });
-
-    await step(STEPS[7], async () => {
-      const nav = page.getByRole("navigation", { name: "Main" });
-      const groups = subjects.filter((s) => s.type === "group");
-      // Groups are headings under Entities, not a section of their own; only sidebar groups show.
-      await expect(nav.getByText("Groups", { exact: true })).toHaveCount(0);
-      for (const g of groups) {
-        await expect(nav.getByRole("button", { name: `${g.name} ${g.members.length}`, exact: true })).toHaveCount(g.sidebar ? 1 : 0);
-      }
-      const banks = groups.find((g) => g.id === "banking");
-      if (!banks) throw new Error("the Banking group is missing");
-      const heading = nav.getByRole("button", { name: `Banking ${banks.members.length}`, exact: true });
-      await expect(heading).toHaveAttribute("aria-expanded", "false");
-      await heading.click();
-      await expect(heading).toHaveAttribute("aria-expanded", "true");
-      const dbs = (await unwrap(api.GET("/subjects"))).find((s) => s.id === "dbs");
-      await nav.getByRole("link", { name: dbs && dbs.new_high > 0 ? `DBS ${dbs.new_high} High` : "DBS", exact: true }).click();
-      await expect(page).toHaveURL(/\/monitors\/dbs$/);
+      await page.goto("/monitors/dbs");
       await expect(page.getByRole("heading", { level: 1, name: "DBS" })).toBeVisible();
-      await expect(nav.locator("[aria-current=page]")).toHaveText(/^DBS/);
-      // Topics with a new High development say so; the counts moved as this walkthrough read developments.
-      const now = await unwrap(api.GET("/subjects"));
-      for (const t of now.filter((s) => s.type === "topic")) {
-        await expect(nav.getByRole("link", { name: t.new_high > 0 ? `${t.name} ${t.new_high} High` : t.name, exact: true })).toBeVisible();
-      }
-      // Each dashboard shows its new count, the number its feed head shows.
-      for (const d of await unwrap(api.GET("/dashboards"))) {
-        const count = nav.locator(`[data-dashboard-id="${d.id}"] .count`);
-        if (d.new_count > 0) await expect(count).toHaveText(`${d.new_count} new`);
-        else await expect(count).toHaveCount(0);
-      }
-    });
-
-    await step(STEPS[8], async () => {
+      await expect(page.locator(".topbar .updated")).toHaveText(`Week to ${shortDate(latest.as_of)} · updated weekly`);
       for (const region of ["This week", "Top DBS developments", "Related to DBS"]) {
         await expect(page.getByRole("region", { name: region }), `the ${region} block`).toBeVisible();
       }
       await expect(page.getByRole("link", { name: "Open Data" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Ask about DBS" })).toHaveAttribute("href", "/ask?about=dbs");
+
+      // None of the removed controls anywhere: Ask, dashboards, the profile menu, the run chip, alerts, triage.
+      for (const name of ["Add widget", "Edit", "Run now", "Mark all reviewed", "Mark reviewed", "Follow", "Generate", "New dashboard", "Add a focus area"]) {
+        await expect(page.getByRole("button", { name, exact: true }), `no ${name} button`).toHaveCount(0);
+      }
+      await expect(page.getByRole("button", { name: /^(Alerts|Show runs|Monitoring)/ })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: /^Ask/ }), "no Ask page or Ask about").toHaveCount(0);
+      const nav = page.getByRole("navigation", { name: "Main" });
+      await expect(nav.getByText("Dashboards", { exact: true }), "no dashboards in the sidebar").toHaveCount(0);
+      await expect(page.locator("[data-dashboard-id], [data-widget-id], .profile, dialog.tour")).toHaveCount(0);
+      await expect(nav.locator(".count.attn"), "no High since your last visit").toHaveCount(0);
+      await expect(page.getByRole("link", { name: /^(Connections|Trend)$/ })).toHaveCount(0);
+
+      // The sidebar keeps Entities, with the groups as headings, and Topics.
+      const banks = subjects.find((g) => g.id === "banking");
+      if (!banks) throw new Error("the Banking group is missing");
+      await expect(nav.getByRole("button", { name: `Banking ${banks.members.length}`, exact: true })).toHaveAttribute("aria-expanded", "true");
+      await expect(nav.locator("[aria-current=page]")).toHaveText("DBS");
+
       // Could affect and Shared with are on the Related tab, which the Related card's See all links opens.
       for (const region of ["Could affect DBS", "Shared with"]) {
         await expect(page.getByRole("region", { name: region }), `no ${region} on the Overview`).toHaveCount(0);
@@ -406,29 +174,18 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       await page.getByRole("region", { name: "Related to DBS" }).getByRole("link", { name: "See all links" }).click();
       await expect(page).toHaveURL(/\/monitors\/dbs\/related$/);
       await expect(tabs.getByRole("link", { name: "Related" })).toHaveAttribute("aria-current", "page");
-      const related = page.locator("main .mon-sec h2");
-      await expect(related).toHaveText(["Could affect DBS", "Shared with"]);
+      await expect(page.locator("main .mon-sec h2")).toHaveText(["Could affect DBS", "Shared with"]);
       await expect(page.getByRole("region", { name: "Could affect DBS" }).locator(".ca-row")).not.toHaveCount(0);
       await tabs.getByRole("link", { name: "Overview" }).click();
       await expect(page).toHaveURL(/\/monitors\/dbs$/);
-      for (const name of ["Mark reviewed", "Follow", "Add a focus area"]) {
-        await expect(page.getByRole("button", { name, exact: true }), `no ${name}`).toHaveCount(0);
-      }
-      await expect(page.getByRole("link", { name: /^(Connections|Trend)$/ })).toHaveCount(0);
 
-      // The Overview shows this month's top 5 with their priority; See all opens the Developments tab.
-      const month = await unwrap(api.GET("/developments", { params: { query: { subject_id: ["dbs"], days: 30, dismissed: false } } }));
+      // The Overview shows this month's top 5 with their priority and New or Updated.
       const top = page.getByRole("region", { name: "Top DBS developments" });
-      await expect(top.locator(".frow")).toHaveCount(Math.min(month.developments.length, 5));
-      await expect(top.locator(".frow .ftitle").first()).toHaveText(month.developments[0].headline);
-      await expect(top.locator(".frow-head")).toHaveText("PriorityFindingDate");
-      await top.getByRole("link", { name: /^See all/ }).click();
-      await expect(page).toHaveURL(/\/monitors\/dbs\/developments$/);
-      await expect(tabs.getByRole("link", { name: "Developments" })).toHaveAttribute("aria-current", "page");
-      const tab = page.getByRole("region", { name: "Developments about DBS" });
-      await expect(tab.locator(".frow")).toHaveCount(month.developments.length);
-      await expectOrdered(tab, month.developments);
-      await expect(tab.getByRole("button", { name: /^Adverse event/ })).toBeVisible();
+      const shown = month.developments.slice(0, 5);
+      await expect(top.locator(".frow")).toHaveCount(shown.length);
+      await expect(top.locator(".frow .ftitle").first()).toHaveText(shown[0].headline);
+      await expect(top.locator(".frow .b-new")).toHaveCount(shown.filter((d) => d.change === "new").length);
+      await expectOrdered(top, shown);
 
       await tabs.getByRole("link", { name: "Data" }).click();
       await expect(page).toHaveURL(/\/monitors\/dbs\/data$/);
@@ -448,10 +205,117 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       // A topic links to nothing: no Related tab, and its URL lands on the Overview.
       await page.goto("/monitors/financial-regulation/related");
       await expect(page).toHaveURL(/\/monitors\/financial-regulation$/);
-      await expect(tabs.getByRole("link")).toHaveText(["Overview", "Developments", "Data"]);
+      await expect(tabs.getByRole("link").first()).toHaveText("Overview");
+      await expect(tabs.getByRole("link", { name: "Related" })).toHaveCount(0);
     });
 
-    await step(STEPS[9], async () => {
+    await step(STEPS[1], async () => {
+      await page.goto("/monitors/dbs");
+      const top = page.getByRole("region", { name: "Top DBS developments" });
+      await top.getByRole("link", { name: /^See all/ }).click();
+      await expect(page).toHaveURL(/\/monitors\/dbs\/developments$/);
+      const tabs = page.getByRole("navigation", { name: "Monitor views" });
+      await expect(tabs.getByRole("link", { name: "Developments" })).toHaveAttribute("aria-current", "page");
+      const feed = page.getByRole("region", { name: "Developments about DBS" });
+      await expect(feed.locator(".frow")).toHaveCount(month.developments.length);
+      await expectOrdered(feed, month.developments);
+      await expect(feed.getByRole("button", { name: /^Adverse event/ })).toBeVisible();
+      const ranks = (await badges(feed)).map((b) => PRIORITIES.indexOf(b));
+      expect(ranks, "highest priority first").toEqual([...ranks].sort((a, b) => a - b));
+
+      // New and Updated show on every row the latest run added or updated, read or not.
+      await expect(feed.locator(".frow .b-new")).toHaveCount(month.developments.filter((d) => d.change === "new").length);
+      await expect(feed.locator(".frow .upd")).toHaveCount(month.developments.filter((d) => d.change === "updated").length);
+      await expect(feed.locator(".feed-foot")).toHaveText(`New: added in the run of ${shortDate(latest.as_of)}. Updated: new reports in that run.`);
+      await expect(feed.getByRole("button", { name: /^(Show|Hide) dismissed/ })).toHaveCount(0);
+      await expect(feed.getByRole("link", { name: /^Show all/ })).toHaveCount(0);
+
+      // This week, then its highest priority only: the URL holds both, a reload keeps them, every row
+      // has that priority.
+      const week = await unwrap(api.GET("/developments", { params: { query: { subject_id: ["dbs"], days: 7 } } }));
+      const [level] = week.developments.map((d) => d.priority).sort((a, b) => PRIORITIES.indexOf(a) - PRIORITIES.indexOf(b));
+      if (!level) throw new Error("DBS has no developments this week");
+      await feed.getByRole("group", { name: "Period" }).getByRole("button", { name: /^This week/ }).click();
+      await expect(page).toHaveURL(/days=7/);
+      await feed.getByRole("button", { name: /^Priority/ }).click();
+      await page.getByRole("dialog", { name: "Priority" }).getByRole("checkbox", { name: new RegExp(`^${level}`) }).check();
+      await expect(page).toHaveURL(new RegExp(`priority=${level}`));
+      await page.keyboard.press("Escape");
+      await page.reload();
+      await expect(feed.getByRole("group", { name: "Period" }).getByRole("button", { name: /^This week/ })).toHaveAttribute("aria-pressed", "true");
+      await expect(feed.getByRole("button", { name: `Priority: ${level}` })).toBeVisible();
+      const only = await unwrap(api.GET("/developments", { params: { query: { subject_id: ["dbs"], days: 7, priority: [level] } } }));
+      await expect(feed.locator(".frow")).toHaveCount(only.developments.length);
+      expect(new Set(await badges(feed)), `only ${level} rows`).toEqual(new Set([level]));
+    });
+
+    await step(STEPS[2], async () => {
+      await page.goto("/monitors/dbs/developments");
+      feedUrl = page.url();
+      const feed = page.getByRole("region", { name: "Developments about DBS" });
+      const d = month.developments[0];
+      const link = feed.getByRole("link", { name: d.headline, exact: true });
+      await link.click();
+      await expect(page).toHaveURL(popupUrl("/monitors/dbs/developments", d.id));
+      const popup = page.getByRole("dialog", { name: d.headline });
+      await expect(popup.getByRole("heading", { level: 2, name: d.headline })).toBeFocused();
+      await expect(popup.getByRole("button", { name: "Close development" })).toBeVisible();
+      await expect(popup.getByRole("button", { name: /^Back/ })).toHaveCount(0);
+      await expect(popup.getByRole("heading", { name: "Who it impacts" })).toBeVisible();
+      await expect(popup.getByRole("heading", { name: "Connections" })).toBeVisible();
+      await expect(popup.getByRole("button", { name: /^(Dismiss|Not relevant|Restore to feed)$/ })).toHaveCount(0);
+      for (const word of ["materiality", "Tagged to", "tagged by", "Needs attention", "Dismissed", "Marked not relevant"]) {
+        await expect(popup, `no "${word}"`).not.toContainText(word, { ignoreCase: true });
+      }
+      // 80% of the screen, within its bounds.
+      const box = await popup.boundingBox();
+      const view = page.viewportSize();
+      expect(box && view && Math.round(box.width) === Math.round(Math.min(1400, Math.max(900, view.width * 0.8))), "80% wide").toBe(true);
+
+      await page.keyboard.press("Escape");
+      await expect(page).toHaveURL(feedUrl);
+      await expect(popup).toHaveCount(0);
+      await expect(link, "focus returns to the row").toBeFocused();
+
+      // A development's old page address opens the popup over the subject's page, or over MAS's page
+      // without a subject; close drops it.
+      await page.goto(`/developments/${d.id}?subject=dbs`);
+      await expect(page).toHaveURL(popupUrl("/monitors/dbs", d.id));
+      await expect(popup).toBeVisible();
+      await popup.getByRole("button", { name: "Close development" }).click();
+      await expect(page).toHaveURL(/\/monitors\/dbs$/);
+      await page.goto(`/developments/${d.id}`);
+      await expect(page).toHaveURL(popupUrl("/monitors/mas", d.id));
+      await expect(popup).toBeVisible();
+      await popup.getByRole("button", { name: "Close development" }).click();
+      await expect(page).toHaveURL(/\/monitors\/mas$/);
+
+      // Home and the removed pages' old links land on MAS's page.
+      for (const old of ["/", "/setup", "/ask?about=dbs", "/dashboards/anything", "/developments?dashboard=anything"]) {
+        await page.goto(old);
+        await expect(page, `${old} lands on MAS`).toHaveURL(/\/monitors\/mas$/);
+        await expect(page.getByRole("heading", { level: 1, name: "MAS" })).toBeVisible();
+      }
+      await page.goto(feedUrl);
+    });
+
+    await step(STEPS[3], async () => {
+      const feed = page.getByRole("region", { name: "Developments about DBS" });
+      const title = (await feed.locator(".frow .ftitle").first().textContent()) ?? "";
+      await feed.getByRole("link", { name: title, exact: true }).click();
+      const popup = page.getByRole("dialog", { name: title });
+      await expect(popup).toBeVisible();
+      const id = new URL(page.url()).searchParams.get("development") ?? "";
+      const d = await unwrap(api.GET("/developments/{development_id}", { params: { path: { development_id: id } } }));
+      // The key points sit under the headline, as the API gives them; the full title only when there are none.
+      if (d.points.length > 0) await expect(popup.locator("ul.dp-points li")).toHaveText(d.points);
+      else if (d.headline !== d.title) await expect(popup.locator(".dp-points")).toHaveText(d.title);
+      await popup.getByRole("button", { name: "Close development" }).click();
+      await expect(page).toHaveURL(feedUrl);
+      await expect(feed.getByRole("link", { name: title, exact: true }), "back in the feed").toBeVisible();
+    });
+
+    await step(STEPS[4], async () => {
       const search = page.getByRole("combobox", { name: "Search" });
       // A pointer resting where the results open would take the highlight on hover.
       await page.mouse.move(700, 880);
@@ -462,11 +326,13 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/\/monitors\/ocbc$/);
 
-      const results = await unwrap(api.GET("/search", { params: { query: { q: "outage", limit: 5 } } }));
+      // A word from a DBS headline, so the latest run surely has a development that matches it.
+      const word = month.developments[0].headline.split(/[^A-Za-z]+/).find((w) => w.length >= 6) ?? "bank";
+      const results = await unwrap(api.GET("/search", { params: { query: { q: word, limit: 5 } } }));
       const hit = results.developments[0];
-      expect(hit, "a development matches outage").toBeTruthy();
+      expect(hit, `a development matches ${word}`).toBeTruthy();
       await page.keyboard.press("ControlOrMeta+k");
-      await search.fill("outage");
+      await search.fill(word);
       await page.locator("#search-results .search-hit.development").filter({ hasText: hit.headline }).click();
       await expect(page).toHaveURL(popupUrl("/monitors/ocbc", hit.id));
       await expect(page.getByRole("dialog", { name: hit.headline }).getByRole("heading", { level: 2, name: hit.headline })).toBeVisible();
@@ -474,44 +340,34 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       await expect(page).toHaveURL(/\/monitors\/ocbc$/);
     });
 
-    await step(STEPS[10], async () => {
-      const fmd = (await unwrap(api.GET("/profiles"))).find((p) => p.id === "fmd");
-      if (!fmd?.default_dashboard_id) throw new Error("the FMD profile and its dashboard are missing");
-      await page.locator(".profile").click();
-      await page.getByRole("menuitemradio", { name: /^FMD/ }).click();
-      await expect(page).toHaveURL(new RegExp(`/dashboards/${fmd.default_dashboard_id}$`));
-      const dashboard = await unwrap(api.GET("/dashboards/{dashboard_id}", { params: { path: { dashboard_id: fmd.default_dashboard_id } } }));
-      await expect(page.getByRole("heading", { level: 1, name: dashboard.name })).toBeVisible();
-      expect((await unwrap(api.GET("/profile"))).id).toBe("fmd");
-      // The sidebar lists FMD's dashboards, not the ones made under the other role.
-      await expect(page.locator(`[data-dashboard-id="${dashboardId}"]`)).toHaveCount(0);
-
-      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await step(STEPS[5], async () => {
+      await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
       await page.keyboard.press("?");
       const help = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: "Help" }) });
       await expect(help).toBeVisible();
       const labels = help.getByRole("region", { name: "Labels on a development" });
       for (const word of ["High", "Medium", "Low", "Adverse event", "New", "Updated"]) await expect(labels).toContainText(word);
+      await expect(labels, "New is the latest run, not the last visit").not.toContainText("last visit");
       await page.keyboard.press("Escape");
       await expect(help).toHaveCount(0);
     });
 
-    await step(STEPS[11], async () => {
+    await step(STEPS[6], async () => {
       await page.setViewportSize({ width: 1024, height: 800 });
-      await page.goto(`/dashboards/${dashboardId}`);
-      await expect(page.getByRole("heading", { level: 1, name: dashboardName })).toBeVisible();
+      await page.goto("/monitors/dbs/developments");
+      await expect(page.getByRole("heading", { level: 1, name: "DBS" })).toBeVisible();
       await expect(page.locator(".frow").first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth), "no sideways scroll").toBe(1024);
       // Titles a user must read to decide what to open show in full: no clamp, no ellipsis, no hidden overflow.
       const cut = await page.evaluate(() =>
-        [...document.querySelectorAll<HTMLElement>(".ftitle, .wtitle, .up-label, .navitem > span:first-of-type, h1")]
+        [...document.querySelectorAll<HTMLElement>(".ftitle, .navitem > span:first-of-type, h1")]
           .filter((el) => el.clientHeight > 0 && (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1))
           .map((el) => el.textContent),
       );
       expect(cut).toEqual([]);
     });
 
-    await step(STEPS[12], async () => {
+    await step(STEPS[7], async () => {
       // `im check series` backfills every series into a scratch store from data/raw/ alone, then
       // fetches again as the daily fetch does. A request with no cached response fails instead of
       // reaching the source, so a clean pass proves the fetch path runs offline end to end.
@@ -538,7 +394,7 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       await showJson(page, check);
     });
 
-    await step(STEPS[13], async () => {
+    await step(STEPS[8], async () => {
       // `im check detector` feeds fixture loan-to-deposit values to a scratch store; crossing 90%
       // fires the rule into one development that reaches High through its rule.
       const check: DetectorCheck = JSON.parse(imCheck("detector"));
@@ -551,7 +407,15 @@ test("IntelMonitor Phase 1 walkthrough", async ({ page }) => {
       await showJson(page, check);
     });
   } finally {
-    restoreStore(backup);
+    writeFileSync(path.join(dir, "requests.json"), JSON.stringify(requests, null, 2));
   }
   expect(pageErrors, "no uncaught errors in the page").toEqual([]);
+  // The page only reads: every API request is a GET (CORS preflights aside), none reaches a removed
+  // endpoint or carries a removed feature's parameter.
+  expect(requests.filter((r) => r.method !== "GET" && r.method !== "OPTIONS"), "every API request is a GET").toEqual([]);
+  const removed = requests.filter((r) => {
+    const url = new URL(r.path, API_URL);
+    return REMOVED_PATHS.some((p) => p.test(url.pathname)) || REMOVED_PARAMS.some((k) => url.searchParams.has(k));
+  });
+  expect(removed, "no request to a removed endpoint").toEqual([]);
 });

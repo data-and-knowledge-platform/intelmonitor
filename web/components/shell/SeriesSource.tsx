@@ -1,4 +1,4 @@
-// A measured series as a source in the evidence drawer (docs/archive/structured-data-plan.md, F2 and F3):
+// A measured series as a source in the development popup (docs/archive/structured-data-plan.md, F2 and F3):
 // the series names the block and links its source table, the meta line gives when the value was
 // known, the source, scope and domain, and flags the cited value Preliminary or Revised in words.
 // Under the code sentence, a small chart shows the series over its span with the cited period
@@ -90,7 +90,7 @@ export function factSentence(s: Series, text: string): string {
   return text.startsWith(prefix) ? capitalize(text.slice(prefix.length)) : text;
 }
 
-// The chart's own coordinates; it scales down with the drawer.
+// The chart's own coordinates; it scales down with its column.
 const W = 480;
 const H = 92;
 const TOP = 6;

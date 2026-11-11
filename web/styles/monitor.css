@@ -1,30 +1,32 @@
-/* Monitor pages (components/monitor), the evidence drawer's content and subject links. */
+/* Entity and topic pages (components/monitor), the development popup's sources and subject links. */
+
+/* A list of rows using the shared `.row` grammar from globals.css. */
+.rows {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .subject-link {
   color: inherit;
 }
 /* A subject link on a line of its own gets a 44px tall hit area; links in row meta lines stay
-   inline so they do not cover the row's title. In a widget header it matches the header's room. */
+   inline so they do not cover the row's title. */
 :is(.pagehead p, .mon-head p) .subject-link {
   padding-block: 14px;
-}
-.wm .subject-link {
-  padding-block: var(--s-3) var(--s-4);
 }
 .subject-link:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.pagehead p .subject-link,
-.wm .subject-link {
+.pagehead p .subject-link {
   color: var(--ink2);
 }
-/* A dashboard's subject list reads as links without hovering, like a monitor head's peers. */
+/* A page head's subject list reads as links without hovering, like a monitor head's peers. */
 .pagehead p .subject-link {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.pagehead p .subject-link:hover,
-.wm .subject-link:hover {
+.pagehead p .subject-link:hover {
   color: var(--ink);
 }
 
@@ -237,23 +239,6 @@
 .mon-sec-head + .rows > .row:first-child {
   border-top: 0;
 }
-.mon-lead {
-  margin: 0;
-  padding: var(--s-3) 0 var(--s-2);
-  font-weight: 600;
-}
-/* What changed: the counts line with the triage filter on the right. */
-.lead-row {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  min-height: 40px;
-  padding: var(--s-2) 0 var(--s-1);
-}
-.lead-row .mon-lead {
-  flex: 1;
-  padding: 0;
-}
 .seg-n {
   color: var(--ink3);
   font-variant-numeric: tabular-nums;
@@ -261,71 +246,7 @@
 .seg button[aria-pressed="true"] .seg-n {
   color: var(--ink2);
 }
-/* Triage rows: Mark read, Flag and Dismiss replace the date while the pointer is over the row or
-   focus is in it. They sit above the title link that covers the row. */
-.row.dev.triage {
-  grid-template-columns: var(--stat) minmax(0, 1fr) 96px;
-}
-.triage-end {
-  display: flex;
-  justify-content: flex-end;
-  min-height: 18px;
-}
-.triage-date {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.flag-mark {
-  display: inline-flex;
-  color: var(--ink2);
-}
-.triage-acts {
-  position: relative;
-  z-index: 1;
-  display: none;
-  gap: 2px;
-  margin: -5px -4px -5px 0;
-}
-.row.triage:is(:hover, :focus-within) .triage-acts {
-  display: inline-flex;
-}
-.row.triage:is(:hover, :focus-within) .triage-date {
-  display: none;
-}
-/* Neighbouring actions share the 2px gap instead of overlapping hit areas. */
-.triage-acts .btn-icon::after {
-  inset: -8px -1px;
-}
-.triage-acts .btn-icon[aria-pressed="true"] {
-  color: var(--ink);
-}
-/* After Mark reviewed: the run's changes fold behind one line. */
-.earlier {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  width: 100%;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  border-top: 1px solid var(--line);
-  background: none;
-  color: var(--ink2);
-  font: 500 var(--fs-body) / var(--lh-body) var(--font);
-  text-align: left;
-}
-.earlier:hover {
-  color: var(--ink);
-  text-decoration: underline;
-}
-.earlier .chev {
-  flex: none;
-  color: var(--ink3);
-}
-.earlier[aria-expanded="true"] .chev {
-  transform: rotate(90deg);
-}
+
 .mon-sub {
   margin: 0;
   padding: var(--s-4) 0 var(--s-1);
@@ -333,9 +254,6 @@
   line-height: var(--lh-meta);
   font-weight: 500;
   color: var(--ink2);
-}
-.mon-more {
-  margin: var(--s-2) 0 0;
 }
 .mon-empty {
   margin: 0;
@@ -421,7 +339,7 @@
 .ind-val {
   font-weight: 600;
 }
-/* The line: the Direction of travel spark's stroke and end dot, at list-row height. */
+/* The line: a thin neutral stroke with the latest value as a dot, at list-row height. */
 .ind-line {
   position: relative;
   display: block;
@@ -433,6 +351,31 @@
   width: 100%;
   height: 100%;
   overflow: visible;
+}
+.spark-dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+/* The line's scale: its highest and lowest values beside it. */
+.ind-y {
+  position: absolute;
+  right: calc(100% + var(--s-2));
+  transform: translateY(-50%);
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--ink2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ind-y.top {
+  top: 6%;
+}
+.ind-y.bottom {
+  top: 94%;
 }
 .ind-base {
   stroke: var(--line-strong);
@@ -509,264 +452,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Standing question rows: state in the status column, then label, question, answer and meta. */
-.row.qrow {
-  grid-template-columns: var(--stat) minmax(0, 1fr);
-}
-.qlabel {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-}
-.qlabel b {
-  font-weight: 500;
-}
-.qquestion {
-  margin: 2px 0 0;
-  font-size: var(--fs-meta);
-  line-height: var(--lh-meta);
-  color: var(--ink2);
-}
-.qanswer p {
-  margin: var(--s-1) 0 0;
-  max-width: 70ch;
-}
-.qmeta {
-  margin: var(--s-1) 0 0;
-}
-.row.qrow.compose {
-  padding: var(--s-3) 0;
-}
-.add-question {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-}
-.add-question .add-q {
-  margin-left: calc(-1 * var(--s-2));
-  padding: 0 var(--s-2);
-  color: var(--accent);
-}
-
 .row .stat.date {
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-}
-
-/* Notes */
-.notes {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
-}
-.note-form {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--s-2);
-}
-.note {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: var(--s-2);
-  padding-top: var(--s-2);
-  border-top: 1px solid var(--line);
-}
-.note p {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.note-meta {
-  grid-column: 1;
-  margin-top: 2px;
-  font-size: var(--fs-meta);
-  line-height: var(--lh-meta);
-  color: var(--ink2);
-}
-.note .btn-icon {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  margin: -5px 0 0;
-}
-
-/* Evidence drawer content (components/shell/Evidence.tsx). */
-.ev-context {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-}
-.drawer-body h3.ev-answer {
-  margin: var(--s-1) 0;
-  font-size: var(--fs-lead);
-  line-height: var(--lh-lead);
-  font-weight: 600;
-  letter-spacing: 0;
-}
-.drawer-body .ev-state {
-  margin-top: var(--s-3);
-}
-.drawer-body h4.ev-label {
-  margin: 0;
-  padding: var(--s-5) 0 var(--s-2);
-  border-bottom: 1px solid var(--line-strong);
-  font-size: var(--fs-meta);
-  line-height: var(--lh-meta);
-  font-weight: 500;
-  color: var(--ink2);
-}
-.drawer-body .ev-empty {
-  margin-top: var(--s-3);
-  color: var(--ink2);
-}
-.ev-dev {
-  padding: var(--s-3) 0;
-  border-bottom: 1px solid var(--line);
-}
-.ev-facts {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-}
-.ev-title {
-  margin: var(--s-2) 0 0;
-  font-size: var(--fs-body);
-  line-height: var(--lh-body);
-  font-weight: 600;
-}
-.ev-title a {
-  color: var(--ink);
-}
-.ev-title a:hover {
-  text-decoration: underline;
-  text-decoration-color: var(--line-field);
-}
-.drawer-body .ev-conf {
-  margin-top: var(--s-1);
-}
-
-/* Corrections (components/shell/Feedback.tsx): Mark wrong and Wrong are quiet links; their forms
-   open inline, ruled above and below, under the answer or the tag. */
-.link.quiet {
-  color: var(--ink2);
-}
-.link.quiet:hover {
-  color: var(--ink);
-}
-.fb-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.drawer-body .fb-wrong {
-  margin-top: var(--s-3);
-  color: var(--ink2);
-}
-.fb-line {
-  display: block;
-  margin-top: var(--s-1);
-}
-.fb-wrong .fb-line {
-  margin-top: 0;
-}
-.fb-form {
-  max-width: 560px;
-  margin-top: var(--s-2);
-  padding: var(--s-3) 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-}
-.qbody .fb-form {
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-.fb-title,
-.drawer-body .fb-title {
-  margin: 0 0 var(--s-1);
-  font-size: var(--fs-meta);
-  line-height: var(--lh-meta);
-  font-weight: 500;
-  color: var(--ink2);
-}
-.fb-opt {
-  min-height: 36px;
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-}
-.fb-opt + .fb-opt {
-  border-top: 1px solid var(--line);
-}
-.fb-opt label {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: var(--s-1) 0;
-  cursor: pointer;
-}
-.fb-opt input {
-  flex: none;
-  margin: 0;
-  accent-color: var(--accent);
-}
-.fb-optl {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  font-weight: 500;
-}
-.fb-optl .meta,
-.fb-optl.plain {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-weight: 400;
-}
-.fb-optl.plain {
-  display: block;
-}
-select.input.fb-sel {
-  height: 28px;
-  font-weight: 500;
-}
-.fb-sub {
-  padding-left: 26px;
-  border-top: 1px solid var(--line);
-}
-.fb-form textarea.input {
-  min-height: 56px;
-  margin-top: var(--s-2);
-}
-.fb-foot {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--s-2);
-  margin-top: var(--s-2);
-}
-.fb-tags {
-  margin-top: var(--s-3);
-}
-.fb-tag {
-  min-height: 36px;
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  border-top: 1px solid var(--line);
-}
-.fb-tag .subject-link {
-  font-weight: 500;
-}
-.fb-tag + .fb-form-tag {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
-}
-.fb-form-tag textarea.input {
-  margin-top: 0;
 }
 
 /* Sources: ruled blocks, indented under a development; only the quoted span is tinted. */
@@ -775,13 +463,6 @@ select.input.fb-sel {
   margin-top: var(--s-3);
   padding: var(--s-3) 0 0 var(--s-3);
   border-top: 1px solid var(--line);
-}
-.drawer-body > .source {
-  padding-left: 0;
-}
-.drawer-body > .ev-label + .source {
-  margin-top: 0;
-  border-top: 0;
 }
 .source a {
   font-size: var(--fs-body);
@@ -814,16 +495,8 @@ select.input.fb-sel {
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
-/* A series as a source (components/shell/SeriesSource.tsx): an answer's cited series is a block
-   of its own, like a development; the chart's cited period is tinted like a quoted span. */
-.ev-series {
-  padding-top: 0;
-}
-.ev-series > .source {
-  margin-top: 0;
-  border-top: 0;
-  padding-left: 0;
-}
+/* A series as a source (components/shell/SeriesSource.tsx): a cited series is a block of its
+   own, like a development; the chart's cited period is tinted like a quoted span. */
 .series-src .finding p {
   max-width: none;
 }
@@ -886,9 +559,6 @@ select.input.fb-sel {
   stroke: var(--surface);
   stroke-width: 2;
   pointer-events: none;
-}
-.drawer-body > .notes {
-  margin-top: var(--s-3);
 }
 .mon-head h1 {
   display: flex;

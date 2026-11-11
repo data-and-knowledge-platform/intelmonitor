@@ -1,21 +1,21 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { createRootRouteWithContext, Outlet, useRouterState } from "@tanstack/react-router";
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
 import { DevelopmentPopup } from "@/components/developments/DevelopmentPopup";
-import { EvidenceDrawer } from "@/components/shell/Evidence";
+import { HelpDialog } from "@/components/shell/ProfileDialogs";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
+import { typingIn } from "@/lib/dom";
 
-// The app shell around every page: sidebar, top bar, the answer drawer and the development popup.
-// Onboarding (/setup) is a page of its own, without the shell. The first-run tour
-// (components/shell/Tour.tsx) is off for the testing sessions.
+// The app shell around every page: sidebar, top bar, the development popup and Help, which `?`
+// opens anywhere.
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  // Every page can carry the answer drawer's parameter (components/shell/Evidence.tsx) and the
-  // development popup's (components/developments/link.ts); `evidence` is the popup's old name.
-  validateSearch: (search): { evidence?: string; answer?: string; development?: string; scope?: string } => ({
+  // Every page can carry the development popup's parameters (components/developments/link.ts);
+  // `evidence` is the popup's old name.
+  validateSearch: (search): { evidence?: string; development?: string; scope?: string } => ({
     ...search,
     evidence: typeof search.evidence === "string" ? search.evidence : undefined,
-    answer: typeof search.answer === "string" ? search.answer : undefined,
     development: typeof search.development === "string" ? search.development : undefined,
     scope: typeof search.scope === "string" ? search.scope : undefined,
   }),
@@ -24,8 +24,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function Shell() {
-  const setup = useRouterState({ select: (s) => s.location.pathname === "/setup" });
-  if (setup) return <Outlet />;
+  const [help, setHelp] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "?" && !typingIn(e.target) && !document.querySelector("dialog[open]")) {
+        e.preventDefault();
+        setHelp(true);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   return (
     <div className="app">
       <Sidebar />
@@ -33,8 +42,8 @@ function Shell() {
         <TopBar />
         <Outlet />
       </main>
-      <EvidenceDrawer />
       <DevelopmentPopup />
+      <HelpDialog open={help} onClose={() => setHelp(false)} />
     </div>
   );
 }

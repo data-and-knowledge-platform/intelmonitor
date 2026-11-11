@@ -1,63 +1,17 @@
-/* Touch: on any device with a touch screen, list rows, nav items, menu items and the dashboard options
-   controls grow to 44px. A mouse keeps mock A's 32 and 34px rows: stacked rows touch, so a row's hit
-   area is the whole full-width row and cannot be taller than the row without covering its neighbours.
+/* Touch: on any device with a touch screen, list rows, nav items and filter options grow to 44px.
+   A mouse keeps mock A's 32 and 34px rows: stacked rows touch, so a row's hit area is the whole
+   full-width row and cannot be taller than the row without covering its neighbours.
    Imported last, so these sizes win over each area's own. */
 @media (any-pointer: coarse) {
-  .subj,
-  .menu button {
-    height: 44px;
-  }
   /* Sidebar names and search titles wrap, so these only set a floor. */
   .navitem,
   .search-hit,
   .gmenu-item,
-  .pick,
   .fopt {
     min-height: 44px;
   }
-  .row,
-  .qr {
+  .row {
     min-height: 44px;
     padding-block: 13px;
-  }
-  /* The dashboard options popover: its buttons, and four columns of 44px color swatches. */
-  .dash-pop .btn {
-    height: 44px;
-  }
-  .swatches {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  /* Triage and alert actions always show, since there is no hover; each is a 44px square. */
-  .row.dev.triage {
-    grid-template-columns: var(--stat) minmax(0, 1fr) auto;
-  }
-  .triage-date,
-  .row.triage:is(:hover, :focus-within) .triage-date {
-    display: none;
-  }
-  .triage-acts {
-    display: inline-flex;
-    gap: 0;
-    margin: -13px -8px -13px 0;
-  }
-  .triage-acts .btn-icon,
-  .alert-read {
-    width: 44px;
-    height: 44px;
-  }
-  .triage-acts .btn-icon::after,
-  .alert-read::after {
-    inset: 0;
-  }
-  .pop .row.alert-row {
-    grid-template-columns: var(--stat) minmax(0, 1fr) 44px;
-  }
-  .alert-read {
-    margin: calc(-1 * var(--s-2)) calc(-1 * var(--s-2)) 0 0;
-    opacity: 1;
-  }
-  /* The sidebar options button: 44px wide and the row's full height. */
-  .more-btn::after {
-    inset: -10px -4px -10px -16px;
   }
 }

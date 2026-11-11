@@ -5,18 +5,13 @@ import { createRoot } from "react-dom/client";
 
 import "@/styles/globals.css";
 import "@/styles/shell.css";
-import "@/styles/widgets.css";
 import "@/styles/sheet.css";
-import "@/styles/popup.css";
 import "@/styles/monitor.css";
 import "@/styles/graph.css";
 import "@/styles/related.css";
 import "@/styles/trend.css";
-import "@/styles/custom.css";
 import "@/styles/help.css";
 import "@/styles/developments.css";
-import "@/styles/onboarding.css";
-import "@/styles/ask.css";
 import "@/styles/touch.css";
 
 import { ToastProvider } from "@/components/ui/Toast";

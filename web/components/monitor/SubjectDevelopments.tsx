@@ -26,7 +26,7 @@ const TOP = 5;
  */
 export function TopDevelopments({ subject }: { subject: Schema<"SubjectRef"> }) {
   const list = useDevelopments(listQuery({ subject_id: [subject.id] }, new URLSearchParams()));
-  const rows = list.data?.developments.filter((d) => !d.dismissed) ?? [];
+  const rows = list.data?.developments ?? [];
   const allTime = list.data?.facets.date.find((v) => v.value === "any")?.count ?? 0;
   return (
     <Section id="developments" title={subject.type === "entity" ? `Top ${subject.name} developments` : "Top developments"}>

@@ -14,7 +14,7 @@ import { useHashScroll } from "@/lib/dom";
 import { SubjectLink } from "@/components/shell/SubjectLink";
 import { ChevronIcon } from "@/components/ui/icons";
 import { SubjectIcon } from "@/components/ui/SubjectIcon";
-import { monitorLink } from "@/lib/widgets";
+import { monitorLink } from "@/lib/links";
 
 import { SummaryBand } from "./overview/SummaryBand";
 import { useRelated } from "./Related";
@@ -58,8 +58,8 @@ function Overview({ page: p }: { page: Page }) {
 export type MonitorTab = "overview" | "developments" | "related" | "data";
 
 /**
- * The page head: logo, name and one line on what it is, with "Ask about <name>" on the right, over
- * the tabs. Related shows when something links to the subject, Data when it has listed series.
+ * The page head: logo, name and one line on what it is, over the tabs. Related shows when
+ * something links to the subject, Data when it has listed series.
  */
 export function MonitorHead({ page: p, view }: { page: Page; view: MonitorTab }) {
   const params = { id: p.subject.id };
@@ -83,9 +83,6 @@ export function MonitorHead({ page: p, view }: { page: Page; view: MonitorTab })
             <Summary subject={p.subject} />
           </p>
         </div>
-        <Link to="/ask" search={{ about: p.subject.id }} className="btn">
-          Ask about {p.subject.name}
-        </Link>
       </div>
       <nav className="mon-nav" aria-label="Monitor views">
         <Link to="/monitors/$id" params={params} activeOptions={{ exact: true }} aria-current={current("overview")}>

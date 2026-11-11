@@ -11,7 +11,7 @@ import type { Schema } from "@/lib/api/client";
 import { useIndicators, useMonitorPage, useTrend } from "@/lib/api/queries";
 import { trackRailHeight, useHashScroll } from "@/lib/dom";
 import { capitalize, longDate, monthsBefore, plural, seriesChange, seriesPeriod, seriesValue, shortDate } from "@/lib/format";
-import { evidenceLink } from "@/components/shell/Evidence";
+import { developmentLink } from "@/components/developments/link";
 import { PriorityBadge, sourceCountText } from "@/components/developments/labels";
 
 import { Indicators } from "./Indicators";
@@ -204,7 +204,7 @@ function NoteBody({ body, cited }: { body: string; cited: Dated[] }) {
         return (
           <Fragment key={i}>
             {/^\[\d+\]$/.test(parts[i - 2] ?? "") && parts[i - 1] === "" && <sup className="cite-sep">,</sup>}
-            <Link {...evidenceLink.development(d.development.id)} className="cite" title={d.development.title}>
+            <Link {...developmentLink(d.development.id)} className="cite" title={d.development.title}>
               {n}
             </Link>
           </Fragment>
@@ -225,7 +225,7 @@ function Cited({ cited }: { cited: Dated[] }) {
           </span>
           <span>
             <span className="row-title full">
-              <Link {...evidenceLink.development(d.id)} className="stretch tlink">
+              <Link {...developmentLink(d.id)} className="stretch tlink">
                 {d.headline}
               </Link>
             </span>

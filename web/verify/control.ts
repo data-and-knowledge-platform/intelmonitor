@@ -17,7 +17,9 @@ const API_URL = "https://intelmonitor.api.localhost";
 const SESSION = process.env.VERIFY_SESSION ?? "im-verify";
 const EVIDENCE = path.join(ROOT, "artifacts/verify");
 const STATE = path.join(EVIDENCE, ".control-state.json");
-const STORE = path.join(ROOT, "data/intelmonitor.db");
+// The store the API serves: INTELMONITOR_DATA_DIR, as api/intelmonitor/config.py reads it, else data/.
+const DATA_DIR = process.env.INTELMONITOR_DATA_DIR ?? path.join(ROOT, "data");
+const STORE = path.join(DATA_DIR, "intelmonitor.db");
 const SNAPSHOTS = path.join(ROOT, "data/verify-snapshots");
 
 const api = createClient<paths>({ baseUrl: API_URL });
@@ -90,17 +92,14 @@ async function doctor() {
       fix: "pnpm -C web gen:api, then pnpm -C web typecheck",
     });
 
-    const { data: status } = await api.GET("/runs/status");
     const { data: runs } = await api.GET("/runs");
     const latest = runs?.[0];
     checks.push({
       name: "run",
-      ok: !status?.running,
+      ok: latest !== undefined,
       warn: true,
-      detail: status?.running
-        ? `run ${status.run_id} is computing; answers change under you`
-        : `latest run ${latest?.id ?? "none"} (${latest?.result ?? "no runs"})`,
-      fix: "wait for the run to finish: pnpm -C web verify api /runs/status",
+      detail: latest ? `latest run ${latest.id} (${latest.result ?? latest.status})` : "no runs",
+      fix: "pnpm -C web verify api /runs",
     });
   }
 
@@ -108,7 +107,7 @@ async function doctor() {
   checks.push({
     name: "store",
     ok: store !== null,
-    detail: store ? `data/intelmonitor.db ${(store.size / 1e6).toFixed(0)} MB, modified ${store.mtime.toISOString()}` : "no store",
+    detail: store ? `${path.relative(ROOT, STORE)} ${(store.size / 1e6).toFixed(0)} MB, modified ${store.mtime.toISOString()}` : "no store",
     fix: "restore a snapshot: pnpm -C web verify store restore <file>",
   });
 
@@ -190,19 +189,10 @@ function pick<T extends { id: string; name: string }>(items: T[] | undefined, qu
 }
 
 const subjectId = async (query: string) => pick((await api.GET("/subjects")).data, query, "subjects");
-const dashboardId = async (query: string) => pick((await api.GET("/dashboards")).data, query, "dashboards");
-
-/** The sidebar's first dashboard, where Home lands, for pages that need one and were given none. */
-const firstDashboard = async () => {
-  const first = (await api.GET("/dashboards")).data?.[0];
-  if (!first) throw new Fix("the store has no dashboards", "pnpm -C web verify api /dashboards");
-  return first.id;
-};
 
 /** Each target's page path. Arguments are what follows the target name on the command line. */
 const TARGETS = {
   home: async () => "/",
-  dashboard: async (q: string) => `/dashboards/${await dashboardId(q)}`,
   // A monitor page's tabs: Overview, Developments (the query sets its feed's period and facets),
   // Related and Data; the graph view is reachable by URL only.
   monitor: async (q: string) => `/monitors/${await subjectId(q)}`,
@@ -211,28 +201,19 @@ const TARGETS = {
   related: async (q: string) => `/monitors/${await subjectId(q)}/related`,
   data: async (q: string) => `/monitors/${await subjectId(q)}/data`,
   graph: async (q: string) => `/monitors/${await subjectId(q)}/graph`,
-  // The feed belongs to a dashboard; the query adds the period (days=), facets or q=.
-  developments: async (dashboard: string, query = "") => {
-    const params = new URLSearchParams(query.replace(/^\?/, ""));
-    params.set("dashboard", await dashboardId(dashboard));
-    return `/developments?${params}`;
-  },
-  // A development's popup over a dashboard: the one named (its priority for that dashboard), else the default.
-  development: async (id: string, dashboard = "") => {
+  // A development's popup over a subject's page (its priority for that subject), else over Home.
+  development: async (id: string, subject = "") => {
     const popup = `development=${encodeURIComponent(id)}`;
-    if (!dashboard) return `/?${popup}`;
-    const d = await dashboardId(dashboard);
-    return `/dashboards/${d}?${popup}&scope=dashboard:${d}`;
+    if (!subject) return `/?${popup}`;
+    const s = await subjectId(subject);
+    return `/monitors/${s}?${popup}&scope=subject:${s}`;
   },
-  // The answer drawer opens over any page; over a dashboard unless one is named.
-  answer: async (param: string, dashboard = "") =>
-    `/dashboards/${dashboard ? await dashboardId(dashboard) : await firstDashboard()}?answer=${encodeURIComponent(param)}`,
 } satisfies Record<string, (...args: string[]) => Promise<string>>;
 
 type Target = keyof typeof TARGETS;
 const isTarget = (name: string): name is Target => name in TARGETS;
 
-/** The page URL for a feature target, for example `monitor OCBC` or `developments "Singapore banks" changed=1`. */
+/** The page URL for a feature target, for example `monitor OCBC` or `monitor-developments DBS days=7`. */
 async function url([name = "", ...args]: string[]) {
   if (!isTarget(name)) throw new Fix(`unknown target "${name}"`, `use one of: ${Object.keys(TARGETS).join(", ")}`);
   if (name !== "home" && !args[0]) throw new Fix(`${name} needs an argument`, "pnpm -C web verify help lists each target's arguments");
@@ -270,10 +251,7 @@ function record([action = "", name = ""]: string[]) {
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 
-/**
- * Calls the API and prints its JSON: `api /subjects` reads, `api DELETE /reviews/132` or
- * `api POST /notes '{...}'` writes. Writes are for setup and cleanup; proofs act through the UI.
- */
+/** Calls the API and prints its JSON: `api /subjects`, or `api <METHOD> <path> [json]`. */
 async function call(args: string[]) {
   const [method, target = "", body] = METHODS.includes(args[0]?.toUpperCase() ?? "") ? [args[0].toUpperCase(), ...args.slice(1)] : ["GET", ...args];
   if (!target.startsWith("/")) throw new Fix("give an API path", "pnpm -C web verify api /subjects");
@@ -326,18 +304,17 @@ function cleanup() {
 
 const HELP = `pnpm -C web verify <command>
 
-  doctor                      health of proxy, servers, web types, run, store, agent-browser
+  doctor                      health of proxy, servers, web types, latest run, store, agent-browser
   up | down                   start what is not running | stop only what up started
   url <target> [arg]          page URL for a target
   open <target> [arg]         open it in the harness browser (session ${SESSION}, 1440x900)
-      targets: home, dashboard <dashboard>, monitor <subject>,
-               monitor-developments <subject> [query], related <subject>, data <subject>,
-               graph <subject>, developments <dashboard> [query],
-               development <development-id> [dashboard], answer <subject:question> [dashboard]
-      <dashboard> and <subject> are an id or a name that matches one item
+      targets: home, monitor <subject>, monitor-developments <subject> [query],
+               related <subject>, data <subject>, graph <subject>,
+               development <development-id> [subject]
+      <subject> is an id or a name that matches one item
   shot <run>/<name>           screenshot + ARIA snapshot to artifacts/verify/<run>/
   record start <run>/<name> | record stop
-  api [METHOD] <path> [json]  call the API, e.g. /subjects, DELETE /reviews/132
+  api [METHOD] <path> [json]  call the API, e.g. /subjects
   check <name>                uv run im check <series|past-run|detector>
   store save [label] | store restore <file>
   cleanup                     close the harness browser; evidence stays

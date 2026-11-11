@@ -192,13 +192,7 @@
   position: absolute;
   inset: 0;
 }
-.frow-static .ftitle::after {
-  content: none;
-}
-.frow.frow-static:hover {
-  background: none;
-}
-.frow:not(.frow-static):hover .ftitle {
+.frow:hover .ftitle {
   text-decoration: underline;
   text-decoration-color: var(--line-field);
 }
@@ -222,9 +216,6 @@
   color: var(--accent);
   font-weight: 500;
 }
-.frow.dismissed .ftitle {
-  color: var(--ink2);
-}
 .feed-foot {
   display: flex;
   flex-wrap: wrap;
@@ -238,11 +229,6 @@
 }
 .feed > .mon-empty {
   padding: 0 0 var(--s-3);
-}
-.panel.dv-feed {
-  display: block;
-  margin: 0 var(--s-6) var(--s-7);
-  padding: 0 var(--s-4) var(--s-3);
 }
 @container main (width < 640px) {
   .frow-head {
@@ -260,12 +246,9 @@
     flex-direction: row;
     justify-content: space-between;
   }
-  .panel.dv-feed {
-    margin: 0 var(--s-4) var(--s-6);
-  }
 }
 
-/* Development popup (DevelopmentPopup.tsx): the New dashboard popup's size (globals.css dialog.sheet).
+/* Development popup (DevelopmentPopup.tsx): the size of globals.css dialog.sheet.
    The head with the close button, then two columns that each scroll: who it impacts over
    connections, and the sources. Under 1024 px the popup fills the screen less a 16 px margin and the
    columns stack in one scroll. */
@@ -329,12 +312,6 @@ p.dp-points {
 }
 .dp-points li + li {
   margin-top: var(--s-1);
-}
-.dp-acts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s-2) var(--s-3);
 }
 .dp-cols {
   flex-grow: 1;

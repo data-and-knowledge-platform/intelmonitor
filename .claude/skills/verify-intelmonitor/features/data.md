@@ -33,7 +33,7 @@ Preconditions:
 
 - `pnpm -C web verify doctor` is ok.
 - Check a subject has series with `verify api /subjects/<id>/trend` (`series` not empty). On 8 Oct: `ocbc` and `dbs` (1 series each, 2 cites in the latest note), `mas` (2 series, a `Series` button group), `singapore` (16 series, a `Series` select). `aws` has none.
-- Read only: nothing here writes to the store, except that opening a cited development marks it read.
+- Read only: nothing here writes to the store.
 
 - **Open from the tab.** `pnpm -C web verify open monitor ocbc`, `ab snapshot -i`, click `link "Data"`. The URL ends `/monitors/ocbc/data`; `link "Data"` is `aria-current="page"`.
 - **Indicators.** `ab snapshot -s 'section[aria-labelledby="indicators"]' -c`: rows under `Notable changes` first (for OCBC on 8 Oct, the share price), no `Watch` or `Stable` text. Hover `.ind-line`; a `tooltip` shows a value, a date and the series name.

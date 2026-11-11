@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Schema } from "@/lib/api/client";
 import { useRelatedGraph, type RelatedDays } from "@/lib/api/queries";
 import { shortDate } from "@/lib/format";
-import { monitorLink } from "@/lib/widgets";
+import { monitorLink } from "@/lib/links";
 import { PriorityBadge } from "@/components/developments/labels";
 import { developmentLink } from "@/components/developments/link";
 import { RelatedCanvas, toneOf } from "@/components/graph/RelatedCanvas";

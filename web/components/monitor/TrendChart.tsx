@@ -10,7 +10,7 @@ import { useCallback, useState, type PointerEvent } from "react";
 
 import type { Schema } from "@/lib/api/client";
 import { day, longDate, plural, seriesPeriod, seriesTick, seriesValue, shortDate } from "@/lib/format";
-import { evidenceLink } from "@/components/shell/Evidence";
+import { developmentLink } from "@/components/developments/link";
 import { niceTicks } from "@/components/shell/SeriesSource";
 
 type Series = Schema<"TrendSeries">;
@@ -224,7 +224,7 @@ export function TrendChart({
           {[...days].sort(([a], [b]) => a.localeCompare(b)).map(([on, list]) => (
             <Link
               key={on}
-              {...evidenceLink.development(list[0].development.id)}
+              {...developmentLink(list[0].development.id)}
               className={`tr-tk${list[0].badge === "needs_attention" ? " attn" : ""}`}
               style={{ left: x(on), bottom: BOTTOM + 1, height: Math.min(4 + list.length * 3, 14) }}
               aria-label={`${shortDate(on)}: ${plural(list.length, "development")}, ${list.map((m) => BADGE_LABEL[m.badge]).join(", ")}`}
@@ -235,7 +235,7 @@ export function TrendChart({
             g.items.map(({ n, d }, k) => (
               <Link
                 key={n}
-                {...evidenceLink.development(d.development.id)}
+                {...developmentLink(d.development.id)}
                 className={`tr-mk${d.development.needs_attention ? " attn" : ""}`}
                 style={{ left: g.at, top: Math.max(8, g.top - 22 - k * 20) }}
                 aria-label={`Cited ${n}: ${d.development.title}`}

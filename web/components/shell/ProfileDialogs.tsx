@@ -1,4 +1,5 @@
-// The profile menu's dialogs: Data sources and Help.
+// The shell's dialogs: Help, which `?` opens (routes/__root.tsx), and Data sources, which has no
+// entry yet.
 import type { ReactNode } from "react";
 
 import { useDataSources } from "@/lib/api/queries";
@@ -81,8 +82,8 @@ const LABELS: { label: ReactNode; text: string }[] = [
     text: "The news reports harm to the entity itself: something that happened at it, such as an outage, a fraud case or a penalty, or a trend or new rule that hurts it directly. Commentary, forecasts, share price moves and follow-up reports do not count.",
   },
   { label: <span>Negative tone</span>, text: "How the news reads for the entity: negative, neutral or positive." },
-  { label: <ChangeMark change="new" />, text: "First reported since your last visit." },
-  { label: <ChangeMark change="updated" />, text: "Seen before, with new reports since your last visit." },
+  { label: <ChangeMark change="new" />, text: "Added in the latest weekly run." },
+  { label: <ChangeMark change="updated" />, text: "Seen before, with new reports in the latest weekly run." },
 ];
 
 /** Help: what the labels on a development mean, and the keyboard shortcuts. `?` opens it. */

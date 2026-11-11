@@ -1,21 +1,10 @@
 import { usePathname } from "./router";
-import { useEffect, useEffectEvent, useRef, useSyncExternalStore } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 
 /** True when a key press should go to a text field rather than a shortcut. */
 export const typingIn = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
   (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
-
-const COARSE = "(any-pointer: coarse)";
-const subscribeCoarse = (onChange: () => void) => {
-  const query = window.matchMedia(COARSE);
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
-};
-
-/** True on a device with a touch screen, where `styles/touch.css` grows rows to 44px. False on the server. */
-export const useCoarsePointer = () =>
-  useSyncExternalStore(subscribeCoarse, () => window.matchMedia(COARSE).matches, () => false);
 
 /**
  * Ref callback for a sticky rail: keeps `--rail-h` set to its height, so its CSS can let a rail
@@ -33,7 +22,7 @@ export function trackHeight(el: HTMLElement, name: string, host = el) {
 
 /**
  * Closes an open popover on Esc or a click outside `wrap`, returning focus to `trigger`. Esc is
- * caught before the evidence drawer's handler, so it closes only the popover.
+ * caught before any other handler, so it closes only the popover.
  */
 export function useDismiss(open: boolean, onClose: () => void) {
   const wrap = useRef<HTMLDivElement>(null);

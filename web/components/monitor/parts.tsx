@@ -1,7 +1,5 @@
-// Pieces shared by monitor pages, custom question previews and the evidence drawer.
+// Pieces shared by subject pages and the development popup.
 import { Fragment, type ReactNode } from "react";
-
-import { STATE_LABEL, STATE_TONE, type State } from "@/lib/format";
 
 /** Meta parts joined with a middle dot. Empty parts are dropped. */
 export function Dotted({ parts }: { parts: ReactNode[] }) {
@@ -13,24 +11,6 @@ export function Dotted({ parts }: { parts: ReactNode[] }) {
         {p}
       </Fragment>
     ));
-}
-
-/** A state word in its status color, or "Watch → Needs attention" when it changed. */
-export function StateChange({ state, from }: { state: State; from?: State | null }) {
-  return (
-    <span className="state-change">
-      {from && from !== state && (
-        <>
-          <span className={`c-${STATE_TONE[from]}`}>{STATE_LABEL[from]}</span>
-          <span className="arr" aria-hidden="true">
-            →
-          </span>
-          <span className="sr-only"> to </span>
-        </>
-      )}
-      <span className={`c-${STATE_TONE[state]}`}>{STATE_LABEL[state]}</span>
-    </span>
-  );
 }
 
 /** A ruled section inside a monitor panel: a 15/600 header with optional meta on the right. */

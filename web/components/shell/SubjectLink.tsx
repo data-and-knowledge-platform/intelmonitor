@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Fragment } from "react";
 
 import type { Schema } from "@/lib/api/client";
-import { monitorLink } from "@/lib/widgets";
+import { monitorLink } from "@/lib/links";
 
 type SubjectRef = Schema<"SubjectRef">;
 

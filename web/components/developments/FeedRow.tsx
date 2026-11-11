@@ -1,7 +1,7 @@
-// One development in a feed: the status column (priority, then New or Updated, and Unconfirmed when
-// the feed lists unconfirmed ones), the headline with a visible "View sources" cue under it, and
-// the date. Who it impacts, the sources and the key points are in the popup. The whole row opens
-// the development's popup, except in onboarding's preview (scope null), which is not a link.
+// One development in a feed: the status column (priority, then New or Updated from the latest run,
+// and Unconfirmed when the feed lists unconfirmed ones), the headline with a visible "View sources"
+// cue under it, and the date. Who it impacts, the sources and the key points are in the popup. The
+// whole row opens the development's popup.
 import { Link } from "@tanstack/react-router";
 
 import type { Schema } from "@/lib/api/client";
@@ -22,34 +22,22 @@ export function FeedHeader() {
   );
 }
 
-export function FeedRow({
-  development: d,
-  scope,
-}: {
-  development: Schema<"ChangedDevelopment">;
-  scope: ViewScope | null;
-}) {
+export function FeedRow({ development: d, scope }: { development: Schema<"ChangedDevelopment">; scope: ViewScope }) {
   return (
-    <li className={`frow${d.dismissed ? " dismissed" : ""}${scope ? "" : " frow-static"}`}>
+    <li className="frow">
       <span className="fstat">
         <PriorityBadge priority={d.priority} />
-        {!d.read && <ChangeMark change={d.change} />}
+        <ChangeMark change={d.change} />
         {d.unconfirmed && <UnconfirmedMark />}
       </span>
       <span className="fmain">
-        {scope ? (
-          <Link {...developmentLink(d.id, scope)} className="ftitle" title={d.title}>
-            {d.headline}
-          </Link>
-        ) : (
-          <span className="ftitle">{d.headline}</span>
-        )}
-        {scope && (
-          <span className="fopen" aria-hidden="true">
-            View sources
-            <ChevronIcon />
-          </span>
-        )}
+        <Link {...developmentLink(d.id, scope)} className="ftitle" title={d.title}>
+          {d.headline}
+        </Link>
+        <span className="fopen" aria-hidden="true">
+          View sources
+          <ChevronIcon />
+        </span>
       </span>
       <span className="fend">
         <span className="num">{dateSpan(d.first_published, d.last_published, shortDate)}</span>

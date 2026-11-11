@@ -22,7 +22,7 @@ import {
   seriesValue,
   shortDate,
 } from "@/lib/format";
-import { evidenceLink } from "@/components/shell/Evidence";
+import { developmentLink } from "@/components/developments/link";
 import { ChevronIcon } from "@/components/ui/icons";
 
 import { Dotted } from "./parts";
@@ -179,7 +179,7 @@ function IndicatorRow({ ind, name, asOf }: { ind: Indicator; name: string; asOf:
     </>
   );
   return developmentId ? (
-    <Link {...evidenceLink.development(developmentId)} className="row ind-row" data-series-id={s.id}>
+    <Link {...developmentLink(developmentId)} className="row ind-row" data-series-id={s.id}>
       {cells}
     </Link>
   ) : (
