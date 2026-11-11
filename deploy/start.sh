@@ -1,6 +1,7 @@
 #!/bin/sh
 # Container start: install a newly shipped store on the volume, then serve the site. The store's
-# hash is kept beside it, so restarts and code-only deploys keep what testers changed.
+# hash is kept beside it, so restarts and code-only deploys keep the installed store. The store
+# holds no viewer state: a new one only refreshes the data.
 set -e
 seed=/app/deploy/seed/intelmonitor.db
 if [ -f "$seed" ]; then

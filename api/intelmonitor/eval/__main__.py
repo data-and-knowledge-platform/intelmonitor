@@ -1,48 +1,24 @@
-"""`uv run python -m intelmonitor.eval <step>`: v2, v1, v0, gold, judge, score, rescore (gold,
-judge and score from cached calls only, with no model call allowed), cases [store path] (the
-gold cases for roles, adverse and priority, on the app's store by default), adverse (the
-adverse flag's gold cases through the extraction prompt, in their own store), impact (the
-indirect impact table's cases, in memory, no model call), brief [store path] [subject ...] (the
-judged brief eval on a store's latest complete run, the app's by default) or brief-compare
-[store path]
-[subject ...] (the same subjects' briefs on Opus 5.5 beside the stored ones, in a store copy)."""
+"""`uv run python -m intelmonitor.eval <step>`: cases [store path] (the gold cases for roles,
+adverse and priority, on the app's store by default), adverse (the adverse flag's gold cases
+through the extraction prompt, in their own store), impact (the indirect impact table's cases, in
+memory, no model call), brief [store path] [subject ...] (the judged brief eval on a store's latest
+complete run, the app's by default) or brief-compare [store path] [subject ...] (the same
+subjects' briefs on Opus 5.5 beside the stored ones, in a store copy).
+
+The phase A eval of standing answers (v0, v1, v2, gold, judge, score) went with the standing
+questions on 4 Nov 2026; its results stay in eval-runs/phase-a-2026-10-05/."""
 
 import asyncio
-import os
 import sys
 from pathlib import Path
 
 
 def main() -> None:
-    step = sys.argv[1] if len(sys.argv) > 1 else ""
-    if step == "rescore":
-        os.environ["IM_EVAL_CACHED_ONLY"] = "1"
-    # Imported after the flag is set: common reads it at import.
-    from intelmonitor.eval import (
-        adverse_cases,
-        brief_eval,
-        cases,
-        gold,
-        impact_cases,
-        judge,
-        score,
-        v0,
-        v1,
-        v2,
-    )
+    from intelmonitor.eval import adverse_cases, brief_eval, cases, impact_cases
 
-    steps = {
-        "v2": v2.run,
-        "v1": v1.run,
-        "v0": v0.run,
-        "gold": gold.run,
-        "judge": judge.run,
-        "adverse": adverse_cases.run,
-    }
-    if step in steps:
-        asyncio.run(steps[step]())
-    elif step == "score":
-        score.run()
+    step = sys.argv[1] if len(sys.argv) > 1 else ""
+    if step == "adverse":
+        asyncio.run(adverse_cases.run())
     elif step == "impact":
         impact_cases.run()
     elif step == "cases":
@@ -51,14 +27,6 @@ def main() -> None:
         path = Path(sys.argv[2]) if len(sys.argv) > 2 else brief_eval.DB_PATH
         chosen = sys.argv[3:] or None
         asyncio.run((brief_eval.run if step == "brief" else brief_eval.compare)(path, chosen))
-    elif step == "rescore":
-
-        async def again() -> None:
-            await gold.run()
-            await judge.run()
-
-        asyncio.run(again())
-        score.run()
     else:
         raise SystemExit(__doc__)
 

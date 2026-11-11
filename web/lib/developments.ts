@@ -4,7 +4,7 @@
 import type { Schema } from "./api/client";
 import type { DevelopmentsQuery } from "./api/queries";
 
-type Listed = Schema<"ChangedDevelopment">;
+type Listed = Schema<"DevelopmentSummary">;
 type Category = NonNullable<DevelopmentsQuery["category"]>[number];
 type Collection = Listed["collections"][number];
 type Priority = Listed["priority"];

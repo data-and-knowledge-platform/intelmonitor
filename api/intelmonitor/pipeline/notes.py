@@ -3,8 +3,8 @@ tab (docs/archive/structured-data-plan.md, F6). Notes read no focus areas (phase
 
 Code computes what each of the subject's series did over the run's week, from the previous run's
 date (or seven days before the first run) to the run date: the note's facts. One Claude call per
-subject writes a headline and a short note from them, citing the week's developments by number. As
-in answers, the note may quote numbers only from the facts and the developments, and tells FX
+subject writes a headline and a short note from them, citing the week's developments by number. The
+note may quote numbers only from the facts and the developments, and tells FX
 moves by the SGD's side; a note that breaks either is asked again once. A week reaching back
 before the first document is told so, so the note says what no document can explain. The facts
 are stored with the note, so the Data tab shows what the note was given. Developments the source
@@ -16,27 +16,74 @@ import asyncio
 import json
 import re
 import sqlite3
+from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from intelmonitor.pipeline.answers import (
-    RunDevelopment,
-    answer_problems,
-    load_run_developments,
-    scope,
-)
 from intelmonitor.pipeline.corroboration import shown_developments
-from intelmonitor.pipeline.facts import mapped_series
 from intelmonitor.pipeline.indicators import change_basis, months_before
 from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
+from intelmonitor.pipeline.key_data import mapped_series
 from intelmonitor.pipeline.params import PRIORITY_LABELS
-from intelmonitor.pipeline.subjects import Subject, all_subjects, monitored_subjects, questions_for
-from intelmonitor.pipeline.wording import day, fx_currency, fx_move, peg_side, period, value
-from intelmonitor.seed import Deviation, DeviationRule, SeriesDef, load_series
+from intelmonitor.pipeline.subjects import Subject, all_subjects, monitored_subjects, scope
+from intelmonitor.pipeline.wording import (
+    answer_problems,
+    day,
+    fx_currency,
+    fx_move,
+    peg_side,
+    period,
+    value,
+)
+from intelmonitor.seed import Deviation, SeriesDef, load_series
 from intelmonitor.store.documents import first_document_day
 from intelmonitor.store.series import Observation, read_observations
+
+
+@dataclass(frozen=True)
+class RunDevelopment:
+    """A run's development as notes read it: its level is its highest priority."""
+
+    id: str
+    title: str
+    category: str
+    stage: str | None
+    last_published: date
+    level: int
+    adverse: bool  # adverse to at least one of its subjects
+    subjects: list[str]
+    sources: int
+
+
+def load_run_developments(conn: sqlite3.Connection, run_id: str) -> list[RunDevelopment]:
+    """Every development of the run, unconfirmed ones included."""
+    rows = conn.execute(
+        "SELECT d.*, (SELECT json_group_array(subject_id) FROM development_subjects s "
+        "WHERE s.run_id = d.run_id AND s.development_id = d.id) AS subjects, "
+        "(SELECT coalesce(max(adverse), 0) FROM development_subjects s "
+        "WHERE s.run_id = d.run_id AND s.development_id = d.id) AS adverse, "
+        "(SELECT count(DISTINCT document_id) FROM development_sources s "
+        "WHERE s.run_id = d.run_id AND s.development_id = d.id) AS sources "
+        "FROM developments d WHERE d.run_id = ?",
+        (run_id,),
+    ).fetchall()
+    return [
+        RunDevelopment(
+            id=r["id"],
+            title=r["title"],
+            category=r["category"],
+            stage=r["stage"],
+            last_published=date.fromisoformat(r["last_published"]),
+            level=r["materiality_level"],
+            adverse=bool(r["adverse"]),
+            subjects=json.loads(r["subjects"]),
+            sources=r["sources"],
+        )
+        for r in rows
+    ]
+
 
 # Most developments listed in one note prompt, most material and most recent first.
 NOTE_MAX_DEVELOPMENTS = 40
@@ -79,7 +126,9 @@ class SeriesMove(BaseModel):
     record: Record | None
     widest: Observation | None = Field(description="Peg series: furthest from the peg in the week")
     released: bool = Field(description="Monthly and quarterly: a new period came out in the week")
-    rule: DeviationRule | None = Field(description="An alert threshold on the series")
+    # Always null: alert thresholds came from the standing questions, removed on 4 Nov 2026. Kept
+    # so notes written before compare equal with recomputed ones (checks.py, past-run).
+    rule: None = Field(default=None, description="Always null")
     text: str = Field(description="The sentence the note prompt gets")
 
 
@@ -146,7 +195,6 @@ def series_move(
     by_id: dict[str, SeriesDef],
     since: date,
     as_of: date,
-    rule: DeviationRule | None,
 ) -> SeriesMove:
     """What one series did from the end of `since` to the end of `as_of`, from what was known by
     then: the latest value against the one known at the week's start (a year-to-date total against
@@ -159,7 +207,7 @@ def series_move(
     if latest is None:
         return SeriesMove(
             series_id=s.id, since=since, latest=None, start=None, base=None, change=None,
-            largest_day=None, record=None, widest=None, released=False, rule=rule,
+            largest_day=None, record=None, widest=None, released=False,
             text=f"{s.name}: no data available by {day(as_of)}.",
         )  # fmt: skip
     daily = s.frequency == "daily"
@@ -229,11 +277,6 @@ def series_move(
                 if record.whole_history
                 else f"the {what} since {day(record.since)}"
             )
-    if rule:
-        off = "off the peg" if isinstance(s.source, Deviation) else "from zero"
-        parts.append(
-            f"the alert threshold is more than {rule.beyond:g}% {off} for {rule.for_hours} hours"
-        )
     return SeriesMove(
         series_id=s.id,
         since=since,
@@ -245,14 +288,8 @@ def series_move(
         record=record,
         widest=widest,
         released=not daily and start is not None and latest.period != start.period,
-        rule=rule,
         text=f"{s.name}: {'; '.join(parts)}.",
     )
-
-
-def _rule(subject: Subject, s: SeriesDef) -> DeviationRule | None:
-    """The series' alert threshold: the first deviation rule the seed's questions set on it."""
-    return next((r for q in questions_for(subject) for r in q.rules if r.applies_to(s.id)), None)
 
 
 def week_developments(
@@ -371,7 +408,7 @@ async def note_subject(
     series = note_series(subject.id)
     by_id = {s.id: s for s in load_series().series}
     since = date.fromisoformat(base_id) if base_id else as_of - timedelta(days=7)
-    moves = [series_move(conn, s, by_id, since, as_of, _rule(subject, s)) for s in series]
+    moves = [series_move(conn, s, by_id, since, as_of) for s in series]
     week = week_developments(devs, scope(subject), since, as_of)
     allowed = _allowed(moves, week)
     fx = any(fx_currency(s) for s in series)

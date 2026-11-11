@@ -1,7 +1,8 @@
 #!/bin/sh
 # Deploy the demo to Railway: ./scripts/deploy.sh [--data]
 # Uploads the repo's tracked and unignored files. --data also ships a snapshot of
-# data/intelmonitor.db, which replaces the deployed store, testers' edits included.
+# data/intelmonitor.db, which replaces the deployed store. The store holds no viewer state, so
+# --data only refreshes the data.
 set -e
 root=$(cd "$(dirname "$0")/.." && pwd)
 stage=$(mktemp -d)

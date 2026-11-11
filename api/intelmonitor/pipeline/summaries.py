@@ -42,14 +42,13 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from intelmonitor.pipeline.answers import answer_problems
 from intelmonitor.pipeline.corroboration import Corroboration, corroborations
 from intelmonitor.pipeline.detectors import Detection, live_events
 from intelmonitor.pipeline.diff import DevelopmentChange, development_changes, previous_run
-from intelmonitor.pipeline.facts import key_data, mapped_series, series_fact
 from intelmonitor.pipeline.impact import link_words, route_text
 from intelmonitor.pipeline.indicators import compute_indicators
 from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
+from intelmonitor.pipeline.key_data import key_data, mapped_series, series_sentence
 from intelmonitor.pipeline.params import (
     MATERIAL_LEVEL,
     NEEDS_ATTENTION_LEVEL,
@@ -57,7 +56,7 @@ from intelmonitor.pipeline.params import (
     display_key,
 )
 from intelmonitor.pipeline.subjects import Subject, monitored_subjects
-from intelmonitor.pipeline.wording import day, fx_currency
+from intelmonitor.pipeline.wording import answer_problems, day, fx_currency
 from intelmonitor.relationships import (
     EVIDENCE_GRADES,
     Relationship,
@@ -360,16 +359,16 @@ def key_data_lines(
     conn: sqlite3.Connection, subject_id: str, as_of: date, events: list[Detection]
 ) -> list[str]:
     """The subject's Key data series as code states them, in the Overview's order
-    (pipeline/facts.py `key_data`): latest value, its changes over the windows its frequency
+    (pipeline/key_data.py `key_data`): latest value, its changes over the windows its frequency
     allows and its range over the brief's week. A series with no data by the date has nothing to
     state and is left out."""
     by_id = {s.id: s for s in load_series().series}
     indicators = compute_indicators(conn, [s.id for s in mapped_series(subject_id)], as_of)
     picked = key_data(subject_id, indicators, events)
     return [
-        series_fact(
-            by_id[i], by_id, read_observations(conn, i, as_of), indicators[i], as_of, BRIEF_DAYS, []
-        ).text
+        series_sentence(
+            by_id[i], by_id, read_observations(conn, i, as_of), indicators[i], as_of, BRIEF_DAYS
+        )
         for i in [*picked.flagged, *picked.rows]
         if indicators[i].state != "no_data"
     ]

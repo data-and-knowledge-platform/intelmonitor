@@ -17,7 +17,7 @@ Series carry no Watch or Stable status, and no focus areas appear on the tab.
 - `series` 1 series: its name in bold; 2 or 3: `group "Series"` of buttons by short name; more: `combobox "Series"`. Defaults to the note's series.
 - `period` `group "Period"`: `12 months`, `3 months`, `1 month` for daily series; monthly series drop `1 month`; quarterly series show no group.
 - `chart` `.tr-chart svg` labelled `<series>, <from> to <to>, latest <v> on <date>`; legend `High`, `Medium`; ticks `link "<date>: <n> developments, High, Medium"`; markers `link "Cited <n>: <title>"`.
-- `facts` `region "Facts"`, meta `Behind the note` (a week) or `Computed` (Before): `Latest, <date>`, change, largest day, record, and `Flagged at` for a peg rule; `link "Open source table"`.
+- `facts` `region "Facts"`, meta `Behind the note` (a week) or `Computed` (Before): `Latest, <date>`, change, largest day and record; `link "Open source table"`.
 - `cited` `region "Cited"` lists the note's developments numbered as in the body, each with its priority badge for this subject (the same as on its Developments tab).
 
 ## How to get to it (user POV)

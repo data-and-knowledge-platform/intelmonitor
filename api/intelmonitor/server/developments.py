@@ -16,20 +16,14 @@ from intelmonitor.pipeline.extract import Tone
 from intelmonitor.pipeline.params import PRIORITY_LABELS, Priority
 from intelmonitor.pipeline.screen import JURISDICTION_NAMES, Category, Jurisdiction
 from intelmonitor.server.models import (
-    ChangedDevelopment,
     Collection,
-    DevelopmentChangeKind,
     DevelopmentFacets,
     DevelopmentList,
+    DevelopmentSummary,
     FacetValue,
     SubjectId,
 )
-from intelmonitor.server.queries import (
-    COLLECTION_ORDER,
-    Queries,
-    change_counts,
-    expand,
-)
+from intelmonitor.server.queries import COLLECTION_ORDER, Queries, expand
 
 TONES: list[Tone] = ["negative", "neutral", "positive"]
 # Today, this week and this month, in days to the run date.
@@ -48,33 +42,22 @@ JURISDICTION_CODES: dict[str, Jurisdiction] = {
 Facet = Literal[
     "priority", "adverse", "tone", "category", "materiality", "jurisdiction", "date", "source"
 ]
-ChangedFilter = Literal["review", "run"]
+ChangedFilter = Literal["run"]
 
 
 class DevelopmentQuery(BaseModel):
     """GET /developments query parameters: the scope, then filters that narrow it."""
 
     subject_id: list[SubjectId] = Field(
-        default_factory=list[str], description="Subjects in scope; groups include their members"
+        min_length=1, description="Subjects in scope; groups include their members"
     )
-    dashboard_id: str | None = Field(default=None, description="Adds a dashboard's subjects")
     peers_of: SubjectId | None = Field(
         default=None,
         description="Adds the other members of the entity's groups, and drops every development "
         "tagged to the entity itself",
     )
     changed: ChangedFilter | None = Field(
-        default=None,
-        description="review: only What changed since the review; run: only those the latest "
-        "run added or updated",
-    )
-    since: date | None = Field(
-        default=None,
-        description="New and Updated count from this date; when absent, the last visit before "
-        "today, else the previous run's date",
-    )
-    dismissed: bool | None = Field(
-        default=None, description="false: leave dismissed ones out; true: only dismissed ones"
+        default=None, description="run: only those the latest run added or updated"
     )
     unconfirmed: bool = Field(
         default=False, description="true: list unconfirmed developments too, and count them"
@@ -95,7 +78,7 @@ class DevelopmentQuery(BaseModel):
     q: str | None = Field(default=None, description="Words that must all appear in the title")
 
 
-Test = Callable[[ChangedDevelopment], bool]
+Test = Callable[[DevelopmentSummary], bool]
 
 
 def _tests(f: DevelopmentQuery, as_of: date) -> dict[Facet, Test]:
@@ -129,9 +112,9 @@ def _values[K: str](
 
 
 def _facets(
-    devs: list[ChangedDevelopment], f: DevelopmentQuery, tests: dict[Facet, Test], as_of: date
+    devs: list[DevelopmentSummary], f: DevelopmentQuery, tests: dict[Facet, Test], as_of: date
 ) -> DevelopmentFacets:
-    def base(facet: Facet) -> list[ChangedDevelopment]:
+    def base(facet: Facet) -> list[DevelopmentSummary]:
         others = [t for name, t in tests.items() if name != facet]
         return [d for d in devs if all(t(d) for t in others)]
 
@@ -189,37 +172,18 @@ def _facets(
     )
 
 
-def _dated(d: ChangedDevelopment, since: date) -> ChangedDevelopment:
-    """The development with its change counted from `since` by its published dates: new when
-    first published after it, updated when first published before and last published after."""
-    change: DevelopmentChangeKind | None = (
-        "new" if d.first_published > since else "updated" if d.last_published > since else None
-    )
-    return d.model_copy(update={"change": change, "unreviewed": change is not None})
-
-
-def development_list(
-    q: Queries, subject_ids: list[str] | None, f: DevelopmentQuery
-) -> DevelopmentList:
-    """The developments of the subjects (every development when None) matching the filters, in
-    display order (server/queries.py `_display_key`)."""
-    changed = f.changed
-    since = f.since or q.changes_since
-    everything = [_dated(d, since) for d in q.scope_developments(subject_ids, unconfirmed=True)]
+def development_list(q: Queries, subject_ids: list[str], f: DevelopmentQuery) -> DevelopmentList:
+    """The developments of the subjects matching the filters, in display order (server/queries.py
+    `_display_key`). New and Updated (`change`) are what the latest run added or updated."""
+    everything = q.developments_in(subject_ids, unconfirmed=True)
     if f.peers_of is not None:
         own = expand([f.peers_of])
         everything = [d for d in everything if not q.devs.subject_ids[d.id] & own]
     words = _words(f.q)
     tests = _tests(f, q.run.as_of)
 
-    def shown(d: ChangedDevelopment) -> bool:
-        if f.dismissed is not None and d.dismissed != f.dismissed:
-            return False
-        if changed == "review":
-            return d.unreviewed
-        if changed == "run":
-            return q.development(d.id).change is not None
-        return True
+    def shown(d: DevelopmentSummary) -> bool:
+        return f.changed is None or d.change is not None
 
     # The unconfirmed developments the toggle would add to the list.
     unconfirmed = sum(
@@ -233,10 +197,7 @@ def development_list(
     return DevelopmentList(
         in_scope=len(scope),
         matching=len(matching),
-        since=since,
-        dismissed=sum(d.dismissed for d in matching),
         unconfirmed=unconfirmed,
-        **change_counts(matching).model_dump(),
         developments=[d for d in matching if shown(d)][: f.limit],
         facets=_facets([d for d in worded if shown(d)], f, tests, q.run.as_of),
     )

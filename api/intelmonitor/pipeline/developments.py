@@ -6,8 +6,8 @@ date; a development's id is its earliest finding's id, so the same event keeps i
 to the next. Its title is its lead finding's statement, or a detection's sentence when a detector
 measured the event.
 
-A development's subjects are those its findings say it happened to or that did it, less the tags
-the analyst removed from it; they are topics or entities, never groups. It is adverse to a subject
+A development's subjects are those its findings say it happened to or that did it; they are
+topics or entities, never groups. It is adverse to a subject
 when one of those findings says so. Subjects that only comment on it or are mentioned in it are
 kept apart, as mentions, and are never rated. A topic takes the highest priority among the
 development's entities, and is rated itself only where the development names no entity. Its level
@@ -32,7 +32,6 @@ from pydantic import BaseModel, TypeAdapter
 from intelmonitor.config import DATA_DIR
 from intelmonitor.pipeline.detectors import materiality_level
 from intelmonitor.pipeline.extract import TONE_ORDER, FindingRole, Tone
-from intelmonitor.pipeline.feedback import removed_tags
 from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
 from intelmonitor.pipeline.params import (
     EMBEDDING_MODEL,
@@ -281,7 +280,7 @@ class Development:
     @property
     def title(self) -> str:
         """The lead's statement, unless a detector measured the event: then the measured sentence,
-        the most material rule's first, so What changed, search and alerts state the number."""
+        the most material rule's first, so the feed and search state the number."""
         detection = self.detection
         return detection.statement if detection else self.lead.statement
 
@@ -346,16 +345,15 @@ def _subject_confidence(
 
 def link_subjects(conn: sqlite3.Connection, devs: list[Development]) -> None:
     """Each development's subjects and mentions from its findings' roles. A subject one finding
-    says was affected or acted is a subject even where another only mentions it. Tags the analyst
-    removed, groups and subjects no longer in the seed are left out."""
+    says was affected or acted is a subject even where another only mentions it. Groups and subjects
+    no longer in the seed are left out."""
     names = monitored_subjects()
     tags = _subject_confidence(conn, list({f.document_id for d in devs for f in d.findings}))
-    removed = removed_tags(conn)
     for dev in devs:
         direct: dict[str, list[tuple[RunFinding, FindingRole]]] = {}
         for f in dev.findings:
             for sid, r in f.roles.items():
-                if sid not in names or (dev.id, sid) in removed:
+                if sid not in names:
                     continue
                 if r.role == "commentator" or r.role == "mentioned":
                     if r.role == "commentator" or sid not in dev.mentions:

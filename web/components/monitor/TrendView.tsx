@@ -265,7 +265,6 @@ function noteFacts(s: SeriesInfo, m: Move | undefined): [string, string][] {
       m.record.whole_history ? `History began, ${at(m.record.since)}` : longDate(m.record.since),
     ]);
   }
-  if (m.rule) rows.push(["Flagged at", `${m.rule.beyond}% off for ${m.rule.for_hours} h`]);
   return rows;
 }
 

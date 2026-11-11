@@ -1,10 +1,9 @@
 [project]
 name = "intelmonitor"
 version = "0.1.0"
-description = "IntelMonitor POC: ingest, pipeline, API and Generate agent"
+description = "IntelMonitor POC: ingest, pipeline and API"
 requires-python = ">=3.12"
 dependencies = [
-    "ag-ui-protocol>=1.0.0",
     "anthropic>=2.3.0",
     "claude-agent-sdk>=0.2.158",
     "fastapi>=0.141.1",

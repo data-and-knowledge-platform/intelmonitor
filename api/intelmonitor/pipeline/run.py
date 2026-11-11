@@ -12,9 +12,6 @@ transaction, so the app keeps serving the run instead of falling back to an olde
 Order (phase1-plan.md, section 5): sync the relationship store, detectors, screen, extract, merge
 and priority, headlines, indirect impact by table, upcoming dates, indicators and notes, diff,
 briefs, graph.
-
-Standing answers no longer run (phase1-plan.md, item P). Their module stays; a recomputed run drops
-what they wrote for it before.
 """
 
 import sqlite3
@@ -45,16 +42,13 @@ from intelmonitor.relationships import sync_relationships
 from intelmonitor.store.db import connect, get_meta
 from intelmonitor.store.documents import list_documents
 
-# What the parked stages wrote per run: standing answers and their facts.
-PARKED_TABLES = ("question_answers", "run_facts")
-
 # Entities whose indirect row counts each run prints, for the Low direct item decision.
 INDIRECT_REPORTED = ("dbs", "ocbc", "uob", "mas")
 INDIRECT_LOW_SAMPLES = 10
 
 # Tables with a run_id column that `im clear-runs` keeps: every model call (replayed by later
-# runs), the execution history, and the analyst's own actions.
-KEPT_RUN_TABLES = ("inference_records", "run_log", "analyst_actions", "feedback")
+# runs) and the execution history.
+KEPT_RUN_TABLES = ("inference_records", "run_log")
 
 
 def run_dates(conn: sqlite3.Connection) -> tuple[date, date]:
@@ -70,7 +64,6 @@ async def compute_run(
     as_of: date,
     log: Callable[[str], None] = print,
     trigger: runlog.Trigger = "cli",
-    triggered_by: str | None = None,
     *,
     conn: sqlite3.Connection | None = None,
     recorded_only: bool = False,
@@ -91,9 +84,7 @@ async def compute_run(
     started_at = datetime.now(UTC).isoformat()
     existing = conn.execute("SELECT status FROM runs WHERE id = ?", (run_id,)).fetchone()
     recompute = existing is not None and existing["status"] == "complete"
-    execution_id = runlog.start(
-        conn, run_id, trigger, triggered_by, len({d.source for d in docs}), len(docs)
-    )
+    execution_id = runlog.start(conn, run_id, trigger, len({d.source for d in docs}), len(docs))
     if recompute:
         conn.execute("UPDATE runs SET documents = ? WHERE id = ?", (len(docs), run_id))
     else:
@@ -159,10 +150,6 @@ async def compute_run(
         step(f"{upcoming} upcoming dates; indicators {dict(states)}")
         noted, unnoted, notes_refused = await write_notes(inf, conn, run_id, as_of, base_id)
         step(f"{noted} notes, {unnoted} still breaking their rules, {notes_refused} refused")
-        # Standing answers no longer run (item P). What they wrote for this run before goes.
-        for table in PARKED_TABLES:
-            conn.execute(f"DELETE FROM {table} WHERE run_id = ?", (run_id,))
-        conn.commit()
         if base_id:
             step(f"{store_changes(conn, run_id, base_id, changes)} changes vs {base_id}")
         conn.execute("UPDATE runs SET previous_run_id = ? WHERE id = ?", (base_id, run_id))

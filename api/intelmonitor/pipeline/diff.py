@@ -1,5 +1,5 @@
-"""Step 9: what changed since the previous run (Run 2 vs Run 1): new developments, updated
-developments (new sources) and changed question states, written to run_changes."""
+"""Step 9: what changed since the previous run (Run 2 vs Run 1): new developments and updated
+developments (new sources), written to run_changes."""
 
 import json
 import sqlite3
@@ -59,38 +59,15 @@ def store_changes(
     base_id: str,
     dev_changes: dict[str, DevelopmentChange],
 ) -> int:
-    """Write development and question-state changes against `base_id`; returns the row count."""
+    """Write development changes against `base_id`; returns the row count."""
     conn.execute("DELETE FROM run_changes WHERE run_id = ?", (run_id,))
-    rows: list[tuple[str, str, str, str | None, str, str]] = [
-        (run_id, base_id, c.kind, None, dev_id, json.dumps({"new_documents": c.new_document_ids}))
+    rows = [
+        (run_id, base_id, c.kind, dev_id, json.dumps({"new_documents": c.new_document_ids}))
         for dev_id, c in sorted(dev_changes.items())
     ]
-    for r in conn.execute(
-        "SELECT a.subject_id, a.question_id, b.state AS old_state, b.summary AS old_summary, "
-        "a.state, a.summary FROM question_answers a JOIN question_answers b "
-        "ON b.run_id = ? AND b.subject_id = a.subject_id AND b.question_id = a.question_id "
-        "WHERE a.run_id = ? AND a.state != b.state ORDER BY a.subject_id, a.question_id",
-        (base_id, run_id),
-    ):
-        detail = {
-            "from": r["old_state"],
-            "to": r["state"],
-            "from_summary": r["old_summary"],
-            "to_summary": r["summary"],
-        }
-        rows.append(
-            (
-                run_id,
-                base_id,
-                "question_state",
-                r["subject_id"],
-                r["question_id"],
-                json.dumps(detail),
-            )
-        )
     conn.executemany(
-        "INSERT INTO run_changes (run_id, base_run_id, kind, subject_id, ref_id, detail) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO run_changes (run_id, base_run_id, kind, ref_id, detail) "
+        "VALUES (?, ?, ?, ?, ?)",
         rows,
     )
     conn.commit()

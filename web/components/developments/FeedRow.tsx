@@ -22,7 +22,7 @@ export function FeedHeader() {
   );
 }
 
-export function FeedRow({ development: d, scope }: { development: Schema<"ChangedDevelopment">; scope: ViewScope }) {
+export function FeedRow({ development: d, scope }: { development: Schema<"DevelopmentSummary">; scope: ViewScope }) {
   return (
     <li className="frow">
       <span className="fstat">

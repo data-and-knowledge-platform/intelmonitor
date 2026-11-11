@@ -8,7 +8,6 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, Field
 
 from intelmonitor.pipeline.extract import Tone
-from intelmonitor.pipeline.facts import SeriesFact
 from intelmonitor.pipeline.graph import Theme
 from intelmonitor.pipeline.params import Priority
 from intelmonitor.pipeline.subjects import all_subjects
@@ -33,9 +32,7 @@ from intelmonitor.seed import (
 )
 from intelmonitor.store.series import Observation, Revision
 
-State = Literal["stable", "watch", "needs_attention", "new"]
 Stage = Literal["signal", "consultation", "proposed", "enacted", "enforced"]
-STAGE_ORDER: list[Stage] = ["signal", "consultation", "proposed", "enacted", "enforced"]
 Collection = Literal["dms", "official", "news", "data"]
 
 
@@ -76,19 +73,6 @@ class SubjectSummary(SubjectRef):
     aliases: list[str]
     members: list[str] = Field(description="Member entity ids, for a group; else empty")
     sidebar: bool = Field(description="A group shown as a sidebar heading")
-    new_developments: int = Field(
-        description="Changed since the subject was last reviewed, and not read or dismissed"
-    )
-    needs_attention: int = Field(description="High-priority developments in the latest run")
-    recent: int = Field(
-        description="Developments it happened to or that it did, last published in the 30 days "
-        "to the run date"
-    )
-    recent_high: int = Field(description="Of those, the ones at High priority for it")
-    new_high: int = Field(
-        description="High for it, first published after the last visit (else the previous "
-        "run), and not read or dismissed"
-    )
 
 
 class SubjectLinks(BaseModel):
@@ -104,14 +88,16 @@ class SubjectDetail(SubjectSummary):
 
 
 class RunInfo(BaseModel):
-    """One execution of a run. A run recomputed with Run now appears once per execution."""
+    """One execution of a run. A recomputed run appears once per execution."""
 
     execution_id: int
     id: str = Field(description="The run it computed, named by its as-of date")
     as_of: date
     previous_run_id: str | None
     status: Literal["running", "complete", "failed"]
-    trigger: Literal["cli", "manual"] = Field(description="cli: `im run`. manual: Run now")
+    trigger: Literal["cli", "manual"] = Field(
+        description="cli: `im run` or `im weekly`. manual: Run now, since removed"
+    )
     how: str = Field(description='"Command line", or "Run now, <display name>"')
     sources: int = Field(description="Distinct ingest sources among its documents")
     documents: int
@@ -126,17 +112,6 @@ class RunInfo(BaseModel):
     started_at: datetime
     finished_at: datetime | None
     duration_seconds: float | None
-
-
-class RunStatus(BaseModel):
-    running: bool
-    run_id: str | None
-    how: str | None
-    started_at: datetime | None
-    sources: int | None
-    estimate_seconds: float | None = Field(
-        description="Median duration of earlier executions, when there are any"
-    )
 
 
 class RunRef(BaseModel):
@@ -208,101 +183,6 @@ class DevelopmentSummary(BaseModel):
     new_source_count: int
 
 
-class AnswerChange(BaseModel):
-    kind: Literal["first_answer", "state_changed", "unchanged"]
-    previous_state: State | None
-    previous_summary: str | None
-
-
-class AnswerFeedback(BaseModel):
-    """The analyst marked an answer wrong. The run that recomputes the answer's run, and the run
-    after it, see the correction in their answer prompt."""
-
-    id: int
-    subject_id: str
-    question_id: str
-    run_id: str = Field(description="The run whose answer was marked wrong")
-    answer_state: State = Field(description="The answer as it was marked wrong")
-    answer_summary: str
-    state: State | None = Field(description="What the state should be, when the state is wrong")
-    summary_wrong: bool
-    development_ids: list[str] = Field(description="Cited developments that do not support it")
-    reason: str
-    created_at: datetime
-
-
-class QuestionAnswerView(BaseModel):
-    question_id: str
-    label: str
-    question: str
-    lookback_days: int
-    custom: bool = Field(description="Custom answers are not recomputed by runs, so not corrected")
-    summary: str
-    state: State
-    new_count: int
-    development_ids: list[str]
-    series_ids: list[str] = Field(description="Series whose facts the answer cites")
-    state_rules: list[str] = Field(
-        description="Why rules fixed the state, one sentence per rule that fired; empty when the "
-        "state is the model's"
-    )
-    change: AnswerChange
-    feedback: AnswerFeedback | None = Field(
-        description="The latest correction given since the latest run finished, which the next "
-        "run takes in"
-    )
-
-
-class QuestionStateChange(BaseModel):
-    subject: SubjectRef
-    question_id: str
-    label: str
-    custom: bool
-    from_state: State
-    to_state: State
-    summary: str
-    development_ids: list[str] = Field(description="The developments the new answer relies on")
-    series_ids: list[str] = Field(description="Series whose facts the new answer cites")
-    unreviewed: bool = Field(description="The latest run changed it after the subject's review")
-
-
-class ChangedDevelopment(DevelopmentSummary):
-    """A development with its What changed and triage state. When unreviewed, `change` is its
-    change since the review: new if a run after it added the development, else updated. When
-    reviewed, it is the change in the latest run."""
-
-    unreviewed: bool = Field(description="Changed in a run after the review of its subject")
-    read: bool
-    flagged: bool
-    dismissed: bool
-
-
-class ChangeCounts(BaseModel):
-    """What a Since widget counts among the developments changed since the review."""
-
-    new_count: int = Field(description="Unreviewed new developments not read or dismissed")
-    updated_count: int = Field(description="Unreviewed updated developments not read or dismissed")
-    needs_attention_count: int = Field(
-        description="Unreviewed developments needing attention, not dismissed"
-    )
-
-
-class WhatChanged(ChangeCounts):
-    """What changed since the last review of each subject in scope: developments that runs after
-    the review added or updated, and answers whose state the latest run changed. A subject never
-    reviewed counts from the previous run. The latest run's changes are listed too, marked
-    reviewed, so a reviewed scope can still show its run."""
-
-    run: RunRef
-    reviewed_at: datetime | None = Field(
-        description="When every subject in scope was last marked reviewed; null if one never was"
-    )
-    developments: list[ChangedDevelopment] = Field(
-        description="Highest priority first, then most recent"
-    )
-    question_changes: list[QuestionStateChange]
-
-
 class FacetValue(BaseModel):
     value: str = Field(description="What the filter parameter takes")
     label: str
@@ -325,25 +205,17 @@ class DevelopmentFacets(BaseModel):
     source: list[FacetValue] = Field(description="Collections: official, research, data, news")
 
 
-class DevelopmentList(ChangeCounts):
+class DevelopmentList(BaseModel):
     """A scope's developments in the latest run that match the filters, with facet counts over
-    the listed ones. The change counts count every development matching the filters, whatever
-    `changed` lists; new plus updated is what New since review counts."""
+    the listed ones."""
 
-    in_scope: int = Field(
-        description="Every development in scope: what a Developments widget counts"
-    )
+    in_scope: int = Field(description="Every development in scope")
     matching: int = Field(description="Developments in scope matching the filters")
-    since: date = Field(
-        description="New and Updated count from this date: a development is new when first "
-        "published after it, updated when first published before and last published after"
-    )
-    dismissed: int = Field(description="Dismissed developments matching the filters")
     unconfirmed: int = Field(
         description="Unconfirmed developments the list would show with `unconfirmed`, whether "
         "it is on or not"
     )
-    developments: list[ChangedDevelopment] = Field(
+    developments: list[DevelopmentSummary] = Field(
         description="By priority, High first, adverse first within each priority above Low; "
         "most recent first within each"
     )
@@ -356,78 +228,6 @@ class UpcomingItem(BaseModel):
     development_id: str
     development_title: str
     subjects: list[SubjectRef]
-
-
-class WatchItem(BaseModel):
-    """One entity on a dashboard's watchlist. Priorities are the entity's own."""
-
-    subject: SubjectRef
-    new_high: int = Field(
-        description="High developments first published after `since`, not read or dismissed"
-    )
-    month_count: int = Field(description="Developments last published in the 30 days to the run")
-    top: DevelopmentSummary | None = Field(
-        description="The highest priority of those, then the most recent; dismissed ones skipped"
-    )
-    latest: DevelopmentSummary | None = Field(
-        description="The most recent development, only when `top` is null"
-    )
-
-
-class DashboardOverview(BaseModel):
-    """What a dashboard shows beside its feed (the feed is GET /developments?dashboard_id=)."""
-
-    since: date = Field(description="New counts from this date (the last visit, else the run)")
-    new_count: int = Field(description="Developments first published after it, unread")
-    watchlist: list[WatchItem] = Field(
-        description="Its entities in dashboard order, groups resolved to their members"
-    )
-    upcoming: list[UpcomingItem]
-
-
-class StageBucket(BaseModel):
-    stage: Stage
-    count: int
-    developments: list[DevelopmentSummary] = Field(description="Most material first, at most 3")
-
-
-class StageTrack(BaseModel):
-    lookback_days: int
-    stages: list[StageBucket]
-
-
-class CommonIssue(BaseModel):
-    development: DevelopmentSummary
-    members: list[SubjectRef]
-
-
-class Outlier(BaseModel):
-    member: SubjectRef
-    reason: str
-    developments: int
-    needs_attention: int
-
-
-class GroupInsights(BaseModel):
-    lookback_days: int
-    common_issues: list[CommonIssue]
-    outliers: list[Outlier]
-
-
-class Note(BaseModel):
-    id: int
-    subject_id: str | None
-    development_id: str | None
-    text: str
-    run_id: str | None
-    created_at: datetime
-
-
-class Review(BaseModel):
-    id: int
-    subject_id: str
-    run_id: str | None
-    created_at: datetime
 
 
 BriefDirection = Literal["worse", "better", "unchanged", "mixed"]
@@ -625,13 +425,7 @@ class LinkedInstitution(BaseModel):
 class MonitorPage(BaseModel):
     subject: SubjectDetail
     run: RunRef
-    what_changed: WhatChanged
-    questions: list[QuestionAnswerView] = Field(description="Built-in questions, then custom")
-    custom_question_slots: int = Field(description="Custom questions the user can still add")
     upcoming: list[UpcomingItem]
-    stage_track: StageTrack | None = Field(description="Topics only")
-    group: GroupInsights | None = Field(description="Groups only")
-    notes: list[Note]
     trend: bool = Field(description="The subject has measured series for a Trend view")
     brief: EntityBrief | None = Field(description="None until the run has one for the subject")
     impacts: list[SubjectImpact] = Field(
@@ -741,18 +535,6 @@ class SubjectConfidence(BaseModel):
     source: str
 
 
-class TagFeedback(BaseModel):
-    """The analyst removed a subject tag from a development; every later run leaves it off."""
-
-    id: int
-    subject: SubjectRef
-    development_id: str
-    reason: str
-    run_id: str = Field(description="The latest run when it was given")
-    created_at: datetime
-    applied: bool = Field(description="The latest run already leaves the tag off")
-
-
 class DevelopmentDetail(DevelopmentSummary):
     run: RunRef
     materiality_confidence: float
@@ -761,41 +543,16 @@ class DevelopmentDetail(DevelopmentSummary):
         "null when the model rated it"
     )
     subject_confidence: list[SubjectConfidence]
-    tag_feedback: list[TagFeedback] = Field(description="Tags the analyst removed, oldest first")
     sources: list[EvidenceSource] = Field(
         description="A detection first, then the tagged institutions' own publications, then DMS, "
         "official and news documents; earliest first within each"
     )
-    notes: list[Note]
     direct_subjects: list[DirectSubject] = Field(
         description="What it happened to or who did it, highest priority first"
     )
     impacts: list[IndirectImpact] = Field(
         description="Entities it reaches indirectly: Medium before Low, stronger links first"
     )
-    triage: "Triage"
-
-
-class SeriesFactView(BaseModel):
-    """A series and what code stated about it for an answer."""
-
-    series: SeriesInfo
-    fact: SeriesFact
-
-
-class CitedSeries(SeriesFactView):
-    chart: SeriesChart
-
-
-class AnswerEvidence(BaseModel):
-    """Everything behind one standing question answer: the answer, the developments it relies
-    on, each with its sources, and the series it cites with the facts the run gave it."""
-
-    subject: SubjectRef
-    run: RunRef
-    answer: QuestionAnswerView
-    developments: list[DevelopmentDetail] = Field(description="In the order the answer cites them")
-    series: list[CitedSeries] = Field(description="In the order the answer cites them")
 
 
 class DocumentDetail(BaseModel):
@@ -914,153 +671,17 @@ class DataSources(BaseModel):
     sources: list[DataSourceStats]
 
 
-# The roles onboarding asks for (phase1-plan.md, item U3). A role stands in for identity.
-Role = Literal["regulatory_supervisor", "tech_cyber_supervisor", "development_staff", "other"]
-
-
-class Profile(BaseModel):
-    """Who is using the app: a role with its own dashboards. Before the first visit picks a role,
-    id and role are null and the web shows onboarding."""
-
-    id: str | None
-    name: str = Field(description='On the profile button: "TCRD", "FMD" or the role in words')
-    role: Role | None
-    default_dashboard_id: str | None
-    last_visit: date | None = Field(
-        default=None,
-        description="The role's latest visit before today; New counts from it when set",
-    )
-    tour_seen_at: datetime | None = Field(
-        default=None, description="When the first-run tour last started; null shows it once"
-    )
-
-
-class ProfileCreate(BaseModel):
-    """Onboarding's answer: the role and the picks for its first dashboard. Creating it makes the
-    dashboard the profile's default and the profile the active one."""
-
-    role: Role
-    dashboard_name: str = Field(min_length=1, max_length=80)
-    subject_ids: list[SubjectId] = Field(min_length=1)
-
-
-class Visit(BaseModel):
-    path: str = Field(max_length=500, description="The page the app opened on")
-
-
-class PickerRow(BaseModel):
-    subject_id: str
-    reason: str | None = Field(
-        description='Provider rows only, from the relationship store: "Used by DBS and UOB, for '
-        'cloud services"'
-    )
-    evidence: Evidence | None = Field(description="The weakest grade among the links behind it")
-
-
-class PickerGroup(BaseModel):
-    id: str = Field(description='A group id, "topics", or "mas-supervised"')
-    name: str
-    rows: list[PickerRow]
-    suggested: bool = Field(description="Shown open; the others sit under More to add")
-
-
-class Suggestions(BaseModel):
-    """What the subject picker shows for a role, written by code: groups in the role's order and
-    the picks ticked at the start. Without a role, every group is open and nothing is ticked."""
-
-    role: Role | None
-    name: str = Field(description="The dashboard name the picks suggest")
-    groups: list[PickerGroup]
-    picks: list[str] = Field(description="Subject ids ticked at the start")
-
-
 class MaterialityLevel(BaseModel):
     """A materiality level for Help: what it means and how the app treats it."""
 
     level: int = Field(ge=0, le=2)
     name: str
     description: str
-    material: bool = Field(description="Counted as material, as in the Direction widget")
+    material: bool = Field(description="Medium or High")
     needs_attention: bool
     developments: int = Field(
         description="Developments at this level in the latest run, unconfirmed ones left out"
     )
-
-
-class ReviewRequest(BaseModel):
-    subject_ids: list[SubjectId] = Field(min_length=1)
-
-
-class NoteRequest(BaseModel):
-    subject_id: SubjectId | None = None
-    development_id: str | None = None
-    text: str = Field(min_length=1, max_length=4000)
-
-
-class TagFeedbackRequest(BaseModel):
-    development_id: str
-    subject_id: SubjectId
-    reason: str = Field(default="", max_length=2000)
-
-
-class AnswerFeedbackRequest(BaseModel):
-    """What is wrong with the latest run's answer to a built-in question: at least one of the
-    state, the summary, cited developments, or a reason."""
-
-    subject_id: SubjectId
-    question_id: str
-    state: State | None = Field(default=None, description="What the state should be")
-    summary_wrong: bool = False
-    development_ids: list[str] = Field(
-        default_factory=list[str], description="Cited developments that do not support it"
-    )
-    reason: str = Field(default="", max_length=2000)
-
-
-AlertBadge = Literal["needs_attention", "watch"]
-
-
-class Alert(BaseModel):
-    id: str = Field(description="The development id")
-    title: str
-    badge: AlertBadge
-    meta: str = Field(description='"OCBC, financial": the lead entity (else subject) and category')
-    outlet_count: int = Field(description="As on the development's summary")
-    source_types: list[SourceTypeCount] = Field(description="As on the development's summary")
-    read: bool = Field(description="The development's triage read state")
-
-
-class AlertCounts(BaseModel):
-    needs_attention: int
-    watch: int
-    total: int
-
-
-class Alerts(BaseModel):
-    """The latest run's new or updated developments on followed subjects that need attention,
-    then those to watch. Dismissed developments are left out."""
-
-    run: RunRef
-    followed: int = Field(description="How many subjects are followed")
-    alerts: list[Alert]
-    unread: AlertCounts
-
-
-class Triage(BaseModel):
-    development_id: str
-    read: bool = Field(description="Read since the latest run that changed it")
-    flagged: bool
-    dismissed: bool
-    not_relevant: bool = Field(description="Marked as wrongly matched, kept for the eval set")
-
-
-class TriageChange(BaseModel):
-    """Only the states given change. Not relevant also dismisses."""
-
-    read: bool | None = None
-    flagged: bool | None = None
-    dismissed: bool | None = None
-    not_relevant: bool | None = None
 
 
 class RelatedDays(IntEnum):

@@ -1,77 +1,18 @@
-"""Facts: what a subject's measured series say as of a date, as sentences and numbers written by
-code for the answer prompt (docs/archive/structured-data-plan.md, F2), and the states rules fix.
+"""Key data: the series a subject's Overview shows as Key data, which its brief states too
+(pipeline/summaries.py), and each series stated in a sentence written by code. Everything is read
+from what was available by the end of the date, so a run backfilled to a past date never states a
+later value."""
 
-`subject_facts` is the one entry point: the pipeline gives its result to the answer prompt and
-stores it per run, and `GET /subjects/{id}/facts` serves it for any date. Questions link to series
-by patterns in questions.yaml, matched against the series mapped to the subject in series.yaml.
-`key_data` picks the series a subject's Overview shows as Key data and its brief states.
-Everything is read from what was available by the end of the date, so a run backfilled to a past
-date never states a later value.
-"""
-
-import sqlite3
 from collections.abc import Iterable, Mapping
 from datetime import date, timedelta
 
 from pydantic import BaseModel, Field
 
 from intelmonitor.pipeline.detectors import Detection, materiality_level
-from intelmonitor.pipeline.indicators import (
-    ChangeWindow,
-    Indicator,
-    IndicatorChange,
-    IndicatorState,
-    compute_indicators,
-)
+from intelmonitor.pipeline.indicators import ChangeWindow, Indicator, IndicatorChange
 from intelmonitor.pipeline.wording import day, fx_move, peg_side, period, value
-from intelmonitor.seed import (
-    Deviation,
-    DeviationRule,
-    QuestionDef,
-    RuleState,
-    SeriesDef,
-    linked_series,
-    load_series,
-)
-from intelmonitor.store.series import Observation, read_observations
-
-
-class SeriesFact(BaseModel):
-    series_id: str
-    question_ids: list[str] = Field(description="The subject's questions that use the series")
-    state: IndicatorState
-    window_start: date | None = Field(
-        description="Daily series: low and high are over the periods after this, to the date"
-    )
-    latest: Observation | None
-    low: Observation | None
-    high: Observation | None
-    changes: list[IndicatorChange] = Field(description="The changes the text states")
-    text: str = Field(description="The sentence the answer prompt gets")
-
-
-class FixedState(BaseModel):
-    """A rule fired: the question's state is at least `state`, whatever the model says."""
-
-    question_id: str
-    series_id: str
-    state: RuleState
-    start: date = Field(description="First period of the longest spell beyond the threshold")
-    end: date = Field(description="Last period of that spell")
-    hours: int
-    text: str
-
-
-class SubjectFacts(BaseModel):
-    as_of: date
-    facts: list[SeriesFact] = Field(description="In catalogue order")
-    fixed_states: list[FixedState]
-
-    def for_question(self, question_id: str) -> list[SeriesFact]:
-        return [f for f in self.facts if question_id in f.question_ids]
-
-    def fixed(self, question_id: str) -> list[FixedState]:
-        return [f for f in self.fixed_states if f.question_id == question_id]
+from intelmonitor.seed import Deviation, SeriesDef, load_series
+from intelmonitor.store.series import Observation
 
 
 def mapped_series(subject_id: str) -> list[SeriesDef]:
@@ -137,102 +78,6 @@ def key_data(
     return KeyData(flagged=[s.id for s in flagged], rows=[*own, *context])
 
 
-def subject_facts(
-    conn: sqlite3.Connection,
-    subject_id: str,
-    questions: list[QuestionDef],
-    as_of: date,
-    revised_since: date | None = None,
-) -> SubjectFacts:
-    """The facts of every series the questions link for the subject, from what was available by
-    the end of `as_of`, and the states their rules fix. A daily series' low and high cover the
-    longest lookback of the questions using it. Revisions count after `revised_since` (default:
-    the 31 days before the date)."""
-    mapped = mapped_series(subject_id)
-    ids = [s.id for s in mapped]
-    users: dict[str, list[QuestionDef]] = {}
-    for q in questions:
-        for series_id in linked_series(q, ids):
-            users.setdefault(series_id, []).append(q)
-    by_id = {s.id: s for s in load_series().series}
-    linked = [i for i in ids if i in users]
-    indicators = compute_indicators(conn, linked, as_of, revised_since)
-    facts: list[SeriesFact] = []
-    fixed: list[FixedState] = []
-    for series_id in linked:
-        s = by_id[series_id]
-        history = read_observations(conn, series_id, as_of)
-        days = max(q.lookback_days for q in users[series_id])
-        facts.append(
-            series_fact(s, by_id, history, indicators[series_id], as_of, days, users[series_id])
-        )
-        if indicators[series_id].state in ("no_data", "stale"):
-            continue  # no rule fires on missing or stale data
-        for q in users[series_id]:
-            for rule in q.rules:
-                if rule.applies_to(series_id) and (
-                    firing := apply_rule(rule, s, by_id, history, as_of, q)
-                ):
-                    fixed.append(firing)
-    return SubjectFacts(as_of=as_of, facts=facts, fixed_states=fixed)
-
-
-# ---- rules
-
-
-def apply_rule(
-    rule: DeviationRule,
-    s: SeriesDef,
-    by_id: dict[str, SeriesDef],
-    history: list[Observation],
-    as_of: date,
-    q: QuestionDef,
-) -> FixedState | None:
-    """The longest spell of observations in a row beyond the threshold that reaches into the
-    question's lookback, if it lasts at least the rule's hours from its first to its last point."""
-    since = as_of - timedelta(days=q.lookback_days)
-    spells: list[list[Observation]] = []
-    current: list[Observation] = []
-    for o in history:
-        if abs(o.value) > rule.beyond:
-            current.append(o)
-            continue
-        if current:
-            spells.append(current)
-        current = []
-    if current:
-        spells.append(current)
-
-    def hours(spell: list[Observation]) -> int:
-        return (spell[-1].period - spell[0].period).days * 24
-
-    reaching = [sp for sp in spells if sp[-1].period > since and hours(sp) >= rule.for_hours]
-    if not reaching:
-        return None
-    spell = max(reaching, key=lambda sp: (hours(sp), sp[-1].period))
-    worst = max(spell, key=lambda o: abs(o.value))
-    source = s.source
-    if isinstance(source, Deviation):
-        beyond = f"more than {rule.beyond:.{s.decimals}f}% off the peg"
-        furthest = peg_side(s, source, by_id, worst.value)
-    else:
-        beyond = f"beyond ±{value(s, rule.beyond)}"
-        furthest = value(s, worst.value)
-    text = (
-        f"{s.name}: {beyond} for {hours(spell)} hours, {day(spell[0].period)} to "
-        f"{day(spell[-1].period)}; furthest {furthest} on {day(worst.period)}."
-    )
-    return FixedState(
-        question_id=q.id,
-        series_id=s.id,
-        state=rule.state,
-        start=spell[0].period,
-        end=spell[-1].period,
-        hours=hours(spell),
-        text=text,
-    )
-
-
 # ---- sentences
 
 
@@ -273,29 +118,19 @@ def _rank(s: SeriesDef, history: list[Observation], latest: Observation, start: 
     return f"above {lower:,} of {since}"
 
 
-def series_fact(
+def series_sentence(
     s: SeriesDef,
     by_id: dict[str, SeriesDef],
     history: list[Observation],
     ind: Indicator,
     as_of: date,
     window_days: int,
-    questions: list[QuestionDef],
-) -> SeriesFact:
-    """One series' fact from its observations known by the end of `as_of` and its indicator."""
-    question_ids = [q.id for q in questions]
+) -> str:
+    """One series stated in a sentence from its observations known by the end of `as_of` and its
+    indicator: the latest value, its changes, a daily series' range over the `window_days` to the
+    date and where the latest sits in the history."""
     if ind.latest is None:
-        return SeriesFact(
-            series_id=s.id,
-            question_ids=question_ids,
-            state="no_data",
-            window_start=None,
-            latest=None,
-            low=None,
-            high=None,
-            changes=[],
-            text=f"{s.name}: no data available by {day(as_of)}.",
-        )
+        return f"{s.name}: no data available by {day(as_of)}."
     latest = ind.latest
     daily = s.frequency == "daily"
     start = as_of - timedelta(days=window_days) if daily else None
@@ -347,14 +182,4 @@ def series_fact(
             f"revised: {period(r.period, s.frequency)} from {value(s, r.old_value)} to "
             f"{value(s, r.new_value)} on {day(r.revised_at.date())}"
         )
-    return SeriesFact(
-        series_id=s.id,
-        question_ids=question_ids,
-        state=ind.state,
-        window_start=start,
-        latest=latest,
-        low=low,
-        high=high,
-        changes=changes,
-        text=f"{s.name}: {'; '.join(parts)}.",
-    )
+    return f"{s.name}: {'; '.join(parts)}."

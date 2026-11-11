@@ -5,29 +5,20 @@ import sqlite3
 from datetime import date, timedelta
 from typing import Literal
 
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field
 
 from intelmonitor.ingest.parse import document_id
 from intelmonitor.pipeline.detectors import Detection, live_events, materiality_level
-from intelmonitor.pipeline.facts import FixedState, KeyData, SeriesFact, key_data, subject_facts
 from intelmonitor.pipeline.indicators import Indicator, compute_indicators, months_before
+from intelmonitor.pipeline.key_data import KeyData, key_data
 from intelmonitor.pipeline.params import (
     NEEDS_ATTENTION_LEVEL,
     PRIORITY_LABELS,
     RUN_SPACING_DAYS,
     Priority,
 )
-from intelmonitor.pipeline.subjects import questions_for
 from intelmonitor.seed import Deviation, SeriesDef, load_series, providers, source_label
-from intelmonitor.server.models import (
-    CitedSeries,
-    LinePoint,
-    RunRef,
-    SeriesChart,
-    SeriesFactView,
-    SeriesInfo,
-    SubjectRef,
-)
+from intelmonitor.server.models import LinePoint, SeriesChart, SeriesInfo, SubjectRef
 from intelmonitor.server.queries import NotFoundError, subject, subject_ref
 from intelmonitor.store.series import (
     Observation,
@@ -37,8 +28,6 @@ from intelmonitor.store.series import (
     read_revisions,
     read_sources,
 )
-
-_FACTS = TypeAdapter(list[SeriesFact])
 
 # primary: the subject's own series. context: system-wide or market-wide context for it.
 SeriesRole = Literal["primary", "context"]
@@ -99,15 +88,6 @@ class SubjectIndicators(BaseModel):
     key_data: KeyData = Field(description="The series the Overview's Key data shows, in order")
 
 
-class SubjectFacts(BaseModel):
-    """What the subject's standing answers are told about their series as of a date."""
-
-    subject: SubjectRef
-    as_of: date
-    facts: list[SeriesFactView] = Field(description="In catalogue order")
-    fixed_states: list[FixedState] = Field(description="Rules that fire, per question")
-
-
 _ROLES: list[SeriesRole] = ["primary", "context"]
 
 
@@ -119,21 +99,6 @@ def mapped_series(subject_id: str) -> list[tuple[SeriesDef, SeriesRole]]:
     """The series mapped to a subject, primary then context, each in catalogue order."""
     seed = load_series().series
     return [(s, role) for role in _ROLES for s in seed if subject_id in _members(s, role)]
-
-
-def default_series(subject_id: str) -> SeriesDef | None:
-    """The series an indicator widget set only to a subject shows: its first listed primary
-    series, a peg before any other, else its first listed context series."""
-    listed = [(s, role) for s, role in mapped_series(subject_id) if s.listed]
-    primary = [s for s, role in listed if role == "primary"]
-    if primary:
-        return next((s for s in primary if isinstance(s.source, Deviation)), primary[0])
-    return listed[0][0] if listed else None
-
-
-def home_subject(s: SeriesDef) -> str:
-    """The subject a series belongs to: its first primary subject, else its first context one."""
-    return (s.subjects.primary or s.subjects.context)[0]
 
 
 def series_info(s: SeriesDef) -> SeriesInfo:
@@ -270,24 +235,8 @@ def subject_indicators(
     )
 
 
-def facts_as_of(conn: sqlite3.Connection, subject_id: str, as_of: date) -> SubjectFacts:
-    """The facts a run as of `as_of` gives the subject's answers, from what was available by the
-    end of that day, and the states rules fix."""
-    subj = subject(subject_id)
-    computed = subject_facts(conn, subject_id, questions_for(subj), as_of)
-    by_id = {s.id: s for s in load_series().series}
-    return SubjectFacts(
-        subject=subject_ref(subject_id),
-        as_of=as_of,
-        facts=[
-            SeriesFactView(series=series_info(by_id[f.series_id]), fact=f) for f in computed.facts
-        ],
-        fixed_states=computed.fixed_states,
-    )
-
-
 def chart_start(s: SeriesDef, history: list[Observation], as_of: date) -> date:
-    """Where a cited series' chart starts: 12 months before the run date for a daily series, 24
+    """Where a detection's series chart starts: 12 months before the run date for a daily series, 24
     for a monthly one, and the start of the stored history for a quarterly or yearly one."""
     if s.frequency == "daily":
         return months_before(as_of, 12)
@@ -324,51 +273,3 @@ def series_chart(
             r for r in read_revisions(conn, s.id, as_of) if cited and r.period == cited.period
         ],
     )
-
-
-def fact_chart(
-    conn: sqlite3.Connection, s: SeriesDef, fact: SeriesFact, as_of: date
-) -> SeriesChart:
-    """A fact's chart: a daily series highlights the window its low and high cover, to its latest
-    point; a monthly or quarterly one its latest release."""
-    latest = fact.latest.period if fact.latest else None
-    window = fact.window_start + timedelta(days=1) if fact.window_start else None
-    # A stale series' latest point is older than its window: only the point is cited.
-    cited_from = window if window and latest and window <= latest else latest
-    return series_chart(conn, s, as_of, cited_from, latest)
-
-
-def cited_series(
-    conn: sqlite3.Connection,
-    run: RunRef,
-    subject_id: str,
-    custom_question_id: str | None,
-    series_ids: list[str],
-) -> list[CitedSeries]:
-    """The series an answer cites, each with the fact its run gave the answer and its chart as of
-    the run date. A custom question's answer was given its own facts, over its own lookback."""
-    by_id = {s.id: s for s in load_series().series}
-    if custom_question_id is None:
-        stored = {
-            r["series_id"]: SeriesFact.model_validate_json(r["fact"])
-            for r in conn.execute(
-                "SELECT series_id, fact FROM run_facts WHERE run_id = ? AND subject_id = ?",
-                (run.id, subject_id),
-            )
-        }
-    else:
-        row = conn.execute(
-            "SELECT facts FROM custom_question_answers WHERE run_id = ? AND question_id = ?",
-            (run.id, custom_question_id),
-        ).fetchone()
-        facts = _FACTS.validate_json(row["facts"]) if row else []
-        stored = {f.series_id: f for f in facts}
-    return [
-        CitedSeries(
-            series=series_info(by_id[i]),
-            fact=stored[i],
-            chart=fact_chart(conn, by_id[i], stored[i], run.as_of),
-        )
-        for i in series_ids
-        if i in stored and i in by_id
-    ]

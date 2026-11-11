@@ -23,8 +23,6 @@ class Settings(BaseSettings):
     # CLAUDE_VIA_API=0 on the user's Claude login for local runs (pipeline/claude.py).
     anthropic_api_key: str = ""
     claude_via_api: bool = True
-    # The Generate agent (/agent/generate) is off until AGENT_ENABLED=1.
-    agent_enabled: bool = False
     anthropic_model: str = "claude-sonnet-5-5"
 
     exa_api_key: str = ""

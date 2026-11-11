@@ -1,5 +1,5 @@
 // Key data in the right column of an Overview's summary band (SummaryBand.tsx), in the API's pick
-// (`key_data`, api pipeline/facts.py), which the brief states too: the indicators a detector
+// (`key_data`, api pipeline/key_data.py), which the brief states too: the indicators a detector
 // flagged lead, worst first, then the subject's own (primary) series and the context series. The
 // band shows the first 3, each as its name over the latest value in its unit and the weekly change
 // (daily series) or the change on the previous release. "Open Data" leads to the Data tab.

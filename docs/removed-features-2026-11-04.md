@@ -94,23 +94,32 @@ The web app no longer reads or writes any of the features listed under "Decided,
 
 - `/ask` (it lands on the home page), its mocked answers, and the "Ask about <name>" button in an entity or topic page's head.
 
+### The API, pipeline and store side of the plan's removals (uncommitted, spec step 7)
+
+The API, the pipeline and the store no longer carry any of the features the web app dropped in step 6, nor these, which were decided in the same plan:
+
+- User-customisable dashboards: the dashboard endpoints, widgets, the widget catalogue, `/widgets/data`, the dashboard overview, the starter dashboards (`api/seed/dashboards.yaml`) and the Generate agent (`/agent/generate`, `api/intelmonitor/agent/`, `AGENT_ENABLED`, the `ag-ui-protocol` dependency).
+- Roles, profiles (TCRD, FMD and the user's own), onboarding suggestions and the tour; the Personal view and the function views replace them.
+- Following subjects; watchlists replace it.
+- "Since your last review", last-visit tracking and read marks; "New" means the latest weekly run, from its stored run changes.
+- The cross-subject developments feed: `GET /developments` needs a `subject_id` and no longer takes `dashboard_id`, `since`, `changed=review` or `dismissed`.
+- Notes.
+- Custom questions, with the on-demand answer path (`pipeline/custom.py`).
+- Analyst feedback: removing a tag from a development (and the pipeline leaving removed tags off later runs), marking a development not relevant, and feedback on answers. These can return once there is sign-in.
+- Visit logging and usage counts per role; the counts are kept below.
+- "Run now" and `/runs/status`; `GET /runs` and `/runs/latest` stay, and the 15 Run now rows in the run log keep their `manual` trigger.
+- Standing questions and their answers (focus areas): `api/seed/questions.yaml`, the answers stage, the series facts given to answers, `/subjects/{id}/facts`, `/subjects/{id}/answers/{question}/evidence`, the standing questions' states in the Data tab payload and the alert threshold a question could set on a series.
+- The phase A eval of standing answers (`eval` steps v0, v1, v2, gold, judge, score and rescore), including the UOB exposure question that ran through the custom question path; its results stay in `eval-runs/phase-a-2026-10-05/`.
+- Dismissing and flagging developments, the last per-viewer state on the server.
+- The Data tab's chart marks High and Medium developments by priority alone, with no Watch answer and no dismissed filter.
+- Entity and topic page payloads no longer carry What changed, the topic stage track, group insights, notes or custom question slots, and `/subjects` no longer counts new, High, recent or needs-attention developments.
+- Stores made earlier drop the tables `dashboards`, `profiles`, `visits`, `follows`, `analyst_actions`, `feedback`, `custom_question_answers`, `custom_questions`, `development_triage`, `alert_reads`, `question_answers` and `run_facts`, the run changes of kind `question_state`, and the meta keys `active_profile`, `profile`, `profiles_seeded`, `dashboards_seeded`, `follows_seeded` and `tour_seen_at`, when opened.
+
 ## Decided, not yet removed
 
 From the topics, watchlists and views plan (local map in `wayfind/topics-watchlists-views/`).
 
-- User-customisable dashboards: the dashboard pages, widgets, the widget catalogue, the AI dashboard generator, the new-dashboard picker and the starter dashboards.
-- Roles, profiles (TCRD, FMD and the user's own), onboarding and the tour; the Personal view and the function views replace them.
-- Following subjects; watchlists replace it.
-- "Since your last review", last-visit tracking and read marks; "New" now means the latest weekly run.
-- The cross-subject developments feed (`/developments`); developments are shown per entity and per topic.
-- Notes.
-- Custom questions.
-- Analyst feedback: removing a tag from a development, marking a development not relevant, and feedback on answers. These can return once there is sign-in.
-- Visit logging and usage counts per role.
-- "Run now" in the web app; runs are to be scheduled weekly on the server.
 - Group pages; groups remain only as headings that organise entities.
-- Standing questions and their answers (focus areas), with the answers stage and the answer drawer.
-- Dismissing and flagging developments, the last per-viewer state on the server.
 
 ## Visits per role, local store
 

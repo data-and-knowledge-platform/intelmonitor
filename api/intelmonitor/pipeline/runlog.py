@@ -1,7 +1,8 @@
-"""The run log: one row per pipeline execution, with who started it and what it found.
+"""The run log: one row per pipeline execution, with how it started and what it found.
 
-compute_run writes it. The server reads it for run history, the run status chip and Run now.
-There is no scheduler yet: every execution is `im run` on the command line or Run now in the app."""
+compute_run writes it; the server reads it for `GET /runs`. There is no scheduler yet: every
+execution is `im run` or `im weekly` on the command line. Rows from Run now, since removed, keep
+their `manual` trigger and `triggered_by`."""
 
 import sqlite3
 from dataclasses import dataclass
@@ -12,8 +13,8 @@ from intelmonitor.pipeline.corroboration import shown_developments
 from intelmonitor.pipeline.diff import DevelopmentChange
 from intelmonitor.store.db import get_meta, set_meta
 
-# cli: `im run`. manual: Run now in the app.
-Trigger = Literal["cli", "manual"]
+# cli: `im run` and `im weekly`. Run now (since removed) wrote manual.
+Trigger = Literal["cli"]
 
 
 @dataclass(frozen=True)
@@ -72,14 +73,13 @@ def start(
     conn: sqlite3.Connection,
     run_id: str,
     trigger: Trigger,
-    triggered_by: str | None,
     sources: int,
     documents: int,
 ) -> int:
     cursor = conn.execute(
-        "INSERT INTO run_log (run_id, trigger, triggered_by, status, sources, documents, "
-        "started_at) VALUES (?, ?, ?, 'running', ?, ?, ?)",
-        (run_id, trigger, triggered_by, sources, documents, datetime.now(UTC).isoformat()),
+        "INSERT INTO run_log (run_id, trigger, status, sources, documents, started_at) "
+        "VALUES (?, ?, 'running', ?, ?, ?)",
+        (run_id, trigger, sources, documents, datetime.now(UTC).isoformat()),
     )
     conn.commit()
     assert cursor.lastrowid is not None
@@ -133,8 +133,7 @@ def backfill(conn: sqlite3.Connection) -> None:
         changes = {
             c["ref_id"]: DevelopmentChange(c["kind"], [])
             for c in conn.execute(
-                "SELECT kind, ref_id FROM run_changes "
-                "WHERE run_id = ? AND kind != 'question_state'",
+                "SELECT kind, ref_id FROM run_changes WHERE run_id = ?",
                 (r["id"],),
             )
         }

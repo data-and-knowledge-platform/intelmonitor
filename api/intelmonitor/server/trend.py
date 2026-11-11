@@ -1,29 +1,33 @@
-"""A monitor page's Trend view (docs/archive/structured-data-plan.md, F6): the subject's series over
-the 12 months to the latest run, the developments marked on them, each run's note on why they moved,
-and the standing questions' states per run."""
+"""An entity or topic page's Data tab (docs/archive/structured-data-plan.md, F6): the subject's
+series over the 12 months to the latest run, the High and Medium developments marked on them, and
+each run's note on why they moved."""
 
 import json
 from datetime import date, timedelta
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from intelmonitor.pipeline.detectors import corpus_start
 from intelmonitor.pipeline.indicators import months_before
 from intelmonitor.pipeline.notes import SeriesMove, note_series
-from intelmonitor.pipeline.params import RUN_SPACING_DAYS
+from intelmonitor.pipeline.params import MATERIAL_LEVEL, RUN_SPACING_DAYS
 from intelmonitor.server.models import (
     DevelopmentSummary,
     LinePoint,
     RunRef,
     SeriesInfo,
-    State,
     SubjectRef,
 )
 from intelmonitor.server.queries import Queries, expand, load_developments, subject, subject_ref
 from intelmonitor.server.series import series_info
-from intelmonitor.server.widgets import MarkedDevelopment, documents_from, marked
+from intelmonitor.store.documents import first_document_day
 from intelmonitor.store.series import read_observations
 
 TREND_MONTHS = 12
+
+# needs_attention: High priority. watch: Medium.
+MarkBadge = Literal["needs_attention", "watch"]
 
 
 class TrendSeries(BaseModel):
@@ -57,14 +61,15 @@ class TrendRun(BaseModel):
     note: RunNote | None = Field(description="None when the run wrote no note for the subject")
 
 
-class QuestionTrend(BaseModel):
-    question_id: str
-    label: str
-    custom: bool
-    states: list[State | None] = Field(
-        description="Its state in each run, aligned with runs; null where it has no answer"
+class MarkedDevelopment(BaseModel):
+    """A development marked on the chart."""
+
+    development: DevelopmentSummary
+    on: date = Field(
+        description="Where it sits: its event date when in the chart's 12 months, else its first "
+        "publication"
     )
-    summaries: list[str | None] = Field(description="Its answer in each run, aligned with runs")
+    badge: MarkBadge
 
 
 class SubjectTrend(BaseModel):
@@ -77,17 +82,37 @@ class SubjectTrend(BaseModel):
         "catalogue order"
     )
     developments: list[MarkedDevelopment] = Field(
-        description="The subject's Needs attention and Watch developments dated in the 12 "
-        "months, newest first"
+        description="The subject's High and Medium developments dated in the 12 months, newest "
+        "first"
     )
     runs: list[TrendRun] = Field(
         description="Complete runs within the 12 months, oldest first; the last is the latest"
     )
-    questions: list[QuestionTrend] = Field(description="Built-in questions, then kept custom ones")
 
 
 def has_trend(subject_id: str) -> bool:
     return bool(note_series(subject_id))
+
+
+def documents_from(q: Queries, as_of: date) -> date:
+    """The day of the earliest stored document, else the corpus start: the chart has no marks
+    before it because nothing was collected, not because nothing happened."""
+    return first_document_day(q.conn) or corpus_start(q.conn, as_of)
+
+
+def marked(q: Queries, subject_id: str, as_of: date) -> list[MarkedDevelopment]:
+    """The subject's High and Medium developments, by priority for it, each at its event date
+    within the 12 months to `as_of`, else at its first publication."""
+    start = months_before(as_of, 12)
+    out: list[MarkedDevelopment] = []
+    for d in q.developments_in([subject_id]):
+        if d.materiality_level < MATERIAL_LEVEL:
+            continue
+        on = d.event_date if d.event_date and start <= d.event_date <= as_of else d.first_published
+        if start <= on <= as_of:
+            badge: MarkBadge = "needs_attention" if d.needs_attention else "watch"
+            out.append(MarkedDevelopment(development=d, on=on, badge=badge))
+    return sorted(out, key=lambda m: m.on, reverse=True)
 
 
 def _dated(d: DevelopmentSummary, start: date, end: date) -> DatedDevelopment:
@@ -141,7 +166,6 @@ def trend(q: Queries, subject_id: str) -> SubjectTrend:
             else run.as_of - timedelta(days=RUN_SPACING_DAYS)
         )
         trend_runs.append(TrendRun(run=run, since=since, note=note))
-    answers = [q.answer_rows(r.id, subject_id) for r in runs]
     return SubjectTrend(
         subject=subject_ref(subject_id),
         run=q.run,
@@ -160,14 +184,4 @@ def trend(q: Queries, subject_id: str) -> SubjectTrend:
         ],
         developments=marked(q, subject_id, as_of),
         runs=trend_runs,
-        questions=[
-            QuestionTrend(
-                question_id=d.id,
-                label=d.label,
-                custom=d.custom,
-                states=[a[d.id]["state"] if d.id in a else None for a in answers],
-                summaries=[a[d.id]["summary"] if d.id in a else None for a in answers],
-            )
-            for d in q.question_defs(subject_id)
-        ],
     )

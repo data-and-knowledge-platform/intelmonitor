@@ -1,8 +1,8 @@
 """Subjects as the pipeline sees them: one flat list with descriptions for Claude.
 
 Topics and entities are monitored: screening asks about them, developments are tagged to them and
-priority scores them. Groups are peer sets of entities (sidebar headings, dashboards, peer
-comparison, search queries); nothing is screened for, tagged to or scored for a group
+priority scores them. Groups are peer sets of entities (sidebar headings, peer comparison,
+search queries); nothing is screened for, tagged to or scored for a group
 (phase1-decisions.md, S3)."""
 
 from collections.abc import Iterable
@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from intelmonitor.pipeline.params import SINGAPORE_SYSTEM
-from intelmonitor.seed import EntityKind, QuestionDef, SubjectType, load_questions, load_subjects
+from intelmonitor.seed import EntityKind, SubjectType, load_subjects
 
 _KIND_LABEL: dict[EntityKind, str] = {
     "bank": "bank",
@@ -135,16 +135,6 @@ def resolve_groups(subject_ids: Iterable[str]) -> list[str]:
     return list(out)
 
 
-def questions_for(subject: Subject) -> list[QuestionDef]:
-    """Built-in standing questions that apply to a subject, in seed order."""
-    out: list[QuestionDef] = []
-    for qs in load_questions().sets:
-        a = qs.applies_to
-        if a.type != subject.type:
-            continue
-        if a.subject is not None and a.subject != subject.id:
-            continue
-        if a.kind is not None and a.kind != subject.kind:
-            continue
-        out += qs.questions
-    return out
+def scope(subject: Subject) -> set[str]:
+    """Subject ids whose developments count for `subject`: itself, plus members for a group."""
+    return {subject.id, *subject.members}

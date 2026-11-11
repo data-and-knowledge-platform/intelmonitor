@@ -304,8 +304,7 @@ groups:
     members: [building-construction, housing]
     sidebar: false
 
-# kind sets how the models are told what the entity is (pipeline/subjects.py) and which question
-# set in questions.yaml applies.
+# kind sets how the models are told what the entity is (pipeline/subjects.py).
 entities:
   - id: dbs
     name: DBS

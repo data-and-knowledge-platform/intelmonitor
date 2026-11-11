@@ -2,9 +2,7 @@
 returns data. Writes artifacts/api-check/<timestamp>/results.json.
 
 Usage (from api/): uv run python scripts/check_endpoints.py [--base https://intelmonitor.api.localhost]
-The custom question check makes Claude calls the first time; reruns hit the cache. The
-AG-UI check runs the Generate agent, one Claude session. The Run now check recomputes Run 2
-from cache and adds a Run now execution to the run history.
+It only reads: every call is a GET.
 """
 
 import argparse
@@ -21,33 +19,17 @@ import httpx
 
 from intelmonitor.config import ARTIFACTS_DIR
 from intelmonitor.pipeline.subjects import all_subjects
-from intelmonitor.store.db import connect
 
 SAMPLE = [
     "financial-regulation",
     "cyber-resilience",
-    "singapore-banks",
-    "sea-countries",
     "dbs",
     "mas",
     "microsoft-365",
     "singapore",
 ]
-WIDGET_TYPES = {
-    "since",
-    "question",
-    "summary",
-    "developments",
-    "direction",
-    "watchlist",
-    "upcoming",
-}
-# Custom questions take a topic or an entity: groups are not monitored.
-CUSTOM_SUBJECT = "dbs"
-CUSTOM_REQUEST = {
-    "text": "Is DBS working on stablecoins, tokenised deposits or crypto?",
-    "subject_id": CUSTOM_SUBJECT,
-}
+# What an entity or topic page carries, and nothing else.
+PAGE_FIELDS = {"subject", "run", "brief", "upcoming", "trend", "impacts"}
 
 type Json = Any  # response bodies are checked field by field below
 
@@ -77,46 +59,6 @@ def need(condition: object, what: str) -> None:
         raise AssertionError(what)
 
 
-def widgets_for(sid: str, kind: str, page: Json) -> list[dict[str, object]]:
-    first_q = page["questions"][0]["question_id"]
-    entities = [e["id"] for e in page["subject"]["links"]["entities"]] or [sid]
-    if kind == "entity":
-        entities = [sid]
-    specs: list[tuple[str, str, dict[str, object]]] = [
-        ("since", "L", {"subject_id": sid}),
-        ("question", "S", {"subject_id": sid, "question_id": first_q}),
-        ("summary", "M", {"subject_id": sid}),
-        ("developments", "M", {"subject_id": sid}),
-        ("direction", "S", {"subject_id": sid}),
-        ("watchlist", "M", {"entity_ids": entities[:5]}),
-        ("upcoming", "M", {"subject_id": sid}),
-    ]
-    return [
-        {"id": f"check-{t}", "order": i, "type": t, "size": size, "settings": settings}
-        for i, (t, size, settings) in enumerate(specs)
-    ]
-
-
-def check_widget(data: Json) -> None:
-    t = data["type"]
-    need(data["run"]["id"], f"{t}: run")
-    if t == "since":
-        wc = data["what_changed"]
-        need(wc["developments"] or wc["question_changes"], "since: no changes")
-    elif t == "question":
-        need(data["answer"]["summary"], "question: no summary")
-    elif t == "summary":
-        need(data["answers"], "summary: no answers")
-    elif t == "developments":
-        need(data["developments"], "developments: empty")
-    elif t == "direction":
-        need(len(data["weeks"]) == 8 and sum(w["count"] for w in data["weeks"]), "direction: empty")
-    elif t == "watchlist":
-        need(data["entries"] and all(e["state"] for e in data["entries"]), "watchlist: empty")
-    elif t == "upcoming":
-        need(isinstance(data["items"], list), "upcoming: no items list")
-
-
 def check_subject(c: Check, sid: str) -> dict[str, int]:
     detail = c.get(f"/subjects/{sid}")
     kind = detail["type"]
@@ -124,16 +66,10 @@ def check_subject(c: Check, sid: str) -> dict[str, int]:
     need(links["topics"] or links["groups"] or links["entities"], f"{sid}: no links")
 
     page = c.get(f"/subjects/{sid}/page")
-    need(page["questions"], f"{sid}: no standing question answers")
-    need(all(q["summary"] and q["state"] and q["change"] for q in page["questions"]), sid)
-    wc = page["what_changed"]
-    need(wc["developments"] or wc["question_changes"], f"{sid}: nothing changed")
+    need(set(page) == PAGE_FIELDS, f"{sid}: page fields {sorted(page)}")
+    need(page["brief"], f"{sid}: no brief")
     if kind == "topic":
-        need(sum(b["count"] for b in page["stage_track"]["stages"]) > 0, f"{sid}: stage track")
         need(page["upcoming"], f"{sid}: no upcoming dates")
-    if kind == "group":
-        g = page["group"]
-        need(g["common_issues"] or g["outliers"], f"{sid}: no common issues or outliers")
 
     hits = c.get("/search", params={"q": detail["name"]})["subjects"]
     need(hits and hits[0]["subject"]["id"] == sid, f"{sid}: search by name")
@@ -155,38 +91,18 @@ def check_subject(c: Check, sid: str) -> dict[str, int]:
     affects = c.get("/graph", params={"center": sid, "link_type": "AFFECTS", "window_days": 14})
     need(all(e["type"] == "AFFECTS" for e in affects["edges"]), "link type filter")
 
-    devs = c.get("/developments", params={"subject_id": sid, "limit": 5})
+    devs = c.get("/developments", params={"subject_id": sid, "limit": 5})["developments"]
     need(devs, f"{sid}: no developments")
     check_evidence(c, devs[0]["id"])
-
-    cited = next(q for q in page["questions"] if q["development_ids"])
-    evidence = c.get(f"/subjects/{sid}/answers/{cited['question_id']}/evidence")
-    need(evidence["answer"]["summary"] == cited["summary"], f"{sid}: answer evidence")
-    need(
-        [d["id"] for d in evidence["developments"]] == cited["development_ids"],
-        f"{sid}: answer evidence developments",
-    )
-    check_evidence(c, cited["development_ids"][0])
+    changed = c.get("/developments", params={"subject_id": sid, "changed": "run"})
+    need(all(d["change"] for d in changed["developments"]), f"{sid}: changed=run")
 
     indicators = c.get(f"/subjects/{sid}/indicators")["indicators"]
     need(all(i["state"] != "no_data" for i in indicators), f"{sid}: an indicator has no data")
     if indicators:
         first = indicators[0]["series"]["id"]
         need(c.get(f"/series/{first}")["observations"], f"{sid}: {first} has no observations")
-
-    facts = c.get(f"/subjects/{sid}/facts")["facts"]
-    need(all(f["fact"]["text"] for f in facts), f"{sid}: a fact has no text")
-    if citing := next((q for q in page["questions"] if q["series_ids"]), None):
-        ev = c.get(f"/subjects/{sid}/answers/{citing['question_id']}/evidence")
-        need(
-            [s["series"]["id"] for s in ev["series"]] == citing["series_ids"],
-            f"{sid}: answer evidence series",
-        )
-
-    for w in widgets_for(sid, kind, page):
-        data = c.call("POST", "/widgets/data", json={"widget": w, "dashboard_subject_ids": [sid]})
-        check_widget(data)
-    return {"questions": len(page["questions"]), "developments": wc["new_count"]}
+    return {"developments": len(devs), "new_or_updated": len(changed["developments"])}
 
 
 def check_evidence(c: Check, dev_id: str) -> None:
@@ -204,186 +120,16 @@ def check_evidence(c: Check, dev_id: str) -> None:
         need(doc["text"][q["start"] : q["end"]] == q["text"], "document: quote offsets")
 
 
-def check_dashboards(c: Check) -> None:
-    catalog = c.get("/widgets/catalog")
-    need({w["type"] for w in catalog} == WIDGET_TYPES, "catalog: 7 widget types")
-    need(all(w["settings_schema"]["properties"] for w in catalog), "catalog: settings schemas")
-
-    dashboards = c.get("/dashboards")
-    names = {d["name"] for d in dashboards}
-    need("Singapore banks" in names, "starters")
-    seen: set[str] = set()
-    for d in dashboards:
-        if not d["starter"]:
-            continue
-        data = c.get(f"/dashboards/{d['id']}/data")
-        need(len(data) == len(d["widgets"]), f"{d['id']}: widget data count")
-        for w in data:
-            check_widget(w)
-            seen.add(w["type"])
-    need(seen == WIDGET_TYPES, f"starters cover every widget type, missing {WIDGET_TYPES - seen}")
-
-    def spec(*widgets: tuple[str, int, str, str, dict[str, str]]) -> dict[str, object]:
-        return {
-            "name": "API check",
-            "subject_ids": ["ocbc"],
-            "widgets": [
-                {"id": i, "order": o, "type": t, "size": z, "settings": st}
-                for i, o, t, z, st in widgets
-            ],
-        }
-
-    summary = ("a", 0, "summary", "M", {"subject_id": "ocbc"})
-    since = ("b", 1, "since", "L", dict[str, str]())
-    created = c.call("POST", "/dashboards", expect=201, json=spec(summary, since))
-    did = created["id"]
-    need(c.get(f"/dashboards/{did}")["name"] == "API check", "dashboard get")
-    reordered = spec(("a", 1, "summary", "M", {"subject_id": "ocbc"}), ("b", 0, "since", "L", {}))
-    updated = c.call("PUT", f"/dashboards/{did}", json=reordered)
-    need([w["id"] for w in updated["widgets"]] == ["b", "a"], "dashboard reorder")
-    bad = spec(("x", 0, "direction", "L", {"subject_id": "ocbc"}))  # direction has no L size
-    c.call("PUT", f"/dashboards/{did}", expect=422, json=bad)
-    c.call("DELETE", f"/dashboards/{did}", expect=204)
-    c.call("GET", f"/dashboards/{did}", expect=404)
-    need(all(d["id"] != did for d in c.get("/dashboards")), "deleted dashboard not listed")
-    c.call("POST", f"/dashboards/{did}/restore")
-    need(c.get(f"/dashboards/{did}")["name"] == "API check", "dashboard restore")
-    c.call("DELETE", f"/dashboards/{did}", expect=204)
-
-
-def check_actions(c: Check) -> None:
-    reviews = c.call("POST", "/reviews", expect=201, json={"subject_ids": ["ocbc", "dbs"]})
-    need(len(reviews) == 2, "reviews")
-    need(c.get("/subjects/ocbc/page")["reviewed_at"], "reviewed_at after review")
-    dev_id = c.get("/developments", params={"subject_id": "ocbc", "limit": 1})[0]["id"]
-    note = c.call(
-        "POST",
-        "/notes",
-        expect=201,
-        json={"subject_id": "ocbc", "development_id": dev_id, "text": "API check note"},
-    )
-    need(any(n["id"] == note["id"] for n in c.get("/notes", params={"subject_id": "ocbc"})), "note")
-    need(any(n["id"] == note["id"] for n in c.get(f"/developments/{dev_id}")["notes"]), "dev note")
-    c.call("DELETE", f"/notes/{note['id']}", expect=204)
-    need(all(n["id"] != note["id"] for n in c.get(f"/developments/{dev_id}")["notes"]), "deleted")
-    c.call("POST", f"/notes/{note['id']}/restore")
-    need(any(n["id"] == note["id"] for n in c.get(f"/developments/{dev_id}")["notes"]), "restore")
-    c.call("DELETE", f"/notes/{note['id']}", expect=204)
-
-
-def check_custom_questions(c: Check) -> None:
-    before = c.get(f"/subjects/{CUSTOM_SUBJECT}/page")["custom_question_slots"]
-    draft = c.call("POST", "/custom-questions", expect=201, json=CUSTOM_REQUEST)
-    qid = draft["id"]
-    try:
-        need(draft["status"] == "draft" and draft["question"] and draft["label"], "draft config")
-        need(len(draft["runs"]) == 2, "custom answers for both runs")
-        need(draft["answer"] and draft["answer"]["change"]["kind"] != "first_answer", "badge")
-        page = c.get(f"/subjects/{CUSTOM_SUBJECT}/page")
-        need(all(q["question_id"] != qid for q in page["questions"]), "draft hidden from page")
-
-        kept = c.call("POST", f"/custom-questions/{qid}/keep")
-        need(kept["status"] == "kept", "keep")
-        page = c.get(f"/subjects/{CUSTOM_SUBJECT}/page")
-        need(any(q["question_id"] == qid and q["custom"] for q in page["questions"]), "on page")
-        need(page["custom_question_slots"] == before - 1, "cap slots")
-        widget = {
-            "id": "custom",
-            "order": 0,
-            "type": "question",
-            "size": "S",
-            "settings": {"subject_id": CUSTOM_SUBJECT, "question_id": qid},
-        }
-        data = c.call("POST", "/widgets/data", json={"widget": widget})
-        need(data["answer"]["custom"], "custom question widget")
-        edited = c.call("PATCH", f"/custom-questions/{qid}", json={"label": "Digital assets"})
-        need(edited["label"] == "Digital assets", "edit label")
-        need(any(q["id"] == qid for q in c.get("/custom-questions", params={"status": "kept"})), "")
-        need(c.get(f"/custom-questions/{qid}")["id"] == qid, "get custom question")
-    finally:
-        c.call("DELETE", f"/custom-questions/{qid}", expect=204)
-    c.call("GET", f"/custom-questions/{qid}", expect=404)
-
-
-def check_profile_menu(c: Check) -> None:
+def check_runs_and_sources(c: Check) -> str:
     runs = c.get("/runs")
     complete = [r for r in runs if r["status"] == "complete"]
-    need(len({r["id"] for r in complete}) >= 2, "two complete runs")
+    need(complete, "a complete run")
     need(all(r["documents"] and r["developments"] and r["result"] for r in complete), "counts")
+    latest = c.get("/runs/latest")
+    need(latest["id"] == max(r["id"] for r in complete), "latest run")
     sources = c.get("/data-sources")
     need(sources["total_documents"] and sources["sources"], "data sources")
-    profile = c.get("/profile")
-    changed = c.call("PUT", "/profile", json=dict(profile, display_name="API check"))
-    need(changed["display_name"] == "API check", "profile update")
-    c.call("PUT", "/profile", json=profile)
-
-
-def check_run_now(c: Check) -> str:
-    """Run now recomputes Run 2 from cache: 202, then 409 while running, then a Run now row
-    whose result compares with the previous as-of date, like the execution before it."""
-    before = c.get("/runs")
-    started = c.call("POST", "/runs/now", expect=202)
-    need(started["running"] and started["sources"] and started["how"].startswith("Run now"), "")
-    c.call("POST", "/runs/now", expect=409)
-    deadline = time.monotonic() + 600
-    while c.get("/runs/status")["running"]:
-        need(time.monotonic() < deadline, "Run now finished within 10 minutes")
-        time.sleep(1)
-    runs = c.get("/runs")
-    latest = runs[0]
-    need(len(runs) == len(before) + 1, "Run now adds a run")
-    need(latest["status"] == "complete" and latest["trigger"] == "manual", f"run now {latest}")
-    need(latest["id"] == before[0]["id"], "Run now recomputes the latest run")
-    need(latest["result"] == before[0]["result"], "a rerun reports what its date found")
-    return f"{latest['result']} in {latest['duration_seconds']:.0f}s"
-
-
-def check_alerts(c: Check) -> str:
-    """Alerts list needing attention first; Mark all read clears the counts. The check restores
-    the read state it found, so it leaves the analyst's unread alerts alone."""
-    alerts = c.get("/alerts")
-    badges = [a["badge"] for a in alerts["alerts"]]
-    need(badges, "alerts: none")
-    need(badges == sorted(badges, key=lambda b: b != "needs_attention"), "needs attention first")
-    need(all(a["title"] and a["meta"] for a in alerts["alerts"]), "alert title and meta")
-    conn = connect()
-    reads = conn.execute("SELECT * FROM development_triage").fetchall()
-    try:
-        after = c.call("POST", "/alerts/read")
-        need(after["unread"]["total"] == 0, "mark all read")
-        need(all(a["read"] for a in after["alerts"]) and len(after["alerts"]) == len(badges), "")
-        need(c.get("/alerts")["unread"]["total"] == 0, "reads persist")
-    finally:
-        conn.execute("DELETE FROM development_triage")
-        if reads:
-            marks = ", ".join("?" * len(reads[0]))
-            conn.executemany(
-                f"INSERT INTO development_triage VALUES ({marks})", [tuple(r) for r in reads]
-            )
-        conn.commit()
-        conn.close()
-    u = alerts["unread"]
-    return f"{len(badges)} alerts, {u['needs_attention']} + {u['watch']} unread"
-
-
-def check_agent(c: Check) -> str:
-    body: dict[str, object] = {
-        "threadId": "check",
-        "runId": "check-1",
-        "state": {"widgets": []},
-        "messages": [{"id": "m1", "role": "user", "content": "Monitor OCBC"}],
-        "tools": [],
-        "context": [],
-        "forwardedProps": {},
-    }
-    text = c.call("POST", "/agent/generate", json=body)
-    events = [
-        json.loads(line[6:])["type"] for line in text.splitlines() if line.startswith("data: ")
-    ]
-    need(events[0] == "RUN_STARTED" and events[-1] == "RUN_FINISHED", f"AG-UI events {events}")
-    for kind in ("TEXT_MESSAGE_CONTENT", "TOOL_CALL_START", "STATE_DELTA"):
-        need(kind in events, f"AG-UI {kind}")
-    return f"{events.count('STATE_DELTA')} state deltas"
+    return f"{len(complete)} complete executions, latest run {latest['id']}"
 
 
 def main() -> int:
@@ -397,13 +143,7 @@ def main() -> int:
 
     steps: list[tuple[str, Callable[[], object]]] = [
         *((f"subject {sid}", lambda sid=sid: check_subject(c, sid)) for sid in SAMPLE),
-        ("dashboards and widgets", lambda: check_dashboards(c)),
-        ("analyst actions", lambda: check_actions(c)),
-        ("custom questions", lambda: check_custom_questions(c)),
-        ("profile menu", lambda: check_profile_menu(c)),
-        ("run now", lambda: check_run_now(c)),
-        ("alerts", lambda: check_alerts(c)),
-        ("AG-UI generate", lambda: check_agent(c)),
+        ("runs and data sources", lambda: check_runs_and_sources(c)),
     ]
     outcomes: list[dict[str, object]] = []
     for name, step in steps:

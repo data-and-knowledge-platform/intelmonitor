@@ -13,12 +13,10 @@ from pydantic import BaseModel
 
 from intelmonitor.config import ARTIFACTS_DIR
 from intelmonitor.ingest.series.collect import FetchSummary
-from intelmonitor.pipeline.answers import load_run_developments
 from intelmonitor.pipeline.extract import locate_quote
-from intelmonitor.pipeline.facts import SeriesFact
-from intelmonitor.pipeline.notes import stored_note_problems
+from intelmonitor.pipeline.notes import load_run_developments, stored_note_problems
 from intelmonitor.pipeline.params import NEEDS_ATTENTION_LEVEL, PRIORITY_LABELS
-from intelmonitor.pipeline.subjects import monitored_subjects, questions_for
+from intelmonitor.pipeline.subjects import monitored_subjects
 from intelmonitor.store.db import connect, get_meta
 
 SPOT_CHECK_FINDINGS = 10
@@ -40,27 +38,7 @@ def _runs(conn: sqlite3.Connection) -> list[sqlite3.Row]:
 
 def _checks(conn: sqlite3.Connection, runs: list[sqlite3.Row]) -> list[str]:
     out = ["## Checks", ""]
-    subjects = monitored_subjects()
     rows: list[tuple[str, str, str]] = []
-    for run in runs:
-        have = {
-            (r["subject_id"], r["question_id"])
-            for r in conn.execute(
-                "SELECT subject_id, question_id FROM question_answers WHERE run_id = ?",
-                (run["id"],),
-            )
-        }
-        want = {(s.id, q.id) for s in subjects.values() for q in questions_for(s)}
-        missing = sorted(want - have)
-        rows.append(
-            (
-                f"Run {run['id']}: every subject answers every question",
-                "pass" if not missing else "FAIL",
-                f"{len(want & have)}/{len(want)} answers"
-                + (f"; missing {missing[:5]}" if missing else ""),
-            )
-        )
-
     bad: list[str] = []
     findings = conn.execute(
         "SELECT f.id, f.quotes, d.text FROM findings f JOIN source_documents d "
@@ -103,10 +81,6 @@ def _checks(conn: sqlite3.Connection, runs: list[sqlite3.Row]) -> list[str]:
             "SELECT DISTINCT document_id FROM findings "
             "WHERE document_id NOT IN (SELECT document_id FROM detections)"
         )
-    ]
-    needed += [
-        ("answer", f"subject:{r['subject_id']}")
-        for r in conn.execute("SELECT DISTINCT subject_id FROM question_answers")
     ]
     # Developments made only of detections take their rule's level without a model call, and those
     # with no subject they happened to or that did them are not rated. Priority is recorded per
@@ -341,63 +315,25 @@ def _developments(conn: sqlite3.Connection, runs: list[sqlite3.Row]) -> list[str
     ]
 
 
-def _answers(conn: sqlite3.Connection, runs: list[sqlite3.Row]) -> list[str]:
-    rows: list[list[object]] = []
-    for run in runs:
-        states = Counter(
-            r[0]
-            for r in conn.execute(
-                "SELECT state FROM question_answers WHERE run_id = ?", (run["id"],)
-            )
-        )
-        upcoming = conn.execute(
-            "SELECT count(*) FROM upcoming_dates WHERE run_id = ?", (run["id"],)
-        ).fetchone()[0]
-        rows.append(
-            [
-                run["id"],
-                sum(states.values()),
-                states["stable"],
-                states["new"],
-                states["watch"],
-                states["needs_attention"],
-                upcoming,
-            ]
-        )
-    out = [
-        "## Answers",
-        "",
-        _table(
-            ["Run", "Answers", "Stable", "New", "Watch", "Needs attention", "Upcoming dates"], rows
-        ),
+def _changes(conn: sqlite3.Connection, runs: list[sqlite3.Row]) -> list[str]:
+    """Each run's upcoming dates, and its changes against the previous run."""
+    rows = [
+        [
+            run["id"],
+            conn.execute(
+                "SELECT count(*) FROM upcoming_dates WHERE run_id = ?", (run["id"],)
+            ).fetchone()[0],
+        ]
+        for run in runs
     ]
-    changes = conn.execute(
-        "SELECT * FROM run_changes ORDER BY run_id, kind, subject_id, ref_id"
-    ).fetchall()
+    out = ["## Upcoming dates", "", _table(["Run", "Upcoming dates"], rows)]
+    changes = conn.execute("SELECT * FROM run_changes ORDER BY run_id, kind, ref_id").fetchall()
     if changes:
         kinds = Counter((c["run_id"], c["base_run_id"], c["kind"]) for c in changes)
         out += ["", "## Changes since the previous run", ""]
         out.append(
             _table(["Run", "Base", "Kind", "Count"], [[*k, n] for k, n in sorted(kinds.items())])
         )
-        states = [c for c in changes if c["kind"] == "question_state"]
-        if states:
-            out += ["", "Question state changes (first 30):", ""]
-            out.append(
-                _table(
-                    ["Subject", "Question", "From", "To", "Now"],
-                    [
-                        [
-                            c["subject_id"],
-                            c["ref_id"],
-                            (d := json.loads(c["detail"]))["from"],
-                            d["to"],
-                            d["to_summary"],
-                        ]
-                        for c in states[:30]
-                    ],
-                )
-            )
     return out
 
 
@@ -556,8 +492,6 @@ def _series(conn: sqlite3.Connection) -> list[str]:
         "",
         *_run_indicators(conn, total),
         "",
-        *_run_facts(conn),
-        "",
         *_run_detections(conn),
     ]
 
@@ -594,48 +528,6 @@ def _run_indicators(conn: sqlite3.Connection, total: int) -> list[str]:
         "Run indicators, every series as of the run date:",
         "",
         _table(["Run", "States", "No look-ahead"], rows),
-    ]
-
-
-def _run_facts(conn: sqlite3.Connection) -> list[str]:
-    """What each run's answers were told and cited, and the look-ahead check: no fact may state
-    an observation that became available after the run date."""
-    rows: list[list[object]] = []
-    for run in conn.execute("SELECT id, as_of FROM runs ORDER BY as_of").fetchall():
-        facts = [
-            SeriesFact.model_validate_json(r["fact"])
-            for r in conn.execute("SELECT fact FROM run_facts WHERE run_id = ?", (run["id"],))
-        ]
-        if not facts:
-            rows.append([run["id"], "none written", "", "", ""])
-            continue
-        answers = conn.execute(
-            "SELECT sum(series_ids != '[]') AS citing, sum(state_rules != '[]') AS fixed "
-            "FROM question_answers WHERE run_id = ?",
-            (run["id"],),
-        ).fetchone()
-        late = sum(
-            o.available_at.date().isoformat() > run["as_of"]
-            for f in facts
-            for o in (f.latest, f.low, f.high)
-            if o is not None
-        )
-        rows.append(
-            [
-                run["id"],
-                len(facts),
-                answers["citing"] or 0,
-                answers["fixed"] or 0,
-                "pass" if not late else f"FAIL: {late} available after the run date",
-            ]
-        )
-    return [
-        "Run facts, per subject and series its questions link (F2):",
-        "",
-        _table(
-            ["Run", "Facts", "Answers citing series", "States fixed by rules", "No look-ahead"],
-            rows,
-        ),
     ]
 
 
@@ -726,7 +618,7 @@ def build_report(conn: sqlite3.Connection) -> str:
         _screening(conn),
         _extraction(conn),
         _developments(conn, runs),
-        _answers(conn, runs),
+        _changes(conn, runs),
         _notes(conn, runs),
         _spot_check(conn),
         _usage(conn),

@@ -1,7 +1,6 @@
 """SQLite store at data/intelmonitor.db. Each phase adds its tables to SCHEMA."""
 
 import sqlite3
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from intelmonitor.config import DATA_DIR
@@ -47,15 +46,16 @@ CREATE TABLE IF NOT EXISTS runs (
     error TEXT
 );
 
--- One row per execution of a run: `im run` on the command line, or Run now in the app. There is
--- no scheduler yet. A rerun recomputes an existing run in place, so runs keeps one row per date
--- and the executions live here. The counts compare against the previous run, the latest earlier
--- as-of date, so every execution of a date reports what that date found.
+-- One row per execution of a run: `im run` or `im weekly` on the command line (Run now in the app
+-- before it was removed). There is no scheduler yet. A rerun recomputes an existing run in place,
+-- so runs keeps one row per date and the executions live here. The counts compare against the
+-- previous run, the latest earlier as-of date, so every execution of a date reports what that
+-- date found.
 CREATE TABLE IF NOT EXISTS run_log (
     id INTEGER PRIMARY KEY,
     run_id TEXT NOT NULL,              -- the runs row it computed
-    trigger TEXT NOT NULL,             -- cli (`im run`) or manual (Run now)
-    triggered_by TEXT,                 -- the profile's display name, for manual runs
+    trigger TEXT NOT NULL,             -- cli (`im run`); manual on rows from Run now, since removed
+    triggered_by TEXT,                 -- the profile's display name, on manual rows
     status TEXT NOT NULL,              -- running, complete or failed
     sources INTEGER NOT NULL,          -- distinct ingest sources among its documents
     documents INTEGER NOT NULL,
@@ -179,19 +179,6 @@ CREATE TABLE IF NOT EXISTS development_sources (
     PRIMARY KEY (run_id, development_id, finding_id)
 );
 
-CREATE TABLE IF NOT EXISTS question_answers (
-    run_id TEXT NOT NULL,
-    subject_id TEXT NOT NULL,
-    question_id TEXT NOT NULL,
-    summary TEXT NOT NULL,
-    state TEXT NOT NULL,               -- stable, watch, needs_attention or new
-    new_count INTEGER NOT NULL,        -- items behind a "new" state
-    development_ids TEXT NOT NULL,     -- JSON [development_id]
-    series_ids TEXT NOT NULL DEFAULT '[]', -- JSON [series_id], cited facts
-    state_rules TEXT NOT NULL DEFAULT '[]', -- JSON [sentence], rules that fixed the state
-    PRIMARY KEY (run_id, subject_id, question_id)
-);
-
 CREATE TABLE IF NOT EXISTS upcoming_dates (
     run_id TEXT NOT NULL,
     development_id TEXT NOT NULL,
@@ -204,9 +191,9 @@ CREATE TABLE IF NOT EXISTS upcoming_dates (
 CREATE TABLE IF NOT EXISTS run_changes (
     run_id TEXT NOT NULL,
     base_run_id TEXT NOT NULL,
-    kind TEXT NOT NULL,                -- new_development, updated_development, question_state
-    subject_id TEXT,                   -- set for question_state
-    ref_id TEXT NOT NULL,              -- development id or question id
+    kind TEXT NOT NULL,                -- new_development or updated_development
+    subject_id TEXT,                   -- null; set for the question_state kind, since removed
+    ref_id TEXT NOT NULL,              -- the development id
     detail TEXT NOT NULL               -- JSON
 );
 CREATE INDEX IF NOT EXISTS run_changes_run ON run_changes (run_id, kind);
@@ -255,113 +242,6 @@ CREATE TABLE IF NOT EXISTS inference_records (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS inference_records_cache ON inference_records (stage, input_hash, status);
-
--- App state written through the API.
-
-CREATE TABLE IF NOT EXISTS dashboards (
-    id TEXT PRIMARY KEY,
-    spec TEXT NOT NULL,                -- JSON DashboardSpec: name, subject ids and widgets
-    starter INTEGER NOT NULL,          -- 1 for the seeded starter dashboards
-    position INTEGER NOT NULL,         -- sidebar order
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    deleted_at TEXT                    -- set when deleted; restoring clears it
-);
-
--- Profiles stand in for identity (phase1-plan.md, item U3): each is a role with its own dashboards.
--- The user's own profile for a role has the role as its id; the preloaded department profiles
--- are tcrd and fmd. The active one is meta active_profile.
-CREATE TABLE IF NOT EXISTS profiles (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,                -- on the profile button: "TCRD", or the role's name
-    role TEXT NOT NULL,                -- regulatory_supervisor, tech_cyber_supervisor, ...
-    default_dashboard_id TEXT,
-    position INTEGER NOT NULL,         -- order in the profile menu
-    created_at TEXT NOT NULL
-);
-
--- One row per app load with a profile, so days with a visit can be counted per role.
-CREATE TABLE IF NOT EXISTS visits (
-    date TEXT NOT NULL,                -- local calendar date
-    role TEXT NOT NULL,
-    path TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS visits_role ON visits (role, date);
-
-CREATE TABLE IF NOT EXISTS analyst_actions (
-    id INTEGER PRIMARY KEY,
-    kind TEXT NOT NULL,                -- review or note
-    subject_id TEXT,
-    development_id TEXT,
-    text TEXT,                         -- set for notes
-    run_id TEXT,                       -- the latest run when the action was taken
-    created_at TEXT NOT NULL,
-    deleted_at TEXT                    -- set when a note is deleted; restoring clears it
-);
-CREATE INDEX IF NOT EXISTS analyst_actions_subject ON analyst_actions (subject_id, kind);
-
--- Triage per development, kept across runs. Read holds the latest run when it was read, so a
--- development that a later run changes is unread again. Flags and dismissals stay until cleared.
-CREATE TABLE IF NOT EXISTS development_triage (
-    development_id TEXT PRIMARY KEY,
-    read_run_id TEXT,                  -- null when unread
-    flagged_at TEXT,                   -- null when not flagged
-    dismissed_at TEXT,                 -- null when not dismissed
-    not_relevant_at TEXT               -- the analyst said it does not belong; kept for the eval set
-);
-
--- The subjects the analyst follows; alerts cover these only. Seeded once from the subjects on
--- dashboards, and extended when a dashboard is created.
-CREATE TABLE IF NOT EXISTS follows (
-    subject_id TEXT PRIMARY KEY,
-    created_at TEXT NOT NULL
-);
-
--- The analyst's corrections to the AI. A tag correction removes a subject from one development
--- in every later run. An answer correction goes into the answer prompt of the run that recomputes
--- the corrected answer's run and of the run after it. Undo deletes the row.
-CREATE TABLE IF NOT EXISTS feedback (
-    id INTEGER PRIMARY KEY,
-    kind TEXT NOT NULL,                -- tag or answer
-    subject_id TEXT NOT NULL,          -- the tag's subject, or the answer's subject
-    development_id TEXT,               -- tag: the development it is removed from
-    question_id TEXT,                  -- answer: the built-in question
-    run_id TEXT NOT NULL,              -- the latest run when it was given
-    answer_state TEXT,                 -- answer: the answer as it was marked wrong
-    answer_summary TEXT,
-    state TEXT,                        -- answer: what the state should be, when it is wrong
-    summary_wrong INTEGER NOT NULL DEFAULT 0,
-    development_ids TEXT NOT NULL DEFAULT '[]', -- answer: JSON [id], cited ones marked wrong
-    reason TEXT NOT NULL,
-    created_at TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS feedback_kind ON feedback (kind, subject_id);
-
-CREATE TABLE IF NOT EXISTS custom_questions (
-    id TEXT PRIMARY KEY,               -- custom-<hex>
-    subject_id TEXT NOT NULL,
-    question TEXT NOT NULL,
-    label TEXT NOT NULL,
-    lookback_days INTEGER NOT NULL,
-    request TEXT NOT NULL,             -- what the user typed
-    status TEXT NOT NULL,              -- draft until the user keeps it, then kept
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    series_ids TEXT NOT NULL DEFAULT '[]' -- JSON [series_id]: series whose facts answers get
-);
-
-CREATE TABLE IF NOT EXISTS custom_question_answers (
-    question_id TEXT NOT NULL REFERENCES custom_questions (id),
-    run_id TEXT NOT NULL,
-    summary TEXT NOT NULL,
-    state TEXT NOT NULL,               -- stable, watch, needs_attention or new
-    new_count INTEGER NOT NULL,
-    development_ids TEXT NOT NULL,     -- JSON [development_id] in that run
-    document_ids TEXT NOT NULL,        -- JSON [document_id]: the top matches Claude read
-    series_ids TEXT NOT NULL DEFAULT '[]', -- JSON [series_id] the answer cites
-    facts TEXT NOT NULL DEFAULT '[]',  -- JSON [SeriesFact]: what the answer was told
-    PRIMARY KEY (question_id, run_id)
-);
 
 -- Structured data (docs/archive/structured-data-plan.md, store/series.py). The catalogue tables
 -- mirror api/seed/series.yaml and are rewritten on every series fetch; observations keep the
@@ -419,7 +299,7 @@ CREATE TABLE IF NOT EXISTS observation_sources (
     PRIMARY KEY (series_id, period)
 );
 
--- What each run saw per series, so runs diff and "since your last review" covers indicators.
+-- What each run saw per series, so runs diff.
 CREATE TABLE IF NOT EXISTS run_indicators (
     run_id TEXT NOT NULL,
     series_id TEXT NOT NULL,
@@ -429,16 +309,6 @@ CREATE TABLE IF NOT EXISTS run_indicators (
     state TEXT NOT NULL,
     detail TEXT NOT NULL,              -- JSON
     PRIMARY KEY (run_id, series_id)
-);
-
--- The facts each run gave a subject's answers (pipeline/facts.py), so a cited series shows what the
--- answer saw.
-CREATE TABLE IF NOT EXISTS run_facts (
-    run_id TEXT NOT NULL,
-    subject_id TEXT NOT NULL,
-    series_id TEXT NOT NULL,
-    fact TEXT NOT NULL,                -- JSON SeriesFact
-    PRIMARY KEY (run_id, subject_id, series_id)
 );
 
 -- Each run's note per subject on why its series moved in the week to the run (pipeline/notes.py),
@@ -537,16 +407,6 @@ CREATE VIRTUAL TABLE IF NOT EXISTS developments_fts USING fts5(
 
 # Columns added to tables after stores were created. connect() adds any a store lacks, in place.
 ADDED_COLUMNS = [
-    ("dashboards", "deleted_at", "TEXT"),
-    # The profile that made the dashboard; null for starter and older ones, listed for every
-    # profile (phase1-plan.md, item U3).
-    ("dashboards", "profile_id", "TEXT"),
-    ("analyst_actions", "deleted_at", "TEXT"),
-    ("question_answers", "series_ids", "TEXT NOT NULL DEFAULT '[]'"),
-    ("question_answers", "state_rules", "TEXT NOT NULL DEFAULT '[]'"),
-    ("custom_questions", "series_ids", "TEXT NOT NULL DEFAULT '[]'"),
-    ("custom_question_answers", "series_ids", "TEXT NOT NULL DEFAULT '[]'"),
-    ("custom_question_answers", "facts", "TEXT NOT NULL DEFAULT '[]'"),
     # The detector whose rule set the level; null when the rating set it (pipeline/developments.py).
     ("developments", "materiality_rule", "TEXT"),
     # Roles, adverse and priority per subject (phase1-plan.md, item A).
@@ -567,8 +427,6 @@ ADDED_COLUMNS = [
     ("run_summaries", "points", "TEXT"),
     ("run_summaries", "indirect", "TEXT NOT NULL DEFAULT '[]'"),
     ("run_summaries", "coming_up", "TEXT NOT NULL DEFAULT '[]'"),
-    # Not relevant on a development, kept for the eval set (phase1-plan.md, item U1).
-    ("development_triage", "not_relevant_at", "TEXT"),
     ("run_summaries", "latest_news", "TEXT"),
     ("run_summaries", "problems", "TEXT NOT NULL DEFAULT '[]'"),
     # The brief's concerns, in place of points and indirect (pipeline/summaries.py).
@@ -647,26 +505,6 @@ def _drop_columns(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def _fold_alert_reads(conn: sqlite3.Connection) -> None:
-    """Stores made before triage kept alert reads per run in alert_reads. Each development's
-    latest read becomes its triage read, and the table goes."""
-    exists = "SELECT 1 FROM sqlite_master WHERE name = 'alert_reads'"
-    if conn.execute(exists).fetchone() is None:
-        return
-    conn.execute("BEGIN IMMEDIATE")  # another connection may be folding it too
-    if conn.execute(exists).fetchone() is None:
-        conn.rollback()
-        return
-    conn.execute(
-        "INSERT INTO development_triage (development_id, read_run_id) "
-        "SELECT development_id, max(run_id) FROM alert_reads WHERE true GROUP BY development_id "
-        "ON CONFLICT (development_id) DO UPDATE SET read_run_id = "
-        "max(coalesce(read_run_id, ''), excluded.read_run_id)"
-    )
-    conn.execute("DROP TABLE alert_reads")
-    conn.commit()
-
-
 # X post-count series (since removed); their ids all start with this.
 _X_SERIES = "x.posts.%"
 
@@ -710,7 +548,6 @@ def _drop_social(conn: sqlite3.Connection) -> None:
         "observation_revisions",
         "observation_sources",
         "run_indicators",
-        "run_facts",
         "run_notes",
         "series_subjects",
     ]:
@@ -737,6 +574,58 @@ def _impacts_by_table(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
 
 
+# Tables and meta keys of the features removed on 4 Nov 2026 (docs/removed-features-2026-11-04.md):
+# dashboards, profiles, visits, follows, reviews and notes, analyst feedback, custom questions,
+# triage, the alert reads triage replaced, and the standing questions' answers and facts.
+REMOVED_TABLES = [
+    "dashboards",
+    "profiles",
+    "visits",
+    "follows",
+    "analyst_actions",
+    "feedback",
+    "custom_question_answers",
+    "custom_questions",
+    "development_triage",
+    "alert_reads",
+    "question_answers",
+    "run_facts",
+]
+REMOVED_META = [
+    "active_profile",
+    "profile",
+    "profiles_seeded",
+    "dashboards_seeded",
+    "follows_seeded",
+    "tour_seen_at",
+]
+
+
+def _drop_removed_features(conn: sqlite3.Connection) -> None:
+    """Stores made before 4 Nov 2026 hold dashboards, profiles, visits, follows, reviews, notes,
+    analyst feedback, custom questions, triage and standing answers. Their tables, meta keys and
+    the run changes of standing answers' states go."""
+    tables = ",".join("?" for _ in REMOVED_TABLES)
+    keys = ",".join("?" for _ in REMOVED_META)
+    exists = (
+        f"SELECT 1 FROM sqlite_master WHERE type = 'table' AND name IN ({tables}) "  # noqa: S608
+        f"UNION ALL SELECT 1 FROM meta WHERE key IN ({keys}) "
+        "UNION ALL SELECT 1 FROM run_changes WHERE kind = 'question_state' LIMIT 1"
+    )
+    args = (*REMOVED_TABLES, *REMOVED_META)
+    if conn.execute(exists, args).fetchone() is None:
+        return
+    conn.execute("BEGIN IMMEDIATE")  # another connection may be dropping them too
+    if conn.execute(exists, args).fetchone() is None:
+        conn.rollback()
+        return
+    for table in REMOVED_TABLES:
+        conn.execute(f"DROP TABLE IF EXISTS {table}")
+    conn.execute(f"DELETE FROM meta WHERE key IN ({keys})", REMOVED_META)  # noqa: S608
+    conn.execute("DELETE FROM run_changes WHERE kind = 'question_state'")
+    conn.commit()
+
+
 def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     """Open the store and make sure the schema exists."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -749,8 +638,8 @@ def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     _add_columns(conn)
     _per_subject_priority(conn)
     _drop_columns(conn)
-    _fold_alert_reads(conn)
     _drop_social(conn)
+    _drop_removed_features(conn)
     _impacts_by_table(conn)
     if indexed is None:
         search.rebuild(conn)  # the search tables are new: index what is already stored
@@ -768,17 +657,4 @@ def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
         "ON CONFLICT (key) DO UPDATE SET value = excluded.value",
         (key, value),
     )
-    conn.commit()
-
-
-# Deleted dashboards and notes are kept this long, for Undo, before purge_deleted removes them.
-PURGE_AFTER = timedelta(days=1)
-
-
-def purge_deleted(conn: sqlite3.Connection) -> None:
-    """Removes dashboards and notes deleted more than PURGE_AFTER ago. The API runs it when it
-    starts; the delete toast's Undo is the only restore, so nothing reads them after that."""
-    cutoff = (datetime.now(UTC) - PURGE_AFTER).isoformat()
-    conn.execute("DELETE FROM dashboards WHERE deleted_at < ?", (cutoff,))
-    conn.execute("DELETE FROM analyst_actions WHERE deleted_at < ?", (cutoff,))
     conn.commit()

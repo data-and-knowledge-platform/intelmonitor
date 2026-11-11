@@ -302,8 +302,8 @@ class PastRunCheck(BaseModel):
 
 
 def _run_rows(conn: sqlite3.Connection, run_id: str) -> dict[str, set[tuple[object, ...]]]:
-    """What a run stored, row by row, to compare a recomputed run with the stored one. Standing
-    answers and their facts are parked (pipeline/run.py); a brief's write time is not compared."""
+    """What a run stored, row by row, to compare a recomputed run with the stored one. A brief's
+    write time is not compared."""
     queries = {
         "developments": "SELECT id, title, category, event_date, materiality_level, "
         "materiality_rule, needs_attention FROM developments WHERE run_id = ?",
