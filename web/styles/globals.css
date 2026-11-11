@@ -27,7 +27,7 @@
   --on-ink-link: oklch(0.8 0.1 258);
   --on-ink-hover: oklch(0.32 0.012 260);
 
-  /* Radius: badge 4, control 6, widget, panel and popover 10, popup and sheet 14. The drawer is square. */
+  /* Radius: badge 4, control 6, widget, panel and popover 10, popup and sheet 14. */
   --r-badge: 4px;
   --r-ctl: 6px;
   --r-widget: 10px;
@@ -175,7 +175,7 @@ a {
   inset: -9px -2px;
 }
 /* Disabled keeps the normal fill and drops to --ink3 text; never opacity. A button that disables
-   itself while focused, such as Run now, uses aria-disabled instead so focus stays on it. */
+   itself while focused uses aria-disabled instead so focus stays on it. */
 .btn:is(:disabled, [aria-disabled="true"]),
 .btn:is(:disabled, [aria-disabled="true"]):hover {
   background: var(--surface);
@@ -189,8 +189,8 @@ a {
   border-color: transparent;
 }
 
-/* Icon-only buttons: a 28px ghost square, or `.lg` for a 32px bordered square (top bar bell). Both
-   need an aria-label. `.lg` widens to fit a count badge. */
+/* Icon-only buttons: a 28px ghost square, or `.lg` for a 32px bordered square (the graphs' Fit
+   buttons). Both need an aria-label. `.lg` widens to fit a count badge. */
 .btn-icon {
   position: relative;
   width: 28px;
@@ -419,7 +419,7 @@ textarea.input {
   grid-template-columns: var(--stat) minmax(0, 1fr) auto;
   column-gap: var(--s-3);
   align-items: start;
-  min-height: 34px;
+  min-height: 36px;
   padding: var(--s-2) 0;
   border-top: 1px solid var(--line);
   color: var(--ink);

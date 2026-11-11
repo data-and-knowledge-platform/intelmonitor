@@ -22,6 +22,7 @@ import type { Schema } from "@/lib/api/client";
 import { FitIcon } from "@/components/ui/icons";
 
 import { angleOf, fit, tokenColors, useSigmaStage, type BaseNodeAttrs, type SimNode } from "./force";
+import { opensPage } from "./labels";
 
 type GraphData = Schema<"Graph">;
 type GraphNode = Schema<"GraphNode">;
@@ -249,11 +250,13 @@ export function GraphCanvas({ data, hovered, onHover, onOpen, children }: Props)
   });
 
   const themes = THEMES.filter((t) => data.nodes.some((n) => n.theme === t));
+  const hoveredNode = data.nodes.find((n) => n.id === hovered);
   return (
     <div className="graph-canvas">
       <div
         {...stage}
         className="graph-stage"
+        data-inert={hoveredNode && !opensPage(hoveredNode) ? "" : undefined}
         data-testid="graph-canvas"
         role="img"
         aria-label={`Graph of ${data.nodes.length} nodes and ${data.edges.length} links around ${

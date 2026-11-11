@@ -89,7 +89,6 @@ class FunctionDetail(FunctionRef):
 class SubjectSummary(SubjectRef):
     aliases: list[str]
     members: list[str] = Field(description="Member entity ids, for a group; else empty")
-    sidebar: bool = Field(description="A group shown as a sidebar heading")
     function: FunctionRef | None = Field(description="The function that owns a topic; else null")
 
 

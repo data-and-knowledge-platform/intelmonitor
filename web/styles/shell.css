@@ -155,25 +155,34 @@ nav.side {
 
 /* The foot: Help and Data sources as metadata-size text links on one row, over the view switcher,
    whose menu opens upward. */
+/* The links row is 44px tall for their hit areas, so the foot needs no top padding. */
 .side-foot {
   flex: none;
   display: flex;
   flex-direction: column;
   gap: var(--s-1);
-  padding: var(--s-2);
+  padding: 0 var(--s-2) var(--s-2);
   border-top: 1px solid var(--line);
 }
 .side-links {
   display: flex;
-  gap: var(--s-3);
+  gap: var(--s-4);
   padding: 0 var(--s-2);
 }
+/* A 44px tall button, and an ::after that widens the hit area to the middle of the gap. */
 .side-link {
+  position: relative;
+  min-height: 44px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--ink2);
   font: 400 var(--fs-meta) / var(--lh-meta) var(--font);
+}
+.side-link::after {
+  content: "";
+  position: absolute;
+  inset: 0 calc(-1 * var(--s-2));
 }
 .side-link:hover {
   color: var(--ink);

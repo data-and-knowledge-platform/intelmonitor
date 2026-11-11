@@ -855,10 +855,21 @@ select.input.sw-pick {
 .watch-btn.on svg {
   color: var(--accent);
 }
-.watch-btn .watch-off,
-.watch-btn.on:hover .watch-on {
-  display: none;
+/* The labels overlap in one cell, so the button is as wide as the longest. A hidden label leaves
+   the accessible name. `.held` (just clicked, pointer not yet gone) keeps the hover swap off. */
+.watch-labels {
+  display: inline-grid;
+  justify-items: start;
 }
-.watch-btn.on:hover .watch-off {
-  display: inline;
+.watch-labels > span {
+  grid-area: 1 / 1;
+  visibility: hidden;
+}
+.watch-btn:not(.on) .watch-add,
+.watch-btn.on .watch-on,
+.watch-btn.on:not(.held):hover .watch-off {
+  visibility: visible;
+}
+.watch-btn.on:not(.held):hover .watch-on {
+  visibility: hidden;
 }

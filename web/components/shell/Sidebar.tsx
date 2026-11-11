@@ -43,7 +43,7 @@ export function Sidebar() {
   const recent = useRecentlyViewed();
   const watchlist = useWatchlist();
   const personal = usePersonalWatchlist();
-  const { entities, topics, editable, view } = watchlist;
+  const { entities, topics, editable, view, loaded } = watchlist;
   const remove = (s: Subject) => (editable ? () => personal.remove(s.id) : undefined);
 
   return (
@@ -57,19 +57,19 @@ export function Sidebar() {
             <Clock size={14} aria-hidden="true" />
             Recently viewed
           </h2>
-          {recent.map((s) => (
+          {recent?.map((s) => (
             <Entry key={s.id} subject={s} />
           ))}
-          {recent.length === 0 && <p className="navempty">Empty</p>}
+          {recent?.length === 0 && <p className="navempty">Empty</p>}
         </section>
         <section className="navsec" aria-labelledby="nav-watchlist">
-          <h2 className="navhead" id="nav-watchlist">
+          {/* The label, not a hidden text span, says fixed: an out-of-flow span adds a stray space to the name. */}
+          <h2 className="navhead" id="nav-watchlist" aria-label={editable ? undefined : "Watchlist, fixed"}>
             <Bookmark size={14} aria-hidden="true" />
             Watchlist
             {!editable && (
-              <span className="navlock" title={`Fixed watchlist for ${view.name}`}>
+              <span className="navlock" title={view.name ? `Fixed watchlist for ${view.name}` : "Fixed watchlist"}>
                 <Lock size={13} aria-hidden="true" />
-                <span className="sr-only">, fixed</span>
               </span>
             )}
           </h2>
@@ -80,7 +80,7 @@ export function Sidebar() {
           {topics.map((s) => (
             <Entry key={s.id} subject={s} onRemove={remove(s)} />
           ))}
-          {entities.length === 0 && topics.length === 0 && <p className="navempty">Empty</p>}
+          {loaded && entities.length === 0 && topics.length === 0 && <p className="navempty">Empty</p>}
         </section>
         <section className="navsec" aria-labelledby="nav-all">
           <h2 className="navhead" id="nav-all">

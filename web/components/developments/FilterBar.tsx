@@ -1,24 +1,21 @@
-// A feed's filter bar: an optional words filter, a button per facet whose popover lists All, then
-// the facet's values with counts, and "Show unconfirmed" when the source gate holds some back. One
-// popover is open at a time; Esc, a click outside or tabbing out of it closes it. The bar wraps
-// when it does not fit on one line.
+// A feed's filter bar: a button per facet whose popover lists All, then the facet's values with
+// counts, and "Show unconfirmed" when the source gate holds some back. One popover is open at a
+// time; Esc, a click outside or tabbing out of it closes it. The bar wraps when it does not fit on
+// one line.
 import { useEffect, useRef, useState } from "react";
 
 import type { Schema } from "@/lib/api/client";
 import { useDismiss } from "@/lib/dom";
 import { FACETS, selected, showsUnconfirmed, withFacet, withUnconfirmed, type FacetId } from "@/lib/developments";
-import { ChevronDownIcon, SearchIcon } from "@/components/ui/icons";
+import { ChevronDownIcon } from "@/components/ui/icons";
 
 type FacetValue = Schema<"FacetValue">;
 type FacetDef = (typeof FACETS)[number];
-
-const WORDS_DELAY_MS = 250;
 
 export function FilterBar({
   params,
   facets,
   unconfirmed,
-  words = false,
   onParams,
 }: {
   params: URLSearchParams;
@@ -26,14 +23,11 @@ export function FilterBar({
   facets: Schema<"DevelopmentFacets"> | undefined;
   /** Unconfirmed developments matching the filters; absent until the first list loads. */
   unconfirmed: number | undefined;
-  /** Show the words filter. */
-  words?: boolean;
   onParams: (next: URLSearchParams) => void;
 }) {
   const [open, setOpen] = useState<FacetId | null>(null);
   return (
     <div className="fbar" role="group" aria-label="Filters">
-      {words && <Words params={params} onParams={onParams} />}
       {FACETS.map((f) => (
         <Facet
           key={f.id}
@@ -59,37 +53,6 @@ function Unconfirmed({ count, on, onChange }: { count: number | undefined; on: b
       <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} />
       Show unconfirmed
       {count !== undefined && <span className="n">{count}</span>}
-    </label>
-  );
-}
-
-/** The words filter: typing updates the URL after a pause. */
-function Words({ params, onParams }: { params: URLSearchParams; onParams: (next: URLSearchParams) => void }) {
-  const current = params.get("q") ?? "";
-  const [text, setText] = useState(current);
-  const [synced, setSynced] = useState(current);
-  // Back, Clear filters or a reload change the URL: the field follows.
-  if (current !== synced) {
-    setSynced(current);
-    setText(current);
-  }
-
-  useEffect(() => {
-    if (text === current) return;
-    const timer = setTimeout(() => {
-      const next = new URLSearchParams(params);
-      if (text.trim()) next.set("q", text);
-      else next.delete("q");
-      setSynced(text);
-      onParams(next);
-    }, WORDS_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [text, current, params, onParams]);
-
-  return (
-    <label className="field fsearch">
-      <SearchIcon />
-      <input type="search" placeholder="Filter by words" aria-label="Filter by words" value={text} onChange={(e) => setText(e.target.value)} />
     </label>
   );
 }

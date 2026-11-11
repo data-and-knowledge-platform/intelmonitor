@@ -267,8 +267,8 @@ def check_detector() -> None:
 def export_labels(
     out: Annotated[str, typer.Option("--out", help="The .xlsx file to write")],
 ) -> None:
-    """Write the runs' labels to an Excel workbook: Direct, Indirect, Links and Dropped sheets
-    (ticket 24). Opens the store read-only and calls no model."""
+    """Write the latest complete run's labels to an Excel workbook: Direct, Indirect, Links and
+    Dropped sheets (ticket 24). Opens the store read-only and calls no model."""
     from pathlib import Path
 
     from intelmonitor.export import export_labels as export

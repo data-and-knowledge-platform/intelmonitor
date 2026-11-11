@@ -193,6 +193,10 @@
 .graph-stage[data-hovered] {
   cursor: pointer;
 }
+/* A linked party under the pointer opens nothing. */
+.graph-stage[data-hovered][data-inert] {
+  cursor: default;
+}
 .graph-stage[data-dragging] {
   cursor: grabbing;
 }

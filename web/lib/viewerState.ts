@@ -202,6 +202,8 @@ export interface Watchlist {
   topics: Subject[];
   /** Only the Personal watchlist is edited; a function view is a fixed preset. */
   editable: boolean;
+  /** False while /subjects, or a function view's /functions, loads: the lists are not known yet. */
+  loaded: boolean;
 }
 
 function watchlistOf(stored: Stored, subjects: Subject[] | undefined, functions: FunctionDetail[] | undefined): Watchlist {
@@ -215,6 +217,7 @@ function watchlistOf(stored: Stored, subjects: Subject[] | undefined, functions:
     entities: shown.filter((s) => s.type === "entity"),
     topics: shown.filter((s) => s.type === "topic"),
     editable,
+    loaded: subjects !== undefined && (editable || functions !== undefined),
   };
 }
 
@@ -227,7 +230,7 @@ export const currentWatchlist = (subjects: Subject[], functions: FunctionDetail[
 /** The functions for resolving a view: none while loading, [] once the request fails. */
 function useFunctionList() {
   const functions = useFunctions();
-  return functions.isError ? [] : functions.data;
+  return functions.data ?? (functions.isError ? [] : undefined);
 }
 
 /** The current view, every view in switcher order (Personal, then the five functions), and a setter. */
@@ -265,10 +268,12 @@ export function usePersonalWatchlist() {
   };
 }
 
-/** Entity and topic pages opened in this browser, newest first, shared by every view. */
-export function useRecentlyViewed(): Subject[] {
+/** Entity and topic pages opened in this browser, newest first, shared by every view; undefined
+ *  until /subjects loads. */
+export function useRecentlyViewed(): Subject[] | undefined {
   const stored = useStored();
-  return resolve(stored.recent ?? [], useSeed());
+  const seed = useSeed();
+  return seed && resolve(stored.recent ?? [], seed);
 }
 
 /** Called by an entity or topic page once its subject has loaded: moves it to the front of Recently viewed. */

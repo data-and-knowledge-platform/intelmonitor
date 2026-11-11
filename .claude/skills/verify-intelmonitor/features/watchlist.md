@@ -11,7 +11,7 @@ All of it lives in this browser only, in one key, `localStorage["im.state.v1"]` 
 
 - `first-visit`: empty storage, `/` lands on `/entities/mas` in the Personal view with MAS on the watchlist and in Recently viewed; storage then holds `{"recent":["mas"]}` only.
 - `home`: `/` follows the current watchlist (first entity by name, else first topic, else `/entities`), and keeps its query, so `/?development=<id>` opens the popup over that page.
-- `add-head`: an entity or topic page's head has `button "Add to watchlist"`; once on, it reads `On watchlist` (in a function view, `On Personal watchlist`) and `Remove from watchlist` on hover, and a click removes it.
+- `add-head`: an entity or topic page's head has `button "Add to watchlist"`; once on, it reads `On watchlist` (in a function view, `On Personal watchlist`) and `Remove from watchlist` on hover, and a click removes it. Right after a click the label holds until the pointer leaves the button once, and the button keeps one width through all its labels.
 - `add-row`: each list row has `button "Add <name> to watchlist"` (tooltip `Add to watchlist`), then `button "Remove <name> from watchlist"` (tooltip `On watchlist`, or `On Personal watchlist` in a function view), `aria-pressed` following.
 - `remove`: the sidebar's x on a Personal entry ([sidebar](sidebar.md)); removing MAS keeps it out after a reload.
 - `views`: the switcher lists Personal and the five functions; a function view's watchlist is the preset, entities then topics, locked; the view is remembered across visits.
@@ -33,7 +33,7 @@ Preconditions:
 - Start from a known state: `pnpm -C web verify state clear` (a first visit) or `pnpm -C web verify state set '{"watchlist":["mas","dbs"],"view":"personal"}'`; both end on the Entities list.
 
 - **First visit.** `verify state clear`, `verify open home`: the URL is `/entities/mas`, `button "View: Personal"`, Watchlist `MAS`. `verify state show` reads `{"recent":["mas"]}`.
-- **Add from a head.** `verify open page dbs`, click `button "Add to watchlist"`: it reads `On watchlist`; `ab hover` it to read `Remove from watchlist`. The sidebar Watchlist reads DBS, MAS and `verify state show` has `"watchlist":["mas","dbs"]`.
+- **Add from a head.** `verify open page dbs`, click `button "Add to watchlist"`: it reads `On watchlist`, still under the pointer; move the mouse off, then `ab hover` it to read `Remove from watchlist`. The sidebar Watchlist reads DBS, MAS and `verify state show` has `"watchlist":["mas","dbs"]`.
 - **Add from a row.** `verify open entities`, click `button "Add OCBC to watchlist"`: the button becomes `Remove OCBC from watchlist` with `aria-pressed=true`; on `verify open topics`, `Add Banking & Lending to watchlist` adds a topic under the hairline.
 - **Home.** With `watchlist` `["mas","dbs"]`, `verify open home` lands on `/entities/dbs`; with `[]`, on `/entities`.
 - **Function view.** Pick `Financial Supervision` in the switcher: the Watchlist is the preset from `verify api /functions`, locked, and home opens DBS. `verify open page sgx`, click `Add to watchlist`: it reads `On Personal watchlist` and the preset does not change; switching back to Personal shows SGX on the Personal watchlist. A reload keeps the view.

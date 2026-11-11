@@ -77,8 +77,6 @@ class Group(BaseModel):
     name: str
     topics: list[str]
     members: list[str]
-    # False keeps a group out of the sidebar; it still drives search queries and peer sets.
-    sidebar: bool = True
 
 
 class Entity(BaseModel):

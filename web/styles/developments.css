@@ -5,10 +5,6 @@
   align-items: center;
   gap: var(--s-2);
 }
-.fsearch {
-  width: 180px;
-  flex: none;
-}
 .fwrap {
   position: relative;
   display: inline-flex;
@@ -96,8 +92,8 @@
   color: var(--ink2);
 }
 
-/* A monitor page's Developments tab (components/monitor/SubjectDevelopments.tsx): What changed and
-   the subject's list in one panel. */
+/* An entity or topic page's Developments tab (components/monitor/SubjectDevelopments.tsx): the
+   subject's feed in one panel. */
 .mon-devs {
   padding: 0 var(--s-6) var(--s-7);
 }

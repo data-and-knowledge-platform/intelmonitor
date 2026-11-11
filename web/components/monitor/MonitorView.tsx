@@ -1,9 +1,10 @@
-// An entity's or topic's page (/entities/<id> or /topics/<id>): the head with its tabs, Overview (here), Developments
-// (SubjectDevelopments.tsx's DevelopmentsTab), Related (Related.tsx) and Data (TrendView's DataView),
-// each rendering MonitorHead with its tab. The Overview holds the summary band (the week's brief
-// beside the top Key data figures and the next date), then the subject's top 5 developments and the
-// Related card, each full width; a subject with no stored links (most topics) has no Related card. Groups have
-// no page: their URL lands on the Entities list filtered to them (lib/links.ts placePage).
+// An entity's or topic's page (/entities/<id> or /topics/<id>): the head with its tabs, Overview
+// (here), Developments (SubjectDevelopments.tsx's DevelopmentsTab), Related (Related.tsx) and Data
+// (TrendView's DataView), each rendering MonitorHead with its tab. The Overview holds the summary
+// band (the week's brief beside the top Key data figures and the next date), then the subject's
+// top 5 developments and the Related card, each full width; a subject with no stored links (most
+// topics) has no Related card. Groups have no page: their URL lands on the Entities list filtered
+// to them (lib/links.ts placePage).
 import { Link } from "@tanstack/react-router";
 import { Bookmark, BookmarkPlus } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -112,22 +113,33 @@ export function MonitorHead({ page: p, view }: { page: Page; view: MonitorTab })
 /**
  * Adds the subject to the Personal watchlist, whatever the view. Once on it, the button reads "On
  * watchlist" (in a function view, "On Personal watchlist") and "Remove from watchlist" on hover.
+ * After a click the hover swap waits until the pointer has left once, so a second click in the
+ * same spot does not undo the first. All three labels share one grid cell, so the button keeps the
+ * widest one's width.
  */
 function WatchButton({ id }: { id: string }) {
   const personal = usePersonalWatchlist();
   const { view } = useView();
-  if (!personal.has(id))
-    return (
-      <button type="button" className="btn watch-btn" aria-pressed="false" onClick={() => personal.add(id)}>
-        <BookmarkPlus size={16} aria-hidden="true" />
-        Add to watchlist
-      </button>
-    );
+  const [held, setHeld] = useState(false);
+  const on = personal.has(id);
   return (
-    <button type="button" className="btn watch-btn on" aria-pressed="true" onClick={() => personal.remove(id)}>
-      <Bookmark size={16} fill="currentColor" aria-hidden="true" />
-      <span className="watch-on">{view.id === PERSONAL ? "On watchlist" : "On Personal watchlist"}</span>
-      <span className="watch-off">Remove from watchlist</span>
+    <button
+      type="button"
+      className={`btn watch-btn${on ? " on" : ""}${held ? " held" : ""}`}
+      aria-pressed={on}
+      onClick={() => {
+        if (on) personal.remove(id);
+        else personal.add(id);
+        setHeld(true);
+      }}
+      onMouseLeave={() => setHeld(false)}
+    >
+      {on ? <Bookmark size={16} fill="currentColor" aria-hidden="true" /> : <BookmarkPlus size={16} aria-hidden="true" />}
+      <span className="watch-labels">
+        <span className="watch-add">Add to watchlist</span>
+        <span className="watch-on">{view.id === PERSONAL ? "On watchlist" : "On Personal watchlist"}</span>
+        <span className="watch-off">Remove from watchlist</span>
+      </span>
     </button>
   );
 }

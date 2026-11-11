@@ -3,14 +3,15 @@
 it calls no model.
 
 Sheets:
-- Direct: one row per development and entity it is about, in every complete run. A development
-  that names no entity gets one row per topic instead, since each such topic is rated itself.
-- Indirect: one row per indirect impact (development_impacts), in every complete run.
+Direct, Indirect and Dropped cover the latest complete run only. A run reads every document from
+the corpus start to its date, so the latest run holds every development of the earlier runs.
+
+- Direct: one row per development and entity it is about. A development that names no entity
+  gets one row per topic instead, since each such topic is rated itself.
+- Indirect: one row per indirect impact (development_impacts).
 - Links: the step 2a review sheet, one row per rated link in the store's copy of
   relationships.yaml (every type but belongs_to_sector), with `rated_by` from transmission.yaml.
-- Dropped: the findings the latest complete run left out as promotional or price moves. A run
-  reads every document from the corpus start to its date, so the latest run's set holds every
-  earlier run's.
+- Dropped: the findings the run left out as promotional or price moves.
 """
 
 import sqlite3
@@ -59,11 +60,13 @@ def _names(conn: sqlite3.Connection) -> dict[str, str]:
     return names
 
 
-def _complete_runs(conn: sqlite3.Connection) -> list[str]:
-    """Complete run ids, oldest first; a run still computing or failed is left out."""
-    return [
-        r["id"] for r in conn.execute("SELECT id FROM runs WHERE status = 'complete' ORDER BY id")
-    ]
+def _latest_run(conn: sqlite3.Connection) -> str | None:
+    """The latest complete run's id; a run still computing or failed is left out. None, when
+    there is no complete run, matches no row in a `run_id = ?` query."""
+    row = conn.execute(
+        "SELECT id FROM runs WHERE status = 'complete' ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+    return row["id"] if row else None
 
 
 def _day(iso: str) -> date:
@@ -71,41 +74,40 @@ def _day(iso: str) -> date:
 
 
 def _per_development(
-    conn: sqlite3.Connection, sql: str, runs: list[str]
-) -> dict[tuple[str, str], list[sqlite3.Row]]:
-    """Rows of `sql`, which selects run_id and development_id among its columns and ends in
-    `run_id IN (...)` for the given runs, keyed by (run_id, development_id)."""
-    out: dict[tuple[str, str], list[sqlite3.Row]] = defaultdict(list)
-    for r in conn.execute(sql.format(runs=",".join("?" * len(runs))), runs):
-        out[(r["run_id"], r["development_id"])].append(r)
+    conn: sqlite3.Connection, sql: str, run: str | None
+) -> dict[str, list[sqlite3.Row]]:
+    """Rows of `sql`, which selects development_id among its columns and ends in
+    `run_id = ?` for the run, keyed by development_id."""
+    out: dict[str, list[sqlite3.Row]] = defaultdict(list)
+    for r in conn.execute(sql, (run,)):
+        out[r["development_id"]].append(r)
     return out
 
 
 def direct_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
     subjects = all_subjects()
-    runs = _complete_runs(conn)
+    run = _latest_run(conn)
     devs = conn.execute(
         "SELECT run_id, id, coalesce(headline, title) AS headline, category, first_published, "
-        "last_published FROM developments "
-        f"WHERE run_id IN ({','.join('?' * len(runs))}) ORDER BY run_id, id",  # noqa: S608
-        runs,
+        "last_published FROM developments WHERE run_id = ? ORDER BY id",
+        (run,),
     ).fetchall()
     tagged = _per_development(
         conn,
-        "SELECT run_id, development_id, subject_id, adverse, priority_level, priority_reason "
-        "FROM development_subjects WHERE run_id IN ({runs}) ORDER BY subject_id",
-        runs,
+        "SELECT development_id, subject_id, adverse, priority_level, priority_reason "
+        "FROM development_subjects WHERE run_id = ? ORDER BY subject_id",
+        run,
     )
     sources = _per_development(
         conn,
-        "SELECT s.run_id, s.development_id, s.finding_id, s.document_id, d.collection, "
+        "SELECT s.development_id, s.finding_id, s.document_id, d.collection, "
         "d.published_at, d.url FROM development_sources s "
-        "JOIN source_documents d ON d.id = s.document_id WHERE s.run_id IN ({runs})",
-        runs,
+        "JOIN source_documents d ON d.id = s.document_id WHERE s.run_id = ?",
+        run,
     )
     rows: list[list[Cell]] = []
     for d in devs:
-        key = (d["run_id"], d["id"])
+        key = d["id"]
         # Development subjects are entities and topics; one that left the seed counts as an entity.
         topics = [
             s
@@ -166,7 +168,6 @@ def direct_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
 
 
 def indirect_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
-    runs = _complete_runs(conn)
     found = conn.execute(
         "SELECT i.run_id, i.development_id, coalesce(d.headline, d.title) AS headline, "
         "i.source_id, s.priority_level AS source_level, i.subject_id, i.relationship_id, "
@@ -175,9 +176,8 @@ def indirect_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
         "LEFT JOIN development_subjects s ON s.run_id = i.run_id "
         "AND s.development_id = i.development_id AND s.subject_id = i.source_id "
         "LEFT JOIN relationships r ON r.id = i.relationship_id "
-        f"WHERE i.run_id IN ({','.join('?' * len(runs))}) "  # noqa: S608
-        "ORDER BY i.run_id, i.development_id, i.subject_id",
-        runs,
+        "WHERE i.run_id = ? ORDER BY i.development_id, i.subject_id",
+        (_latest_run(conn),),
     ).fetchall()
     rows: list[list[Cell]] = []
     for i in found:
@@ -265,13 +265,12 @@ def links_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
 
 
 def dropped_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
-    runs = _complete_runs(conn)
+    run = _latest_run(conn)
     rows: list[list[Cell]] = []
-    if runs:
-        latest = _day(runs[-1])
+    if run:
         dropped = [
             f
-            for f in load_findings(conn, latest, corpus_start(conn))
+            for f in load_findings(conn, _day(run), corpus_start(conn))
             if f.promotional or f.price_move
         ]
         ids = [f.document_id for f in dropped]

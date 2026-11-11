@@ -1,10 +1,9 @@
 # Subjects tracked by the POC: 30 topics and 89 entities, in 17 groups, and MAS's five functions.
-# The first 8 groups hold the MAS top 50 entities and are the sidebar's headings; the other 9
-# (sidebar: false) keep the remaining entities, such as countries, payment systems and cloud
-# providers, for search queries, peer sets and relationships.
-# Topics and entities are monitored. Groups are peer sets: sidebar headings, dashboard watchlists
-# (a dashboard listing a group shows its members), peer comparison and search queries; nothing is
-# screened for or tagged to a group (phase1-decisions.md, S3).
+# The first 8 groups hold the MAS top 50 entities; the other 9 keep the remaining entities, such
+# as countries, payment systems and cloud providers.
+# Topics and entities are monitored. Groups are peer sets: the Entities list's Group filter, peer
+# comparison, relationships and search queries; nothing is screened for or tagged to a group
+# (phase1-decisions.md, S3).
 # Every entity sits in at least one group; every group links to at least one topic.
 # Aliases drive entity resolution and search query generation. Domains are the subject's own
 # site, used for gap searches limited to that domain.
@@ -256,53 +255,44 @@ groups:
     topics: [private-markets, mergers-acquisitions, asset-allocation]
     members: [temasek, edbi, vertex-ventures]
 
-  # Kept for queries, peer sets and relationships; not in the sidebar.
+  # The remaining entities.
   - id: singapore-banks
     name: Singapore banks
     topics: [banking-lending, financial-regulation, cyber-resilience, scams-fraud]
     members: [dbs, ocbc, uob]
-    sidebar: false
   - id: central-banks
     name: Central banks and regulators
     topics: [monetary-policy, financial-regulation, financial-stability, enforcement]
     members: [mas, hkma, bnm, bank-of-thailand, ojk, federal-reserve]
-    sidebar: false
   - id: exchanges
     name: Exchanges
     topics: [capital-markets-equities, market-payment-infrastructure]
     members: [sgx, hkex]
-    sidebar: false
   - id: payment-systems
     name: Payment systems
     topics: [market-payment-infrastructure, payments-fintech, cyber-resilience]
     members: [meps-plus, fast, paynow, giro, nets, bcs, swift, visa, mastercard]
-    sidebar: false
   - id: tech-providers
     name: Technology providers
     topics: [cyber-resilience, tech-infrastructure]
     members: [aws, microsoft-azure, microsoft-365, google-cloud, oracle-cloud, equinix, crowdstrike, singtel, thought-machine, toppan-next-tech]
-    sidebar: false
   # Exchange hacks and outages, custody and reserve bank concentration, AML/CFT enforcement.
   - id: digital-assets
     name: Digital assets
     topics: [digital-assets-blockchain, cyber-resilience, aml-sanctions]
     members: [circle, straitsx, okx, coinbase]
-    sidebar: false
   - id: sea-countries
     name: SEA countries
     topics: [economic-growth-inflation, monetary-policy, trade-geopolitics]
     members: [singapore, malaysia, indonesia, thailand, vietnam]
-    sidebar: false
   - id: other-countries
     name: Other countries and territories
     topics: [economic-growth-inflation, monetary-policy, trade-geopolitics]
     members: [hong-kong, mainland-china, taiwan, india, united-kingdom, australia, south-korea, united-states]
-    sidebar: false
   - id: sectors
     name: Sectors
     topics: [property-reits, banking-lending]
     members: [building-construction, housing]
-    sidebar: false
 
 # kind sets how the models are told what the entity is (pipeline/subjects.py).
 entities:

@@ -13,19 +13,9 @@ export const PRIORITIES: Priority[] = ["High", "Medium", "Low"];
 
 const PRIORITY_CLASS: Record<Priority, string> = { High: "b-attn", Medium: "b-watch", Low: "b-neutral" };
 
-const PRIORITY_TITLE: Record<Priority, string> = {
-  High: "High: an incident at or strongly linked to a Singapore financial institution",
-  Medium: "Medium: a development at or strongly linked to a Singapore financial institution",
-  Low: "Low: no effect on Singapore's financial institutions",
-};
-
-/** Priority as the one filled badge: High, Medium or Low, with what it means on hover. */
+/** Priority as the one filled badge: High, Medium or Low. Help gives each level's definition. */
 export function PriorityBadge({ priority }: { priority: Priority }) {
-  return (
-    <span className={`badge ${PRIORITY_CLASS[priority]}`} title={PRIORITY_TITLE[priority]}>
-      {priority}
-    </span>
-  );
+  return <span className={`badge ${PRIORITY_CLASS[priority]}`}>{priority}</span>;
 }
 
 /** New as a badge; Updated as a plain word in the new color, so it never reads as a priority. */

@@ -359,7 +359,6 @@ class Queries:
             **subject_ref(subject_id).model_dump(),
             aliases=aliases(subject_id),
             members=list(s.members),
-            sidebar=s.sidebar,
             function=function_ref(s.function) if s.function else None,
         )
 

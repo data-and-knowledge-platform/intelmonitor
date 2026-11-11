@@ -8,6 +8,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
@@ -107,6 +108,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# The list pages' rows carry full subject refs; gzip takes /lists/entities from about 51 KB to 7 KB.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 @app.exception_handler(NotFoundError)

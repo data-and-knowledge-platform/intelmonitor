@@ -446,17 +446,23 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       await expect(page).toHaveURL(/\/entities\/dbs$/);
       await expect(page.getByRole("heading", { level: 1, name: "DBS" })).toBeVisible();
 
-      // The head's labelled button adds DBS, then reads On watchlist and offers removal on hover.
+      // The head's labelled button adds DBS, then reads On watchlist and offers removal on hover,
+      // but only once the pointer has left after the click. Its width holds through every label.
       const watchButton = page.locator(".mon-head .watch-btn");
-      await expect(watchButton).toHaveText("Add to watchlist");
+      await expect(watchButton).toHaveAccessibleName("Add to watchlist");
+      const width = (await watchButton.boundingBox())?.width;
       await watchButton.click();
       personal = [...personal, "dbs"];
+      await expect(watchButton).toHaveAccessibleName("On watchlist");
+      await expect(watchButton.locator(".watch-off")).toBeHidden();
+      expect((await watchButton.boundingBox())?.width, "the button keeps its width").toBe(width);
       await page.mouse.move(700, 880);
       await expect(watchButton.locator(".watch-on")).toHaveText("On watchlist");
       await expect(watchButton.locator(".watch-off")).toBeHidden();
       await watchButton.hover();
       await expect(watchButton.locator(".watch-off")).toHaveText("Remove from watchlist");
       await expect(watchButton.locator(".watch-on")).toBeHidden();
+      expect((await watchButton.boundingBox())?.width, "the button keeps its width").toBe(width);
       await page.mouse.move(700, 880);
       await expect(watchlistLinks(page)).toHaveText(watchlistNames(personal));
 
@@ -495,6 +501,8 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       const ranks = (await badges(feed)).map((b) => PRIORITIES.findIndex((p) => p === b));
       expect(ranks, "highest priority first").toEqual([...ranks].sort((a, b) => a - b));
       // New and Updated show on every row the latest run added or updated, from that run's changes.
+      // The store needs a run after the first for the marks to be exercised at all.
+      expect(month.developments.some((d) => d.change !== null), "the latest run changed some of DBS's month").toBe(true);
       await expect(feed.locator(".frow .b-new")).toHaveCount(month.developments.filter((d) => d.change === "new").length);
       await expect(feed.locator(".frow .upd")).toHaveCount(month.developments.filter((d) => d.change === "updated").length);
       await expect(feed.locator(".feed-foot")).toHaveText(`New: added in the run of ${shortDate(latest.as_of)}. Updated: new reports in that run.`);
@@ -686,7 +694,7 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       await pickView(page, "Personal", supervision.name);
 
       // The preset as the API serves it, entities then topics, locked, with no x.
-      await expect(sidebar(page).getByRole("region", { name: /^Watchlist ?, fixed$/ })).toBeVisible();
+      await expect(sidebar(page).getByRole("region", { name: "Watchlist, fixed", exact: true })).toBeVisible();
       await expect(watchlistLinks(page)).toHaveText(watchlistNames(preset));
       await expect(removeButtons(page)).toHaveCount(0);
       expect(await storedState(page)).toMatchObject({ view: supervision.id, watchlist: [] });
@@ -703,7 +711,7 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       expect(preset).not.toContain(outside.id);
       await page.goto(pagePath(outside));
       const watchButton = page.locator(".mon-head .watch-btn");
-      await expect(watchButton).toHaveText("Add to watchlist");
+      await expect(watchButton).toHaveAccessibleName("Add to watchlist");
       await watchButton.click();
       personal = [outside.id];
       await page.mouse.move(700, 880);

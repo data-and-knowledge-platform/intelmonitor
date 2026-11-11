@@ -170,7 +170,7 @@ export const useShared = (a: string, b: string | null) =>
 
 /**
  * A subject's Trend view: its series over the 12 months to the latest run with its marked
- * developments, each run's note on why they moved, and its questions' states per run.
+ * developments, and each run's note on why they moved.
  */
 export const trendOptions = (id: string) =>
   queryOptions({

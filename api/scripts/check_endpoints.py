@@ -41,7 +41,6 @@ PRESET_ENTITY = "mas"
 SUMMARY_FIELDS = {"id", "name", "type", "kind", "logo", "logo_full", "icon"} | {
     "aliases",
     "members",
-    "sidebar",
     "function",
 }
 LISTS = {"entities": "entity", "topics": "topic"}

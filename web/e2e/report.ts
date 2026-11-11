@@ -73,14 +73,18 @@ export default class WalkthroughReporter implements Reporter {
     const files = FILES.filter((f) => existsSync(path.join(dir, f)));
 
     const passed = result?.status === "passed" && rows.every((r) => r.status === "passed");
+    // The walkthrough does not fail a step whose screenshot could not be taken, so the report
+    // flags it: the proof has a hole there.
+    const unshot = rows.filter((r) => r.status === "passed" && !r.screenshot).map((r) => r.title);
     const outside = result?.errors
       .map((e) => plain(e.message ?? ""))
       .filter((m) => m && !rows.some((r) => r.error === m));
-    writeFileSync(path.join(dir, "index.html"), page({ rows, passed, videos, trace, files, result, test: this.test, outside: outside ?? [] }));
+    writeFileSync(path.join(dir, "index.html"), page({ rows, passed, unshot, videos, trace, files, result, test: this.test, outside: outside ?? [] }));
     writeFileSync(
       path.join(dir, "summary.json"),
-      JSON.stringify({ passed, status: result?.status ?? "not run", steps: rows, videos, files }, null, 2),
+      JSON.stringify({ passed, status: result?.status ?? "not run", unshot, steps: rows, videos, files }, null, 2),
     );
+    if (unshot.length) console.log(`\nPassed with no screenshot: ${unshot.join("; ")}`);
     console.log(`\nE2E artifacts: ${dir}/index.html`);
   }
 }
@@ -88,6 +92,7 @@ export default class WalkthroughReporter implements Reporter {
 function page({
   rows,
   passed,
+  unshot,
   videos,
   trace,
   files,
@@ -97,6 +102,8 @@ function page({
 }: {
   rows: Row[];
   passed: boolean;
+  /** Titles of passed steps with no screenshot. */
+  unshot: string[];
   videos: string[];
   trace: string | null;
   files: string[];
@@ -117,6 +124,7 @@ function page({
         </div>
         <p><span class="status">${r.status}</span>${r.status === "not run" ? "" : `, ${(r.ms / 1000).toFixed(1)} s`}</p>
         ${r.error ? `<pre>${escape(r.error)}</pre>` : ""}
+        ${unshot.includes(r.title) ? `<p class="flag">Passed, but no screenshot was saved.</p>` : ""}
         ${r.status === "not run" ? "" : `<p class="state">im.state.v1</p><pre class="storage">${escape(JSON.stringify(r.storage))}</pre>`}
       </div>
       ${r.screenshot ? `<a href="${r.screenshot}"><img src="${r.screenshot}" alt="Step ${i + 1} screenshot" loading="lazy"></a>` : "<span></span>"}
@@ -148,6 +156,7 @@ function page({
   .passed .status { color: var(--pass); }
   .failed .status { color: var(--fail); }
   .not-run .status { color: var(--ink2); }
+  .step p.flag { color: var(--fail); font-weight: 600; }
   img { display: block; width: 100%; border: 1px solid var(--line); border-radius: 6px; }
   @media (max-width: 640px) { .step { grid-template-columns: 1fr; } }
   pre { white-space: pre-wrap; background: #fff5f5; border-radius: 6px; padding: 8px; font-size: 12px; overflow-x: auto; }
@@ -158,7 +167,7 @@ function page({
 <body>
 <main>
   <h1>IntelMonitor E2E</h1>
-  <p class="meta"><span class="verdict">${passed ? "Passed" : "Failed"}</span>, ${rows.filter((r) => r.status === "passed").length} of ${rows.length} steps passed. ${escape(test?.title ?? "")}. Started ${escape(started)}, ${seconds} s.</p>
+  <p class="meta"><span class="verdict">${passed ? "Passed" : "Failed"}</span>, ${rows.filter((r) => r.status === "passed").length} of ${rows.length} steps passed${unshot.length ? `, <span class="verdict" style="color: var(--fail)">${unshot.length} with no screenshot</span>` : ""}. ${escape(test?.title ?? "")}. Started ${escape(started)}, ${seconds} s.</p>
   <p class="files">${videos.length ? videos.map((v) => `<a href="${v}">${escape(v)}</a>`).join("") : "No video"}${trace ? `<a href="${trace}">Trace</a> <span class="meta">open with <code>pnpm exec playwright show-trace trace.zip</code></span>` : "No trace"}</p>
   <p class="files">${files.map((f) => `<a href="${f}">${f}</a>`).join("")}</p>
   ${outside.map((m) => `<pre>${escape(m)}</pre>`).join("")}

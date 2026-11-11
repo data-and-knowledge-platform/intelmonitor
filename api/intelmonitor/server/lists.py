@@ -54,7 +54,10 @@ def subject_list(q: Queries, name: ListName, period: Period) -> SubjectList:
     subjects = [s for s in all_subjects().values() if s.type == kind]
     since = period_start(q, period)
     tallies = {s.id: _Tally() for s in subjects}
-    topics = {s.id for s in all_subjects().values() if s.type == "topic"}
+    # Topics in seed order, which breaks ties for a development's lead topic.
+    topic_order = {
+        sid: n for n, sid in enumerate(s.id for s in all_subjects().values() if s.type == "topic")
+    }
     for d in q.devs.by_id.values():
         mine = q.devs.priorities.get(d.id, {})
         for sid, p in mine.items():
@@ -75,7 +78,7 @@ def subject_list(q: Queries, name: ListName, period: Period) -> SubjectList:
         if t.top is None:
             return None
         _, d, level = t.top
-        topic = None if kind == "topic" else _lead_topic(q.devs.priorities[d.id], topics)
+        topic = None if kind == "topic" else _lead_topic(q.devs.priorities[d.id], topic_order)
         return TopDevelopment(
             id=d.id,
             headline=d.headline,
@@ -102,7 +105,12 @@ def subject_list(q: Queries, name: ListName, period: Period) -> SubjectList:
     return SubjectList(run=q.run, period=period, since=since, rows=rows)
 
 
-def _lead_topic(priorities: dict[str, SubjectPriority], topics: set[str]) -> str | None:
-    """A development's highest-priority topic, then the one screening was surest of."""
-    tagged = [(p.level, p.confidence, sid) for sid, p in priorities.items() if sid in topics]
-    return max(tagged)[2] if tagged else None
+def _lead_topic(priorities: dict[str, SubjectPriority], topic_order: dict[str, int]) -> str | None:
+    """A development's highest-priority topic, then the one screening was surest of, then the
+    first in the seed's topic order (`topic_order`, topic id to position)."""
+    tagged = [
+        (p.level, p.confidence, -topic_order[sid], sid)
+        for sid, p in priorities.items()
+        if sid in topic_order
+    ]
+    return max(tagged)[3] if tagged else None

@@ -10,9 +10,9 @@ What the sidebar shows lives in this browser only ([watchlist](watchlist.md)); l
 ## Sub-features
 
 - `recent`: `region "Recently viewed"`, up to 5 links, newest first, no repeats; `Empty` before any page is opened. A list page, a failed page and the popup are not recorded.
-- `watchlist`: `region "Watchlist"`, entities, `hr.navrule`, then topics, each alphabetical; `Empty` when the view's list is empty. In the Personal view each entry has `button "Remove <name> from watchlist"`, shown on hover (always on touch screens). In a function view the heading carries a lock and its name reads `Watchlist , fixed` (agent-browser prints the space), with no remove buttons.
+- `watchlist`: `region "Watchlist"`, entities, `hr.navrule`, then topics, each alphabetical; `Empty` when the view's list is empty. In the Personal view each entry has `button "Remove <name> from watchlist"`, shown on hover (always on touch screens). In a function view the heading carries a lock and its name reads `Watchlist, fixed`, with no remove buttons.
 - `all`: `region "All"` with `link "Entities 89"` and `link "Topics 30"`, to `/entities` and `/topics`.
-- `foot-links`: `button "Help"` and `button "Data sources"` on one row at metadata size, each opening its dialog ([help](help.md)).
+- `foot-links`: `button "Help"` and `button "Data sources"` on one 44 px row at metadata size, each with a 44 px hit area, opening its dialog ([help](help.md)). Neither dialog fetches until it opens.
 - `view-switcher`: `button "View: <view>"` opens `menu "Views"` upward: `menuitemradio "Personal"`, a separator, then the five functions from `GET /functions`, the current one checked. Arrow keys, Home and End move, Enter picks, Esc and Tab close.
 - `brand`: `link "IntelMonitor"` goes home ([watchlist](watchlist.md), `home`).
 

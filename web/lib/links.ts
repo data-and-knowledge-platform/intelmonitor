@@ -67,7 +67,10 @@ export async function placePage(queryClient: QueryClient, section: PageSection, 
 }
 
 // Tabs of the old `/monitors/<id>/<tab>` URLs that are gone or renamed.
-const OLD_TABS: Record<string, SubjectTab> = { trend: "data", connections: "overview" };
+const OLD_TABS = new Map<string, SubjectTab>([
+  ["trend", "data"],
+  ["connections", "overview"],
+]);
 
 /**
  * Sends an old `/monitors/<id>[/<tab>]` URL (`path` is what follows `/monitors/`) to the page
@@ -78,7 +81,7 @@ export async function fromMonitorUrl(queryClient: QueryClient, path: string, loc
   if (!id) throw redirect({ to: "/", replace: true });
   const subject = (await findSubject(queryClient, id)) ?? { id, type: "entity" };
   if (subject.type === "group") throw redirect({ ...groupLink(subject.id), replace: true });
-  const tab = isTab(segment) ? segment : (OLD_TABS[segment] ?? "overview");
+  const tab = isTab(segment) ? segment : (OLD_TABS.get(segment) ?? "overview");
   throw redirect({ ...subjectLink(subject, tab), search: location.search, hash: location.hash, replace: true });
 }
 

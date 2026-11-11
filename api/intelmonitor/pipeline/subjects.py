@@ -1,7 +1,7 @@
 """Subjects as the pipeline sees them: one flat list with descriptions for Claude.
 
 Topics and entities are monitored: screening asks about them, developments are tagged to them and
-priority scores them. Groups are peer sets of entities (sidebar headings, peer comparison,
+priority scores them. Groups are peer sets of entities (list page filters, peer comparison,
 search queries); nothing is screened for, tagged to or scored for a group
 (phase1-decisions.md, S3)."""
 
@@ -41,7 +41,6 @@ class Subject:
     kind: EntityKind | None
     description: str  # what counts as being about this subject; groups are never asked about
     members: tuple[str, ...]  # entity ids, for groups
-    sidebar: bool = False  # a group shown as a sidebar heading
     function: str | None = None  # the id of the MAS function that owns a topic
 
 
@@ -63,7 +62,6 @@ def all_subjects() -> dict[str, Subject]:
             None,
             f"the group {g.name} ({members})",
             tuple(g.members),
-            g.sidebar,
         )
     for e in seed.entities:
         aliases = f", also {', '.join(e.aliases)}" if e.aliases else ""

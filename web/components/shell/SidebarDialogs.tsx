@@ -1,5 +1,5 @@
 // The two dialogs the sidebar's foot opens (Sidebar.tsx): Help, which `?` also opens, and Data
-// sources.
+// sources. Each body fetches only while its dialog is open, since Modal renders children only then.
 import type { ReactNode } from "react";
 
 import { useDataSources, useMaterialityLevels } from "@/lib/api/queries";
@@ -25,46 +25,52 @@ function Panel({ id, title, onClose, open, children }: DialogProps & { id: strin
 }
 
 export function DataSourcesDialog(props: DialogProps) {
+  return (
+    <Panel {...props} id="sources-title" title="Data sources">
+      <SourcesBody />
+    </Panel>
+  );
+}
+
+function SourcesBody() {
   const sources = useDataSources();
   const data = sources.data;
   return (
-    <Panel {...props} id="sources-title" title="Data sources">
-      <div className="panel-body">
-        {data && (
-          <>
-            <p className="cap">
-              {data.total_documents} documents stored
-              {data.t0 ? `; the latest run is the week to ${longDate(data.t0)}` : ""}
-            </p>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Source</th>
-                  <th>Collection</th>
-                  <th className="num">Documents</th>
-                  <th className="num">Relevant</th>
-                  <th>Published</th>
+    <div className="panel-body">
+      {data && (
+        <>
+          <p className="cap">
+            {data.total_documents} documents stored
+            {data.t0 ? `; the latest run is the week to ${longDate(data.t0)}` : ""}
+          </p>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Collection</th>
+                <th className="num">Documents</th>
+                <th className="num">Relevant</th>
+                <th>Published</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.sources.map((s) => (
+                <tr key={`${s.source}-${s.collection}`}>
+                  <td>{s.source.toUpperCase()}</td>
+                  <td>{COLLECTION_LABEL[s.collection]}</td>
+                  <td className="num">{s.documents}</td>
+                  <td className="num">{s.relevant_documents}</td>
+                  <td>
+                    {shortDate(s.first_published)} to {shortDate(s.last_published)}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {data.sources.map((s) => (
-                  <tr key={`${s.source}-${s.collection}`}>
-                    <td>{s.source.toUpperCase()}</td>
-                    <td>{COLLECTION_LABEL[s.collection]}</td>
-                    <td className="num">{s.documents}</td>
-                    <td className="num">{s.relevant_documents}</td>
-                    <td>
-                      {shortDate(s.first_published)} to {shortDate(s.last_published)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
-        {sources.isError && <p className="cap">Could not load data sources.</p>}
-      </div>
-    </Panel>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+      {sources.isError && <p className="cap">Could not load data sources.</p>}
+    </div>
   );
 }
 
@@ -90,47 +96,53 @@ const LABELS: { label: ReactNode; text: string }[] = [
  * the team's definition from `GET /materiality-levels` (slide 7's, in pipeline/params.py).
  */
 export function HelpDialog(props: DialogProps) {
+  return (
+    <Panel {...props} id="help-title" title="Help">
+      <HelpBody />
+    </Panel>
+  );
+}
+
+function HelpBody() {
   const levels = useMaterialityLevels();
   const definition = (p: Priority) =>
     levels.data?.find((l) => l.name === p)?.description ?? (levels.isError ? "Could not load this definition." : "");
   return (
-    <Panel {...props} id="help-title" title="Help">
-      <div className="panel-body help">
-        <section aria-labelledby="help-labels">
-          <h3 id="help-labels">Labels on a development</h3>
-          {PRIORITIES.map((p) => (
-            <div key={p} className="help-row">
-              <span>
-                <PriorityBadge priority={p} />
-              </span>
-              <span>{definition(p)}</span>
+    <div className="panel-body help">
+      <section aria-labelledby="help-labels">
+        <h3 id="help-labels">Labels on a development</h3>
+        {PRIORITIES.map((p) => (
+          <div key={p} className="help-row">
+            <span>
+              <PriorityBadge priority={p} />
+            </span>
+            <span>{definition(p)}</span>
+          </div>
+        ))}
+        {LABELS.map((l, i) => (
+          <div key={i} className="help-row">
+            <span>{l.label}</span>
+            <span>{l.text}</span>
+          </div>
+        ))}
+      </section>
+      <section aria-labelledby="help-keys">
+        <h3 id="help-keys">Keyboard shortcuts</h3>
+        <dl className="keys">
+          {SHORTCUTS.map(([combo, what]) => (
+            <div key={what} style={{ display: "contents" }}>
+              <dt>
+                {combo.map((k) => (
+                  <kbd key={k} className="kbd">
+                    {k}
+                  </kbd>
+                ))}
+              </dt>
+              <dd>{what}</dd>
             </div>
           ))}
-          {LABELS.map((l, i) => (
-            <div key={i} className="help-row">
-              <span>{l.label}</span>
-              <span>{l.text}</span>
-            </div>
-          ))}
-        </section>
-        <section aria-labelledby="help-keys">
-          <h3 id="help-keys">Keyboard shortcuts</h3>
-          <dl className="keys">
-            {SHORTCUTS.map(([combo, what]) => (
-              <div key={what} style={{ display: "contents" }}>
-                <dt>
-                  {combo.map((k) => (
-                    <kbd key={k} className="kbd">
-                      {k}
-                    </kbd>
-                  ))}
-                </dt>
-                <dd>{what}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      </div>
-    </Panel>
+        </dl>
+      </section>
+    </div>
   );
 }

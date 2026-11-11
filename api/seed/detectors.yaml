@@ -1,7 +1,7 @@
 # Detectors (docs/archive/structured-data-plan.md, F3): rules over series whose firings become developments.
 # Each firing is written as a source document in the "data" collection with a sentence written by
-# code, and one finding tagged to the series' primary subjects; clustering, answers, triage, alerts
-# and search then treat it like any other development.
+# code, and one finding tagged to the series' primary subjects; the merge and search then treat it
+# like any other development.
 #
 # Every detector applies to each series its `series` pattern matches (`*` spans dots), and gives its
 # developments the `materiality` level (low, medium or high priority) instead

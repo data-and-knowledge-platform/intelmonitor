@@ -22,7 +22,7 @@ const TOP = 28;
 const BOTTOM = 22;
 const RIGHT = 8;
 // Width of one tabular digit at the meta size, for the scale's gutter.
-const CHAR = 6.8;
+const CHAR = 8.1;
 // Markers closer than this share one x and stack.
 const STACK = 18;
 // A tooltip opens to the left of the point with less room than this to its right.

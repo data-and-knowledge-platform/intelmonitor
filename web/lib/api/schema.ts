@@ -2245,11 +2245,6 @@ export interface components {
              * @description Member entity ids, for a group; else empty
              */
             members: string[];
-            /**
-             * Sidebar
-             * @description A group shown as a sidebar heading
-             */
-            sidebar: boolean;
             /** @description The function that owns a topic; else null */
             function: components["schemas"]["FunctionRef"] | null;
             /** Description */
@@ -2465,11 +2460,6 @@ export interface components {
              * @description Member entity ids, for a group; else empty
              */
             members: string[];
-            /**
-             * Sidebar
-             * @description A group shown as a sidebar heading
-             */
-            sidebar: boolean;
             /** @description The function that owns a topic; else null */
             function: components["schemas"]["FunctionRef"] | null;
         };

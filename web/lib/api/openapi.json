@@ -5314,11 +5314,6 @@
             "title": "Members",
             "description": "Member entity ids, for a group; else empty"
           },
-          "sidebar": {
-            "type": "boolean",
-            "title": "Sidebar",
-            "description": "A group shown as a sidebar heading"
-          },
           "function": {
             "anyOf": [
               {
@@ -5353,7 +5348,6 @@
           "kind",
           "aliases",
           "members",
-          "sidebar",
           "function",
           "description",
           "domains",
@@ -5929,11 +5923,6 @@
             "title": "Members",
             "description": "Member entity ids, for a group; else empty"
           },
-          "sidebar": {
-            "type": "boolean",
-            "title": "Sidebar",
-            "description": "A group shown as a sidebar heading"
-          },
           "function": {
             "anyOf": [
               {
@@ -5954,7 +5943,6 @@
           "kind",
           "aliases",
           "members",
-          "sidebar",
           "function"
         ],
         "title": "SubjectSummary"

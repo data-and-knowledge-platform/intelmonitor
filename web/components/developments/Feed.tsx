@@ -19,12 +19,10 @@ import type { ViewScope } from "./link";
 export function Feed({
   scope,
   view,
-  words = false,
 }: {
   scope: FeedScope;
   /** The subjects in view, whose priority each development's popup shows. */
   view: ViewScope;
-  words?: boolean;
 }) {
   const params = useSearchParams();
   const pathname = usePathname();
@@ -54,7 +52,7 @@ export function Feed({
             </button>
           ))}
         </div>
-        <FilterBar params={params} facets={data?.facets} unconfirmed={data?.unconfirmed} words={words} onParams={onParams} />
+        <FilterBar params={params} facets={data?.facets} unconfirmed={data?.unconfirmed} onParams={onParams} />
       </div>
       {list.isError ? (
         <p className="mon-empty">These developments could not be loaded.</p>

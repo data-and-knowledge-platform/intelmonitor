@@ -7,7 +7,7 @@ The rest are unconfirmed and left out of every list, count and total by default:
 Feeds show only on entity and topic pages: a page's Developments tab (`/entities/<id>/developments` or `/topics/<id>/developments`, section `Developments about <name>`) shows one subject's feed, and its Overview the top 5 rows without headings.
 The list pages show only each row's top development ([list-pages](list-pages.md)).
 Rows sit in one list under a column header, `Priority`, `Finding`, `Date` (hidden from the accessibility tree and below 640 px), in that order; each row's priority badge is in the Priority column.
-Each row has a status column (priority badge High, Medium or Low for the subjects in view, then New or Updated: added or updated in the latest weekly run, shown to everyone and never cleared by opening it), the full wrapping title, one line on who it impacts (`Impacts DBS · By MAS · About Banking regulation · Could also affect UOB`), a facts line (`Unconfirmed` when it is, `High for OCBC` when the subjects in view disagree, `Adverse event` when it applies, the tone, the source counts, the category), and at the right the date and a visible `View sources ›` cue.
+Each row has a status column (priority badge High, Medium or Low for the subjects in view, then New or Updated: added or updated in the latest weekly run, shown to everyone and never cleared by opening it), the full wrapping title, one line on who it impacts (`Impacts DBS · By MAS · About Banking & Lending · Could also affect UOB`), a facts line (`Unconfirmed` when it is, `High for OCBC` when the subjects in view disagree, `Adverse event` when it applies, the tone, the source counts, the category), and at the right the date and a visible `View sources ›` cue.
 The source counts read `3 outlets · 1 official source · 2 research papers · 1 data source`, each part left out when zero; outlets are distinct parent domains, not articles.
 The whole row opens the development's popup over the list (see [development-page](development-page.md)).
 Above the rows: the period control (Today, This week, This month, All time; This month is the default), the facet buttons Priority, Adverse event, Tone, Category and Source type, each a popover with All first and the values with counts, and the checkbox `Show unconfirmed <n>` while some unconfirmed developments match.
@@ -51,7 +51,7 @@ Preconditions:
 - **Empty.** With a filter that matches nothing: `No developments match these filters. Clear filters`; the button clears the facets, keeping the period. On `Today` with nothing that day: `No developments in this period. Show this week`. With `Adverse event: Yes` on `Today` when only the week has matches: `No developments match these filters in this period. Show this week · Clear filters`; `Show this week` keeps the filters.
 - **Overview.** The Overview (`verify open page dbs`) shows `Top DBS developments`: the first 5 confirmed rows in the same order, with badges and no headings.
 - **Bad parameters.** `pnpm -C web verify open page-developments dbs "priority=Bogus&tone=x&adverse=maybe&category=bogus&source=foo&days=abc"`: buttons read plain `Priority` and so on, and `This month` is pressed.
-- **Proof.** `pnpm -C web verify shot phase1-U1/<step>`; the `.aria.txt` holds the button names and counts.
+- **Proof.** `pnpm -C web verify shot developments/<step>`; the `.aria.txt` holds the button names and counts.
 
 ## Gotchas
 

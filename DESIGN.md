@@ -135,7 +135,7 @@ components:
     textColor: "{colors.ink2}"
     rounded: "{rounded.badge}"
   list-row:
-    minHeight: "34px"
+    minHeight: "36px"
     padding: "8px 0"
     divider: "{colors.line}"
   widget:
@@ -312,7 +312,7 @@ Selected segments, pressed toggles and page-head buttons have no shadow.
 - 36 px for a one-line row: 8 px above and below 15/20 text, a 1 px `line` rule between rows.
 - `.row-title` is 500 and clamps at two lines; `.row-meta` is 13/18 `ink2` under it.
 - `.row.no-stat` drops the status column.
-- The same grammar serves development rows, the graph In view list and the gallery subject list.
+- The same grammar serves development rows and the graph In view list.
 - Feed rows (`.frow`, `components/developments/FeedRow.tsx`) never clamp: the status column holds the priority badge with New or Updated under it, then the full title, one line on who it impacts, a 13 px facts line, and the date with a visible accent "View sources" cue in the end column. The whole row opens the development's popup.
 - Feeds group their rows under a heading per priority (`.fgroup`): `High priority 4` at 15/600 `ink` with the count, then on the same line, in 15/400 `ink`, what that priority means, over a 1 px `line-strong` rule. The Overview's top 5 rows carry only their badges, no headings.
 

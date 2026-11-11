@@ -1,6 +1,6 @@
-// An entity's or topic's Related tab: what reaches the subject through its links ("Could affect"), the
-// institutions linked to a country, sector, technology provider or payment system (decision U2a),
-// and, for a bank, what it shares with a peer. The tab shows only when one of these has rows.
+// An entity's or topic's Related tab: what reaches the subject through its links ("Could affect"),
+// the institutions linked to a country, sector, technology provider or payment system (decision
+// U2a), and, for a bank, what it shares with a peer. The tab shows only when one of these has rows.
 import { Navigate } from "@tanstack/react-router";
 
 import type { Schema } from "@/lib/api/client";

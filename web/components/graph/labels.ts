@@ -4,6 +4,10 @@ import type { Schema } from "@/lib/api/client";
 
 export type RelType = Schema<"RelatedLink">["type"];
 
+/** Whether a graph node opens something: linked parties (endpoints) have no page, so their nodes
+ *  take no click and their In view rows are not links. */
+export const opensPage = (n: Schema<"GraphNode">) => n.type !== "endpoint";
+
 export const LINK_LABEL: Record<RelType, string> = {
   holds_stake_in: "Holds a stake in",
   regulated_by: "Regulated by",

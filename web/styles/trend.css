@@ -36,13 +36,6 @@
   }
 }
 
-/* Question state marks: Stable a baseline, New and Watch half height, Needs attention full.
-   New and Watch are lighter steps of their hues so they read as fills. */
-:root {
-  --tr-new: oklch(0.7 0.11 258);
-  --tr-watch: oklch(0.74 0.13 72);
-}
-
 .tr-runs {
   margin-top: var(--s-3);
   flex-wrap: wrap;

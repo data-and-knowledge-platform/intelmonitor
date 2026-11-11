@@ -1,22 +1,24 @@
 // Graph view around one subject: opens at 1 hop, expands to 2, with filters for node type, link
 // type and time window. Clicking a subject node opens its page (a group, the Entities list filtered
-// to it); clicking a development opens its popup over the graph. Developments are coloured and
-// grouped by theme. The In view list shows the same nodes as links. The view (/entities/<id>/graph or /topics/<id>/graph) is reachable by URL
-// only, for the TCRD session (prd.md section 12).
+// to it); clicking a development opens its popup over the graph; a linked party has no page and
+// takes no click. Developments are coloured and grouped by theme. The In view list shows the same
+// nodes as rows. The view (/entities/<id>/graph or /topics/<id>/graph) is reachable by URL only,
+// for the TCRD session (prd.md section 12).
 import { Link } from "@tanstack/react-router";
 import { useNavigate } from "@tanstack/react-router";
-import { Fragment, useCallback, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 
 import type { Schema } from "@/lib/api/client";
 import { useGraph, type GraphQuery } from "@/lib/api/queries";
 import { plural } from "@/lib/format";
 import { groupLink, subjectLink } from "@/lib/links";
+import { recordView } from "@/lib/viewerState";
 import { developmentLink } from "@/components/developments/link";
 import { PriorityBadge } from "@/components/developments/labels";
 
 import { FilterMenu, toggle } from "./FilterMenu";
 import { GraphCanvas, THEME_LABEL, THEMES } from "./GraphCanvas";
-import { LINK_LABEL, type RelType } from "./labels";
+import { LINK_LABEL, opensPage, type RelType } from "./labels";
 
 type GraphNode = Schema<"GraphNode">;
 type NodeType = GraphNode["type"];
@@ -65,10 +67,15 @@ export function GraphView({ id }: { id: string }) {
   const open = useCallback(
     (nodeId: string) => {
       const node = nodes?.find((n) => n.id === nodeId);
-      if (node) void navigate(linkOf(node));
+      if (node && opensPage(node)) void navigate(linkOf(node));
     },
     [navigate, nodes],
   );
+  // Like the page's other tabs, the graph records its subject in Recently viewed once it loads.
+  const loaded = graph.data ? id : null;
+  useEffect(() => {
+    if (loaded) recordView(loaded);
+  }, [loaded]);
 
   if (graph.isError) return <p className="page-message">This graph could not be loaded.</p>;
   if (!g) return null;
@@ -153,7 +160,8 @@ const GROUP_LABEL: Record<NodeType, string> = {
 };
 
 /** A node's link: a development opens its popup over the graph, a group the Entities list filtered
- *  to it, a topic its page under /topics, anything else its page under /entities. */
+ *  to it, a topic its page under /topics, an entity its page under /entities. Only for nodes that
+ *  `opensPage`. */
 const linkOf = (n: GraphNode) =>
   n.type === "development"
     ? developmentLink(n.id.slice(DEV_PREFIX.length))
@@ -196,6 +204,24 @@ function NodeList({
         {sorted.map((n, i) => {
           const prev = sorted[i - 1];
           const startsGroup = !prev || prev.hop !== n.hop || groupOf(prev) !== groupOf(n);
+          const body = (
+            <span>
+              <span className="row-title" title={n.label}>
+                {n.has_new && (
+                  <>
+                    <span className="new-dot" aria-hidden="true" />
+                    <span className="sr-only">New: </span>
+                  </>
+                )}
+                {n.label}
+              </span>
+              {n.needs_attention && (
+                <span className="row-meta">
+                  <PriorityBadge priority="High" />
+                </span>
+              )}
+            </span>
+          );
           return (
             <Fragment key={n.id}>
               {startsGroup && (
@@ -205,32 +231,28 @@ function NodeList({
                   <span className="count">{groupSize(n)}</span>
                 </h3>
               )}
-              <Link
-                {...linkOf(n)}
-                className="row no-stat"
-                data-node={n.id}
-                onMouseEnter={() => onHover(n.id)}
-                onMouseLeave={() => onHover(null)}
-                onFocus={() => onHover(n.id)}
-                onBlur={() => onHover(null)}
-              >
-                <span>
-                  <span className="row-title" title={n.label}>
-                    {n.has_new && (
-                      <>
-                        <span className="new-dot" aria-hidden="true" />
-                        <span className="sr-only">New: </span>
-                      </>
-                    )}
-                    {n.label}
-                  </span>
-                  {n.needs_attention && (
-                    <span className="row-meta">
-                      <PriorityBadge priority="High" />
-                    </span>
-                  )}
-                </span>
-              </Link>
+              {opensPage(n) ? (
+                <Link
+                  {...linkOf(n)}
+                  className="row no-stat"
+                  data-node={n.id}
+                  onMouseEnter={() => onHover(n.id)}
+                  onMouseLeave={() => onHover(null)}
+                  onFocus={() => onHover(n.id)}
+                  onBlur={() => onHover(null)}
+                >
+                  {body}
+                </Link>
+              ) : (
+                <div
+                  className="row no-stat"
+                  data-node={n.id}
+                  onMouseEnter={() => onHover(n.id)}
+                  onMouseLeave={() => onHover(null)}
+                >
+                  {body}
+                </div>
+              )}
             </Fragment>
           );
         })}
