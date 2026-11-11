@@ -4,17 +4,47 @@ What each pipeline stage costs on the Anthropic API once Jev is gone, for one we
 Written 4 Nov 2026 for [Pipeline cost breakdown](../wayfind/topics-watchlists-views/issues/13-pipeline-costs.md).
 Updated 11 Nov 2026 for the team's deck (spec steps 2a, 3 and 3a): indirect impact is a fixed table with no model call, priority is one Sonnet call per development and entity with no high check, links are rated once, and the seed has six weeks.
 
+Measured on 11 Nov 2026 by the October rebuild: the totals below are what the six runs cost, and they replace the estimates, which were about four times too low because the 30 topics bring in about 1,560 documents a week, not 425.
+The sections after "Measured, October rebuild" keep the estimate and its method as they were written.
+
 ## Totals
 
-| | Documents | Claude Haiku 5.5 | Claude Sonnet 5.5 | Total | Range |
+| | Documents | Claude Haiku 5.5 | Claude Sonnet 5.5 | Total | Basis |
 |---|---|---|---|---|---|
-| One weekly run | about 425 | $0.38 | $8.70 | about $9 | $7 to $11 |
-| Seed (6 weekly runs, 4 Oct to 8 Nov) | about 2,550 | $2.30 | $52.18 | about $54 | $44 to $68 |
+| One weekly run | about 1,560 | $1.70 | $38 | about $40 | measured, $38 to $42 over five full weeks |
+| Seed (6 weekly runs, 4 Oct to 8 Nov) | 9,277 | $9.42 | $214.07 | $223.49 | measured |
 | Link rating (once) | | | $2.49 | $2.49 | measured |
 
 Sonnet stages are about 96% of the bill.
-Jev's stages on Haiku cost about $0.38 a week; the Sonnet route stage they replace cost about $1.70 a week.
-Exa ingest costs are not included.
+Exa ingest is about $5 a week on top (about 700 searches at $0.007), so about $29 for the rebuild.
+
+## Measured, October rebuild
+
+Runs dated 4, 11, 18 and 25 Oct and 1 and 8 Nov 2026, computed on 11 Nov 2026; figures are sums over `inference_records` for the six runs.
+The first run covers four days (1 to 4 Oct) and cost $25.32; the five full weeks cost $38.76, $38.88, $41.55, $40.99 and $37.99.
+The corpus holds 9,277 documents published 1 Oct to 8 Nov; 79% were screened relevant and went to extract; the latest run holds 10,224 developments, 92 of them High.
+
+| Stage | Model | Calls | Input tokens | Output tokens | Cost |
+|---|---|---|---|---|---|
+| extract | Sonnet 5.5 | 7,299 | 37.0M | 6.26M | $96.87 |
+| headline | Sonnet 5.5 | 11,038 | 41.9M | 1.63M | $69.44 |
+| priority | Sonnet 5.5 | 15,212 | 18.2M | 1.25M | $23.00 |
+| brief | Sonnet 5.5 | 929 | 7.8M | 0.77M | $21.86 |
+| same_event | Haiku 5.5 | 76,245 | 49.3M | 0.69M | $5.28 |
+| screen | Haiku 5.5 | 9,280 | 168.4M | 0.70M | $3.50 |
+| note | Sonnet 5.5 | 150 | 0.6M | 0.16M | $2.80 |
+| theme | Haiku 5.5 | 10,430 | 5.8M | 0.12M | $0.64 |
+| screen, refusals answered on Sonnet | Sonnet 5.5 | 2 | 0.04M | 0.00M | $0.09 |
+| **Total** | | 130,585 | | | **$223.49** |
+
+A document costs about $0.024, most of it extract and headline: $0.013 to extract a relevant document and $0.006 for each development's headline.
+
+## Estimate of 4 Nov 2026
+
+The rest of this document is the estimate made before the rebuild, kept for its method and call shapes.
+It assumed about 425 documents a week and gave about $9 a weekly run and about $54 for the six-week seed.
+Jev's stages on Haiku were estimated at about $0.38 a week; the Sonnet route stage they replace cost about $1.70 a week.
+Exa ingest costs are not included in the estimate.
 
 ## Prices
 
