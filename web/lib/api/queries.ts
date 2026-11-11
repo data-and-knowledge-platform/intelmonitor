@@ -25,6 +25,8 @@ async function unwrap<T>(
 export const keys = {
   subjects: ["subjects"],
   subject: (id: string) => ["subject", id],
+  functions: ["functions"],
+  list: (name: ListName, period: ListPeriod) => ["list", name, period],
   latestRun: ["latest-run"],
   dataSources: ["data-sources"],
   materialityLevels: ["materiality-levels"],
@@ -59,6 +61,28 @@ export type GraphQuery = NonNullable<operations["get_graph"]["parameters"]["quer
 export const subjectsOptions = queryOptions({ queryKey: keys.subjects, queryFn: () => unwrap(api.GET("/subjects")) });
 
 export const useSubjects = () => useQuery(subjectsOptions);
+
+/** MAS's five functions in seed order, each with its topics and its view's fixed watchlist. */
+export const useFunctions = () =>
+  useQuery({ queryKey: keys.functions, queryFn: () => unwrap(api.GET("/functions")) });
+
+/** Which list page: GET /lists/entities or /lists/topics. */
+export type ListName = operations["get_list"]["parameters"]["path"]["list_name"];
+
+/** A list page's period: this week (since the previous run), the last 4 weeks or 3 months. */
+export type ListPeriod = Schema<"SubjectList">["period"];
+
+/**
+ * Every entity or every topic with its figures for the period, ranked High, Medium, then name.
+ * Keeps the same list's previous period on screen while another period loads.
+ */
+export const useSubjectList = (name: ListName, period: ListPeriod) =>
+  useQuery({
+    queryKey: keys.list(name, period),
+    queryFn: () =>
+      unwrap(api.GET("/lists/{list_name}", { params: { path: { list_name: name }, query: { period } } })),
+    placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[1] === name ? previous : undefined),
+  });
 
 export const useSubject = (id: string) =>
   useQuery({

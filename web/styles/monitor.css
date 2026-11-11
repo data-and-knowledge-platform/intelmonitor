@@ -843,12 +843,3 @@ select.input.sw-pick {
   }
 }
 
-/* A group's URL: its members as plain rows. */
-.group-members > .row:first-child {
-  border-top: 0;
-}
-.group-members .row-end {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-1);
-}

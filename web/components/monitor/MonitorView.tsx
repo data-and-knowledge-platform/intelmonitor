@@ -3,7 +3,7 @@
 // each rendering MonitorHead with its tab. The Overview holds the summary band (the week's brief
 // beside the top Key data figures and the next date), then the subject's top 5 developments and the
 // Related card, each full width; a subject with no stored links (most topics) has no Related card. Groups have
-// no page of their own: their URL, under /entities, lists the members instead.
+// no page: their URL lands on the Entities list filtered to them (lib/links.ts placePage).
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
@@ -12,7 +12,6 @@ import { usePeers } from "@/lib/api/peers";
 import { useIndicators, useMonitorPage, useRelatedGraph } from "@/lib/api/queries";
 import { useHashScroll } from "@/lib/dom";
 import { SubjectLink } from "@/components/shell/SubjectLink";
-import { ChevronIcon } from "@/components/ui/icons";
 import { SubjectIcon } from "@/components/ui/SubjectIcon";
 import { subjectLink } from "@/lib/links";
 
@@ -30,7 +29,6 @@ export function MonitorView({ id }: { id: string }) {
   const p = page.data;
   if (page.isError) return <p className="page-message">This page could not be loaded.</p>;
   if (!p) return null;
-  if (p.subject.type === "group") return <GroupMembers subject={p.subject} />;
   return <Overview page={p} />;
 }
 
@@ -150,31 +148,6 @@ function Summary({ subject: s }: { subject: Subject }) {
           </button>
         </>
       )}
-    </>
-  );
-}
-
-/** A group's URL: its name and its members, each a link to its page. Groups carry no developments. */
-function GroupMembers({ subject: s }: { subject: Subject }) {
-  return (
-    <>
-      <div className="mon-head">
-        <h1>{s.name}</h1>
-        <p>{s.links.entities.length > 0 ? "Open one of its members." : "This group has no members."}</p>
-      </div>
-      <div className="ov">
-        <div className="panel ov-card rows group-members">
-          {s.links.entities.map((e) => (
-            <Link key={e.id} {...subjectLink(e)} className="row no-stat">
-              <span className="row-title">{e.name}</span>
-              <span className="row-end">
-                {e.kind ? KIND_LABEL[e.kind] : ""}
-                <ChevronIcon />
-              </span>
-            </Link>
-          ))}
-        </div>
-      </div>
     </>
   );
 }

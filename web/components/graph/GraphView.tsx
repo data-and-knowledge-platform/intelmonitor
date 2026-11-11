@@ -1,7 +1,7 @@
 // Graph view around one subject: opens at 1 hop, expands to 2, with filters for node type, link
-// type and time window. Clicking a subject node opens its page; clicking a development opens its
-// popup over the graph. Developments are coloured and grouped by theme. The In view list shows the
-// same nodes as links. The view (/entities/<id>/graph or /topics/<id>/graph) is reachable by URL
+// type and time window. Clicking a subject node opens its page (a group, the Entities list filtered
+// to it); clicking a development opens its popup over the graph. Developments are coloured and
+// grouped by theme. The In view list shows the same nodes as links. The view (/entities/<id>/graph or /topics/<id>/graph) is reachable by URL
 // only, for the TCRD session (prd.md section 12).
 import { Link } from "@tanstack/react-router";
 import { useNavigate } from "@tanstack/react-router";
@@ -10,7 +10,7 @@ import { Fragment, useCallback, useState } from "react";
 import type { Schema } from "@/lib/api/client";
 import { useGraph, type GraphQuery } from "@/lib/api/queries";
 import { plural } from "@/lib/format";
-import { subjectLink } from "@/lib/links";
+import { groupLink, subjectLink } from "@/lib/links";
 import { developmentLink } from "@/components/developments/link";
 import { PriorityBadge } from "@/components/developments/labels";
 
@@ -152,12 +152,14 @@ const GROUP_LABEL: Record<NodeType, string> = {
   development: "Developments",
 };
 
-/** A node's link: a development opens its popup over the graph, a topic its page under /topics,
- *  anything else its page under /entities. */
+/** A node's link: a development opens its popup over the graph, a group the Entities list filtered
+ *  to it, a topic its page under /topics, anything else its page under /entities. */
 const linkOf = (n: GraphNode) =>
   n.type === "development"
     ? developmentLink(n.id.slice(DEV_PREFIX.length))
-    : { ...subjectLink({ id: n.id, type: n.type === "topic" ? "topic" : "entity" }), resetScroll: false };
+    : n.type === "group"
+      ? groupLink(n.id)
+      : { ...subjectLink({ id: n.id, type: n.type === "topic" ? "topic" : "entity" }), resetScroll: false };
 
 /** The group a node is listed under: its type, or for a development its theme when it has one. */
 const groupOf = (n: GraphNode) => n.theme ?? n.type;

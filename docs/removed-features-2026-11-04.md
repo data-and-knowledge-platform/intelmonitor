@@ -78,7 +78,7 @@ Slide 8 of the team's deck of 10 Nov 2026 replaces it with a fixed table of the 
 
 ### The web app's side of the plan's removals (uncommitted, spec step 6)
 
-The web app no longer reads or writes any of the features listed under "Decided, not yet removed" except group pages, which go in step 10; their API endpoints, pipeline hooks and stored rows go in step 7.
+The web app no longer reads or writes any of the features listed under "Decided, not yet removed" except group pages, which went in step 10 (below); their API endpoints, pipeline hooks and stored rows go in step 7.
 
 - Dashboard pages, widgets, the AI dashboard generator (and its `@ag-ui` packages), the new-dashboard picker and the sidebar's Dashboards list; `/dashboards/<id>` lands on the home page.
 - Onboarding (`/setup`, which lands on the home page), the profile menu and role switch, the tour and visit logging.
@@ -115,11 +115,17 @@ The API, the pipeline and the store no longer carry any of the features the web 
 - Entity and topic page payloads no longer carry What changed, the topic stage track, group insights, notes or custom question slots, and `/subjects` no longer counts new, High, recent or needs-attention developments.
 - Stores made earlier drop the tables `dashboards`, `profiles`, `visits`, `follows`, `analyst_actions`, `feedback`, `custom_question_answers`, `custom_questions`, `development_triage`, `alert_reads`, `question_answers` and `run_facts`, the run changes of kind `question_state`, and the meta keys `active_profile`, `profile`, `profiles_seeded`, `dashboards_seeded`, `follows_seeded` and `tour_seen_at`, when opened.
 
+### Group pages (uncommitted, spec step 10)
+
+Groups remain only to organise entities.
+
+- The group member list (`GroupMembers`) that a group's URL showed.
+- A group's name, its graph node and a search hit for it open the Entities list filtered to it (`/entities?group=<id>`), and so do old group URLs under `/entities`, `/topics` and `/monitors`.
+
 ## Decided, not yet removed
 
 From the topics, watchlists and views plan (local map in `wayfind/topics-watchlists-views/`).
-
-- Group pages; groups remain only as headings that organise entities.
+Nothing is left.
 
 ## Visits per role, local store
 

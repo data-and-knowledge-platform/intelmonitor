@@ -32,4 +32,5 @@ Preconditions:
 ## Gotchas
 
 - The groups' open state is per page load; only the current entity's group reopens after a reload.
-- There is no Groups section; group pages (`/monitors/<group>`) are reachable by URL and list their members.
+- There is no Groups section and groups have no page; a group's URL lands on the Entities list filtered to it.
+- All, at the top, links to the Entities and Topics lists (`/entities`, `/topics`).

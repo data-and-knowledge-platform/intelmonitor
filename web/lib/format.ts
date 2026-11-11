@@ -14,6 +14,13 @@ const dayMonth = (d: Date) => `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 /** "24 Sep" for an API date. */
 export const shortDate = (iso: string) => dayMonth(day(iso));
 
+/** The API date `days` after an API date. */
+export function addDays(iso: string, days: number): string {
+  const d = day(iso);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 /** "24 Sep 2026" for an API date. */
 export const longDate = (iso: string) => `${shortDate(iso)} ${day(iso).getFullYear()}`;
 

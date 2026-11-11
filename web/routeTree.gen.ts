@@ -15,8 +15,10 @@ import { Route as DevelopmentsRouteImport } from './routes/developments'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as DashboardsIdRouteImport } from './routes/dashboards/$id'
 import { Route as DevelopmentsIdRouteImport } from './routes/developments_.$id'
+import { Route as EntitiesIndexRouteImport } from './routes/entities/index'
 import { Route as EntitiesIdRouteImport } from './routes/entities/$id'
 import { Route as MonitorsSplatRouteImport } from './routes/monitors/$'
+import { Route as TopicsIndexRouteImport } from './routes/topics/index'
 import { Route as TopicsIdRouteImport } from './routes/topics/$id'
 import { Route as EntitiesIdIndexRouteImport } from './routes/entities/$id/index'
 import { Route as EntitiesIdDataRouteImport } from './routes/entities/$id/data'
@@ -59,6 +61,11 @@ const DevelopmentsIdRoute = DevelopmentsIdRouteImport.update({
   path: '/developments/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EntitiesIndexRoute = EntitiesIndexRouteImport.update({
+  id: '/entities/',
+  path: '/entities/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EntitiesIdRoute = EntitiesIdRouteImport.update({
   id: '/entities/$id',
   path: '/entities/$id',
@@ -67,6 +74,11 @@ const EntitiesIdRoute = EntitiesIdRouteImport.update({
 const MonitorsSplatRoute = MonitorsSplatRouteImport.update({
   id: '/monitors/$',
   path: '/monitors/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TopicsIndexRoute = TopicsIndexRouteImport.update({
+  id: '/topics/',
+  path: '/topics/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TopicsIdRoute = TopicsIdRouteImport.update({
@@ -135,6 +147,8 @@ export interface FileRoutesByFullPath {
   '/entities/$id': typeof EntitiesIdRouteWithChildren
   '/monitors/$': typeof MonitorsSplatRoute
   '/topics/$id': typeof TopicsIdRouteWithChildren
+  '/entities/': typeof EntitiesIndexRoute
+  '/topics/': typeof TopicsIndexRoute
   '/entities/$id/data': typeof EntitiesIdDataRoute
   '/entities/$id/developments': typeof EntitiesIdDevelopmentsRoute
   '/entities/$id/graph': typeof EntitiesIdGraphRoute
@@ -154,6 +168,8 @@ export interface FileRoutesByTo {
   '/dashboards/$id': typeof DashboardsIdRoute
   '/developments/$id': typeof DevelopmentsIdRoute
   '/monitors/$': typeof MonitorsSplatRoute
+  '/entities': typeof EntitiesIndexRoute
+  '/topics': typeof TopicsIndexRoute
   '/entities/$id/data': typeof EntitiesIdDataRoute
   '/entities/$id/developments': typeof EntitiesIdDevelopmentsRoute
   '/entities/$id/graph': typeof EntitiesIdGraphRoute
@@ -176,6 +192,8 @@ export interface FileRoutesById {
   '/entities/$id': typeof EntitiesIdRouteWithChildren
   '/monitors/$': typeof MonitorsSplatRoute
   '/topics/$id': typeof TopicsIdRouteWithChildren
+  '/entities/': typeof EntitiesIndexRoute
+  '/topics/': typeof TopicsIndexRoute
   '/entities/$id/data': typeof EntitiesIdDataRoute
   '/entities/$id/developments': typeof EntitiesIdDevelopmentsRoute
   '/entities/$id/graph': typeof EntitiesIdGraphRoute
@@ -199,6 +217,8 @@ export interface FileRouteTypes {
     | '/entities/$id'
     | '/monitors/$'
     | '/topics/$id'
+    | '/entities/'
+    | '/topics/'
     | '/entities/$id/data'
     | '/entities/$id/developments'
     | '/entities/$id/graph'
@@ -218,6 +238,8 @@ export interface FileRouteTypes {
     | '/dashboards/$id'
     | '/developments/$id'
     | '/monitors/$'
+    | '/entities'
+    | '/topics'
     | '/entities/$id/data'
     | '/entities/$id/developments'
     | '/entities/$id/graph'
@@ -239,6 +261,8 @@ export interface FileRouteTypes {
     | '/entities/$id'
     | '/monitors/$'
     | '/topics/$id'
+    | '/entities/'
+    | '/topics/'
     | '/entities/$id/data'
     | '/entities/$id/developments'
     | '/entities/$id/graph'
@@ -261,6 +285,8 @@ export interface RootRouteChildren {
   EntitiesIdRoute: typeof EntitiesIdRouteWithChildren
   MonitorsSplatRoute: typeof MonitorsSplatRoute
   TopicsIdRoute: typeof TopicsIdRouteWithChildren
+  EntitiesIndexRoute: typeof EntitiesIndexRoute
+  TopicsIndexRoute: typeof TopicsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -307,6 +333,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevelopmentsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/entities/': {
+      id: '/entities/'
+      path: '/entities'
+      fullPath: '/entities/'
+      preLoaderRoute: typeof EntitiesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/entities/$id': {
       id: '/entities/$id'
       path: '/entities/$id'
@@ -319,6 +352,13 @@ declare module '@tanstack/react-router' {
       path: '/monitors/$'
       fullPath: '/monitors/$'
       preLoaderRoute: typeof MonitorsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/topics/': {
+      id: '/topics/'
+      path: '/topics'
+      fullPath: '/topics/'
+      preLoaderRoute: typeof TopicsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/topics/$id': {
@@ -451,6 +491,8 @@ const rootRouteChildren: RootRouteChildren = {
   EntitiesIdRoute: EntitiesIdRouteWithChildren,
   MonitorsSplatRoute: MonitorsSplatRoute,
   TopicsIdRoute: TopicsIdRouteWithChildren,
+  EntitiesIndexRoute: EntitiesIndexRoute,
+  TopicsIndexRoute: TopicsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

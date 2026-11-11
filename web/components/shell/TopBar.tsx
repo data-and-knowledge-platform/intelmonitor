@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { Schema } from "@/lib/api/client";
 import { searchOptions, useLatestRun, useSearch } from "@/lib/api/queries";
 import { shortDate, TYPE_LABEL } from "@/lib/format";
-import { subjectLink } from "@/lib/links";
+import { groupLink, subjectLink } from "@/lib/links";
 import { SearchIcon, XIcon } from "@/components/ui/icons";
 import { SubjectIcon } from "@/components/ui/SubjectIcon";
 import { developmentLink } from "@/components/developments/link";
@@ -80,7 +80,10 @@ function Search() {
   }, []);
 
   const go = (hit: Hit) => {
-    if (hit.kind === "subject") void navigate(subjectLink(hit.hit.subject));
+    if (hit.kind === "subject") {
+      const s = hit.hit.subject;
+      void navigate(s.type === "group" ? groupLink(s.id) : subjectLink(s));
+    }
     else void navigate(developmentLink(hit.kind === "development" ? hit.development.id : hit.document.development_id));
     setText("");
     setOpen(false);

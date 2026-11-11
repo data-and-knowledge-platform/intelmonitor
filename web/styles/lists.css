@@ -1,0 +1,235 @@
+/* Entities and Topics list pages (components/lists), from Mock C: a facet column beside a table
+   banded by top priority. Under 1000px of room the facets sit in a row above the table. */
+
+.lp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-1) var(--s-3);
+  padding: var(--s-5) var(--s-6) var(--s-4);
+}
+.lp-head h1 {
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.lp-count,
+.lp-since {
+  font-size: var(--fs-lead);
+  line-height: var(--lh-lead);
+  color: var(--ink2);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--s-5);
+  align-items: start;
+  padding: 0 var(--s-6) var(--s-7);
+}
+
+/* Facets: the search field, then groups of options with their counts. */
+.lp-facets {
+  position: sticky;
+  top: calc(56px + var(--s-3));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  min-width: 0;
+}
+.lp-search .input {
+  width: 100%;
+}
+.lp-facet {
+  min-width: 0;
+}
+.lp-facet h2 {
+  margin: 0 0 2px;
+  padding: 0 6px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  font-weight: 600;
+}
+.lp-opts.scroll {
+  max-height: 240px;
+  overflow-y: auto;
+}
+.lp-opt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 26px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-badge);
+  background: none;
+  color: var(--ink2);
+  font: 400 var(--fs-body) / var(--lh-body) var(--font);
+  text-align: left;
+  cursor: pointer;
+}
+.lp-opt:hover {
+  background: var(--hover);
+}
+.lp-opt:focus-visible {
+  outline-offset: -2px;
+}
+.lp-opt[aria-pressed="true"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+.lp-opt-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lp-opt-n {
+  flex: none;
+  font-weight: 400;
+  color: var(--ink3);
+  font-variant-numeric: tabular-nums;
+}
+.lp-dot {
+  flex: none;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+.lp-dot.High {
+  background: var(--attn);
+}
+.lp-dot.Medium {
+  background: var(--watch);
+}
+.lp-dot.Low {
+  background: var(--ink3);
+}
+
+/* The table: column heads over a strong rule, a band heading per top priority, hairline rows. */
+.lp-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+  border-top: 1px solid var(--line-strong);
+}
+.lp-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.lp-table[aria-busy="true"] tbody {
+  opacity: 0.6;
+}
+.lp-table thead th {
+  padding: var(--s-2);
+  border-bottom: 1px solid var(--line-strong);
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  font-weight: 500;
+  color: var(--ink2);
+  text-align: left;
+  white-space: nowrap;
+}
+.lp-table abbr {
+  text-decoration: none;
+}
+.lp-table th.r {
+  text-align: right;
+}
+.lp-table td {
+  padding: 7px var(--s-2);
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.lp-band th {
+  padding: 14px var(--s-2) 6px;
+  border-bottom: 1px solid var(--line-strong);
+  font-weight: 600;
+  text-align: left;
+}
+.lp-band .lp-dot {
+  margin-right: var(--s-2);
+}
+.lp-band-n {
+  font-weight: 400;
+  color: var(--ink2);
+  font-variant-numeric: tabular-nums;
+}
+.lp-name a {
+  color: var(--ink);
+  font-weight: 500;
+}
+.lp-group {
+  color: var(--ink2);
+}
+.lp-name a:hover,
+.lp-headline:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--line-field);
+}
+.lp-dev {
+  min-width: 240px;
+}
+.lp-headline {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: var(--ink);
+}
+.lp-topic {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--ink2);
+}
+/* Counts, New and the date: right-aligned tabular figures; zero counts stay quiet. */
+.lp-n {
+  width: 44px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink3);
+}
+.lp-n.hi {
+  color: var(--attn);
+  font-weight: 600;
+}
+.lp-n.md {
+  color: var(--watch);
+  font-weight: 500;
+}
+.lp-new.on {
+  color: var(--new);
+  font-weight: 500;
+}
+.lp-latest {
+  width: 64px;
+  color: var(--ink2);
+}
+.lp-empty {
+  color: var(--ink3);
+}
+
+@container main (width < 1000px) {
+  .lp {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lp-facets {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .lp-search {
+    grid-column: 1 / -1;
+  }
+  .lp-opts.scroll {
+    max-height: 130px;
+  }
+}

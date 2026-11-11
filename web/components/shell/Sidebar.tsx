@@ -1,6 +1,8 @@
-// Sidebar: brand, Entities with their groups as headings, and Topics. A group holding the current
-// page opens itself, so the current page is always marked.
+// Sidebar: brand, All (links to the Entities and Topics lists), Entities with their groups as
+// headings, and Topics. A group holding the current page opens itself, so the current page is
+// always marked.
 import { Link } from "@tanstack/react-router";
+import { Building2, Layers } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { Schema } from "@/lib/api/client";
@@ -101,6 +103,17 @@ export function Sidebar() {
         IntelMonitor
       </Link>
       <div className="side-scroll">
+        <div className="navhead">All</div>
+        <div className="navgroup">
+          <Link to="/entities" activeOptions={{ exact: true, includeSearch: false }} className="navitem">
+            <Building2 size={16} aria-hidden="true" />
+            <span>Entities</span>
+          </Link>
+          <Link to="/topics" activeOptions={{ exact: true, includeSearch: false }} className="navitem">
+            <Layers size={16} aria-hidden="true" />
+            <span>Topics</span>
+          </Link>
+        </div>
         <SectionToggle id="nav-entities" label="Entities" open={!closed.has("entities")} onToggle={() => toggleSection("entities")} />
         <div id="nav-entities" className="navgroup" hidden={closed.has("entities")}>
           {groups.map((g) => {

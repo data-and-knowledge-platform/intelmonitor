@@ -1,6 +1,6 @@
 // Links to app pages, built with TanStack Router's typed link options. A topic's page sits under
-// /topics, an entity's under /entities, and so does a group's member list until the list pages
-// replace it.
+// /topics and an entity's under /entities. Groups have no page: a group links to the Entities list
+// filtered to it.
 import type { QueryClient } from "@tanstack/react-query";
 import { linkOptions, redirect, type ParsedLocation } from "@tanstack/react-router";
 
@@ -42,6 +42,9 @@ export const pageSection = (s: PageSubject): PageSection => (s.type === "topic" 
 export const subjectLink = (s: PageSubject, tab: SubjectTab = "overview") =>
   linkOptions({ to: PATHS[pageSection(s)][tab], params: { id: s.id } });
 
+/** The Entities list filtered to a group's members. */
+export const groupLink = (id: string) => linkOptions({ to: "/entities", search: { group: id } });
+
 /** The subject a page id names, from the cached subject list; undefined when unknown or unloaded. */
 async function findSubject(queryClient: QueryClient, id: string) {
   const subjects = await queryClient.ensureQueryData(subjectsOptions).catch(() => []);
@@ -50,17 +53,17 @@ async function findSubject(queryClient: QueryClient, id: string) {
 
 /**
  * Sends a page URL where its subject belongs, keeping its query and hash: a topic under /topics,
- * an entity or group under /entities, and a group's tab to its member list. An unknown id stays,
+ * an entity under /entities, and a group to the Entities list filtered to it. An unknown id stays,
  * and its page says it could not be loaded. Runs in each section's `$id` route.
  */
 export async function placePage(queryClient: QueryClient, section: PageSection, id: string, location: ParsedLocation) {
   const subject = await findSubject(queryClient, id);
   if (!subject) return;
+  if (subject.type === "group") throw redirect({ ...groupLink(subject.id), replace: true });
+  if (pageSection(subject) === section) return;
   const segment = location.pathname.split("/")[3] ?? "";
   const tab = isTab(segment) ? segment : "overview";
-  const want = subject.type === "group" ? "overview" : tab;
-  if (pageSection(subject) === section && want === tab) return;
-  throw redirect({ ...subjectLink(subject, want), search: location.search, hash: location.hash, replace: true });
+  throw redirect({ ...subjectLink(subject, tab), search: location.search, hash: location.hash, replace: true });
 }
 
 // Tabs of the old `/monitors/<id>/<tab>` URLs that are gone or renamed.
@@ -74,6 +77,7 @@ export async function fromMonitorUrl(queryClient: QueryClient, path: string, loc
   const [id = "", segment = ""] = path.split("/");
   if (!id) throw redirect({ to: "/", replace: true });
   const subject = (await findSubject(queryClient, id)) ?? { id, type: "entity" };
+  if (subject.type === "group") throw redirect({ ...groupLink(subject.id), replace: true });
   const tab = isTab(segment) ? segment : (OLD_TABS[segment] ?? "overview");
   throw redirect({ ...subjectLink(subject, tab), search: location.search, hash: location.hash, replace: true });
 }
