@@ -1,8 +1,9 @@
 # Help
 
-Help is a modal that says what each label on a development means (High, Medium, Low, Adverse event, the tone, New, Updated) and lists the keyboard shortcuts; `?` opens it from anywhere outside a text field.
+Help is a modal that says what each label on a development means (High, Medium, Low, Adverse event, the tone, New, Updated) and lists the keyboard shortcuts; `?` opens it from anywhere outside a text field, and so does `button "Help"` in the sidebar's foot.
+High, Medium and Low read the team's definitions (slide 7) from `GET /materiality-levels`.
 New and Updated mean added or updated in the latest weekly run.
-Data sources has no entry until the sidebar gives it one.
+`button "Data sources"` beside it opens Data sources: documents stored per source and collection (`GET /data-sources`).
 
 ## Sub-features
 
@@ -12,6 +13,7 @@ Data sources has no entry until the sidebar gives it one.
 ## How to get to it (user POV)
 
 - Press `?` on any page, with focus outside a text field and no modal open.
+- Click `Help` or `Data sources` in the sidebar's foot, above the view switcher.
 
 ## Driving it with verify
 

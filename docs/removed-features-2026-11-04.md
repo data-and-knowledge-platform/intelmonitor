@@ -87,8 +87,9 @@ The web app no longer reads or writes any of the features listed under "Decided,
 - The parked What changed section and every read mark: opening a development no longer marks it read, and New and Updated always show, from the latest run.
 - The `/developments` feed page (it lands on the home page), Show all, Show dismissed and Restore to feed.
 - "N High since your last visit" in the sidebar, and "since your last visit" in Help.
+- Help's own priority wording; its High, Medium and Low rows show the team's definitions (slide 7) from `GET /materiality-levels` (spec step 12).
 - Home opens MAS's page until the watchlists land.
-- Data sources has no entry until the sidebar gives it one; Help keeps its `?` shortcut.
+- The profile menu's entry to Help and Data sources; both open from two links in the sidebar's foot (spec step 12), and Help keeps its `?` shortcut.
 
 ### The Ask page and the "Ask about" button (uncommitted, spec step 6)
 

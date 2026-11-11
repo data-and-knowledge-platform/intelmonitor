@@ -1,10 +1,10 @@
-// The shell's dialogs: Help, which `?` opens (routes/__root.tsx), and Data sources, which has no
-// entry yet.
+// The two dialogs the sidebar's foot opens (Sidebar.tsx): Help, which `?` also opens, and Data
+// sources.
 import type { ReactNode } from "react";
 
-import { useDataSources } from "@/lib/api/queries";
+import { useDataSources, useMaterialityLevels } from "@/lib/api/queries";
 import { COLLECTION_LABEL, longDate, shortDate } from "@/lib/format";
-import { ChangeMark, PRIORITIES, PRIORITY_MEANING, PriorityBadge } from "@/components/developments/labels";
+import { ChangeMark, PRIORITIES, PriorityBadge, type Priority } from "@/components/developments/labels";
 import { CloseButton, Modal } from "@/components/ui/Modal";
 
 interface DialogProps {
@@ -33,8 +33,8 @@ export function DataSourcesDialog(props: DialogProps) {
         {data && (
           <>
             <p className="cap">
-              {data.total_documents} documents
-              {data.t0 ? `, 60 days to ${longDate(data.t0)}` : ""}
+              {data.total_documents} documents stored
+              {data.t0 ? `; the latest run is the week to ${longDate(data.t0)}` : ""}
             </p>
             <table className="table">
               <thead>
@@ -74,9 +74,8 @@ const SHORTCUTS: [string[], string][] = [
   [["Esc"], "Close a menu, dialog or development"],
 ];
 
-/** The labels a development carries, one per question, in the order a row shows them. */
+/** The labels after priority, one per question, in the order a row shows them. */
 const LABELS: { label: ReactNode; text: string }[] = [
-  ...PRIORITIES.map((p) => ({ label: <PriorityBadge priority={p} />, text: PRIORITY_MEANING[p] })),
   {
     label: <span className="adv">Adverse event</span>,
     text: "The news reports harm to the entity itself: something that happened at it, such as an outage, a fraud case or a penalty, or a trend or new rule that hurts it directly. Commentary, forecasts, share price moves and follow-up reports do not count.",
@@ -86,13 +85,27 @@ const LABELS: { label: ReactNode; text: string }[] = [
   { label: <ChangeMark change="updated" />, text: "Seen before, with new reports in the latest weekly run." },
 ];
 
-/** Help: what the labels on a development mean, and the keyboard shortcuts. `?` opens it. */
+/**
+ * Help: what the labels on a development mean, and the keyboard shortcuts. Each priority's text is
+ * the team's definition from `GET /materiality-levels` (slide 7's, in pipeline/params.py).
+ */
 export function HelpDialog(props: DialogProps) {
+  const levels = useMaterialityLevels();
+  const definition = (p: Priority) =>
+    levels.data?.find((l) => l.name === p)?.description ?? (levels.isError ? "Could not load this definition." : "");
   return (
     <Panel {...props} id="help-title" title="Help">
       <div className="panel-body help">
         <section aria-labelledby="help-labels">
           <h3 id="help-labels">Labels on a development</h3>
+          {PRIORITIES.map((p) => (
+            <div key={p} className="help-row">
+              <span>
+                <PriorityBadge priority={p} />
+              </span>
+              <span>{definition(p)}</span>
+            </div>
+          ))}
           {LABELS.map((l, i) => (
             <div key={i} className="help-row">
               <span>{l.label}</span>

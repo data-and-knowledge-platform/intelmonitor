@@ -4,7 +4,7 @@
 import type { Schema } from "@/lib/api/client";
 import { plural } from "@/lib/format";
 
-type Priority = Schema<"DevelopmentSummary">["priority"];
+export type Priority = Schema<"DevelopmentSummary">["priority"];
 type Tone = Schema<"DevelopmentSummary">["direction"];
 type SourceType = Schema<"SourceTypeCount">;
 
@@ -27,16 +27,6 @@ export function PriorityBadge({ priority }: { priority: Priority }) {
     </span>
   );
 }
-
-/**
- * What each priority means, in the words a first-time user reads: under the feed's priority
- * headings and in Help.
- */
-export const PRIORITY_MEANING: Record<Priority, string> = {
-  High: "Incidents at Singapore financial institutions, or at foreign institutions and third parties strongly linked to Singapore (not through loans alone), and developments serious enough to change a Singapore institution's position. Read these first.",
-  Medium: "Other developments at Singapore financial institutions or at institutions strongly linked to Singapore. Market moves are Medium at most.",
-  Low: "News with no effect on Singapore's financial institutions, and routine or promotional news.",
-};
 
 /** New as a badge; Updated as a plain word in the new color, so it never reads as a priority. */
 export function ChangeMark({ change }: { change: Schema<"DevelopmentSummary">["change"] }) {

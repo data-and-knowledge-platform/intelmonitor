@@ -153,7 +153,8 @@ nav.side {
   }
 }
 
-/* The foot: the view switcher, its menu opening upward. */
+/* The foot: Help and Data sources as metadata-size text links on one row, over the view switcher,
+   whose menu opens upward. */
 .side-foot {
   flex: none;
   display: flex;
@@ -161,6 +162,22 @@ nav.side {
   gap: var(--s-1);
   padding: var(--s-2);
   border-top: 1px solid var(--line);
+}
+.side-links {
+  display: flex;
+  gap: var(--s-3);
+  padding: 0 var(--s-2);
+}
+.side-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink2);
+  font: 400 var(--fs-meta) / var(--lh-meta) var(--font);
+}
+.side-link:hover {
+  color: var(--ink);
+  text-decoration: underline;
 }
 .vsw {
   position: relative;

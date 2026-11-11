@@ -1,6 +1,6 @@
-/* Help (ProfileDialogs.tsx HelpDialog), after mocks/onboarding.html direction A. */
+/* Help (SidebarDialogs.tsx HelpDialog), after mocks/onboarding.html direction A. */
 
-/* Help: States, Materiality and Keyboard shortcuts, each a 15px heading over rows split by hairlines. */
+/* Help: Labels on a development and Keyboard shortcuts, each a lead-size heading over rows split by hairlines. */
 .panel-body.help {
   gap: var(--s-5);
 }

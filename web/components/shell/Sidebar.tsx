@@ -1,17 +1,18 @@
 // Sidebar, from Mock A: brand, Recently viewed (the last 5 pages opened, newest first), the current
 // view's Watchlist (entities, a hairline, then topics, each alphabetical), All (links to the Entities
-// and Topics lists), and the view switcher in the foot. Personal entries show an x on hover that
-// removes them; a function view's fixed watchlist shows a lock on its heading and no x. State lives
-// in this browser (lib/viewerState.ts).
+// and Topics lists), and the foot: Help and Data sources links over the view switcher. Personal
+// entries show an x on hover that removes them; a function view's fixed watchlist shows a lock on
+// its heading and no x. State lives in this browser (lib/viewerState.ts).
 import { Link } from "@tanstack/react-router";
 import { Bookmark, Briefcase, Building2, Check, ChevronsUpDown, Clock, Layers, Lock, User, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import type { Schema } from "@/lib/api/client";
 import { useSubjects } from "@/lib/api/queries";
-import { useDismiss } from "@/lib/dom";
+import { typingIn, useDismiss } from "@/lib/dom";
 import { subjectLink } from "@/lib/links";
 import { PERSONAL, usePersonalWatchlist, useRecentlyViewed, useView, useWatchlist, type ViewId } from "@/lib/viewerState";
+import { DataSourcesDialog, HelpDialog } from "@/components/shell/SidebarDialogs";
 
 type Subject = Schema<"SubjectSummary">;
 
@@ -98,9 +99,38 @@ export function Sidebar() {
         </section>
       </div>
       <div className="side-foot">
+        <FootLinks />
         <ViewSwitcher />
       </div>
     </nav>
+  );
+}
+
+/** "Help" and "Data sources" as text links above the view switcher, each opening its dialog; `?` opens Help anywhere. */
+function FootLinks() {
+  const [open, setOpen] = useState<"help" | "sources" | null>(null);
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "?" && !typingIn(e.target) && !document.querySelector("dialog[open]")) {
+        e.preventDefault();
+        setOpen("help");
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+  const close = () => setOpen(null);
+  return (
+    <div className="side-links">
+      <button type="button" className="side-link" onClick={() => setOpen("help")}>
+        Help
+      </button>
+      <button type="button" className="side-link" onClick={() => setOpen("sources")}>
+        Data sources
+      </button>
+      <HelpDialog open={open === "help"} onClose={close} />
+      <DataSourcesDialog open={open === "sources"} onClose={close} />
+    </div>
   );
 }
 

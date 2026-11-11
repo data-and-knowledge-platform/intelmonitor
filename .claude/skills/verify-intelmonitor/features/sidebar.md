@@ -1,10 +1,11 @@
 # Sidebar
 
-The left navigation (`navigation "Main"`, `web/components/shell/Sidebar.tsx`) opens with the `IntelMonitor` brand link, then three regions and the view switcher in its foot:
+The left navigation (`navigation "Main"`, `web/components/shell/Sidebar.tsx`) opens with the `IntelMonitor` brand link, then three regions, and in its foot two text links over the view switcher:
 
 - `region "Recently viewed"`: the last 5 entity or topic pages opened in this browser, newest first, shared by every view.
 - `region "Watchlist"`: the current view's watchlist, entities, a hairline, then topics, each alphabetical. In the Personal view each entry has `button "Remove <name> from watchlist"`, shown on hover; a function view's heading reads `Watchlist, fixed` (a lock) and has no remove buttons.
 - `region "All"`: `link "Entities 89"` and `link "Topics 30"` to the list pages.
+- `button "Help"` and `button "Data sources"` on one row at metadata size, each opening its dialog (`web/components/shell/SidebarDialogs.tsx`; see [help.md](help.md)).
 - `button "View: <view>"` at the bottom left opens `menu "Views"` upward: `menuitemradio "Personal"`, then the five functions from `GET /functions`.
 
 State lives in this browser only, in `localStorage["im.state.v1"]` (`web/lib/viewerState.ts`): `watchlist`, `recent` and `view`, each written only once the viewer acts.
