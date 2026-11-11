@@ -140,7 +140,7 @@ test("IntelMonitor walkthrough", async ({ page }) => {
 
   try {
     await step(STEPS[0], async () => {
-      await page.goto("/monitors/dbs");
+      await page.goto("/entities/dbs");
       await expect(page.getByRole("heading", { level: 1, name: "DBS" })).toBeVisible();
       await expect(page.locator(".topbar .updated")).toHaveText(`Week to ${shortDate(latest.as_of)} · updated weekly`);
       for (const region of ["This week", "Top DBS developments", "Related to DBS"]) {
@@ -172,12 +172,12 @@ test("IntelMonitor walkthrough", async ({ page }) => {
       }
       const tabs = page.getByRole("navigation", { name: "Monitor views" });
       await page.getByRole("region", { name: "Related to DBS" }).getByRole("link", { name: "See all links" }).click();
-      await expect(page).toHaveURL(/\/monitors\/dbs\/related$/);
+      await expect(page).toHaveURL(/\/entities\/dbs\/related$/);
       await expect(tabs.getByRole("link", { name: "Related" })).toHaveAttribute("aria-current", "page");
       await expect(page.locator("main .mon-sec h2")).toHaveText(["Could affect DBS", "Shared with"]);
       await expect(page.getByRole("region", { name: "Could affect DBS" }).locator(".ca-row")).not.toHaveCount(0);
       await tabs.getByRole("link", { name: "Overview" }).click();
-      await expect(page).toHaveURL(/\/monitors\/dbs$/);
+      await expect(page).toHaveURL(/\/entities\/dbs$/);
 
       // The Overview shows this month's top 5 with their priority and New or Updated.
       const top = page.getByRole("region", { name: "Top DBS developments" });
@@ -188,7 +188,7 @@ test("IntelMonitor walkthrough", async ({ page }) => {
       await expectOrdered(top, shown);
 
       await tabs.getByRole("link", { name: "Data" }).click();
-      await expect(page).toHaveURL(/\/monitors\/dbs\/data$/);
+      await expect(page).toHaveURL(/\/entities\/dbs\/data$/);
       await expect(page.locator('section[aria-labelledby="why"] .mon-sec-head .meta')).toHaveText(/^Week to \d+ \w{3}$/);
       // The chrome is in plain words; note bodies are the model's text and are not checked here.
       await expect(page.locator("main .tr-legend").first()).toHaveText("HighMedium");
@@ -203,17 +203,17 @@ test("IntelMonitor walkthrough", async ({ page }) => {
       await expect(page.locator(".tr-cited .badge")).toHaveText(cited.map((c) => inFeed.get(c.development.id) ?? c.development.priority));
 
       // A topic links to nothing: no Related tab, and its URL lands on the Overview.
-      await page.goto("/monitors/financial-regulation/related");
-      await expect(page).toHaveURL(/\/monitors\/financial-regulation$/);
+      await page.goto("/topics/financial-regulation/related");
+      await expect(page).toHaveURL(/\/topics\/financial-regulation$/);
       await expect(tabs.getByRole("link").first()).toHaveText("Overview");
       await expect(tabs.getByRole("link", { name: "Related" })).toHaveCount(0);
     });
 
     await step(STEPS[1], async () => {
-      await page.goto("/monitors/dbs");
+      await page.goto("/entities/dbs");
       const top = page.getByRole("region", { name: "Top DBS developments" });
       await top.getByRole("link", { name: /^See all/ }).click();
-      await expect(page).toHaveURL(/\/monitors\/dbs\/developments$/);
+      await expect(page).toHaveURL(/\/entities\/dbs\/developments$/);
       const tabs = page.getByRole("navigation", { name: "Monitor views" });
       await expect(tabs.getByRole("link", { name: "Developments" })).toHaveAttribute("aria-current", "page");
       const feed = page.getByRole("region", { name: "Developments about DBS" });
@@ -250,13 +250,13 @@ test("IntelMonitor walkthrough", async ({ page }) => {
     });
 
     await step(STEPS[2], async () => {
-      await page.goto("/monitors/dbs/developments");
+      await page.goto("/entities/dbs/developments");
       feedUrl = page.url();
       const feed = page.getByRole("region", { name: "Developments about DBS" });
       const d = month.developments[0];
       const link = feed.getByRole("link", { name: d.headline, exact: true });
       await link.click();
-      await expect(page).toHaveURL(popupUrl("/monitors/dbs/developments", d.id));
+      await expect(page).toHaveURL(popupUrl("/entities/dbs/developments", d.id));
       const popup = page.getByRole("dialog", { name: d.headline });
       await expect(popup.getByRole("heading", { level: 2, name: d.headline })).toBeFocused();
       await expect(popup.getByRole("button", { name: "Close development" })).toBeVisible();
@@ -280,20 +280,33 @@ test("IntelMonitor walkthrough", async ({ page }) => {
       // A development's old page address opens the popup over the subject's page, or over MAS's page
       // without a subject; close drops it.
       await page.goto(`/developments/${d.id}?subject=dbs`);
-      await expect(page).toHaveURL(popupUrl("/monitors/dbs", d.id));
+      await expect(page).toHaveURL(popupUrl("/entities/dbs", d.id));
       await expect(popup).toBeVisible();
       await popup.getByRole("button", { name: "Close development" }).click();
-      await expect(page).toHaveURL(/\/monitors\/dbs$/);
+      await expect(page).toHaveURL(/\/entities\/dbs$/);
       await page.goto(`/developments/${d.id}`);
-      await expect(page).toHaveURL(popupUrl("/monitors/mas", d.id));
+      await expect(page).toHaveURL(popupUrl("/entities/mas", d.id));
       await expect(popup).toBeVisible();
       await popup.getByRole("button", { name: "Close development" }).click();
-      await expect(page).toHaveURL(/\/monitors\/mas$/);
+      await expect(page).toHaveURL(/\/entities\/mas$/);
+
+      // Old page URLs land on the same tab at the new ones, renamed tabs included, and a page under
+      // the other list moves to its own.
+      for (const [old, now] of [
+        ["/monitors/dbs/related", "/entities/dbs/related"],
+        ["/monitors/dbs/trend#indicators", "/entities/dbs/data#indicators"],
+        ["/monitors/financial-regulation", "/topics/financial-regulation"],
+        ["/topics/dbs/developments?days=7", "/entities/dbs/developments?days=7"],
+      ]) {
+        await page.goto(old);
+        await expect(page, `${old} lands on ${now}`).toHaveURL(new URL(now, page.url()).href);
+      }
+      await expect(page.getByRole("heading", { level: 1, name: "DBS" })).toBeVisible();
 
       // Home and the removed pages' old links land on MAS's page.
       for (const old of ["/", "/setup", "/ask?about=dbs", "/dashboards/anything", "/developments?dashboard=anything"]) {
         await page.goto(old);
-        await expect(page, `${old} lands on MAS`).toHaveURL(/\/monitors\/mas$/);
+        await expect(page, `${old} lands on MAS`).toHaveURL(/\/entities\/mas$/);
         await expect(page.getByRole("heading", { level: 1, name: "MAS" })).toBeVisible();
       }
       await page.goto(feedUrl);
@@ -324,7 +337,7 @@ test("IntelMonitor walkthrough", async ({ page }) => {
       await search.fill("ocbc");
       await expect(page.getByRole("option", { name: "OCBC Entity" })).toHaveAttribute("aria-selected", "true");
       await page.keyboard.press("Enter");
-      await expect(page).toHaveURL(/\/monitors\/ocbc$/);
+      await expect(page).toHaveURL(/\/entities\/ocbc$/);
 
       // A word from a DBS headline, so the latest run surely has a development that matches it.
       const word = month.developments[0].headline.split(/[^A-Za-z]+/).find((w) => w.length >= 6) ?? "bank";
@@ -334,10 +347,10 @@ test("IntelMonitor walkthrough", async ({ page }) => {
       await page.keyboard.press("ControlOrMeta+k");
       await search.fill(word);
       await page.locator("#search-results .search-hit.development").filter({ hasText: hit.headline }).click();
-      await expect(page).toHaveURL(popupUrl("/monitors/ocbc", hit.id));
+      await expect(page).toHaveURL(popupUrl("/entities/ocbc", hit.id));
       await expect(page.getByRole("dialog", { name: hit.headline }).getByRole("heading", { level: 2, name: hit.headline })).toBeVisible();
       await page.keyboard.press("Escape");
-      await expect(page).toHaveURL(/\/monitors\/ocbc$/);
+      await expect(page).toHaveURL(/\/entities\/ocbc$/);
     });
 
     await step(STEPS[5], async () => {
@@ -354,7 +367,7 @@ test("IntelMonitor walkthrough", async ({ page }) => {
 
     await step(STEPS[6], async () => {
       await page.setViewportSize({ width: 1024, height: 800 });
-      await page.goto("/monitors/dbs/developments");
+      await page.goto("/entities/dbs/developments");
       await expect(page.getByRole("heading", { level: 1, name: "DBS" })).toBeVisible();
       await expect(page.locator(".frow").first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth), "no sideways scroll").toBe(1024);

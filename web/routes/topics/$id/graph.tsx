@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { GraphView } from "@/components/graph/GraphView";
 
-// The full graph view, kept reachable by URL only for the TCRD session (prd.md section 12).
-export const Route = createFileRoute("/monitors/$id/graph")({
+// The full graph view around a topic, reachable by URL only, for the TCRD session (prd.md section 12).
+export const Route = createFileRoute("/topics/$id/graph")({
   component: GraphPage,
 });
 

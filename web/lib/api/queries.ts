@@ -56,8 +56,9 @@ export type RelatedDays = Schema<"RelatedDays">;
 /** Query parameters of GET /graph: center subject, hops (1 or 2) and optional filters. */
 export type GraphQuery = NonNullable<operations["get_graph"]["parameters"]["query"]>;
 
-export const useSubjects = () =>
-  useQuery({ queryKey: keys.subjects, queryFn: () => unwrap(api.GET("/subjects")) });
+export const subjectsOptions = queryOptions({ queryKey: keys.subjects, queryFn: () => unwrap(api.GET("/subjects")) });
+
+export const useSubjects = () => useQuery(subjectsOptions);
 
 export const useSubject = (id: string) =>
   useQuery({

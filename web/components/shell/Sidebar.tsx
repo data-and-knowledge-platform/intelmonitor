@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import type { Schema } from "@/lib/api/client";
 import { useSubjects } from "@/lib/api/queries";
-import { monitorLink } from "@/lib/links";
+import { subjectLink } from "@/lib/links";
 import { usePathname } from "@/lib/router";
 import { ChevronIcon } from "@/components/ui/icons";
 import { SubjectIcon } from "@/components/ui/SubjectIcon";
@@ -58,7 +58,7 @@ export function Sidebar() {
 
   // On arriving at an entity's page (any tab), open its section and group once; on a topic's page,
   // open Topics. The user can still collapse them.
-  const currentId = pathname.match(/^\/monitors\/([^/]+)/)?.[1];
+  const currentId = pathname.match(/^\/(?:entities|topics)\/([^/]+)/)?.[1];
   const currentGroup = groups.find((g) => currentId && g.members.includes(currentId))?.id;
   const currentSection: NavSection | null = currentGroup ? "entities" : topics.some((t) => t.id === currentId) ? "topics" : null;
   if (currentSection && openedFor !== pathname) {
@@ -89,7 +89,7 @@ export function Sidebar() {
     });
 
   const row = (s: Subject, sub: boolean) => (
-    <Link key={s.id} {...monitorLink(s.id)} className={`navitem${sub ? " sub" : ""}`}>
+    <Link key={s.id} {...subjectLink(s)} className={`navitem${sub ? " sub" : ""}`}>
       <SubjectIcon subject={s} />
       <span>{s.name}</span>
     </Link>

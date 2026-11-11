@@ -15,13 +15,19 @@ import { Route as DevelopmentsRouteImport } from './routes/developments'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as DashboardsIdRouteImport } from './routes/dashboards/$id'
 import { Route as DevelopmentsIdRouteImport } from './routes/developments_.$id'
-import { Route as MonitorsIdIndexRouteImport } from './routes/monitors/$id/index'
-import { Route as MonitorsIdConnectionsRouteImport } from './routes/monitors/$id/connections'
-import { Route as MonitorsIdDataRouteImport } from './routes/monitors/$id/data'
-import { Route as MonitorsIdDevelopmentsRouteImport } from './routes/monitors/$id/developments'
-import { Route as MonitorsIdGraphRouteImport } from './routes/monitors/$id/graph'
-import { Route as MonitorsIdRelatedRouteImport } from './routes/monitors/$id/related'
-import { Route as MonitorsIdTrendRouteImport } from './routes/monitors/$id/trend'
+import { Route as EntitiesIdRouteImport } from './routes/entities/$id'
+import { Route as MonitorsSplatRouteImport } from './routes/monitors/$'
+import { Route as TopicsIdRouteImport } from './routes/topics/$id'
+import { Route as EntitiesIdIndexRouteImport } from './routes/entities/$id/index'
+import { Route as EntitiesIdDataRouteImport } from './routes/entities/$id/data'
+import { Route as EntitiesIdDevelopmentsRouteImport } from './routes/entities/$id/developments'
+import { Route as EntitiesIdGraphRouteImport } from './routes/entities/$id/graph'
+import { Route as EntitiesIdRelatedRouteImport } from './routes/entities/$id/related'
+import { Route as TopicsIdIndexRouteImport } from './routes/topics/$id/index'
+import { Route as TopicsIdDataRouteImport } from './routes/topics/$id/data'
+import { Route as TopicsIdDevelopmentsRouteImport } from './routes/topics/$id/developments'
+import { Route as TopicsIdGraphRouteImport } from './routes/topics/$id/graph'
+import { Route as TopicsIdRelatedRouteImport } from './routes/topics/$id/related'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -53,40 +59,70 @@ const DevelopmentsIdRoute = DevelopmentsIdRouteImport.update({
   path: '/developments/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MonitorsIdIndexRoute = MonitorsIdIndexRouteImport.update({
-  id: '/monitors/$id/',
-  path: '/monitors/$id/',
+const EntitiesIdRoute = EntitiesIdRouteImport.update({
+  id: '/entities/$id',
+  path: '/entities/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MonitorsIdConnectionsRoute = MonitorsIdConnectionsRouteImport.update({
-  id: '/monitors/$id/connections',
-  path: '/monitors/$id/connections',
+const MonitorsSplatRoute = MonitorsSplatRouteImport.update({
+  id: '/monitors/$',
+  path: '/monitors/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MonitorsIdDataRoute = MonitorsIdDataRouteImport.update({
-  id: '/monitors/$id/data',
-  path: '/monitors/$id/data',
+const TopicsIdRoute = TopicsIdRouteImport.update({
+  id: '/topics/$id',
+  path: '/topics/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MonitorsIdDevelopmentsRoute = MonitorsIdDevelopmentsRouteImport.update({
-  id: '/monitors/$id/developments',
-  path: '/monitors/$id/developments',
-  getParentRoute: () => rootRouteImport,
+const EntitiesIdIndexRoute = EntitiesIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => EntitiesIdRoute,
 } as any)
-const MonitorsIdGraphRoute = MonitorsIdGraphRouteImport.update({
-  id: '/monitors/$id/graph',
-  path: '/monitors/$id/graph',
-  getParentRoute: () => rootRouteImport,
+const EntitiesIdDataRoute = EntitiesIdDataRouteImport.update({
+  id: '/data',
+  path: '/data',
+  getParentRoute: () => EntitiesIdRoute,
 } as any)
-const MonitorsIdRelatedRoute = MonitorsIdRelatedRouteImport.update({
-  id: '/monitors/$id/related',
-  path: '/monitors/$id/related',
-  getParentRoute: () => rootRouteImport,
+const EntitiesIdDevelopmentsRoute = EntitiesIdDevelopmentsRouteImport.update({
+  id: '/developments',
+  path: '/developments',
+  getParentRoute: () => EntitiesIdRoute,
 } as any)
-const MonitorsIdTrendRoute = MonitorsIdTrendRouteImport.update({
-  id: '/monitors/$id/trend',
-  path: '/monitors/$id/trend',
-  getParentRoute: () => rootRouteImport,
+const EntitiesIdGraphRoute = EntitiesIdGraphRouteImport.update({
+  id: '/graph',
+  path: '/graph',
+  getParentRoute: () => EntitiesIdRoute,
+} as any)
+const EntitiesIdRelatedRoute = EntitiesIdRelatedRouteImport.update({
+  id: '/related',
+  path: '/related',
+  getParentRoute: () => EntitiesIdRoute,
+} as any)
+const TopicsIdIndexRoute = TopicsIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TopicsIdRoute,
+} as any)
+const TopicsIdDataRoute = TopicsIdDataRouteImport.update({
+  id: '/data',
+  path: '/data',
+  getParentRoute: () => TopicsIdRoute,
+} as any)
+const TopicsIdDevelopmentsRoute = TopicsIdDevelopmentsRouteImport.update({
+  id: '/developments',
+  path: '/developments',
+  getParentRoute: () => TopicsIdRoute,
+} as any)
+const TopicsIdGraphRoute = TopicsIdGraphRouteImport.update({
+  id: '/graph',
+  path: '/graph',
+  getParentRoute: () => TopicsIdRoute,
+} as any)
+const TopicsIdRelatedRoute = TopicsIdRelatedRouteImport.update({
+  id: '/related',
+  path: '/related',
+  getParentRoute: () => TopicsIdRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -96,13 +132,19 @@ export interface FileRoutesByFullPath {
   '/setup': typeof SetupRoute
   '/dashboards/$id': typeof DashboardsIdRoute
   '/developments/$id': typeof DevelopmentsIdRoute
-  '/monitors/$id/connections': typeof MonitorsIdConnectionsRoute
-  '/monitors/$id/data': typeof MonitorsIdDataRoute
-  '/monitors/$id/developments': typeof MonitorsIdDevelopmentsRoute
-  '/monitors/$id/graph': typeof MonitorsIdGraphRoute
-  '/monitors/$id/related': typeof MonitorsIdRelatedRoute
-  '/monitors/$id/trend': typeof MonitorsIdTrendRoute
-  '/monitors/$id/': typeof MonitorsIdIndexRoute
+  '/entities/$id': typeof EntitiesIdRouteWithChildren
+  '/monitors/$': typeof MonitorsSplatRoute
+  '/topics/$id': typeof TopicsIdRouteWithChildren
+  '/entities/$id/data': typeof EntitiesIdDataRoute
+  '/entities/$id/developments': typeof EntitiesIdDevelopmentsRoute
+  '/entities/$id/graph': typeof EntitiesIdGraphRoute
+  '/entities/$id/related': typeof EntitiesIdRelatedRoute
+  '/topics/$id/data': typeof TopicsIdDataRoute
+  '/topics/$id/developments': typeof TopicsIdDevelopmentsRoute
+  '/topics/$id/graph': typeof TopicsIdGraphRoute
+  '/topics/$id/related': typeof TopicsIdRelatedRoute
+  '/entities/$id/': typeof EntitiesIdIndexRoute
+  '/topics/$id/': typeof TopicsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -111,13 +153,17 @@ export interface FileRoutesByTo {
   '/setup': typeof SetupRoute
   '/dashboards/$id': typeof DashboardsIdRoute
   '/developments/$id': typeof DevelopmentsIdRoute
-  '/monitors/$id/connections': typeof MonitorsIdConnectionsRoute
-  '/monitors/$id/data': typeof MonitorsIdDataRoute
-  '/monitors/$id/developments': typeof MonitorsIdDevelopmentsRoute
-  '/monitors/$id/graph': typeof MonitorsIdGraphRoute
-  '/monitors/$id/related': typeof MonitorsIdRelatedRoute
-  '/monitors/$id/trend': typeof MonitorsIdTrendRoute
-  '/monitors/$id': typeof MonitorsIdIndexRoute
+  '/monitors/$': typeof MonitorsSplatRoute
+  '/entities/$id/data': typeof EntitiesIdDataRoute
+  '/entities/$id/developments': typeof EntitiesIdDevelopmentsRoute
+  '/entities/$id/graph': typeof EntitiesIdGraphRoute
+  '/entities/$id/related': typeof EntitiesIdRelatedRoute
+  '/topics/$id/data': typeof TopicsIdDataRoute
+  '/topics/$id/developments': typeof TopicsIdDevelopmentsRoute
+  '/topics/$id/graph': typeof TopicsIdGraphRoute
+  '/topics/$id/related': typeof TopicsIdRelatedRoute
+  '/entities/$id': typeof EntitiesIdIndexRoute
+  '/topics/$id': typeof TopicsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -127,13 +173,19 @@ export interface FileRoutesById {
   '/setup': typeof SetupRoute
   '/dashboards/$id': typeof DashboardsIdRoute
   '/developments_/$id': typeof DevelopmentsIdRoute
-  '/monitors/$id/connections': typeof MonitorsIdConnectionsRoute
-  '/monitors/$id/data': typeof MonitorsIdDataRoute
-  '/monitors/$id/developments': typeof MonitorsIdDevelopmentsRoute
-  '/monitors/$id/graph': typeof MonitorsIdGraphRoute
-  '/monitors/$id/related': typeof MonitorsIdRelatedRoute
-  '/monitors/$id/trend': typeof MonitorsIdTrendRoute
-  '/monitors/$id/': typeof MonitorsIdIndexRoute
+  '/entities/$id': typeof EntitiesIdRouteWithChildren
+  '/monitors/$': typeof MonitorsSplatRoute
+  '/topics/$id': typeof TopicsIdRouteWithChildren
+  '/entities/$id/data': typeof EntitiesIdDataRoute
+  '/entities/$id/developments': typeof EntitiesIdDevelopmentsRoute
+  '/entities/$id/graph': typeof EntitiesIdGraphRoute
+  '/entities/$id/related': typeof EntitiesIdRelatedRoute
+  '/topics/$id/data': typeof TopicsIdDataRoute
+  '/topics/$id/developments': typeof TopicsIdDevelopmentsRoute
+  '/topics/$id/graph': typeof TopicsIdGraphRoute
+  '/topics/$id/related': typeof TopicsIdRelatedRoute
+  '/entities/$id/': typeof EntitiesIdIndexRoute
+  '/topics/$id/': typeof TopicsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -144,13 +196,19 @@ export interface FileRouteTypes {
     | '/setup'
     | '/dashboards/$id'
     | '/developments/$id'
-    | '/monitors/$id/connections'
-    | '/monitors/$id/data'
-    | '/monitors/$id/developments'
-    | '/monitors/$id/graph'
-    | '/monitors/$id/related'
-    | '/monitors/$id/trend'
-    | '/monitors/$id/'
+    | '/entities/$id'
+    | '/monitors/$'
+    | '/topics/$id'
+    | '/entities/$id/data'
+    | '/entities/$id/developments'
+    | '/entities/$id/graph'
+    | '/entities/$id/related'
+    | '/topics/$id/data'
+    | '/topics/$id/developments'
+    | '/topics/$id/graph'
+    | '/topics/$id/related'
+    | '/entities/$id/'
+    | '/topics/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -159,13 +217,17 @@ export interface FileRouteTypes {
     | '/setup'
     | '/dashboards/$id'
     | '/developments/$id'
-    | '/monitors/$id/connections'
-    | '/monitors/$id/data'
-    | '/monitors/$id/developments'
-    | '/monitors/$id/graph'
-    | '/monitors/$id/related'
-    | '/monitors/$id/trend'
-    | '/monitors/$id'
+    | '/monitors/$'
+    | '/entities/$id/data'
+    | '/entities/$id/developments'
+    | '/entities/$id/graph'
+    | '/entities/$id/related'
+    | '/topics/$id/data'
+    | '/topics/$id/developments'
+    | '/topics/$id/graph'
+    | '/topics/$id/related'
+    | '/entities/$id'
+    | '/topics/$id'
   id:
     | '__root__'
     | '/'
@@ -174,13 +236,19 @@ export interface FileRouteTypes {
     | '/setup'
     | '/dashboards/$id'
     | '/developments_/$id'
-    | '/monitors/$id/connections'
-    | '/monitors/$id/data'
-    | '/monitors/$id/developments'
-    | '/monitors/$id/graph'
-    | '/monitors/$id/related'
-    | '/monitors/$id/trend'
-    | '/monitors/$id/'
+    | '/entities/$id'
+    | '/monitors/$'
+    | '/topics/$id'
+    | '/entities/$id/data'
+    | '/entities/$id/developments'
+    | '/entities/$id/graph'
+    | '/entities/$id/related'
+    | '/topics/$id/data'
+    | '/topics/$id/developments'
+    | '/topics/$id/graph'
+    | '/topics/$id/related'
+    | '/entities/$id/'
+    | '/topics/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -190,13 +258,9 @@ export interface RootRouteChildren {
   SetupRoute: typeof SetupRoute
   DashboardsIdRoute: typeof DashboardsIdRoute
   DevelopmentsIdRoute: typeof DevelopmentsIdRoute
-  MonitorsIdConnectionsRoute: typeof MonitorsIdConnectionsRoute
-  MonitorsIdDataRoute: typeof MonitorsIdDataRoute
-  MonitorsIdDevelopmentsRoute: typeof MonitorsIdDevelopmentsRoute
-  MonitorsIdGraphRoute: typeof MonitorsIdGraphRoute
-  MonitorsIdRelatedRoute: typeof MonitorsIdRelatedRoute
-  MonitorsIdTrendRoute: typeof MonitorsIdTrendRoute
-  MonitorsIdIndexRoute: typeof MonitorsIdIndexRoute
+  EntitiesIdRoute: typeof EntitiesIdRouteWithChildren
+  MonitorsSplatRoute: typeof MonitorsSplatRoute
+  TopicsIdRoute: typeof TopicsIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -243,57 +307,139 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevelopmentsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/monitors/$id/': {
-      id: '/monitors/$id/'
-      path: '/monitors/$id'
-      fullPath: '/monitors/$id/'
-      preLoaderRoute: typeof MonitorsIdIndexRouteImport
+    '/entities/$id': {
+      id: '/entities/$id'
+      path: '/entities/$id'
+      fullPath: '/entities/$id'
+      preLoaderRoute: typeof EntitiesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/monitors/$id/connections': {
-      id: '/monitors/$id/connections'
-      path: '/monitors/$id/connections'
-      fullPath: '/monitors/$id/connections'
-      preLoaderRoute: typeof MonitorsIdConnectionsRouteImport
+    '/monitors/$': {
+      id: '/monitors/$'
+      path: '/monitors/$'
+      fullPath: '/monitors/$'
+      preLoaderRoute: typeof MonitorsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/monitors/$id/data': {
-      id: '/monitors/$id/data'
-      path: '/monitors/$id/data'
-      fullPath: '/monitors/$id/data'
-      preLoaderRoute: typeof MonitorsIdDataRouteImport
+    '/topics/$id': {
+      id: '/topics/$id'
+      path: '/topics/$id'
+      fullPath: '/topics/$id'
+      preLoaderRoute: typeof TopicsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/monitors/$id/developments': {
-      id: '/monitors/$id/developments'
-      path: '/monitors/$id/developments'
-      fullPath: '/monitors/$id/developments'
-      preLoaderRoute: typeof MonitorsIdDevelopmentsRouteImport
-      parentRoute: typeof rootRouteImport
+    '/entities/$id/': {
+      id: '/entities/$id/'
+      path: '/'
+      fullPath: '/entities/$id/'
+      preLoaderRoute: typeof EntitiesIdIndexRouteImport
+      parentRoute: typeof EntitiesIdRoute
     }
-    '/monitors/$id/graph': {
-      id: '/monitors/$id/graph'
-      path: '/monitors/$id/graph'
-      fullPath: '/monitors/$id/graph'
-      preLoaderRoute: typeof MonitorsIdGraphRouteImport
-      parentRoute: typeof rootRouteImport
+    '/entities/$id/data': {
+      id: '/entities/$id/data'
+      path: '/data'
+      fullPath: '/entities/$id/data'
+      preLoaderRoute: typeof EntitiesIdDataRouteImport
+      parentRoute: typeof EntitiesIdRoute
     }
-    '/monitors/$id/related': {
-      id: '/monitors/$id/related'
-      path: '/monitors/$id/related'
-      fullPath: '/monitors/$id/related'
-      preLoaderRoute: typeof MonitorsIdRelatedRouteImport
-      parentRoute: typeof rootRouteImport
+    '/entities/$id/developments': {
+      id: '/entities/$id/developments'
+      path: '/developments'
+      fullPath: '/entities/$id/developments'
+      preLoaderRoute: typeof EntitiesIdDevelopmentsRouteImport
+      parentRoute: typeof EntitiesIdRoute
     }
-    '/monitors/$id/trend': {
-      id: '/monitors/$id/trend'
-      path: '/monitors/$id/trend'
-      fullPath: '/monitors/$id/trend'
-      preLoaderRoute: typeof MonitorsIdTrendRouteImport
-      parentRoute: typeof rootRouteImport
+    '/entities/$id/graph': {
+      id: '/entities/$id/graph'
+      path: '/graph'
+      fullPath: '/entities/$id/graph'
+      preLoaderRoute: typeof EntitiesIdGraphRouteImport
+      parentRoute: typeof EntitiesIdRoute
+    }
+    '/entities/$id/related': {
+      id: '/entities/$id/related'
+      path: '/related'
+      fullPath: '/entities/$id/related'
+      preLoaderRoute: typeof EntitiesIdRelatedRouteImport
+      parentRoute: typeof EntitiesIdRoute
+    }
+    '/topics/$id/': {
+      id: '/topics/$id/'
+      path: '/'
+      fullPath: '/topics/$id/'
+      preLoaderRoute: typeof TopicsIdIndexRouteImport
+      parentRoute: typeof TopicsIdRoute
+    }
+    '/topics/$id/data': {
+      id: '/topics/$id/data'
+      path: '/data'
+      fullPath: '/topics/$id/data'
+      preLoaderRoute: typeof TopicsIdDataRouteImport
+      parentRoute: typeof TopicsIdRoute
+    }
+    '/topics/$id/developments': {
+      id: '/topics/$id/developments'
+      path: '/developments'
+      fullPath: '/topics/$id/developments'
+      preLoaderRoute: typeof TopicsIdDevelopmentsRouteImport
+      parentRoute: typeof TopicsIdRoute
+    }
+    '/topics/$id/graph': {
+      id: '/topics/$id/graph'
+      path: '/graph'
+      fullPath: '/topics/$id/graph'
+      preLoaderRoute: typeof TopicsIdGraphRouteImport
+      parentRoute: typeof TopicsIdRoute
+    }
+    '/topics/$id/related': {
+      id: '/topics/$id/related'
+      path: '/related'
+      fullPath: '/topics/$id/related'
+      preLoaderRoute: typeof TopicsIdRelatedRouteImport
+      parentRoute: typeof TopicsIdRoute
     }
   }
 }
+
+interface EntitiesIdRouteChildren {
+  EntitiesIdDataRoute: typeof EntitiesIdDataRoute
+  EntitiesIdDevelopmentsRoute: typeof EntitiesIdDevelopmentsRoute
+  EntitiesIdGraphRoute: typeof EntitiesIdGraphRoute
+  EntitiesIdRelatedRoute: typeof EntitiesIdRelatedRoute
+  EntitiesIdIndexRoute: typeof EntitiesIdIndexRoute
+}
+
+const EntitiesIdRouteChildren: EntitiesIdRouteChildren = {
+  EntitiesIdDataRoute: EntitiesIdDataRoute,
+  EntitiesIdDevelopmentsRoute: EntitiesIdDevelopmentsRoute,
+  EntitiesIdGraphRoute: EntitiesIdGraphRoute,
+  EntitiesIdRelatedRoute: EntitiesIdRelatedRoute,
+  EntitiesIdIndexRoute: EntitiesIdIndexRoute,
+}
+
+const EntitiesIdRouteWithChildren = EntitiesIdRoute._addFileChildren(
+  EntitiesIdRouteChildren,
+)
+
+interface TopicsIdRouteChildren {
+  TopicsIdDataRoute: typeof TopicsIdDataRoute
+  TopicsIdDevelopmentsRoute: typeof TopicsIdDevelopmentsRoute
+  TopicsIdGraphRoute: typeof TopicsIdGraphRoute
+  TopicsIdRelatedRoute: typeof TopicsIdRelatedRoute
+  TopicsIdIndexRoute: typeof TopicsIdIndexRoute
+}
+
+const TopicsIdRouteChildren: TopicsIdRouteChildren = {
+  TopicsIdDataRoute: TopicsIdDataRoute,
+  TopicsIdDevelopmentsRoute: TopicsIdDevelopmentsRoute,
+  TopicsIdGraphRoute: TopicsIdGraphRoute,
+  TopicsIdRelatedRoute: TopicsIdRelatedRoute,
+  TopicsIdIndexRoute: TopicsIdIndexRoute,
+}
+
+const TopicsIdRouteWithChildren = TopicsIdRoute._addFileChildren(
+  TopicsIdRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -302,13 +448,9 @@ const rootRouteChildren: RootRouteChildren = {
   SetupRoute: SetupRoute,
   DashboardsIdRoute: DashboardsIdRoute,
   DevelopmentsIdRoute: DevelopmentsIdRoute,
-  MonitorsIdConnectionsRoute: MonitorsIdConnectionsRoute,
-  MonitorsIdDataRoute: MonitorsIdDataRoute,
-  MonitorsIdDevelopmentsRoute: MonitorsIdDevelopmentsRoute,
-  MonitorsIdGraphRoute: MonitorsIdGraphRoute,
-  MonitorsIdRelatedRoute: MonitorsIdRelatedRoute,
-  MonitorsIdTrendRoute: MonitorsIdTrendRoute,
-  MonitorsIdIndexRoute: MonitorsIdIndexRoute,
+  EntitiesIdRoute: EntitiesIdRouteWithChildren,
+  MonitorsSplatRoute: MonitorsSplatRoute,
+  TopicsIdRoute: TopicsIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

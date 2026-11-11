@@ -1,9 +1,9 @@
-// A monitor page for a topic or entity: the head with its tabs, Overview (here), Developments
+// An entity's or topic's page (/entities/<id> or /topics/<id>): the head with its tabs, Overview (here), Developments
 // (SubjectDevelopments.tsx's DevelopmentsTab), Related (Related.tsx) and Data (TrendView's DataView),
 // each rendering MonitorHead with its tab. The Overview holds the summary band (the week's brief
 // beside the top Key data figures and the next date), then the subject's top 5 developments and the
 // Related card, each full width; a subject with no stored links (most topics) has no Related card. Groups have
-// no page of their own (decision S3): their URL lists the members instead.
+// no page of their own: their URL, under /entities, lists the members instead.
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
@@ -14,7 +14,7 @@ import { useHashScroll } from "@/lib/dom";
 import { SubjectLink } from "@/components/shell/SubjectLink";
 import { ChevronIcon } from "@/components/ui/icons";
 import { SubjectIcon } from "@/components/ui/SubjectIcon";
-import { monitorLink } from "@/lib/links";
+import { subjectLink } from "@/lib/links";
 
 import { SummaryBand } from "./overview/SummaryBand";
 import { useRelated } from "./Related";
@@ -62,7 +62,6 @@ export type MonitorTab = "overview" | "developments" | "related" | "data";
  * something links to the subject, Data when it has listed series.
  */
 export function MonitorHead({ page: p, view }: { page: Page; view: MonitorTab }) {
-  const params = { id: p.subject.id };
   const indicators = useIndicators(p.subject.id, p.run.as_of);
   const related = useRelated(p);
   const hasData = p.trend || (indicators.data?.indicators.some((i) => i.series.listed) ?? false);
@@ -85,19 +84,19 @@ export function MonitorHead({ page: p, view }: { page: Page; view: MonitorTab })
         </div>
       </div>
       <nav className="mon-nav" aria-label="Monitor views">
-        <Link to="/monitors/$id" params={params} activeOptions={{ exact: true }} aria-current={current("overview")}>
+        <Link {...subjectLink(p.subject)} activeOptions={{ exact: true }} aria-current={current("overview")}>
           Overview
         </Link>
-        <Link to="/monitors/$id/developments" params={params} aria-current={current("developments")}>
+        <Link {...subjectLink(p.subject, "developments")} aria-current={current("developments")}>
           Developments
         </Link>
         {(view === "related" || related?.show) && (
-          <Link to="/monitors/$id/related" params={params} aria-current={current("related")}>
+          <Link {...subjectLink(p.subject, "related")} aria-current={current("related")}>
             Related
           </Link>
         )}
         {hasData && (
-          <Link to="/monitors/$id/data" params={params} aria-current={current("data")}>
+          <Link {...subjectLink(p.subject, "data")} aria-current={current("data")}>
             Data
           </Link>
         )}
@@ -166,7 +165,7 @@ function GroupMembers({ subject: s }: { subject: Subject }) {
       <div className="ov">
         <div className="panel ov-card rows group-members">
           {s.links.entities.map((e) => (
-            <Link key={e.id} {...monitorLink(e.id)} className="row no-stat">
+            <Link key={e.id} {...subjectLink(e)} className="row no-stat">
               <span className="row-title">{e.name}</span>
               <span className="row-end">
                 {e.kind ? KIND_LABEL[e.kind] : ""}

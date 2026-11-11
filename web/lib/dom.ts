@@ -61,7 +61,7 @@ export function useDismiss(open: boolean, onClose: () => void) {
 const HASH_WAIT_MS = 10_000;
 
 /**
- * Lands on the section the URL's hash names (`/monitors/circle/data#indicators`) once it renders, on
+ * Lands on the section the URL's hash names (`/entities/circle/data#indicators`) once it renders, on
  * direct load and after client navigation: sections that wait on data are not there yet when the
  * browser or the router looks for them. Until the user scrolls, clicks or types, or 10 s pass, the
  * section is kept at the top while content above it loads. Section headings carry the ids.

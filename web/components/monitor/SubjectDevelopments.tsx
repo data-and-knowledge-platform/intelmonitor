@@ -8,6 +8,7 @@ import { useDevelopments, useMonitorPage } from "@/lib/api/queries";
 import { listQuery } from "@/lib/developments";
 import { plural } from "@/lib/format";
 import { useHashScroll } from "@/lib/dom";
+import { pageSection, subjectLink } from "@/lib/links";
 import { Feed, HrefLink } from "@/components/developments/Feed";
 import { FeedHeader, FeedRow } from "@/components/developments/FeedRow";
 import { ChevronIcon } from "@/components/ui/icons";
@@ -47,13 +48,13 @@ export function TopDevelopments({ subject }: { subject: Schema<"SubjectRef"> }) 
       {list.data && allTime > 0 && (
         <div className="feed-foot">
           {rows.length > 0 ? (
-            <Link to="/monitors/$id/developments" params={{ id: subject.id }} className="link top-all">
+            <Link {...subjectLink(subject, "developments")} className="link top-all">
               {rows.length > TOP ? `See all ${plural(rows.length, "development")} this month` : "See all developments"}
               <ChevronIcon />
             </Link>
           ) : (
             // Nothing this month: open the tab on all time, where the older ones are.
-            <HrefLink href={`/monitors/${encodeURIComponent(subject.id)}/developments?days=any`} className="link top-all">
+            <HrefLink href={`/${pageSection(subject)}/${encodeURIComponent(subject.id)}/developments?days=any`} className="link top-all">
               See earlier developments
               <ChevronIcon />
             </HrefLink>

@@ -8,6 +8,7 @@ import { Link } from "@tanstack/react-router";
 import type { Schema } from "@/lib/api/client";
 import { useIndicators } from "@/lib/api/queries";
 import { indicatorChange, seriesValue } from "@/lib/format";
+import { subjectLink, type PageSubject } from "@/lib/links";
 
 type Indicator = Schema<"SubjectIndicator">;
 
@@ -15,8 +16,8 @@ type Indicator = Schema<"SubjectIndicator">;
 const SHOWN = 3;
 
 /** The top 3 Key data figures and "Open Data"; nothing when the subject has no listed series. */
-export function KeyFigures({ subjectId, asOf }: { subjectId: string; asOf: string }) {
-  const query = useIndicators(subjectId, asOf);
+export function KeyFigures({ subject, asOf }: { subject: PageSubject; asOf: string }) {
+  const query = useIndicators(subject.id, asOf);
   const byId = new Map(query.data?.indicators.map((i) => [i.series.id, i]));
   const ids = query.data ? [...query.data.key_data.flagged, ...query.data.key_data.rows] : [];
   const figures = ids.flatMap((id) => byId.get(id) ?? []).slice(0, SHOWN);
@@ -26,7 +27,7 @@ export function KeyFigures({ subjectId, asOf }: { subjectId: string; asOf: strin
       {figures.map((ind) => (
         <Figure key={ind.series.id} ind={ind} />
       ))}
-      <Link to="/monitors/$id/data" params={{ id: subjectId }} className="link kf-open">
+      <Link {...subjectLink(subject, "data")} className="link kf-open">
         Open Data
       </Link>
     </>

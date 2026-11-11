@@ -1,8 +1,8 @@
 // Graph view around one subject: opens at 1 hop, expands to 2, with filters for node type, link
-// type and time window. Clicking a subject node opens its monitor page; clicking a development
-// opens its popup over the graph. Developments are coloured and grouped by theme. The In view
-// list shows the same nodes as links. The page (/monitors/$id/graph) is reachable by URL only, for
-// the TCRD session (prd.md section 12).
+// type and time window. Clicking a subject node opens its page; clicking a development opens its
+// popup over the graph. Developments are coloured and grouped by theme. The In view list shows the
+// same nodes as links. The view (/entities/<id>/graph or /topics/<id>/graph) is reachable by URL
+// only, for the TCRD session (prd.md section 12).
 import { Link } from "@tanstack/react-router";
 import { useNavigate } from "@tanstack/react-router";
 import { Fragment, useCallback, useState } from "react";
@@ -10,7 +10,7 @@ import { Fragment, useCallback, useState } from "react";
 import type { Schema } from "@/lib/api/client";
 import { useGraph, type GraphQuery } from "@/lib/api/queries";
 import { plural } from "@/lib/format";
-import { monitorLink } from "@/lib/links";
+import { subjectLink } from "@/lib/links";
 import { developmentLink } from "@/components/developments/link";
 import { PriorityBadge } from "@/components/developments/labels";
 
@@ -61,7 +61,14 @@ export function GraphView({ id }: { id: string }) {
   const graph = useGraph(query);
   const g = graph.data;
 
-  const open = useCallback((nodeId: string) => void navigate(linkOf(nodeId)), [navigate]);
+  const nodes = graph.data?.nodes;
+  const open = useCallback(
+    (nodeId: string) => {
+      const node = nodes?.find((n) => n.id === nodeId);
+      if (node) void navigate(linkOf(node));
+    },
+    [navigate, nodes],
+  );
 
   if (graph.isError) return <p className="page-message">This graph could not be loaded.</p>;
   if (!g) return null;
@@ -74,7 +81,7 @@ export function GraphView({ id }: { id: string }) {
           <h1>{center?.label ?? id}</h1>
           <p>
             Graph view.{" "}
-            <Link {...monitorLink(id)} className="subject-link">
+            <Link {...subjectLink({ id, type: center?.type === "topic" ? "topic" : "entity" })} className="subject-link">
               Open page
             </Link>
           </p>
@@ -145,11 +152,12 @@ const GROUP_LABEL: Record<NodeType, string> = {
   development: "Developments",
 };
 
-/** A node's link: a development opens its popup over the graph, a subject its monitor page. */
-const linkOf = (nodeId: string) =>
-  nodeId.startsWith(DEV_PREFIX)
-    ? developmentLink(nodeId.slice(DEV_PREFIX.length))
-    : { ...monitorLink(nodeId), resetScroll: false };
+/** A node's link: a development opens its popup over the graph, a topic its page under /topics,
+ *  anything else its page under /entities. */
+const linkOf = (n: GraphNode) =>
+  n.type === "development"
+    ? developmentLink(n.id.slice(DEV_PREFIX.length))
+    : { ...subjectLink({ id: n.id, type: n.type === "topic" ? "topic" : "entity" }), resetScroll: false };
 
 /** The group a node is listed under: its type, or for a development its theme when it has one. */
 const groupOf = (n: GraphNode) => n.theme ?? n.type;
@@ -196,7 +204,7 @@ function NodeList({
                 </h3>
               )}
               <Link
-                {...linkOf(n.id)}
+                {...linkOf(n)}
                 className="row no-stat"
                 data-node={n.id}
                 onMouseEnter={() => onHover(n.id)}

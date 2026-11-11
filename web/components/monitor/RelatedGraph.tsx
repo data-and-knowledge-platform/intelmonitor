@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Schema } from "@/lib/api/client";
 import { useRelatedGraph, type RelatedDays } from "@/lib/api/queries";
 import { shortDate } from "@/lib/format";
-import { monitorLink } from "@/lib/links";
+import { subjectLink } from "@/lib/links";
 import { PriorityBadge } from "@/components/developments/labels";
 import { developmentLink } from "@/components/developments/link";
 import { RelatedCanvas, toneOf } from "@/components/graph/RelatedCanvas";
@@ -47,7 +47,7 @@ export function RelatedGraph({
         title={`Related to ${subject.name}`}
         meta={
           relatedTab && (
-            <Link to="/monitors/$id/related" params={{ id: subject.id }} className="link">
+            <Link {...subjectLink(subject, "related")} className="link">
               See all links
             </Link>
           )
@@ -150,7 +150,7 @@ function DevelopmentList({
         >
           <h3>
             {n.subject ? (
-              <Link {...monitorLink(n.subject.id)} className="tlink">
+              <Link {...subjectLink(n.subject)} className="tlink">
                 {n.name}
               </Link>
             ) : (

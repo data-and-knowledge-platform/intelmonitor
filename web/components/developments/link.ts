@@ -8,8 +8,8 @@ export type ViewScope = { subject?: string };
 
 /** The subject in view on a page, read from its path (`window.location` by default). */
 export function scopeHere({ pathname }: { pathname: string } = window.location): ViewScope {
-  const monitor = pathname.match(/^\/monitors\/([^/]+)/);
-  return monitor ? { subject: decodeURIComponent(monitor[1]) } : {};
+  const page = pathname.match(/^\/(?:entities|topics)\/([^/]+)/);
+  return page ? { subject: decodeURIComponent(page[1]) } : {};
 }
 
 /** The `scope` parameter for a scope: "subject:<id>", or nothing. */

@@ -4,7 +4,7 @@
 export const STEPS = [
   "Entity page: the brief, the top 5 developments and the Related card, no removed controls; See all links opens the Related tab with Could affect and Shared with; the Data tab in plain words",
   "Developments tab: the feed under priority headings; This week and High narrow it and survive a reload; New and Updated from the latest run, with its date in the footer",
-  "Development popup from a feed row: labels, who it impacts, connections, sources; Esc returns to the same feed; old links open the popup or land on MAS's page",
+  "Development popup from a feed row: labels, who it impacts, connections, sources; Esc returns to the same feed; old page URLs land on the new ones; old links open the popup or land on MAS's page",
   "Key points under the headline in the development popup, as the API gives them",
   "⌘K search opens an entity and a development",
   "? opens Help with the labels",

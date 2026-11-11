@@ -51,7 +51,7 @@ export function SummaryBand({ page: p }: { page: Page }) {
         )}
       </div>
       <div className="ov-band-side">
-        <KeyFigures subjectId={p.subject.id} asOf={p.run.as_of} />
+        <KeyFigures subject={p.subject} asOf={p.run.as_of} />
         <NextDate page={p} />
       </div>
     </section>

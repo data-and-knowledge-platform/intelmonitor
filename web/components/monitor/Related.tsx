@@ -1,4 +1,4 @@
-// A monitor page's Related tab: what reaches the subject through its links ("Could affect"), the
+// An entity's or topic's Related tab: what reaches the subject through its links ("Could affect"), the
 // institutions linked to a country, sector, technology provider or payment system (decision U2a),
 // and, for a bank, what it shares with a peer. The tab shows only when one of these has rows.
 import { Navigate } from "@tanstack/react-router";
@@ -7,6 +7,7 @@ import type { Schema } from "@/lib/api/client";
 import { usePeers } from "@/lib/api/peers";
 import { useLinked, useMonitorPage } from "@/lib/api/queries";
 import { useHashScroll } from "@/lib/dom";
+import { subjectLink } from "@/lib/links";
 
 import { MonitorHead } from "./MonitorView";
 import { CouldAffect } from "./overview/CouldAffect";
@@ -43,7 +44,7 @@ function Related({ page: p }: { page: Page }) {
   const related = useRelated(p);
   if (!related) return null;
   // Nothing links here: an old or typed URL lands on the Overview.
-  if (!related.show) return <Navigate to="/monitors/$id" params={{ id: p.subject.id }} replace />;
+  if (!related.show) return <Navigate {...subjectLink(p.subject)} replace />;
   const bank = p.subject.kind === "bank";
   return (
     <>

@@ -190,23 +190,29 @@ function pick<T extends { id: string; name: string }>(items: T[] | undefined, qu
 
 const subjectId = async (query: string) => pick((await api.GET("/subjects")).data, query, "subjects");
 
+/** A subject's page path: `/topics/<id>` for a topic, `/entities/<id>` for an entity or group. */
+async function pagePath(query: string) {
+  const subjects = (await api.GET("/subjects")).data;
+  const id = pick(subjects, query, "subjects");
+  return `/${subjects?.find((s) => s.id === id)?.type === "topic" ? "topics" : "entities"}/${id}`;
+}
+
 /** Each target's page path. Arguments are what follows the target name on the command line. */
 const TARGETS = {
   home: async () => "/",
-  // A monitor page's tabs: Overview, Developments (the query sets its feed's period and facets),
-  // Related and Data; the graph view is reachable by URL only.
-  monitor: async (q: string) => `/monitors/${await subjectId(q)}`,
+  // An entity's or topic's tabs: Overview, Developments (the query sets its feed's period and
+  // facets), Related and Data; the graph view is reachable by URL only.
+  monitor: async (q: string) => pagePath(q),
   "monitor-developments": async (q: string, query = "") =>
-    `/monitors/${await subjectId(q)}/developments${query ? `?${query.replace(/^\?/, "")}` : ""}`,
-  related: async (q: string) => `/monitors/${await subjectId(q)}/related`,
-  data: async (q: string) => `/monitors/${await subjectId(q)}/data`,
-  graph: async (q: string) => `/monitors/${await subjectId(q)}/graph`,
+    `${await pagePath(q)}/developments${query ? `?${query.replace(/^\?/, "")}` : ""}`,
+  related: async (q: string) => `${await pagePath(q)}/related`,
+  data: async (q: string) => `${await pagePath(q)}/data`,
+  graph: async (q: string) => `${await pagePath(q)}/graph`,
   // A development's popup over a subject's page (its priority for that subject), else over Home.
   development: async (id: string, subject = "") => {
     const popup = `development=${encodeURIComponent(id)}`;
     if (!subject) return `/?${popup}`;
-    const s = await subjectId(subject);
-    return `/monitors/${s}?${popup}&scope=subject:${s}`;
+    return `${await pagePath(subject)}?${popup}&scope=subject:${await subjectId(subject)}`;
   },
 } satisfies Record<string, (...args: string[]) => Promise<string>>;
 
