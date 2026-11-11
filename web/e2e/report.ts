@@ -1,10 +1,12 @@
-// Writes index.html into the run directory: each walkthrough step with its status, duration,
-// error and screenshot, plus the run's video and trace copied next to it.
+// Writes index.html and summary.json into the run directory: each walkthrough step with its
+// status, duration, error, screenshot and the browser state (`im.state.v1`) after it, plus the
+// run's videos (the test's own context as video.webm, each other context as video-<name>.webm),
+// trace, requests.json, the pipeline checks' JSON and api-check.json, linked from the page.
 import type { Reporter, TestCase, TestResult, TestStep } from "@playwright/test/reporter";
-import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { runDir, screenshotName, STEPS } from "./steps";
+import { runDir, screenshotName, STEPS, STORAGE_FILE, type StepStorage } from "./steps";
 
 type Status = "passed" | "failed" | "not run";
 
@@ -14,7 +16,12 @@ interface Row {
   ms: number;
   error: string | null;
   screenshot: string | null;
+  /** The parsed `im.state.v1` after the step; null when unset or the step never ran. */
+  storage: unknown;
 }
+
+// Files the walkthrough writes beside the report, linked when present.
+const FILES = ["requests.json", "series-fetch.json", "detector.json", "past-run.json", "api-check.json"];
 
 const escape = (text: string) =>
   text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c);
@@ -39,6 +46,8 @@ export default class WalkthroughReporter implements Reporter {
     const steps = new Map<string, TestStep>(
       (result?.steps ?? []).filter((s) => s.category === "test.step").map((s) => [s.title, s]),
     );
+    const storageFile = path.join(dir, STORAGE_FILE);
+    const storage: StepStorage = existsSync(storageFile) ? JSON.parse(readFileSync(storageFile, "utf8")) : {};
     const rows: Row[] = STEPS.map((title, i) => {
       const step = steps.get(title);
       const shot = screenshotName(i);
@@ -48,6 +57,7 @@ export default class WalkthroughReporter implements Reporter {
         ms: step?.duration ?? 0,
         error: step?.error?.message ? plain(step.error.message) : null,
         screenshot: existsSync(path.join(dir, shot)) ? shot : null,
+        storage: storage[title] ?? null,
       };
     });
 
@@ -59,15 +69,17 @@ export default class WalkthroughReporter implements Reporter {
     };
     const video = copied("video", "video.webm");
     const trace = copied("trace", "trace.zip");
+    const videos = [video, ...readdirSync(dir).filter((f) => /^video-.+\.webm$/.test(f)).sort()].filter((f) => f !== null);
+    const files = FILES.filter((f) => existsSync(path.join(dir, f)));
 
     const passed = result?.status === "passed" && rows.every((r) => r.status === "passed");
     const outside = result?.errors
       .map((e) => plain(e.message ?? ""))
       .filter((m) => m && !rows.some((r) => r.error === m));
-    writeFileSync(path.join(dir, "index.html"), page({ rows, passed, video, trace, result, test: this.test, outside: outside ?? [] }));
+    writeFileSync(path.join(dir, "index.html"), page({ rows, passed, videos, trace, files, result, test: this.test, outside: outside ?? [] }));
     writeFileSync(
       path.join(dir, "summary.json"),
-      JSON.stringify({ passed, status: result?.status ?? "not run", steps: rows }, null, 2),
+      JSON.stringify({ passed, status: result?.status ?? "not run", steps: rows, videos, files }, null, 2),
     );
     console.log(`\nE2E artifacts: ${dir}/index.html`);
   }
@@ -76,16 +88,18 @@ export default class WalkthroughReporter implements Reporter {
 function page({
   rows,
   passed,
-  video,
+  videos,
   trace,
+  files,
   result,
   test,
   outside,
 }: {
   rows: Row[];
   passed: boolean;
-  video: string | null;
+  videos: string[];
   trace: string | null;
+  files: string[];
   result: TestResult | null;
   test: TestCase | null;
   outside: string[];
@@ -103,6 +117,7 @@ function page({
         </div>
         <p><span class="status">${r.status}</span>${r.status === "not run" ? "" : `, ${(r.ms / 1000).toFixed(1)} s`}</p>
         ${r.error ? `<pre>${escape(r.error)}</pre>` : ""}
+        ${r.status === "not run" ? "" : `<p class="state">im.state.v1</p><pre class="storage">${escape(JSON.stringify(r.storage))}</pre>`}
       </div>
       ${r.screenshot ? `<a href="${r.screenshot}"><img src="${r.screenshot}" alt="Step ${i + 1} screenshot" loading="lazy"></a>` : "<span></span>"}
     </section>`,
@@ -136,16 +151,19 @@ function page({
   img { display: block; width: 100%; border: 1px solid var(--line); border-radius: 6px; }
   @media (max-width: 640px) { .step { grid-template-columns: 1fr; } }
   pre { white-space: pre-wrap; background: #fff5f5; border-radius: 6px; padding: 8px; font-size: 12px; overflow-x: auto; }
+  .step .state { margin-top: 10px; font-size: 12px; }
+  pre.storage { background: var(--bg); margin: 4px 0 0 22px; }
 </style>
 </head>
 <body>
 <main>
   <h1>IntelMonitor E2E</h1>
   <p class="meta"><span class="verdict">${passed ? "Passed" : "Failed"}</span>, ${rows.filter((r) => r.status === "passed").length} of ${rows.length} steps passed. ${escape(test?.title ?? "")}. Started ${escape(started)}, ${seconds} s.</p>
-  <p class="files">${video ? `<a href="${video}">Video</a>` : "No video"}${trace ? `<a href="${trace}">Trace</a> <span class="meta">open with <code>pnpm exec playwright show-trace trace.zip</code></span>` : "No trace"}</p>
+  <p class="files">${videos.length ? videos.map((v) => `<a href="${v}">${escape(v)}</a>`).join("") : "No video"}${trace ? `<a href="${trace}">Trace</a> <span class="meta">open with <code>pnpm exec playwright show-trace trace.zip</code></span>` : "No trace"}</p>
+  <p class="files">${files.map((f) => `<a href="${f}">${f}</a>`).join("")}</p>
   ${outside.map((m) => `<pre>${escape(m)}</pre>`).join("")}
   ${items}
-  ${video ? `<h2 class="rec">Recording</h2><video src="${video}" controls muted preload="metadata"></video>` : ""}
+  ${videos.map((v) => `<h2 class="rec">Recording: ${escape(v)}</h2><video src="${v}" controls muted preload="metadata"></video>`).join("")}
 </main>
 </body>
 </html>

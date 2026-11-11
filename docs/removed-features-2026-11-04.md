@@ -78,7 +78,7 @@ Slide 8 of the team's deck of 10 Nov 2026 replaces it with a fixed table of the 
 
 ### The web app's side of the plan's removals (uncommitted, spec step 6)
 
-The web app no longer reads or writes any of the features listed under "Decided, not yet removed" except group pages, which went in step 10 (below); their API endpoints, pipeline hooks and stored rows go in step 7.
+The web app no longer reads or writes any of the features this plan removes except group pages, which went in step 10 (below); their API endpoints, pipeline hooks and stored rows go in step 7.
 
 - Dashboard pages, widgets, the AI dashboard generator (and its `@ag-ui` packages), the new-dashboard picker and the sidebar's Dashboards list; `/dashboards/<id>` lands on the home page.
 - Onboarding (`/setup`, which lands on the home page), the profile menu and role switch, the tour and visit logging.

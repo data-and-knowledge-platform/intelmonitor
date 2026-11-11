@@ -1,6 +1,7 @@
 // The verification harness for IntelMonitor: `pnpm -C web verify <command>`. Agents use it to health
-// check the dev servers, reach a feature's page with real ids, drive it through agent-browser and
-// keep the evidence. .claude/skills/verify-intelmonitor/SKILL.md documents every command.
+// check the dev servers, reach a feature's page with real ids, set the browser state a recipe starts
+// from, drive it through agent-browser and keep the evidence.
+// .claude/skills/verify-intelmonitor/SKILL.md documents every command.
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, openSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -190,39 +191,49 @@ function pick<T extends { id: string; name: string }>(items: T[] | undefined, qu
 
 const subjectId = async (query: string) => pick((await api.GET("/subjects")).data, query, "subjects");
 
-/** A subject's page path: `/topics/<id>` for a topic, `/entities/<id>` for an entity or group. */
+/** A subject's page path: `/topics/<id>` for a topic, `/entities/<id>` for an entity (a group's
+ *  lands on the Entities list filtered to it). */
 async function pagePath(query: string) {
   const subjects = (await api.GET("/subjects")).data;
   const id = pick(subjects, query, "subjects");
   return `/${subjects?.find((s) => s.id === id)?.type === "topic" ? "topics" : "entities"}/${id}`;
 }
 
+/** A URL query given on the command line, with or without its leading `?`. */
+const query = (q: string) => (q ? `?${q.replace(/^\?/, "")}` : "");
+
 /** Each target's page path. Arguments are what follows the target name on the command line. */
 const TARGETS = {
   home: async () => "/",
   // An entity's or topic's tabs: Overview, Developments (the query sets its feed's period and
   // facets), Related and Data; the graph view is reachable by URL only.
-  monitor: async (q: string) => pagePath(q),
-  "monitor-developments": async (q: string, query = "") =>
-    `${await pagePath(q)}/developments${query ? `?${query.replace(/^\?/, "")}` : ""}`,
+  page: async (q: string) => pagePath(q),
+  "page-developments": async (q: string, search = "") => `${await pagePath(q)}/developments${query(search)}`,
   related: async (q: string) => `${await pagePath(q)}/related`,
   data: async (q: string) => `${await pagePath(q)}/data`,
   graph: async (q: string) => `${await pagePath(q)}/graph`,
-  // A development's popup over a subject's page (its priority for that subject), else over Home.
+  // The list pages; the query sets the period and filters (`period=4w&group=banking`).
+  entities: async (search = "") => `/entities${query(search)}`,
+  topics: async (search = "") => `/topics${query(search)}`,
+  // A development's popup over a subject's page (its priority for that subject), else over the
+  // Entities list.
   development: async (id: string, subject = "") => {
     const popup = `development=${encodeURIComponent(id)}`;
-    if (!subject) return `/?${popup}`;
+    if (!subject) return `/entities?${popup}`;
     return `${await pagePath(subject)}?${popup}&scope=subject:${await subjectId(subject)}`;
   },
 } satisfies Record<string, (...args: string[]) => Promise<string>>;
 
+// Targets whose first argument may be left out.
+const OPTIONAL_ARGS: Target[] = ["home", "entities", "topics"];
+
 type Target = keyof typeof TARGETS;
 const isTarget = (name: string): name is Target => name in TARGETS;
 
-/** The page URL for a feature target, for example `monitor OCBC` or `monitor-developments DBS days=7`. */
+/** The page URL for a feature target, for example `page OCBC` or `page-developments DBS days=7`. */
 async function url([name = "", ...args]: string[]) {
   if (!isTarget(name)) throw new Fix(`unknown target "${name}"`, `use one of: ${Object.keys(TARGETS).join(", ")}`);
-  if (name !== "home" && !args[0]) throw new Fix(`${name} needs an argument`, "pnpm -C web verify help lists each target's arguments");
+  if (!OPTIONAL_ARGS.includes(name) && !args[0]) throw new Fix(`${name} needs an argument`, "pnpm -C web verify help lists each target's arguments");
   const [first = "", second] = args;
   return WEB_URL + (await TARGETS[name](first, second));
 }
@@ -253,6 +264,56 @@ function record([action = "", name = ""]: string[]) {
   mkdirSync(path.dirname(file), { recursive: true });
   browser("record", "start", file);
   print({ recording: path.relative(ROOT, file) });
+}
+
+// The browser state the web app keeps per viewer (web/lib/viewerState.ts).
+const STATE_KEY = "im.state.v1";
+
+/**
+ * Reads or writes `localStorage["im.state.v1"]` in the harness browser: `state show`, `state clear`,
+ * or `state set '<json>'`. Clear and set then open the Entities list, which records nothing in Recently
+ * viewed, so the app reads exactly the written state (it reads storage once per load).
+ */
+function state([action = "", json = ""]: string[]) {
+  const onApp = () => {
+    let at = "";
+    try {
+      at = browser("get", "url");
+    } catch {
+      // no session yet: opened below
+    }
+    if (!at.startsWith(WEB_URL)) {
+      browser("set", "viewport", "1440", "900");
+      browser("open", `${WEB_URL}/entities`);
+      browser("wait", "--load", "networkidle");
+    }
+  };
+  const show = () => {
+    const raw: unknown = JSON.parse(browser("eval", `(() => localStorage.getItem(${JSON.stringify(STATE_KEY)}))()`));
+    print({ url: browser("get", "url"), [STATE_KEY]: typeof raw === "string" ? JSON.parse(raw) : null });
+  };
+  const write = (script: string) => {
+    onApp();
+    browser("eval", script);
+    browser("open", `${WEB_URL}/entities`);
+    browser("wait", "--load", "networkidle");
+    show();
+  };
+  if (action === "show") {
+    onApp();
+    return show();
+  }
+  if (action === "clear") return write(`(() => localStorage.removeItem(${JSON.stringify(STATE_KEY)}))()`);
+  if (action === "set") {
+    let value: unknown;
+    try {
+      value = JSON.parse(json);
+    } catch {
+      throw new Fix("state set needs JSON", `pnpm -C web verify state set '{"watchlist":["mas","dbs"],"view":"personal"}'`);
+    }
+    return write(`(() => localStorage.setItem(${JSON.stringify(STATE_KEY)}, ${JSON.stringify(JSON.stringify(value))}))()`);
+  }
+  throw new Fix("state show | clear | set '<json>'", "pnpm -C web verify state show");
 }
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
@@ -314,10 +375,12 @@ const HELP = `pnpm -C web verify <command>
   up | down                   start what is not running | stop only what up started
   url <target> [arg]          page URL for a target
   open <target> [arg]         open it in the harness browser (session ${SESSION}, 1440x900)
-      targets: home, monitor <subject>, monitor-developments <subject> [query],
+      targets: home, page <subject>, page-developments <subject> [query],
                related <subject>, data <subject>, graph <subject>,
-               development <development-id> [subject]
+               entities [query], topics [query], development <development-id> [subject]
       <subject> is an id or a name that matches one item
+  state show | clear | set '<json>'
+                              read or write localStorage["${STATE_KEY}"] in the harness browser
   shot <run>/<name>           screenshot + ARIA snapshot to artifacts/verify/<run>/
   record start <run>/<name> | record stop
   api [METHOD] <path> [json]  call the API, e.g. /subjects
@@ -335,6 +398,7 @@ const COMMANDS: Record<string, (args: string[]) => unknown> = {
   open,
   shot,
   record,
+  state,
   api: call,
   check,
   store,

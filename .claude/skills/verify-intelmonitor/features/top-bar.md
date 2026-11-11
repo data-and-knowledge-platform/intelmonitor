@@ -1,8 +1,8 @@
 # Top bar
 
 The top bar holds full text search over entities, topics, developments and documents, and `Week to <d Mon> · updated weekly`: the end of the week the latest weekly run covers.
-An entity or topic result opens its page; a development or document result opens the development's popup over the current page.
-The run chip, Run now, the alerts bell and the Following dialog are gone; runs are scheduled weekly on the server.
+An entity or topic result opens its page (`/entities/<id>` or `/topics/<id>`); a development or document result opens the development's popup over the current page.
+Runs are scheduled weekly on the server; nothing in the top bar starts or follows one.
 
 ## Sub-features
 
@@ -11,7 +11,7 @@ The run chip, Run now, the alerts bell and the Following dialog are gone; runs a
 - `search-go` opens the highlighted hit by click or Enter; arrows move the highlight; Esc clears, then blurs.
 - Development and document titles wrap in full; only a document's matched text is cut to one line.
 - `search-empty` shows `Nothing matches “<text>”.`
-- `updated` `Week to 8 Oct · updated weekly`, from `verify api /runs/latest` `as_of`.
+- `updated` `Week to 8 Nov · updated weekly`, from `verify api /runs/latest` `as_of`.
 
 ## How to get to it (user POV)
 
@@ -30,7 +30,7 @@ Preconditions:
 - **List results.** `ab keyboard type "ocbc"`, then `ab snapshot -i`. `combobox "Search" [expanded=true]` and `listbox "Search results"` show `option "OCBC Entity" [selected]`, development titles with a date, and documents with snippet and domain. Compare with `verify api "/search?q=ocbc"`.
 - **Open a development hit.** Click an option in the Developments group. The current URL gains `development=<id>` and the popup's title is that development's title; the field is cleared.
 - **Open a document hit.** Click a document option. The popup opens for that document's `development_id`.
-- **Keyboard to an entity.** Type `ocbc`, ArrowDown then ArrowUp, then Enter. The selected option (`[role=option][aria-selected=true]`) moves and comes back; Enter lands on `/monitors/ocbc` with H1 `OCBC`.
+- **Keyboard to an entity.** Type `ocbc`, ArrowDown then ArrowUp, then Enter. The selected option (`[role=option][aria-selected=true]`) moves and comes back; Enter lands on `/entities/ocbc` with H1 `OCBC`; a topic hit lands on `/topics/<id>`, and a group hit on the Entities list filtered to it.
 - **Empty result.** Type `zzqxw`. The listbox holds only `Nothing matches “zzqxw”.`
 - **Esc.** Press Esc once with text: the field clears and keeps focus. Press again: the field blurs.
 

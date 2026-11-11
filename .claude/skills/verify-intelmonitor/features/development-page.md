@@ -4,7 +4,9 @@ A development opens in a popup over the page it was opened from (80% of the scre
 The URL carries it: `?development=<id>&scope=subject:<id>` on the current page's URL, the scope naming the subject in view whose priority it shows.
 The header holds the labels line (the priority badge for the subjects in view, with `For OCBC` when the subjects disagree, `Adverse event` when it applies, the tone, the source types as a jump link to the sources, the category and the date or date span), the headline (heading level 2, focused on open), its key points, and the close button (`Close development`). There is no Back button.
 Below, two columns that each scroll inside the popup: on the left `Who it impacts` over `Connections`; on the right the sources, one list under the heading `Sources`.
-`Who it impacts` lists the subjects it is about (priority, adverse, tone, `Took the action` for actors), then `Could also be affected, through their links`: each entity with its route in plain words, `Could hurt`, `Could help` or `Mixed effect`, why, and one evidence line per stored link (`Public disclosure` or `Press report` with a hover definition, the source with page as a link, the size or `Size not disclosed`, `Figures as of` or `Source dated` with `over N years old` when it is three years or more, and `Link last checked`).
+`Who it impacts` lists the subjects it is about (the direct priority, adverse, tone, `Took the action` for actors), then `Could also be affected, through their links`: the indirect impacts, each an entity one stored link away from a subject the development is adverse for, at the level the fixed table gives for that subject's direct level and the link's strength in that direction (Medium or Low, never High).
+Each row shows the entity, its route in plain words (`via its Singapore loans`), the level, the link's reason (one line built from the link, such as `has 12.2% of its loans in Hong Kong, 30 Jun 2026`) and one evidence line for the link (`Public disclosure` or `Press report` with a hover definition, the source with page as a link, the size or `Size not disclosed`, `Figures as of` or `Source dated` with `over N years old` when it is three years or more, and `Link last checked`).
+There is no why sentence, direction (could hurt, could help) or confidence; link strength is stored but not shown.
 `Connections` has one claim line per route and a graph snippet: `This news`, the thing it is about, any company in between, and each entity, edges labelled (`44.4% of loans`, `cloud services`, `takes part`). Without indirect impacts it says `No stored link carries this news to another tracked entity.`
 The sources are news, official and research documents (and a detector's series), each with its highlighted excerpts.
 Close, Esc and a backdrop click return to the page underneath with its URL, filters and scroll, and focus returns to the link that opened it. Opening it changes nothing on the server.
@@ -16,15 +18,16 @@ Under 1024 px the popup fills the screen less 16 px and the columns stack in one
 - `dp-close`: the close button, Esc and a backdrop click go back to the history entry underneath (same URL and scroll); browser Back does the same and Forward reopens it; on a fresh load of a popup URL, closing drops the parameters and stays on the page.
 - `dp-focus`: the title has focus on open, Tab and Shift+Tab wrap inside the popup, and focus returns to the opener on close (the search field for a ⌘K result).
 - `dp-priority`: the priority shown is for the subjects in view, not the highest over every subject.
-- `dp-who`: direct subjects, then indirect impacts with route, direction, why and evidence.
+- `dp-who`: direct subjects with their priority, then indirect impacts with route, level, link reason and evidence, as `verify api /developments/<id>` lists them in `impacts` (`level`, `route`, `subject`, `link.reason`).
 - `dp-graph`: `Connections`, its claim lines and the snippet; a plain line without indirect impacts.
 - `dp-sources`: one list with highlighted excerpts; the `Sources` heading stays at the top as the column scrolls.
-- `dp-legacy`: `/developments/<id>?subject=<id>` redirects to `/monitors/<id>?development=<id>&scope=subject:<id>`, and `/developments/<id>` alone to MAS's page with the popup open; an old `?evidence=<id>` link on any page opens the popup there.
+- `dp-legacy`: `/developments/<id>?subject=<id>` redirects to that subject's page (`/entities/<id>` or `/topics/<id>`) with `?development=<id>&scope=subject:<id>`, and `/developments/<id>` alone to `/` with the popup open, which lands on home ([watchlist](watchlist.md)); an old `?evidence=<id>` link on any page opens the popup there.
 - `dp-error`: an unknown id shows `This development could not be loaded. It may have left the latest update.` with the close button.
 
 ## How to get to it (user POV)
 
-- A feed row on a monitor page's Developments tab or its Overview's top 5 (see [developments](developments.md)); on the Overview also the summary band's `Next:` date and a Related card list row (the brief itself links no developments); on the Related tab a `Could affect` title and a linked institution's week line (see [monitor-page](monitor-page.md)).
+- A top development's headline on the Entities or Topics list, over the list with the row's priority (see [list-pages](list-pages.md)).
+- A feed row on a page's Developments tab or its Overview's top 5 (see [developments](developments.md)); on the Overview also the summary band's `Next:` date and a Related card list row (the brief itself links no developments); on the Related tab a `Could affect` title and a linked institution's week line (see [entity-and-topic-pages](entity-and-topic-pages.md)).
 - The Data tab's `View the development` rows and note cites, a graph development node, ⌘K development and document results.
 
 ## Driving it with verify
@@ -32,17 +35,17 @@ Under 1024 px the popup fills the screen less 16 px and the columns stack in one
 Preconditions:
 
 - `ab` means `agent-browser --session im-verify`; `@ref` is the ref `ab snapshot -i` prints.
-- `pnpm -C web verify open development <id> [subject]` opens the popup over that subject's page (or over Home, which lands on MAS's page).
+- `pnpm -C web verify open development <id> [subject]` opens the popup over that subject's page, or over the Entities list.
 - Find a development with indirect impacts: `pnpm -C web verify api "/developments?subject_id=<id>&days=30"` and pick a row whose `also_affects` is not empty.
 
 - **Open from the feed.** On a Developments tab, scroll down and click a row's title link. The URL gains `development=<id>&scope=subject%3A<id>`, `dialog "<headline>"` shows with heading level 2 focused and `Close development`; no Back, Dismiss, Not relevant or Restore button.
 - **Size.** `ab eval '(() => document.querySelector("dialog.dp-pop").getBoundingClientRect().width)()'` is 80% of the window (1152 at 1440, 900 at 1024).
-- **Priority for the scope.** Compare `pnpm -C web verify api "/developments/<id>?subject_id=<a>"` and `?subject_id=<b>` for a development whose `direct_subjects` disagree; the popup opened from each monitor page shows that subject's priority and `For <name>`.
-- **Who it impacts.** `ab snapshot` shows heading `Who it impacts`, `This development is about`, `Could also be affected, through their links`, each entity link, route and direction word. `ab get text ".imp-ev"` shows the evidence lines.
+- **Priority for the scope.** Compare `pnpm -C web verify api "/developments/<id>?subject_id=<a>"` and `?subject_id=<b>` for a development whose `direct_subjects` disagree; the popup opened from each page shows that subject's priority and `For <name>`.
+- **Who it impacts.** `ab snapshot` shows heading `Who it impacts`, `This development is about`, `Could also be affected, through their links`, each entity link, route and level. `ab get text ".imp .imp-route"` and `".imp .imp-dir"` equal `route` and `level` of each `impacts` row of `verify api "/developments/<id>?subject_id=<id>"`, in order; `ab get text ".imp-why"` shows each link's reason and `".imp-ev"` the evidence lines.
 - **Connections.** `ab snapshot -c` shows heading `Connections` and `image "<claim>."`; `ab get count ".snippet .n.ent"` equals the number of impact rows.
 - **Sources.** `ab get text ".source blockquote mark"` equals the API's highlight text.
 - **Close.** Note `main.main`'s `scrollTop`, open a row, press Escape: the feed's URL comes back exactly, `scrollTop` is unchanged and the row's link has focus. Reopen and click the close button, then the backdrop: same. Reopen and use `ab back`: same; `ab forward` reopens it. Open a popup URL fresh and click the close button: the parameters go and the page stays.
-- **Legacy links.** `ab open <web>/developments/<id>?subject=dbs`: the URL becomes `/monitors/dbs?development=<id>&scope=subject%3Adbs` with the popup open; `/developments/<id>` becomes `/monitors/mas?development=<id>`. `/monitors/dbs?evidence=<id>` becomes `/monitors/dbs?development=<id>&scope=subject%3Adbs`.
+- **Legacy links.** `ab open <web>/developments/<id>?subject=dbs`: the URL becomes `/entities/dbs?development=<id>&scope=subject%3Adbs` with the popup open; `/developments/<id>` becomes home's page with `?development=<id>` (`/entities/mas?development=<id>` on a first visit). `/entities/dbs?evidence=<id>` becomes `/entities/dbs?development=<id>&scope=subject%3Adbs`.
 - **Proof.** `pnpm -C web verify record start <run>/<name>` before the first click, `record stop` at the end state.
 
 ## Gotchas

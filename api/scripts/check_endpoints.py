@@ -1,8 +1,11 @@
 """Hit every API endpoint against the running server for a sample of subjects and assert each
-returns data. Writes artifacts/api-check/<timestamp>/results.json.
+returns data. Writes artifacts/api-check/<timestamp>/results.json, or the file `--out` names.
 
-Usage (from api/): uv run python scripts/check_endpoints.py [--base https://intelmonitor.api.localhost]
-It only reads: every call is a GET.
+Usage (from api/):
+    uv run python scripts/check_endpoints.py [--base <api url>] [--out <file>]
+The base defaults to https://intelmonitor.api.localhost.
+It only reads: every call is a GET, and it calls no model. The e2e walkthrough runs it as its last
+step and keeps the results as api-check.json.
 """
 
 import argparse
@@ -45,6 +48,10 @@ LISTS = {"entities": "entity", "topics": "topic"}
 PERIODS = ("week", "4w", "3m")
 PERIOD_DAYS = {"4w": 28, "3m": 91}
 LEVELS = ("high", "medium", "low")
+# Operations other than GET the API may serve, as "METHOD /path": why. The API holds no viewer
+# state, so there are none; step 14's store publishing would be named here if it ever became an
+# endpoint rather than `im publish`.
+WRITE_EXCEPTIONS: dict[str, str] = {}
 
 type Json = Any  # response bodies are checked field by field below
 
@@ -102,7 +109,8 @@ def check_subject(c: Check, sid: str) -> dict[str, int]:
         params={"center": sid, "hops": 2, "node_type": ["topic", "group", "entity"]},
     )
     need(all(n["type"] != "development" for n in subjects_only["nodes"]), "node type filter")
-    need(len(subjects_only["nodes"]) > 1, f"{sid}: subject-only graph")
+    # A topic links to no subject, so without developments its graph is the topic alone.
+    need(len(subjects_only["nodes"]) > (kind != "topic"), f"{sid}: subject-only graph")
     affects = c.get("/graph", params={"center": sid, "link_type": "AFFECTS", "window_days": 14})
     need(all(e["type"] == "AFFECTS" for e in affects["edges"]), "link type filter")
 
@@ -231,6 +239,21 @@ def check_lists(c: Check) -> str:
     return "rows with a top development: " + ", ".join(sizes)
 
 
+def check_read_only(c: Check) -> str:
+    """The OpenAPI schema lists only GET operations, besides the named exceptions, so no endpoint
+    can hold viewer state."""
+    schema = c.get("/openapi.json")
+    operations = [
+        f"{method.upper()} {path}"
+        for path, item in schema["paths"].items()
+        for method in item
+        if method in {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
+    ]
+    writes = [o for o in operations if not o.startswith("GET ") and o not in WRITE_EXCEPTIONS]
+    need(not writes, f"operations other than GET: {writes}")
+    return f"{len(operations)} operations, all GET"
+
+
 def check_runs_and_sources(c: Check) -> str:
     runs = c.get("/runs")
     complete = [r for r in runs if r["status"] == "complete"]
@@ -246,6 +269,7 @@ def check_runs_and_sources(c: Check) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base", default="https://intelmonitor.api.localhost")
+    parser.add_argument("--out", type=Path, help="results file, else under artifacts/api-check/")
     args = parser.parse_args()
     c = Check(args.base)
     need(c.get("/health")["status"] == "ok", "health")
@@ -253,6 +277,7 @@ def main() -> int:
     need(len(subjects) == len(all_subjects()), "every seeded subject")
 
     steps: list[tuple[str, Callable[[], object]]] = [
+        ("read only", lambda: check_read_only(c)),
         ("catalogue", lambda: check_catalogue(c)),
         ("lists", lambda: check_lists(c)),
         *((f"subject {sid}", lambda sid=sid: check_subject(c, sid)) for sid in SAMPLE),
@@ -270,18 +295,18 @@ def main() -> int:
             )
             print(f"FAIL  {name}: {type(error).__name__}: {error}")
 
-    out = ARTIFACTS_DIR / "api-check" / datetime.now().strftime("%Y%m%d-%H%M%S")
-    out.mkdir(parents=True, exist_ok=True)
-    paths = sorted({f"{r['method']} {r['path']}" for r in c.results})
-    (out / "results.json").write_text(
-        json.dumps({"base": args.base, "steps": outcomes, "calls": c.results}, indent=2)
+    out: Path = args.out or (
+        ARTIFACTS_DIR / "api-check" / datetime.now().strftime("%Y%m%d-%H%M%S") / "results.json"
     )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    paths = sorted({f"{r['method']} {r['path']}" for r in c.results})
+    out.write_text(json.dumps({"base": args.base, "steps": outcomes, "calls": c.results}, indent=2))
     failed = [o for o in outcomes if not o["ok"]]
     passed = len(outcomes) - len(failed)
     print(
         f"\n{passed}/{len(outcomes)} steps passed, {len(c.results)} calls ({len(paths)} distinct)"
     )
-    print(f"results in {out / 'results.json'}")
+    print(f"results in {out}")
     return 1 if failed else 0
 
 

@@ -4,10 +4,11 @@
 (docs/archive/structured-data-plan.md, F1): no request may reach a source, the fetch after the
 backfill adds and revises nothing, and the replayed observations match the app's store.
 
-`im check past-run` recomputes Run 1 in a copy of the app's store, which holds a week of later
-documents, detections and observations, replaying only recorded model calls: nothing it stores may
-use what became known after its date, and it must match the stored run: developments and their
-sources, indicators, changes, indirect impacts, notes and briefs.
+`im check past-run` recomputes the run before the latest (the latest itself when the store holds
+one run) in a copy of the app's store, which holds the later weeks' documents, detections and
+observations, replaying only recorded model calls: nothing it stores may use what became known
+after its date, and it must match the stored run: developments and their sources, indicators,
+changes, indirect impacts, notes and briefs.
 
 `im check detector` fires a detector on fixture values. No stored loan-to-deposit ratio is near
 its threshold (docs/archive/structured-data-plan.md, F3), so the walkthrough runs this to see the
@@ -33,7 +34,7 @@ from intelmonitor.pipeline.detectors import store_detections
 from intelmonitor.pipeline.developments import build_developments
 from intelmonitor.pipeline.inference import Inference
 from intelmonitor.pipeline.params import PRIORITY_LABELS
-from intelmonitor.pipeline.run import compute_run, run_dates
+from intelmonitor.pipeline.run import compute_run
 from intelmonitor.seed import load_series
 from intelmonitor.store.db import connect, set_meta
 from intelmonitor.store.series import (
@@ -340,14 +341,24 @@ def _late(conn: sqlite3.Connection, run_id: str, as_of: date) -> LateRows:
 
 
 async def past_run_check() -> PastRunCheck:
-    """Recomputes Run 1 in a copy of the app's store, replaying only recorded model calls, and
-    checks it against what the store knew by then and the stored run."""
+    """Recomputes the run before the latest in a copy of the app's store, replaying only recorded
+    model calls, and checks it against what the store knew by then and the stored run."""
     with closing(connect()) as store, _scratch(copy_of=store) as conn:
         return await _past_run_check(conn)
 
 
+def _replayed_run(conn: sqlite3.Connection) -> date:
+    """The latest complete run's previous run, or the latest itself when it has none."""
+    latest = conn.execute(
+        "SELECT as_of, previous_run_id FROM runs WHERE status = 'complete' ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+    if latest is None:
+        raise RuntimeError("no complete run in the store")
+    return date.fromisoformat(latest["previous_run_id"] or latest["as_of"])
+
+
 async def _past_run_check(conn: sqlite3.Connection) -> PastRunCheck:
-    as_of = run_dates(conn)[0]
+    as_of = _replayed_run(conn)
     run_id = day = as_of.isoformat()
     stored = _run_rows(conn, run_id)
     log: list[str] = []
