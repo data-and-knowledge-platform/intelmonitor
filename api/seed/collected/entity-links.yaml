@@ -11,14 +11,16 @@
 # Sections
 #   relationships: directed edges.
 #     from, to     entity ids (existing subject ids or ids declared in new_entities)
-#     type         owns | subsidiary_of | operates_in | shareholder_of | member_of
-#                  | partner_of | listed_on | supervised_by
-#                  Ownership is recorded once, parent -> child, as `owns`.
-#                  `subsidiary_of` is used only where a source says the entity is
-#                  part of a group without giving a stake.
+#     type         holds_stake_in | operates_in | member_of | partner_of | listed_on
+#                  | regulated_by (renamed on 2026-11-11 from owns, subsidiary_of and
+#                  shareholder_of, and supervised_by; ticket 17)
+#                  A stake is recorded once, holder -> held, as `holds_stake_in`.
 #                  `partner_of` also covers deal counterparties (e.g. a bank that
-#                  bought another bank's business); `detail` says which.
+#                  bought another bank's business); `detail` says which. The build
+#                  stores one link per pair, ids in alphabetical order.
 #     share        ownership or voting fraction (0..1) when the source gives one, else null
+#     controlling  true on a holds_stake_in row with no share where the holder controls the
+#                  held (a former owns or subsidiary_of row); left out otherwise
 #     detail       one plain sentence
 #     evidence     public = primary or reputable source states it; reported = secondary only
 #     as_of        date the fact holds, per the source
@@ -37,7 +39,7 @@ relationships:
   # ---------------------------------------------------------------- DBS group
   - from: dbs
     to: dbs-hong-kong
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "DBS Group holds 100% of DBS Bank (Hong Kong), incorporated in Hong Kong."
     evidence: public
@@ -47,7 +49,7 @@ relationships:
     quote: "DBS Bank (Hong Kong) Limited | Hong Kong | 100 | 100"
   - from: dbs
     to: dbs-china
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "DBS Group holds 100% of DBS Bank (China), incorporated in China."
     evidence: public
@@ -57,7 +59,7 @@ relationships:
     quote: "DBS Bank (China) Limited | China | 100 | 100"
   - from: dbs
     to: dbs-taiwan
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "DBS Group holds 100% of DBS Bank (Taiwan), incorporated in Taiwan."
     evidence: public
@@ -67,7 +69,7 @@ relationships:
     quote: "DBS Bank (Taiwan) Limited | Taiwan | 100 | 100"
   - from: dbs
     to: dbs-indonesia
-    type: owns
+    type: holds_stake_in
     share: 0.99
     detail: "DBS Group holds 99% of PT Bank DBS Indonesia, incorporated in Indonesia."
     evidence: public
@@ -77,7 +79,7 @@ relationships:
     quote: "PT Bank DBS Indonesia | Indonesia | 99 | 99"
   - from: dbs
     to: dbs-india
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "DBS Group holds 100% of DBS Bank India, incorporated in India."
     evidence: public
@@ -87,7 +89,7 @@ relationships:
     quote: "DBS Bank India Limited* | India | 100 | 100"
   - from: dbs
     to: dbs-digital-exchange
-    type: owns
+    type: holds_stake_in
     share: 0.93
     detail: "DBS holds 93% of DBS Digital Exchange through DBS Finnovation."
     evidence: public
@@ -97,7 +99,7 @@ relationships:
     quote: "DBS Digital Exchange Pte. Ltd.(a) | Singapore | 93"
   - from: dbs
     to: shenzhen-rural-commercial-bank
-    type: owns
+    type: holds_stake_in
     share: 0.199
     detail: "DBS raised its stake in Shenzhen Rural Commercial Bank, an associate, to 19.9% in 2025."
     evidence: public
@@ -107,7 +109,7 @@ relationships:
     quote: "(b) The Group has increased its stake in Shenzhen Rural Commercial Bank Corporation Limited from 16.69% to 19.9% in 2025."
   - from: dbs
     to: partior
-    type: owns
+    type: holds_stake_in
     share: 0.333
     detail: "DBS Finnovation held 33.3% of Partior after subscribing in 2021; Partior is still listed as a DBS associate at end-2025, and later funding rounds may have changed the stake."
     evidence: public
@@ -117,7 +119,7 @@ relationships:
     quote: "Following the subscription of the Partior Subscription Shares, DBS Finnovation’s shareholding interest in Partior is 33.3%."
   - from: dbs
     to: climate-impact-x
-    type: owns
+    type: holds_stake_in
     share: 0.236
     detail: "DBS Finnovation held 23.6% of Verified Impact Exchange Holdings, the joint venture that owns Climate Impact X."
     evidence: public
@@ -127,7 +129,7 @@ relationships:
     quote: "Following the subscription of the VIEH Subscription Shares, DBS Finnovation’s shareholding interest in VIEH is 23.6%."
   - from: dbs
     to: nets
-    type: owns
+    type: holds_stake_in
     share: 0.333
     detail: "DBS is one of NETS's three shareholder banks; NETS describes itself as equally owned by Singapore's three largest banks, and DBS lists NETS as an associate at end-2025."
     evidence: public
@@ -209,7 +211,7 @@ relationships:
   # --------------------------------------------------------------- OCBC group
   - from: ocbc
     to: great-eastern
-    type: owns
+    type: holds_stake_in
     share: 0.9372
     detail: "OCBC owns 93.72% of Great Eastern Holdings, its insurance arm."
     evidence: public
@@ -219,7 +221,7 @@ relationships:
     quote: "This is reinforced by subsidiaries with deep expertise in specialised fields: Bank of Singapore in private banking, Great Eastern Holdings (“Great Eastern”) in insurance (93.72%-owned), Lion Global Investors in asset management, and Pac Lease Berhad in capital equipment financing."
   - from: ocbc
     to: bank-of-singapore
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "OCBC owns 100% of Bank of Singapore, its private bank."
     evidence: public
@@ -229,7 +231,7 @@ relationships:
     quote: "Bank of Singapore Limited | Singapore | 100 | 100"
   - from: ocbc
     to: ocbc-malaysia
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "OCBC owns 100% of OCBC Bank (Malaysia)."
     evidence: public
@@ -239,7 +241,7 @@ relationships:
     quote: "OCBC Bank (Malaysia) Berhad | Malaysia | 100 | 100"
   - from: ocbc
     to: ocbc-indonesia
-    type: owns
+    type: holds_stake_in
     share: 0.85
     detail: "OCBC owns 85% of PT Bank OCBC NISP; 15% is held by non-controlling interests."
     evidence: public
@@ -249,7 +251,7 @@ relationships:
     quote: "PT Bank OCBC NISP Tbk | Indonesia | 85 | 85 | 15 | 15"
   - from: ocbc
     to: ocbc-hong-kong
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "OCBC owns 100% of OCBC Bank (Hong Kong), formerly OCBC Wing Hang."
     evidence: public
@@ -259,7 +261,7 @@ relationships:
     quote: "OCBC Bank (Hong Kong) Limited | Hong Kong SAR | 100 | 100"
   - from: ocbc
     to: ocbc-china
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "OCBC owns 100% of OCBC Bank Limited, its mainland China bank."
     evidence: public
@@ -269,7 +271,7 @@ relationships:
     quote: "OCBC Bank Limited | People’s Republic of China | 100 | 100"
   - from: ocbc
     to: ocbc-macau
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "OCBC owns 100% of OCBC Bank (Macau)."
     evidence: public
@@ -279,7 +281,7 @@ relationships:
     quote: "OCBC Bank (Macau) Limited | Macau SAR | 100 | 100"
   - from: ocbc
     to: bank-of-ningbo
-    type: owns
+    type: holds_stake_in
     share: 0.20
     detail: "OCBC holds 20% of Bank of Ningbo, its material associate in mainland China."
     evidence: public
@@ -289,7 +291,7 @@ relationships:
     quote: "In Mainland China, our presence is augmented with our 20% stake in Bank of Ningbo, one of the country’s fastest-growing commercial banks."
   - from: ocbc
     to: nets
-    type: owns
+    type: holds_stake_in
     share: 0.333
     detail: "OCBC is one of NETS's three shareholder banks; NETS describes itself as equally owned by Singapore's three largest banks."
     evidence: public
@@ -371,7 +373,7 @@ relationships:
   # ---------------------------------------------------------------- UOB group
   - from: uob
     to: uob-malaysia
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "UOB owns 100% of United Overseas Bank (Malaysia)."
     evidence: public
@@ -381,7 +383,7 @@ relationships:
     quote: "United Overseas Bank (Malaysia) Bhd | Malaysia | 100 | 100"
   - from: uob
     to: uob-thailand
-    type: owns
+    type: holds_stake_in
     share: 0.997
     detail: "UOB owns 99.7% of United Overseas Bank (Thai)."
     evidence: public
@@ -391,7 +393,7 @@ relationships:
     quote: "United Overseas Bank (Thai) Public Company Limited | Thailand | 99.7 | 99.7"
   - from: uob
     to: uob-indonesia
-    type: owns
+    type: holds_stake_in
     share: 0.99
     detail: "UOB owns 99% of PT Bank UOB Indonesia."
     evidence: public
@@ -401,7 +403,7 @@ relationships:
     quote: "PT Bank UOB Indonesia | Indonesia | 99 | 99"
   - from: uob
     to: uob-china
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "UOB owns 100% of United Overseas Bank (China)."
     evidence: public
@@ -411,7 +413,7 @@ relationships:
     quote: "United Overseas Bank (China) Limited | China | 100 | 100"
   - from: uob
     to: uob-vietnam
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "UOB owns 100% of United Overseas Bank (Vietnam)."
     evidence: public
@@ -421,7 +423,7 @@ relationships:
     quote: "United Overseas Bank (Vietnam) Limited | Vietnam | 100 | 100"
   - from: uob
     to: uob-kay-hian
-    type: owns
+    type: holds_stake_in
     share: 0.32
     detail: "UOB holds 32% of UOB-Kay Hian Holdings, an SGX-listed stockbroker accounted for as an associate."
     evidence: public
@@ -431,7 +433,7 @@ relationships:
     quote: "UOB-Kay Hian Holdings Limited | Stockbroking | Singapore | 32 | 34"
   - from: uob
     to: nets
-    type: owns
+    type: holds_stake_in
     share: 0.333
     detail: "UOB is one of NETS's three shareholder banks; NETS describes itself as equally owned by Singapore's three largest banks."
     evidence: public
@@ -503,7 +505,7 @@ relationships:
   # ------------------------------------------------------ major shareholders
   - from: temasek
     to: dbs
-    type: shareholder_of
+    type: holds_stake_in
     share: 0.2830
     detail: "Temasek holds 28.30% of DBS, 11.02% directly and the rest through its wholly owned Maju Holdings."
     evidence: public
@@ -513,7 +515,7 @@ relationships:
     quote: "Temasek Holdings (Private) Limited | 312,559,831 | 490,413,019 | 802,972,850 | 28.30"
   - from: selat
     to: ocbc
-    type: shareholder_of
+    type: holds_stake_in
     share: 0.1444
     detail: "Selat (Pte) Limited is OCBC's largest substantial shareholder at 14.44%, including shares held by Herald Investment."
     evidence: public
@@ -523,7 +525,7 @@ relationships:
     quote: "Selat (Pte) Limited | 467,604,264 | 181,721,294(3) | 649,325,558 | 14.44"
   - from: lee-foundation
     to: ocbc
-    type: shareholder_of
+    type: holds_stake_in
     share: 0.0513
     detail: "Lee Foundation is a substantial shareholder of OCBC with 5.13%."
     evidence: public
@@ -533,7 +535,7 @@ relationships:
     quote: "Lee Foundation | 189,310,098(1) | 31,835,411(2) | 221,145,509 | 5.13"
   - from: wee-ee-cheong
     to: uob
-    type: shareholder_of
+    type: holds_stake_in
     share: 0.1089
     detail: "Wee Ee Cheong has a 10.89% total interest in UOB, mostly a deemed interest through Wee Investments; his brothers Wee Ee Lim (10.74%) and Wee Ee Chao (8.36%) are also substantial shareholders."
     evidence: public
@@ -543,7 +545,7 @@ relationships:
     quote: "Wee Ee Cheong | 6,118,929 | 173,663,415(2) | 179,782,344 | 10.89"
   - from: wee-investments
     to: uob
-    type: shareholder_of
+    type: holds_stake_in
     share: 0.0808
     detail: "Wee Investments, the Wee family holding company, owns 8.08% of UOB."
     evidence: public
@@ -553,7 +555,7 @@ relationships:
     quote: "Wee Investments (Pte) Limited | 133,278,205 | 194,119 | 133,472,324 | 8.08"
   - from: wah-hin
     to: uob
-    type: shareholder_of
+    type: holds_stake_in
     share: 0.0525
     detail: "Wah Hin and Company, in which Lien Ying Chow Private Limited is deemed interested, owns 5.25% of UOB."
     evidence: public
@@ -563,7 +565,7 @@ relationships:
     quote: "Wah Hin and Company Private Limited | 86,676,076 | 10,377 | 86,686,453 | 5.25"
   - from: sel-holdings
     to: sgx
-    type: shareholder_of
+    type: holds_stake_in
     share: 0.2339
     detail: "SEL Holdings holds 23.39% of SGX for the benefit of the MAS-administered Financial Sector Development Fund, but by law cannot vote the shares, so SGX reports no substantial shareholder."
     evidence: public
@@ -583,7 +585,7 @@ relationships:
     quote: "The FSDF is established under section 127 of the Monetary Authority of Singapore Act as a fund which shall, subject to the directions of the Minister, be controlled and administered by MAS."
   - from: sgx
     to: dbs-digital-exchange
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "An SGX subsidiary bought into DBS Digital Exchange in 2021, cutting DBS's stake from 100% to 90%; DBS held 93% at end-2025."
     evidence: public
@@ -647,7 +649,7 @@ relationships:
   # ------------------------------------------------------- regulator links
   - from: dbs
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS designates DBS as a domestic systemically important bank (inaugural 2015 list)."
     evidence: public
@@ -657,7 +659,7 @@ relationships:
     quote: "MAS has designated the following banking groups as D-SIBs: DBS Bank; Oversea-Chinese Banking Corporation; United Overseas Bank; Citibank; Malayan Banking Berhad; Standard Chartered Bank; and The Hongkong and Shanghai Banking Corporation."
   - from: ocbc
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS designates OCBC as a domestic systemically important bank (inaugural 2015 list)."
     evidence: public
@@ -667,7 +669,7 @@ relationships:
     quote: "MAS has designated the following banking groups as D-SIBs: DBS Bank; Oversea-Chinese Banking Corporation; United Overseas Bank; Citibank; Malayan Banking Berhad; Standard Chartered Bank; and The Hongkong and Shanghai Banking Corporation."
   - from: uob
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS designates UOB as a domestic systemically important bank (inaugural 2015 list)."
     evidence: public
@@ -677,7 +679,7 @@ relationships:
     quote: "MAS has designated the following banking groups as D-SIBs: DBS Bank; Oversea-Chinese Banking Corporation; United Overseas Bank; Citibank; Malayan Banking Berhad; Standard Chartered Bank; and The Hongkong and Shanghai Banking Corporation."
   - from: citibank
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS designates Citibank as a domestic systemically important bank in Singapore (inaugural 2015 list)."
     evidence: public
@@ -687,7 +689,7 @@ relationships:
     quote: "MAS has designated the following banking groups as D-SIBs: DBS Bank; Oversea-Chinese Banking Corporation; United Overseas Bank; Citibank; Malayan Banking Berhad; Standard Chartered Bank; and The Hongkong and Shanghai Banking Corporation."
   - from: maybank
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS designates Malayan Banking Berhad as a domestic systemically important bank in Singapore (inaugural 2015 list)."
     evidence: public
@@ -697,7 +699,7 @@ relationships:
     quote: "MAS has designated the following banking groups as D-SIBs: DBS Bank; Oversea-Chinese Banking Corporation; United Overseas Bank; Citibank; Malayan Banking Berhad; Standard Chartered Bank; and The Hongkong and Shanghai Banking Corporation."
   - from: great-eastern
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS lists The Great Eastern Life Assurance Company as one of four domestic systemically important insurers."
     evidence: public
@@ -707,7 +709,7 @@ relationships:
     quote: "The Monetary Authority of Singapore (MAS) today published its framework for designating domestic systemically important insurers (D-SIIs), and the inaugural list of four D-SIIs: AIA Singapore Private Limited Income Insurance Limited Prudential Assurance Company Singapore (Pte) Limited; and The Great Eastern Life Assurance Company Limited."
   - from: income-insurance
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS lists Income Insurance as one of four domestic systemically important insurers."
     evidence: public
@@ -717,7 +719,7 @@ relationships:
     quote: "The Monetary Authority of Singapore (MAS) today published its framework for designating domestic systemically important insurers (D-SIIs), and the inaugural list of four D-SIIs: AIA Singapore Private Limited Income Insurance Limited Prudential Assurance Company Singapore (Pte) Limited; and The Great Eastern Life Assurance Company Limited."
   - from: dbs-hong-kong
     to: hkma
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "DBS Bank (Hong Kong) is an HKMA-authorized licensed bank incorporated in Hong Kong."
     evidence: public
@@ -727,7 +729,7 @@ relationships:
     quote: "Licensed Banks | Incorporated in Hong Kong | DBS BANK (HONG KONG) LIMITED"
   - from: ocbc-hong-kong
     to: hkma
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "OCBC Bank (Hong Kong) is an HKMA-authorized licensed bank incorporated in Hong Kong."
     evidence: public
@@ -737,7 +739,7 @@ relationships:
     quote: "Licensed Banks | Incorporated in Hong Kong | OCBC Bank (Hong Kong) Limited"
   - from: dbs
     to: hkma
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "DBS Bank Ltd. also holds an HKMA licence for its Hong Kong branch, alongside its Hong Kong subsidiary."
     evidence: public
@@ -747,7 +749,7 @@ relationships:
     quote: "Licensed Banks | Incorporated outside Hong Kong | DBS BANK LTD."
   - from: ocbc
     to: hkma
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "OCBC also holds an HKMA licence for its Hong Kong branch, alongside OCBC Bank (Hong Kong)."
     evidence: public
@@ -757,7 +759,7 @@ relationships:
     quote: "Licensed Banks | Incorporated outside Hong Kong | Oversea-Chinese Banking Corporation Limited"
   - from: uob
     to: hkma
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "UOB operates in Hong Kong as an HKMA-licensed bank incorporated outside Hong Kong (a branch)."
     evidence: public
@@ -767,7 +769,7 @@ relationships:
     quote: "Licensed Banks | Incorporated outside Hong Kong | United Overseas Bank Ltd."
   - from: maybank
     to: hkma
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Malayan Banking Berhad operates in Hong Kong as an HKMA-licensed bank incorporated outside Hong Kong."
     evidence: public
@@ -777,7 +779,7 @@ relationships:
     quote: "Licensed Banks | Incorporated outside Hong Kong | MALAYAN BANKING BERHAD"
   - from: cimb
     to: hkma
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "CIMB Bank Berhad operates in Hong Kong as an HKMA-licensed bank incorporated outside Hong Kong."
     evidence: public
@@ -787,7 +789,7 @@ relationships:
     quote: "Licensed Banks | Incorporated outside Hong Kong | CIMB Bank Berhad"
   - from: bangkok-bank
     to: hkma
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Bangkok Bank operates in Hong Kong as an HKMA-licensed bank incorporated outside Hong Kong."
     evidence: public
@@ -797,7 +799,7 @@ relationships:
     quote: "Licensed Banks | Incorporated outside Hong Kong | Bangkok Bank Public Company Limited"
   - from: ocbc-malaysia
     to: bnm
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "OCBC Bank (Malaysia) is a BNM-licensed commercial bank."
     evidence: public
@@ -807,7 +809,7 @@ relationships:
     quote: "OCBC Bank (Malaysia) Berhad | Licensed Commercial Bank"
   - from: uob-malaysia
     to: bnm
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "United Overseas Bank (Malaysia) is a BNM-licensed commercial bank."
     evidence: public
@@ -817,7 +819,7 @@ relationships:
     quote: "United Overseas Bank (Malaysia) Berhad | Licensed Commercial Bank"
   - from: great-eastern
     to: bnm
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Great Eastern's Malaysian life, general and takaful companies are licensed by BNM."
     evidence: public
@@ -827,7 +829,7 @@ relationships:
     quote: "Great Eastern Life Assurance (Malaysia) Berhad | Life Insurance Business"
   - from: maybank
     to: bnm
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Malayan Banking Berhad is a BNM-licensed commercial bank."
     evidence: public
@@ -837,7 +839,7 @@ relationships:
     quote: "Malayan Banking Berhad | Licensed Commercial Bank"
   - from: cimb
     to: bnm
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "CIMB Bank Berhad is a BNM-licensed commercial bank."
     evidence: public
@@ -847,7 +849,7 @@ relationships:
     quote: "CIMB Bank Berhad | Licensed Commercial Bank"
   - from: dbs-indonesia
     to: ojk
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "PT Bank DBS Indonesia is licensed and supervised by OJK and Bank Indonesia."
     evidence: public
@@ -857,7 +859,7 @@ relationships:
     quote: "PT Bank DBS Indonesia is licensed and supervised by the Indonesian Financial Services Authority & Bank Indonesia, and is a guaranteed member of Indonesia Deposit Insurance Corporation (LPS)."
   - from: ocbc-indonesia
     to: ojk
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "PT Bank OCBC NISP is licensed and supervised by OJK and Bank Indonesia."
     evidence: public
@@ -867,7 +869,7 @@ relationships:
     quote: "PT Bank OCBC NISP Tbk berizin dan diawasi oleh Otoritas Jasa Keuangan & Bank Indonesia, serta merupakan peserta penjaminan LPS."
   - from: uob-indonesia
     to: ojk
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "PT Bank UOB Indonesia is licensed and supervised by OJK and Bank Indonesia."
     evidence: public
@@ -877,7 +879,7 @@ relationships:
     quote: "UOB Indonesia berizin dan diawasi oleh Otoritas Jasa Keuangan dan Bank Indonesia serta merupakan peserta penjaminan Lembaga Penjamin Simpanan (LPS)."
   - from: dbs-india
     to: rbi
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "DBS Bank India holds an RBI licence to bank in India as a wholly owned subsidiary."
     evidence: public
@@ -887,7 +889,7 @@ relationships:
     quote: "The Reserve Bank of India has sanctioned the Scheme of Amalgamation of the entire undertaking of DBS Bank Ltd., India with DBS Bank India Limited which has been granted licence by the Reserve Bank to carry on the business of banking in India through Wholly Owned Subsidiary (WOS)"
   - from: uob-thailand
     to: bank-of-thailand
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "UOB Thai is a Thai-incorporated commercial bank (per UOB AR 2025), and BOT states that all commercial bank forms in Thailand are registered under the Financial Institutions Business Act and supervised by BOT."
     evidence: public
@@ -897,7 +899,7 @@ relationships:
     quote: "The aforementioned forms of commercial bank business are registered under the Financial Institutions Business Act B.E. 2551 (2008) and supervised by the BOT."
   - from: uob-vietnam
     to: state-bank-of-vietnam
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "UOB Vietnam was set up under a foreign-owned subsidiary bank licence from the State Bank of Vietnam."
     evidence: public
@@ -907,10 +909,11 @@ relationships:
     quote: "Further to its announcements on 23 March 2017 and 20 July 2017, United Overseas Bank Limited is pleased to announce that it has received licence from the State Bank of Vietnam to establish a foreign-owned subsidiary bank in Vietnam."
 
   # --------------------------------------------------------- group plumbing
-  - from: bcs
-    to: nets
-    type: subsidiary_of
+  - from: nets
+    to: bcs
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Banking Computer Services is one of the three entities in the NETS Group."
     evidence: public
     as_of: 2026-10-07
@@ -919,7 +922,7 @@ relationships:
     quote: "NETS Group is a leading payments services group comprising three entities – NETS, Banking Computer Services (BCS) and NETS Solutions."
   - from: temasek
     to: partior
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "Temasek is a founding shareholder of Partior alongside DBS, J.P. Morgan and Standard Chartered."
     evidence: public

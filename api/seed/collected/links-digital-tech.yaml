@@ -9,8 +9,9 @@
 # FINMA list of authorised banks, MAS and company press releases, and press where no primary source was
 # reachable (marked reported). Quotes are verbatim with whitespace normalised; table cells joined with " | ".
 # Schema: see entity-links.yaml (relationships) and tech-dependencies.yaml (depends_on_participates).
-# Licences are supervised_by edges from the licensed entity; the subject owns that entity (share null when
-# no stake is published), so impact paths reach MAS in two hops (circle owns circle-singapore, ...).
+# Licences are regulated_by edges from the licensed entity; the subject holds a stake in that entity (share
+# null when no stake is published), so impact paths reach MAS in two hops (circle holds_stake_in
+# circle-singapore, ...).
 collected: 2026-10-26
 
 relationships:
@@ -27,8 +28,9 @@ relationships:
     quote: "Class A common stock, par value $0.0001 per share | CRCL | New York Stock Exchange"
   - from: circle
     to: circle-singapore
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Circle Internet Singapore Pte. Ltd., incorporated in Singapore, is a subsidiary of Circle Internet Group."
     evidence: public
     as_of: 2025-12-31
@@ -37,7 +39,7 @@ relationships:
     quote: "Circle Internet Singapore Pte. Ltd. | Singapore"
   - from: circle-singapore
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Major Payment Institution licensed by MAS for account issuance, domestic and cross-border money transfer and digital payment token services."
     evidence: public
@@ -47,7 +49,7 @@ relationships:
     quote: "CIRCLE INTERNET SINGAPORE PTE. LTD. | Major Payment Institution | Account Issuance Service | Domestic Money Transfer Service | Cross-border Money Transfer Service | Digital Payment Token Service"
   - from: circle
     to: nydfs
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Circle Internet Financial, LLC holds a New York virtual currency licence (BitLicense) from NYDFS."
     evidence: public
@@ -59,7 +61,7 @@ relationships:
     to: standard-chartered
     type: partner_of
     share: null
-    detail: "Standard Chartered is one of four banks advising Circle on the design of the Circle Payments Network (launched April 2025); partner_of is dropped by the build."
+    detail: "Standard Chartered is one of four banks advising Circle on the design of the Circle Payments Network (launched April 2025)."
     evidence: public
     as_of: 2025-04-21
     source_url: https://www.circle.com/pressroom/circle-announces-payments-network-to-transform-global-money-movement
@@ -78,8 +80,9 @@ relationships:
     quote: "Our Class A common stock began trading on the Nasdaq Global Select Market under the symbol “COIN” on April 14, 2021."
   - from: coinbase
     to: coinbase-singapore
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Coinbase holds its MAS major payment institution licence through Coinbase Singapore Pte. Ltd.; no stake is published (the Exhibit 21 list omits non-significant subsidiaries)."
     evidence: public
     as_of: 2025-12-31
@@ -88,7 +91,7 @@ relationships:
     quote: "In Singapore, we hold a major payment institution license issued by the Monetary Authority of Singapore."
   - from: coinbase-singapore
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Major Payment Institution licensed by MAS for cross-border money transfer and digital payment token services."
     evidence: public
@@ -98,7 +101,7 @@ relationships:
     quote: "COINBASE SINGAPORE PTE. LTD. | Major Payment Institution | Cross-border Money Transfer Service | Digital Payment Token Service"
   - from: coinbase
     to: nydfs
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Coinbase Custody Trust Company (CCTC) is a New York State-chartered limited purpose trust company supervised by NYDFS."
     evidence: public
@@ -108,7 +111,7 @@ relationships:
     quote: "Our subsidiary, CCTC, operates as a New York State-chartered limited purpose trust company, which is subject to regulation, examination, and supervision by the NYDFS."
   - from: coinbase
     to: circle
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "Coinbase received a minority equity stake in Circle under the 2023 Collaboration Agreement and sold part of it after Circle's June 2025 IPO; size not published."
     evidence: public
@@ -118,7 +121,7 @@ relationships:
     quote: "Coinbase also received a minority equity stake in us, and we entered into an intellectual property license that permits Coinbase to perpetually use certain of our stablecoin trademarks (including USDC and EURC)"
   - from: blackrock
     to: coinbase
-    type: shareholder_of
+    type: holds_stake_in
     share: 0.066
     detail: "BlackRock beneficially owns 6.6% of Coinbase Class A common stock (1.4% of total voting power)."
     evidence: public
@@ -130,7 +133,7 @@ relationships:
     to: jpmorgan
     type: partner_of
     share: null
-    detail: "July 2025 strategic partnership: Chase bank-to-wallet link through JPMorgan's API, Chase card funding and Ultimate Rewards transfers to Coinbase; partner_of is dropped by the build."
+    detail: "July 2025 strategic partnership: Chase bank-to-wallet link through JPMorgan's API, Chase card funding and Ultimate Rewards transfers to Coinbase."
     evidence: public
     as_of: 2025-07-30
     source_url: https://www.jpmorganchase.com/newsroom/press-releases/2025/jpmc-coinbase-partnership
@@ -139,8 +142,9 @@ relationships:
   # ---------------------------------------------------------------- Crypto.com
   - from: crypto-com
     to: foris-dax-asia
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Foris DAX Asia Pte. Ltd. is the Singapore entity trading as Crypto.com, licensed by MAS for DPT services; no stake is published."
     evidence: public
     as_of: 2026-10-26
@@ -149,8 +153,9 @@ relationships:
     quote: "Foris DAX Asia Pte. Ltd. (trading under the brand name “Crypto.com”) may only be able to offer certain products, features and/or services on the Crypto.com App due to potential or actual regulatory restrictions."
   - from: crypto-com
     to: foris-asia
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Foris Asia Pte. Ltd. issues the Crypto.com Visa Card in Singapore under its own MAS Major Payment Institution licence; no stake is published."
     evidence: public
     as_of: 2026-10-26
@@ -159,7 +164,7 @@ relationships:
     quote: "The Crypto.com Visa Card is issued and distributed by Foris Asia Pte. Ltd. that holds a Major Payment Institution License approved by the Monetary Authority of Singapore (“MAS”), which allows it to provide e-money issuance services, account issuance services, cross border and domestic money transfer services."
   - from: foris-dax-asia
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Major Payment Institution licensed by MAS for digital payment token services."
     evidence: public
@@ -169,7 +174,7 @@ relationships:
     quote: "FORIS DAX ASIA PTE. LTD. | Major Payment Institution | Digital Payment Token Service"
   - from: foris-asia
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Major Payment Institution licensed by MAS for account issuance, money transfer and e-money issuance services."
     evidence: public
@@ -179,7 +184,7 @@ relationships:
     quote: "FORIS ASIA PTE. LTD. | Major Payment Institution | Account Issuance Service | Domestic Money Transfer Service | Cross-border Money Transfer Service | E-money Issuance Service"
   - from: crypto-com
     to: mfsa
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Crypto.com's Malta entity holds a MiCA crypto-asset service provider licence from the MFSA (January 2025), passported across the EEA."
     evidence: public
@@ -189,7 +194,7 @@ relationships:
     quote: "Crypto.com has today announced its Malta entity has received a MiCA licence from the Malta Financial Services Authority (MFSA)."
   - from: crypto-com
     to: dubai-vara
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Crypto.com holds a Virtual Assets Service Provider licence from Dubai's VARA."
     evidence: public
@@ -199,7 +204,7 @@ relationships:
     quote: "a Virtual Assets Service Provider licence in Dubai (VARA)"
   - from: crypto-com
     to: uk-fca
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Crypto.com holds a UK Electronic Money Institution licence from the FCA."
     evidence: public
@@ -210,8 +215,9 @@ relationships:
   # ---------------------------------------------------------------- Ripple
   - from: ripple
     to: ripple-markets-apac
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Ripple Markets APAC Pte. Ltd. is Ripple's Singapore subsidiary and holds its MAS licence."
     evidence: public
     as_of: 2025-12-01
@@ -220,7 +226,7 @@ relationships:
     quote: "approved an expanded scope of payment activities for the Major Payment Institution (MPI) license held by its Singapore subsidiary Ripple Markets APAC Pte. Ltd. (RMA)."
   - from: ripple-markets-apac
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Major Payment Institution licensed by MAS for account issuance, money transfer, e-money issuance and digital payment token services (scope expanded December 2025)."
     evidence: public
@@ -230,7 +236,7 @@ relationships:
     quote: "RIPPLE MARKETS APAC PTE. LTD. | Major Payment Institution | Account Issuance Service | Domestic Money Transfer Service | Cross-border Money Transfer Service | E-money Issuance Service | Digital Payment Token Service"
   - from: ripple
     to: nydfs
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Ripple's RLUSD stablecoin is issued by a New York limited purpose trust company supervised by NYDFS."
     evidence: public
@@ -242,7 +248,7 @@ relationships:
     to: dbs
     type: partner_of
     share: null
-    detail: "September 2025 partnership with DBS and Franklin Templeton: DBS Digital Exchange to let clients buy Franklin's tokenised money market fund sgBENJI with RLUSD; partner_of is dropped by the build."
+    detail: "September 2025 partnership with DBS and Franklin Templeton: DBS Digital Exchange to let clients buy Franklin's tokenised money market fund sgBENJI with RLUSD."
     evidence: public
     as_of: 2025-09-18
     source_url: https://www.dbs.com/newsroom/DBS_and_Franklin_Templeton_to_launch_trading_and_lending_solutions_powered_by_tokenised_money_market_funds_and_Ripples_RLUSD_stablecoin
@@ -251,8 +257,9 @@ relationships:
   # ---------------------------------------------------------------- Sygnum
   - from: sygnum
     to: sygnum-singapore
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Sygnum Pte. Ltd. (Sygnum Singapore) is the group's MAS-licensed Singapore entity; no stake is published."
     evidence: public
     as_of: 2026-10-05
@@ -261,7 +268,7 @@ relationships:
     quote: "is now available to accredited and institutional investors in Singapore through Sygnum Pte. Ltd., a MAS-licensed Singapore entity."
   - from: sygnum-singapore
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Holds a Capital Markets Services licence (fund management, dealing, custody, corporate finance advice) and a Major Payment Institution licence including DPT services."
     evidence: public
@@ -271,7 +278,7 @@ relationships:
     quote: "SYGNUM PTE. LTD. | Capital Markets Services Licensee | Fund Management | Dealing In Capital Markets Products | Securities | Collective Investment Schemes | Providing Custodial Services | Advising on Corporate Finance | Major Payment Institution | Account Issuance Service | Domestic Money Transfer Service | Cross-border Money Transfer Service | E-money Issuance Service | Digital Payment Token Service"
   - from: sygnum
     to: finma
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Sygnum Bank AG, Zurich, is on FINMA's list of authorised banks (category 5)."
     evidence: public
@@ -281,7 +288,7 @@ relationships:
     quote: "Sygnum Bank AG | Zürich | Bank | 5"
   - from: singtel
     to: sygnum
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "Singtel's venture arm Singtel Innov8 invested in Sygnum in 2018; size not published."
     evidence: reported
@@ -292,7 +299,7 @@ relationships:
   # ---------------------------------------------------------------- Microsoft
   - from: microsoft
     to: microsoft-azure
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "Azure is part of Microsoft's Intelligent Cloud segment (server products and cloud services)."
     evidence: public
@@ -302,7 +309,7 @@ relationships:
     quote: "Server products and cloud services, including Azure and other cloud services, comprising cloud and AI consumption-based services"
   - from: microsoft
     to: microsoft-365
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "Microsoft 365 is part of Microsoft's Productivity and Business Processes segment."
     evidence: public
@@ -322,7 +329,7 @@ relationships:
     quote: "Our common stock is traded on the NASDAQ Stock Market under the symbol MSFT."
   - from: microsoft
     to: grab
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "Microsoft made an undisclosed strategic investment in Grab in October 2018 as part of a five-year cloud partnership."
     evidence: public
@@ -333,7 +340,7 @@ relationships:
   # ---------------------------------------------------------------- AWS and Google Cloud parents
   - from: amazon
     to: aws
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "AWS is one of Amazon.com's three reporting segments."
     evidence: public
@@ -353,7 +360,7 @@ relationships:
     quote: "Common Stock, par value $.01 per share | AMZN | Nasdaq Global Select Market"
   - from: alphabet
     to: google-cloud
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "Google Cloud is a reporting segment of Alphabet."
     evidence: public
@@ -374,7 +381,7 @@ relationships:
   # ---------------------------------------------------------------- Ant International
   - from: ant-group
     to: ant-international
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "Ant International was spun out of Ant Group; Ant Group is an existing investor and joined its US$1.2 billion Series A in July 2026. Stake not published."
     evidence: public
@@ -384,7 +391,7 @@ relationships:
     quote: "Existing investors including Ant Group and Alibaba Group participated in this round, as well as other renowned international investment institutions."
   - from: alibaba-group
     to: ant-international
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "Alibaba Group is an existing investor in Ant International and joined its July 2026 Series A. Stake not published."
     evidence: public
@@ -394,7 +401,7 @@ relationships:
     quote: "Existing investors including Ant Group and Alibaba Group participated in this round, as well as other renowned international investment institutions."
   - from: ant-international
     to: anext-bank
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "ANEXT Bank, a Singapore digital wholesale bank, is wholly owned by Ant International."
     evidence: public
@@ -404,7 +411,7 @@ relationships:
     quote: "ANEXT Bank is a wholly-owned subsidiary of Ant International."
   - from: anext-bank
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "ANEXT Bank Pte. Ltd. holds a MAS digital wholesale bank licence."
     evidence: public
@@ -414,8 +421,9 @@ relationships:
     quote: "ANEXT BANK PTE. LTD. | Incorporated in Singapore | Wholesale Bank"
   - from: ant-international
     to: 2c2p
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Ant acquired 2C2P in 2022; Ant International lists it among its own milestones. Stake not published."
     evidence: public
     as_of: 2026-10-26
@@ -424,8 +432,9 @@ relationships:
     quote: "Acquisition of 2C2P opens a new chapter for our payment and acquiring services."
   - from: ant-international
     to: worldfirst
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Ant acquired WorldFirst in 2019; it runs Ant International's cross-border account business. Stake not published."
     evidence: public
     as_of: 2026-10-26
@@ -434,7 +443,7 @@ relationships:
     quote: "Acquisition of WorldFirst as foundation for building a cross-border funds management platform for SMEs."
   - from: worldfirst
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "WorldFirst (Singapore) Merchant Services Pte. Ltd. is a MAS Major Payment Institution; World First Asia Pte. Ltd. also holds a CMS licence and an MPI licence."
     evidence: public

@@ -21,9 +21,11 @@ const SHOWN = 6;
 
 const pct = (w: number) => `${(w * 100).toFixed(1).replace(/\.0$/, "")}%`;
 
-/** One side's links to the shared thing, in a few words: "uses for cloud services", "44.4% of loans",
- * "13.1% of reserves" (an exposure's label ends with its share). */
-function sideLabel(links: Link[]): string {
+/** One side's links to the shared thing (id `shared`), in a few words: "uses for cloud services",
+ * "44.4% of loans", "13.1% of reserves" (an exposure's label ends with its share). A stake runs
+ * either way: "holds 28.3%" when the side holds the shared thing, "28.3% held by" when the shared
+ * thing holds the side. */
+function sideLabel(links: Link[], shared: string): string {
   return links
     .map((l) => {
       switch (l.type) {
@@ -33,8 +35,9 @@ function sideLabel(links: Link[]): string {
           return l.label.replace("depends on, for", "uses for").replace("depends on", "uses");
         case "participates_in":
           return "takes part";
-        case "owns":
-          return l.weight === null ? "owns part" : `owns ${pct(l.weight)}`;
+        case "holds_stake_in":
+          if (l.from_id === shared) return l.weight === null ? "stake held by" : `${pct(l.weight)} held by`;
+          return l.weight === null ? "holds a stake" : `holds ${pct(l.weight)}`;
         default:
           return l.label.split(",")[0];
       }
@@ -144,9 +147,9 @@ function Rung({ endpoint: e, a, b, head }: { endpoint: Endpoint; a: string; b: s
     <>
       {head && <h3 className="sw-head">{head}</h3>}
       <div className="sw-rung">
-        <span className="sw-a">{sideLabel(e.a_links)}</span>
+        <span className="sw-a">{sideLabel(e.a_links, e.id)}</span>
         <span className="sw-mid">{e.subject ? <SubjectLink subject={ref} /> : e.name}</span>
-        <span className="sw-b">{sideLabel(e.b_links)}</span>
+        <span className="sw-b">{sideLabel(e.b_links, e.id)}</span>
         <p className="meta sw-src">
           <Sources a={a} b={b} aLinks={e.a_links} bLinks={e.b_links} />
         </p>

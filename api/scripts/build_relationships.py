@@ -2,9 +2,10 @@
 
 Reads api/seed/collected/bank-exposures.yaml, tech-dependencies.yaml, entity-links.yaml and every
 links-*.yaml (one per sector: structural links, dependencies and participations), puts
-every link in one schema, decides subject or endpoint from api/seed/subjects.yaml, and prints a
-build report. The output is deterministic: a second run produces no diff. Rerun after any edit to
-the collected files or to the subject seed.
+every link in one schema, decides subject or endpoint from api/seed/subjects.yaml, derives each
+entity's belongs_to_sector links from the seed's groups, writes each link's one-line reason, and
+prints a build report. The output is deterministic: a second run produces no diff. Rerun after any
+edit to the collected files or to the subject seed.
 
 Usage (from api/): uv run python scripts/build_relationships.py
 """
@@ -18,6 +19,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
 from intelmonitor.config import SEED_DIR
+from intelmonitor.pipeline.impact import link_words
 from intelmonitor.relationships import (
     LOAN_MEASURES,
     REL_TYPES,
@@ -29,17 +31,22 @@ from intelmonitor.relationships import (
     Figure,
     FigureMeasure,
     FigureUnit,
+    Node,
     Relationship,
     RelType,
     Service,
 )
-from intelmonitor.seed import load_subjects
+from intelmonitor.seed import SubjectsSeed, load_subjects
 
 COLLECTED = SEED_DIR / "collected"
 OUT = RELATIONSHIPS_PATH
 # The bank, tech and entity-link files were checked against their sources on this date; each
 # links-*.yaml file states its own.
 LAST_CONFIRMED = date(2026, 10, 7)
+# belongs_to_sector links come from the seed's groups, last reviewed on this date (ticket 17, Q4).
+SECTORS_CONFIRMED = date(2026, 11, 11)
+# The seed's first groups hold the MAS top 50 entities, one parent category each.
+TOP_50_GROUPS = 8
 
 # Ids the collected files spell differently from the subject seed.
 RENAME = {
@@ -129,7 +136,10 @@ class NewEntity(Row):
 class TechRow(Row):
     from_: str = Field(alias="from")
     to: str
-    type: Literal["depends_on", "participates_in", "owns", "operates_in"]
+    type: Literal["depends_on", "participates_in", "holds_stake_in", "operates_in"]
+    # holds_stake_in with no published share where the holder controls the held (a former owns or
+    # subsidiary_of row): the reason says "controlling owner".
+    controlling: bool = False
     detail: str
     service: Service
     evidence: Evidence
@@ -150,16 +160,15 @@ class LinkRow(Row):
     from_: str = Field(alias="from")
     to: str
     type: Literal[
-        "owns",
-        "subsidiary_of",
+        "holds_stake_in",
         "operates_in",
-        "shareholder_of",
         "member_of",
         "partner_of",
         "listed_on",
-        "supervised_by",
+        "regulated_by",
     ]
     share: float | None
+    controlling: bool = False  # as on TechRow
     detail: str
     evidence: Evidence
     as_of: date | None
@@ -202,6 +211,11 @@ def rel_id(src: str, type_: RelType, dst: str) -> str:
     return f"{src}:{type_}:{dst}"
 
 
+def ends(src: str, type_: RelType, dst: str) -> tuple[str, str]:
+    """A link's (from, to): partner_of has no direction, so its ids go in alphabetical order."""
+    return (min(src, dst), max(src, dst)) if type_ == "partner_of" else (src, dst)
+
+
 # Collected entity kinds that differ from the endpoint kinds.
 KIND_ALIASES: dict[str, EndpointKind] = {
     "central-bank": "central_bank",
@@ -224,12 +238,16 @@ def endpoint_kind(kind: str) -> EndpointKind:
 class Build:
     """Relationships, endpoint declarations and dropped rows, collected file by file."""
 
-    def __init__(self, subjects: dict[str, str]) -> None:
-        self.subjects = subjects  # entity subject id -> name
+    def __init__(self, seed: SubjectsSeed) -> None:
+        self.seed = seed
+        self.subjects = {e.id: e.name for e in seed.entities}  # entity subject id -> name
+        self.groups = {g.id: g.name for g in seed.groups}  # seed groups are link ends too
         self.rels: dict[str, Relationship] = {}
         self.declared: dict[str, Endpoint] = {}  # first declaration wins
         self.dropped: list[tuple[str, str]] = []  # (row, reason)
         self.merged: list[str] = []  # ids that took a second row from the same source
+        self.controlling: set[str] = set()  # holds_stake_in ids from a controlling row
+        self.partner_rows = 0  # collected partner_of rows read
 
     def drop(self, row: str, reason: str) -> None:
         self.dropped.append((row, reason))
@@ -398,6 +416,7 @@ def build_exposures(build: Build, data: ExposuresFile) -> None:
                 page=head.page,
                 quote=" | ".join(f.quote for f in main),
                 detail=" ".join([detail, *notes]),
+                reason="",  # written by with_reasons()
                 figures=[f for f in figures if f not in main],
             )
         )
@@ -408,6 +427,8 @@ def build_tech(build: Build, data: TechFile, confirmed: date = LAST_CONFIRMED) -
         build.declare(Endpoint(id=RENAME.get(e.id, e.id), name=e.name, kind=endpoint_kind(e.kind)))
     for r in data.relationships:
         src, dst = RENAME.get(r.from_, r.from_), RENAME.get(r.to, r.to)
+        if r.controlling:
+            build.controlling.add(rel_id(src, r.type, dst))
         build.add(
             Relationship(
                 id=rel_id(src, r.type, dst),
@@ -421,6 +442,7 @@ def build_tech(build: Build, data: TechFile, confirmed: date = LAST_CONFIRMED) -
                 source_title=r.source_title,
                 quote=r.quote,
                 detail=r.detail,
+                reason="",  # written by with_reasons()
                 service=r.service if r.type in ("depends_on", "participates_in") else None,
             )
         )
@@ -452,17 +474,17 @@ def build_links(build: Build, data: LinksFile, confirmed: date = LAST_CONFIRMED)
         build.declare(Endpoint(id=RENAME.get(e.id, e.id), name=e.name, kind=kind))
     titles = {r.source_url: r.source_title for r in reversed(data.relationships)}
     for r in data.relationships:
-        src, dst = RENAME.get(r.from_, r.from_), RENAME.get(r.to, r.to)
-        if r.type == "partner_of":
-            build.drop(f"{src} partner_of {dst}", "partner_of is not a relationship type")
-            continue
+        src, dst = ends(RENAME.get(r.from_, r.from_), r.type, RENAME.get(r.to, r.to))
+        build.partner_rows += r.type == "partner_of"
+        if r.controlling:
+            build.controlling.add(rel_id(src, r.type, dst))
         build.add(
             Relationship(
                 id=rel_id(src, r.type, dst),
                 from_=src,
                 to=dst,
                 type=r.type,
-                weight=r.share if r.type in ("owns", "shareholder_of") else None,
+                weight=r.share if r.type == "holds_stake_in" else None,
                 evidence=r.evidence,
                 as_of=r.as_of,
                 last_confirmed=confirmed,
@@ -470,6 +492,7 @@ def build_links(build: Build, data: LinksFile, confirmed: date = LAST_CONFIRMED)
                 source_title=r.source_title,
                 quote=r.quote,
                 detail=r.detail,
+                reason="",  # written by with_reasons()
             )
         )
     for g in data.groups:
@@ -489,6 +512,39 @@ def build_links(build: Build, data: LinksFile, confirmed: date = LAST_CONFIRMED)
                     source_title=title,
                     quote=g.quote,
                     detail=g.detail,
+                    reason="",  # written by with_reasons()
+                )
+            )
+
+
+def build_sectors(build: Build) -> None:
+    """belongs_to_sector, derived from the seed's groups: a top-50 entity to its parent category
+    (the one of the first TOP_50_GROUPS groups it sits in), any other entity to each of its
+    groups. Nothing is collected for it, so it has no source."""
+    top = build.seed.groups[:TOP_50_GROUPS]
+    parent: dict[str, str] = {}
+    for g in top:
+        for m in g.members:
+            assert m not in parent, f"{m} sits in two top-50 groups"
+            parent[m] = g.id
+    names = build.subjects
+    for e in build.seed.entities:
+        groups = (
+            [parent[e.id]]
+            if e.id in parent
+            else [g.id for g in build.seed.groups if e.id in g.members]
+        )
+        for g in groups:
+            build.add(
+                Relationship(
+                    id=rel_id(e.id, "belongs_to_sector", g),
+                    from_=e.id,
+                    to=g,
+                    type="belongs_to_sector",
+                    evidence="public",
+                    last_confirmed=SECTORS_CONFIRMED,
+                    detail=f"{names[e.id]} is in the {build.groups[g]} group of the subject seed.",
+                    reason="",  # written by with_reasons()
                 )
             )
 
@@ -500,18 +556,59 @@ def endpoints_for(build: Build) -> tuple[list[Endpoint], list[str]]:
     for e in build.declared.values():
         if e.id in used:
             used.update(e.members)
-    ids = sorted(used - build.subjects.keys())
+    ids = sorted(used - build.subjects.keys() - build.groups.keys())
     return [build.declared[i] for i in ids if i in build.declared], [
         i for i in ids if i not in build.declared
     ]
 
 
 def unsourced(rels: list[Relationship]) -> list[str]:
-    """Relationships missing a source URL, title or quote, unless graded assumed."""
+    """Relationships missing a source URL, title or quote, unless graded assumed or derived from
+    the seed (belongs_to_sector)."""
     return [
         r.id
         for r in rels
-        if r.evidence != "assumed" and not (r.source_url and r.source_title and r.quote)
+        if r.evidence != "assumed"
+        and r.type != "belongs_to_sector"
+        and not (r.source_url and r.source_title and r.quote)
+    ]
+
+
+# Types where the two directions are different facts, so a pair may hold both: Circle depends on
+# Coinbase for distribution, Coinbase on Circle for USDC issuance and redemption.
+MUTUAL: tuple[RelType, ...] = ("depends_on",)
+
+
+def both_ways(rels: list[Relationship], mutual: bool = False) -> list[str]:
+    """Links whose pair is also stored the other way with the same type: of a MUTUAL type when
+    `mutual`, else of any other type (must be none)."""
+    ids = {r.id for r in rels}
+    return sorted(
+        r.id for r in rels if rel_id(r.to, r.type, r.from_) in ids and (r.type in MUTUAL) == mutual
+    )
+
+
+def reason(r: Relationship, to: Node, controlling: bool) -> str:
+    """The link in one line: the plain-words phrase with its share and the share's date ("has
+    12.2% of its loans in Hong Kong, 30 Jun 2026"); a controlling stake with no share, "is the
+    controlling owner of BCS"; else the detail sentence."""
+    if r.weight is not None:
+        phrase = link_words(r, to)
+        return f"{phrase}, {r.as_of.day} {r.as_of:%b %Y}" if r.as_of else phrase
+    if controlling:
+        return f"is the controlling owner of {to.name}"
+    return r.detail
+
+
+def with_reasons(build: Build, endpoints: list[Endpoint]) -> list[Relationship]:
+    """Every relationship with its reason written."""
+    entities = {e.id: e for e in build.seed.entities}
+    nodes = {e.id: Node(id=e.id, name=e.name, kind=e.kind, subject=False) for e in endpoints}
+    nodes |= {i: Node(id=i, name=n, kind="group", subject=False) for i, n in build.groups.items()}
+    nodes |= {i: Node(id=i, name=e.name, kind=e.kind, subject=True) for i, e in entities.items()}
+    return [
+        r.model_copy(update={"reason": reason(r, nodes[r.to], r.id in build.controlling)})
+        for r in build.rels.values()
     ]
 
 
@@ -520,13 +617,17 @@ HEADER = """\
 # edit the collected files or the script, then rerun it from api/.
 #
 # relationships[]: one per (from, type, to); id is "from:type:to".
-#   type          exposed_to | depends_on | participates_in | owns | subsidiary_of | operates_in
-#                 | supervised_by | shareholder_of | member_of | listed_on
+#   type          holds_stake_in | regulated_by | operates_in | exposed_to | depends_on
+#                 | member_of | participates_in | partner_of | listed_on | belongs_to_sector
+#                 holds_stake_in runs holder to held; partner_of is stored once per pair, ids in
+#                 alphabetical order; belongs_to_sector links an entity to a seed group (a top-50
+#                 entity to its parent category, any other entity to each of its groups) and is
+#                 derived from api/seed/subjects.yaml, with no source
 #   weight        exposed_to: the headline figure's share of its total: a bank's gross customer
 #                 loans (null when the headline is loans by currency or Pillar 3 RWA), an
 #                 issuer's reserves or reserve fund, a firm's revenue, costs, token supply or
-#                 customer assets (null for holdings and card volume); owns, shareholder_of:
-#                 ownership share; else null
+#                 customer assets (null for holdings and card volume); holds_stake_in: the
+#                 stake; else null
 #   measure, value, unit   exposed_to only: the headline figure (gross_customer_loans,
 #                 loans_by_currency or rwa for banks; reserve_assets, repo_principal, revenue,
 #                 distribution_costs, token_supply, assets_on_platform, stablecoin_holdings or
@@ -537,14 +638,17 @@ HEADER = """\
 #                 publication date for tech dependencies, its as-of date for group structure;
 #                 last_confirmed: date it was checked
 #   source_url, source_title, page, quote (verbatim; pieces joined with " | "), detail
+#   reason        one line built by code: the plain-words phrase with the share and its date,
+#                 "is the controlling owner of ..." for a controlling stake with no share, else
+#                 detail
 #   service       depends_on and participates_in: cloud, data_centre, payments, custody,
 #                 blockchain, distribution and the like
 #   figures[]     exposed_to only: further figures for the same entity and target (loans by
 #                 currency, Pillar 3 RWA, NPLs; other reserve, revenue or counterparty figures),
 #                 each with its own source and quote
 #   Keys left out are null, false or empty.
-# endpoints[]: every id above that is not an entity subject in api/seed/subjects.yaml, with name
-#   and kind; regions list the places they cover in members.
+# endpoints[]: every id above that is not an entity subject or group in api/seed/subjects.yaml,
+#   with name and kind; regions list the places they cover in members.
 """
 
 
@@ -584,6 +688,30 @@ def report(build: Build, rels: list[Relationship], endpoints: list[Endpoint]) ->
         f"chart readings: {sum(r.chart_reading for r in exposures)} headline, "
         f"{sum(f.chart_reading for r in exposures for f in r.figures)} further"
     )
+    partners = sum(r.type == "partner_of" for r in rels)
+    print(
+        f"  partner_of: {build.partner_rows} collected rows, {partners} links "
+        "(one per pair, ids in alphabetical order)"
+    )
+    sectors = [r for r in rels if r.type == "belongs_to_sector"]
+    top = {m for g in build.seed.groups[:TOP_50_GROUPS] for m in g.members}
+    expected = {
+        (e.id, g.id)
+        for e in build.seed.entities
+        for i, g in enumerate(build.seed.groups)
+        if e.id in g.members and (i < TOP_50_GROUPS or e.id not in top)
+    }
+    found = {(r.from_, r.to) for r in sectors}
+    print(
+        f"  belongs_to_sector: {len(sectors)} links, {len(expected)} expected memberships "
+        f"({len(top)} top-50 entities to their parent category, "
+        f"{len(expected) - len(top)} memberships of the other {len(build.subjects) - len(top)}); "
+        f"missing {sorted(expected - found) or 'none'}, extra {sorted(found - expected) or 'none'}"
+    )
+    print(
+        f"  pairs stored both ways with one type: {', '.join(both_ways(rels)) or 'none'}; "
+        f"mutual {'/'.join(MUTUAL)}, kept: {', '.join(both_ways(rels, mutual=True)) or 'none'}"
+    )
     kinds = Counter(e.kind for e in endpoints)
     print(
         f"\n{len(endpoints)} endpoints: " + ", ".join(f"{k} {n}" for k, n in sorted(kinds.items()))
@@ -607,8 +735,7 @@ def main() -> None:
     exposures = ExposuresFile.model_validate(read("bank-exposures.yaml"))
     tech = TechFile.model_validate(read("tech-dependencies.yaml"))
     links = LinksFile.model_validate(read("entity-links.yaml"))
-    seed = load_subjects()
-    build = Build({e.id: e.name for e in seed.entities})
+    build = Build(load_subjects())
     for id_, (name, kind) in EXTRA_ENDPOINTS.items():
         build.declare(Endpoint(id=id_, name=name, kind=kind))
     build_links(build, links)  # first, so its ownership shares win over tech's repeats
@@ -628,11 +755,18 @@ def main() -> None:
             TechFile(relationships=team.depends_on_participates, incidents=[], new_entities=[]),
             team.collected,
         )
-    rels = list(build.rels.values())
+    build_sectors(build)
     endpoints, unknown = endpoints_for(build)
+    if unknown:
+        # Reasons name each link's `to` node, so stop before writing them.
+        print(
+            *(f"neither a subject nor an endpoint: {i}" for i in unknown), "\nnot written", sep="\n"
+        )
+        sys.exit(1)
+    rels = with_reasons(build, endpoints)
     report(build, rels, endpoints)
-    problems = [f"neither a subject nor an endpoint: {i}" for i in unknown]
-    problems += [f"no source: {i}" for i in unsourced(rels)]
+    problems = [f"no source: {i}" for i in unsourced(rels)]
+    problems += [f"stored both ways: {i}" for i in both_ways(rels)]
     if problems:
         print("\n".join(problems), "\nnot written", sep="\n")
         sys.exit(1)

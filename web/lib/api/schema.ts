@@ -2709,7 +2709,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "EXPOSED_TO" | "DEPENDS_ON" | "PARTICIPATES_IN" | "OWNS" | "SUBSIDIARY_OF" | "OPERATES_IN" | "SUPERVISED_BY" | "SHAREHOLDER_OF" | "MEMBER_OF" | "LISTED_ON" | "AFFECTS" | "IMPACTS";
+            type: "HOLDS_STAKE_IN" | "REGULATED_BY" | "OPERATES_IN" | "EXPOSED_TO" | "DEPENDS_ON" | "MEMBER_OF" | "PARTICIPATES_IN" | "PARTNER_OF" | "LISTED_ON" | "BELONGS_TO_SECTOR" | "AFFECTS" | "IMPACTS";
             /**
              * Label
              * @description The link in plain words: "depends on, for cloud services"
@@ -3064,7 +3064,7 @@ export interface components {
             region: boolean;
             /**
              * Routes
-             * @description Direct links first, then through a company it owns, then region-level
+             * @description Direct links first, then through a company it holds a stake in, then region-level
              */
             routes: components["schemas"]["LinkedRoute"][];
             /**
@@ -3076,12 +3076,12 @@ export interface components {
         /**
          * LinkedRoute
          * @description How an institution links to the subject: one stored link, or two through a company it
-         *     owns, written in plain words by code.
+         *     holds a stake in, written in plain words by code.
          */
         LinkedRoute: {
             /**
              * Text
-             * @description "Has 12.2% of its loans in Hong Kong"; "Owns 100% of DBS Bank (Hong Kong), which operates in Hong Kong"; region-level routes end ", a figure for the whole region"
+             * @description "Has 12.2% of its loans in Hong Kong"; "Holds 100% of DBS Bank (Hong Kong), which operates in Hong Kong"; region-level routes end ", a figure for the whole region"
              */
             text: string;
             /**
@@ -3591,15 +3591,15 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "exposed_to" | "depends_on" | "participates_in" | "owns" | "subsidiary_of" | "operates_in" | "supervised_by" | "shareholder_of" | "member_of" | "listed_on";
+            type: "holds_stake_in" | "regulated_by" | "operates_in" | "exposed_to" | "depends_on" | "member_of" | "participates_in" | "partner_of" | "listed_on" | "belongs_to_sector";
             /**
              * Outbound
-             * @description The centre is the link's from end: DBS owns DBS India
+             * @description The centre is the link's from end: DBS holds a stake in DBS India
              */
             outbound: boolean;
             /**
              * Label
-             * @description A few words from the centre: "owns 100%", "24.4% of loans", "depended on by"
+             * @description A few words from the centre: "holds 100%", "24.4% of loans", "depended on by"
              */
             label: string;
         };
@@ -3685,7 +3685,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "exposed_to" | "depends_on" | "participates_in" | "owns" | "subsidiary_of" | "operates_in" | "supervised_by" | "shareholder_of" | "member_of" | "listed_on";
+            type: "holds_stake_in" | "regulated_by" | "operates_in" | "exposed_to" | "depends_on" | "member_of" | "participates_in" | "partner_of" | "listed_on" | "belongs_to_sector";
             /**
              * Label
              * @description The type in plain words: "depends on, for cloud services"
@@ -5925,7 +5925,7 @@ export interface operations {
                 center: string;
                 hops?: number;
                 node_type?: ("topic" | "group" | "entity" | "endpoint" | "development")[] | null;
-                link_type?: ("EXPOSED_TO" | "DEPENDS_ON" | "PARTICIPATES_IN" | "OWNS" | "SUBSIDIARY_OF" | "OPERATES_IN" | "SUPERVISED_BY" | "SHAREHOLDER_OF" | "MEMBER_OF" | "LISTED_ON" | "AFFECTS" | "IMPACTS")[] | null;
+                link_type?: ("HOLDS_STAKE_IN" | "REGULATED_BY" | "OPERATES_IN" | "EXPOSED_TO" | "DEPENDS_ON" | "MEMBER_OF" | "PARTICIPATES_IN" | "PARTNER_OF" | "LISTED_ON" | "BELONGS_TO_SECTOR" | "AFFECTS" | "IMPACTS")[] | null;
                 window_days?: number | null;
             };
             header?: never;

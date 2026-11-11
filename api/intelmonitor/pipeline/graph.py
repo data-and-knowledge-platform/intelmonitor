@@ -1,7 +1,7 @@
 """Step 12: graph nodes and edges for a run. Subjects, relationship endpoints and developments are
 nodes. Edges, each with a plain label:
-- the relationship store's links, typed in capitals (DEPENDS_ON, EXPOSED_TO, ...);
-- MEMBER_OF from an entity to its peer group in the seed file;
+- the relationship store's links, typed in capitals (DEPENDS_ON, EXPOSED_TO, ...), among them
+  BELONGS_TO_SECTOR from an entity to its seed group;
 - AFFECTS from a development to the subjects it happened to or that did it (development_subjects);
 - IMPACTS from a development to the entities it reaches indirectly, with the route
   (development_impacts).
@@ -79,10 +79,6 @@ async def store_graph(
     nodes += [(run_id, e.id, "entity", e.name, json.dumps({"kind": e.kind})) for e in seed.entities]
     for e in conn.execute("SELECT id, name, kind FROM relationship_endpoints"):
         nodes.append((run_id, e["id"], "endpoint", e["name"], json.dumps({"kind": e["kind"]})))
-    for g in seed.groups:
-        edges += [
-            (run_id, m, g.id, "MEMBER_OF", "seed", 1.0, "is a member of", "{}") for m in g.members
-        ]
     for row in conn.execute("SELECT data FROM relationships ORDER BY id"):
         r = Relationship.model_validate_json(row["data"])
         detail = {"relationship_id": r.id, "evidence": r.evidence, "weight": r.weight}

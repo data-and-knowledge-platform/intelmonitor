@@ -16,15 +16,13 @@ from dataclasses import dataclass
 from functools import cache
 from typing import Literal
 
-from intelmonitor.relationships import Relationship, load_relationships
+from intelmonitor.relationships import load_relationships, owns
 from intelmonitor.seed import EntityKind, load_subjects
 
 LinkKind = Literal["singapore_fi", "linked", "none"]
 
 SINGAPORE = "singapore"
 NOT_INSTITUTIONS: tuple[EntityKind, ...] = ("country", "sector")
-# An ownership stake at least this large is a strong link; a passive holding is not.
-MIN_STAKE = 0.2
 # Names listed per fact before "and N more".
 MAX_NAMES = 4
 
@@ -68,25 +66,21 @@ def singapore_links() -> dict[str, SingaporeLink]:
     present = singapore_fi | {
         r.from_
         for r in rels
-        if (r.type == "supervised_by" and r.to == "mas")
+        if (r.type == "regulated_by" and r.to == "mas")
         or (r.type == "operates_in" and r.to == SINGAPORE)
     }
-
-    def stake(r: Relationship) -> bool:
-        return r.type in ("owns", "subsidiary_of") or (
-            r.type == "shareholder_of" and (r.weight or 0) >= MIN_STAKE
-        )
 
     facts: dict[str, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
     for r in rels:
         a, b = r.from_, r.to
-        if r.type == "supervised_by" and b == "mas":
+        if r.type == "regulated_by" and b == "mas":
             facts[a]["licensed by MAS"].append("")
         elif r.type == "operates_in" and b == SINGAPORE:
             facts[a]["operates in Singapore"].append("")
-        elif stake(r):
-            # owns and shareholder_of run owner to owned; subsidiary_of runs owned to owner.
-            owner, owned = (b, a) if r.type == "subsidiary_of" else (a, b)
+        elif owns(r):
+            # Only ownership counts; a passive holding is not a strong link.
+            # holds_stake_in runs holder to held.
+            owner, owned = a, b
             if owned in present:
                 facts[owner]["owns {}"].append(names.get(owned, owned))
             if owner in singapore_fi:

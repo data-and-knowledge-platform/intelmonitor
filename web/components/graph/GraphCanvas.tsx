@@ -62,16 +62,16 @@ type Palette = {
 const SIZE: Record<NodeType, number> = { topic: 12, group: 11, entity: 9, endpoint: 7, development: 5 };
 // Stored relationships draw as structure; a development's links draw weaker and sit closer.
 const EDGE_TOKEN: Record<LinkType, "edge" | "edge-weak"> = {
+  HOLDS_STAKE_IN: "edge",
+  REGULATED_BY: "edge",
+  OPERATES_IN: "edge",
   EXPOSED_TO: "edge",
   DEPENDS_ON: "edge",
-  PARTICIPATES_IN: "edge",
-  OWNS: "edge",
-  SUBSIDIARY_OF: "edge",
-  OPERATES_IN: "edge",
-  SUPERVISED_BY: "edge",
-  SHAREHOLDER_OF: "edge",
   MEMBER_OF: "edge",
+  PARTICIPATES_IN: "edge",
+  PARTNER_OF: "edge",
   LISTED_ON: "edge",
+  BELONGS_TO_SECTOR: "edge",
   AFFECTS: "edge-weak",
   IMPACTS: "edge-weak",
 };

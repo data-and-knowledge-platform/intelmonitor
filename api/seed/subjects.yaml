@@ -1,4 +1,4 @@
-# Subjects tracked by the POC: 30 topics and 87 entities, in 17 groups.
+# Subjects tracked by the POC: 30 topics and 89 entities, in 17 groups, and MAS's five functions.
 # The first 8 groups hold the MAS top 50 entities and are the sidebar's headings; the other 9
 # (sidebar: false) keep the remaining entities, such as countries, payment systems and cloud
 # providers, for search queries, peer sets and relationships.
@@ -16,22 +16,25 @@
 topics:
   # MAS's 30 topics (MAS Topics 30 - Sheet1.csv), by MAS function. Covers is MAS's descriptor;
   # keywords are search queries designed from it, and also name the topic for candidate matching.
+  # match_terms name the topic for candidate and trend matching only; they are never sent as
+  # search queries, because none returned on-topic results (ticket 05, K1).
 
   # Financial Supervision
   - id: aml-sanctions
     name: Anti-Money Laundering & Sanctions
     covers: AML/CFT/CPF, illicit financial flows and sanctions controls. Include FATF, OFAC, UNSC, suspicious transactions and predicate-offence proceeds. Prioritise Singapore financial institutions and cross-border compliance exposure. Exclude victim-facing scams and completed penalties, which belong to Financial Crime & Scams and Regulatory Enforcement & Misconduct.
-    keywords: [anti-money laundering, money laundering, AML/CFT, FATF, OFAC sanctions, sanctions evasion, terrorism financing, proliferation financing, suspicious transaction report, illicit financial flows]
+    keywords: [anti-money laundering, money laundering, AML/CFT, FATF, OFAC sanctions, sanctions evasion, terrorism financing, proliferation financing, anti-money laundering compliance, illicit financial flows]
     icon: ban
   - id: asset-wealth-management
     name: Asset & Wealth Management
     covers: The wealth-management and asset-management industries. Include private banks, family offices, funds, AUM and wealth succession. Prioritise Singapore as a regional wealth and investment-management centre. Exclude portfolio allocation strategies and private-capital transactions.
-    keywords: [wealth management, private banking, family office, assets under management, fund management, fund flows, succession planning, variable capital company]
+    keywords: [wealth management, private banking, family office, assets under management, asset manager, net new money, succession planning, wealth hub Singapore]
     icon: briefcase
   - id: bank-resolution
     name: Bank Resolution & Crisis Management
     covers: Preparedness for distressed or failing financial institutions. Include deposit insurance, recovery and resolution, bail-in and liquidity backstops. Cover IADI, FSB resolution standards and Singapore resolution arrangements. Exclude ordinary bank credit deterioration and system-wide risk assessments.
-    keywords: [bank resolution, resolution planning, recovery plan, deposit insurance, bail-in, IADI, lender of last resort, failing bank, crisis management]
+    keywords: [bank resolution, bank resolution authority, bank recovery and resolution, bank rescue, failing bank, bank collapse]
+    match_terms: [deposit insurance, bail-in, lender of last resort]
     icon: life-buoy
   - id: banking-lending
     name: Banking & Lending
@@ -41,27 +44,28 @@ topics:
   - id: corporate-governance
     name: Corporate Governance & Risk Management
     covers: Corporate oversight, disclosure quality and risk culture. Include boards, internal audit, enterprise risk, whistleblowing and accounting issues. Focus on financial institutions and listed companies affecting Singapore markets. Exclude formal sanctions and enforcement decisions.
-    keywords: [corporate governance, board of directors, internal audit, enterprise risk management, risk culture, whistleblower, accounting irregularities, short seller report, Code of Corporate Governance]
+    keywords: [corporate governance, board independence, internal audit, risk management failures, auditor resignation, whistleblower, accounting irregularities, short seller report, Code of Corporate Governance]
     icon: clipboard-check
   - id: scams-fraud
     name: Financial Crime & Scams
     covers: Scams and fraud affecting consumers and financial institutions. Include impersonation, phishing, business-email compromise and money mules. Prioritise Singapore scam losses, typologies and prevention responses. Exclude sanctions compliance and completed regulatory penalties.
-    keywords: [scam, scam losses, impersonation scam, phishing, business email compromise, money mule, investment scam, Shared Responsibility Framework, Anti-Scam Centre]
+    keywords: [scam, scam losses, impersonation scam, phishing, business email compromise, money mule, investment scam, phishing scam losses bank, Anti-Scam Centre]
     icon: siren
   - id: financial-regulation
     name: Financial Regulation & Prudential Policy
     covers: Proposed and enacted supervisory requirements and regulatory frameworks. Include Basel III, capital, liquidity, solvency, licensing and conduct standards. Prioritise MAS policy and overseas standards affecting Singapore FIs. Exclude fines, prosecutions and individual enforcement actions.
-    keywords: [Basel III, capital requirements, liquidity coverage ratio, risk-based capital, consultation paper, MAS notice, licensing regime, prudential standards, conduct rules]
+    keywords: [Basel capital rules, capital requirements, liquidity coverage ratio, risk-based capital, consultation paper, MAS notice, new licensing framework, prudential standards, financial regulator proposes rules]
     icon: scale
   - id: insurance-reinsurance
     name: Insurance & Reinsurance
     covers: Insurer and reinsurer operations and market performance. Include premiums, claims, underwriting, renewals and insurer results. Prioritise Singapore life and general insurance and regional reinsurance hubs. Exclude solvency-rule changes and supervisory enforcement.
-    keywords: [insurer results, reinsurance, reinsurance renewals, insurance premiums, insurance claims, underwriting, life insurance, general insurance, catastrophe bond]
+    keywords: [insurer results, reinsurance, reinsurance renewals, gross written premiums, insured losses, combined ratio insurer, life insurer, general insurance, catastrophe bond]
     icon: umbrella
   - id: enforcement
     name: Regulatory Enforcement & Misconduct
     covers: Completed disciplinary and enforcement actions in finance. Include fines, prohibition orders, market manipulation and prosecutions. Prioritise MAS, SGX and foreign actions affecting Singapore institutions. Exclude new policy consultations and fraud warnings without enforcement.
-    keywords: [prohibition order, composition penalty, civil penalty, financial penalty, market manipulation, insider trading, enforcement action, licence revoked]
+    keywords: [SGX RegCo reprimand, regulator fines bank, financial penalty, market manipulation, charged with insider trading, SEC charges, licence suspended broker]
+    match_terms: [composition penalty]
     icon: gavel
 
   # FinTech & Technology
@@ -70,37 +74,38 @@ topics:
     covers: AI models, applications, governance and quantum technology. Include GenAI, agentic AI, model releases, quantum advances and financial AI. Prioritise MAS-relevant adoption, governance and systemic implications. Exclude data-centre construction and cybersecurity incidents.
     keywords: [artificial intelligence, generative AI, agentic AI, AI agents, AI governance, large language model, quantum computing, post-quantum, AI in banking]
     icon: brain-circuit
+  # The last sentence of covers is our gloss on MAS's descriptor, not MAS's text (ticket 05, R7).
   - id: cyber-resilience
     name: Cybersecurity & Operational Resilience
-    covers: Cyber events and disruptions to critical financial services. Include breaches, ransomware, outages, DDoS and third-party incidents. Prioritise Singapore financial institutions and infrastructure dependencies. Exclude new technology products and routine scam cases.
-    keywords: [cyberattack, ransomware, data breach, system outage, service disruption, DDoS, crypto hack, vulnerability exploited, third-party incident, operational resilience]
+    covers: Cyber events and disruptions to critical financial services. Include breaches, ransomware, outages, DDoS and third-party incidents. Prioritise Singapore financial institutions and infrastructure dependencies. Exclude new technology products and routine scam cases. Third-party incidents include breaches and outages at technology vendors and cloud providers that financial institutions rely on, even when no institution is named.
+    keywords: [cyberattack bank, bank ransomware attack, data breach, bank outage, payment outage, DDoS attack bank, crypto hack, vulnerability exploited, third-party incident, operational resilience]
     icon: shield
   - id: digital-assets-blockchain
     name: Digital Assets & Blockchain
     covers: Digital-token markets, blockchain adoption and tokenisation. Include crypto, stablecoins, DeFi, CBDCs, custody and tokenised assets. Prioritise licensed Singapore activities and institutional applications. Exclude cyber theft and formal rulemaking or enforcement.
-    keywords: [cryptocurrency, bitcoin, stablecoin, tokenisation, tokenization, DeFi, CBDC, digital asset custody, Project Guardian, blockchain]
+    keywords: [cryptocurrency, bitcoin, stablecoin, tokenisation, tokenization, crypto exchange, CBDC, digital asset custody, tokenised fund, blockchain]
     icon: blocks
   - id: market-payment-infrastructure
     name: Financial Market & Payment Infrastructure
     covers: Core payment and market clearing and settlement systems. Include RTGS, HVPS, ISO 20022, exchanges, depositories and wholesale settlement. Prioritise MEPS+, regional interoperability and systemic infrastructure. Exclude retail payment products and operational outages as the main event.
-    keywords: [RTGS, real-time gross settlement, ISO 20022, clearing house, central counterparty, securities settlement, central securities depository, wholesale settlement, cross-border payment linkage, Project Nexus]
+    keywords: [settlement system central bank, real-time gross settlement, payment system modernisation, clearing house, central counterparty, securities settlement, central securities depository, wholesale settlement, cross-border payment linkage, payment system interlinking]
     icon: network
   - id: payments-fintech
     name: Payments & Financial Technology
     covers: Payment services and commercial fintech innovation. Include remittances, cards, QR, wallets, merchant acquiring and fintech launches. Prioritise PayNow and FAST user applications and Singapore payment providers. Exclude RTGS infrastructure, formal regulations and crypto market trading.
-    keywords: [digital payments, remittance, e-wallet, QR payments, card payments, merchant acquiring, PayNow, buy now pay later, fintech funding, fintech launch]
+    keywords: [digital payments, remittance, e-wallet, QR payments, card payments, merchant acquiring, PayNow, cross-border remittance, fintech funding, fintech launch]
     icon: credit-card
 
   # Markets & Financial Sector Development
   - id: asset-allocation
     name: Asset Allocation & Investment Strategy
     covers: How investors allocate capital across asset classes. Include strategic and tactical allocation, portfolio outlooks and capital-market assumptions. Prioritise institutional allocation decisions relevant to Singapore managers. Exclude wealth-manager business results and private-fund fundraising.
-    keywords: [asset allocation, portfolio allocation, investment outlook, capital market assumptions, overweight equities, multi-asset, sovereign wealth fund allocation, pension fund allocation]
+    keywords: [asset allocation, portfolio allocation, investment outlook, strategic asset allocation, overweight equities, multi-asset, sovereign wealth fund allocation, pension fund allocation]
     icon: chart-pie
   - id: capital-markets-equities
     name: Capital Markets & Equities
     covers: Public equity markets and equity capital raising. Include IPOs, listings, stock performance and equity market liquidity. Prioritise SGX and regional markets important to Singapore FIs. Exclude governance-only stories and exchange-system technology.
-    keywords: [IPO, SGX listing, Straits Times Index, stock market, equity capital markets, delisting, secondary listing, EQDP, market liquidity, Catalist]
+    keywords: [IPO, SGX listing, Straits Times Index, stock market, equity capital markets, delisting, secondary listing, EQDP, SGX trading volume, Catalist]
     icon: trending-up
   - id: commodities-energy
     name: Commodities & Energy Markets
@@ -110,12 +115,13 @@ topics:
   - id: mergers-acquisitions
     name: Corporate Transactions & Mergers
     covers: Changes in corporate ownership and control. Include mergers, acquisitions, takeovers and divestments. Prioritise Singapore companies, advisers and investment exposure. Exclude routine fund asset allocation and public stock trading.
-    keywords: [merger, acquisition, takeover offer, divestment, privatisation offer, M&A, buyout, stake sale]
+    keywords: [merger, acquisition, takeover offer, divestment, privatisation offer, M&A, take-private deal, stake sale]
     icon: handshake
   - id: fixed-income-credit
     name: Fixed Income & Credit Markets
     covers: Tradable corporate and institutional debt markets. Include bond issuance, syndicated loans, spreads and credit conditions. Prioritise SGD and Asian debt markets and Singapore bank exposure. Exclude retail lending and sovereign fiscal borrowing plans.
-    keywords: [bond issuance, corporate bonds, syndicated loan, credit spreads, high-yield bonds, Treasury yields, Asian dollar bonds, SGD bonds, credit rating downgrade]
+    keywords: [bond issuance, corporate bonds, syndicated loan, credit spreads, high-yield bonds, Treasury yields, Asian dollar bonds, credit rating downgrade]
+    match_terms: [SGD bonds]
     icon: scroll-text
   - id: fx-reserves
     name: Foreign Exchange & Reserves
@@ -125,19 +131,20 @@ topics:
   - id: private-markets
     name: Private Markets & Alternative Investments
     covers: Unlisted investment strategies and alternative assets. Include private equity, venture capital, hedge funds and private credit. Prioritise Singapore private-capital managers and investor allocations. Exclude public company M&A and listed REIT operations.
-    keywords: [private equity, venture capital, private credit, hedge fund, fund close, infrastructure fund, private markets secondaries, limited partners]
+    keywords: [private equity, venture capital, private credit, hedge fund, fund close, private infrastructure investment, private markets secondaries, pension fund private equity commitment]
     icon: gem
   - id: property-reits
     name: Property & REITs
     covers: Property fundamentals and listed REIT operations. Include occupancy, rents, REIT distributions and real-estate asset deals. Prioritise Singapore property and SGX REITs. Exclude private real-estate fund fundraising.
-    keywords: [REIT, S-REIT, distribution per unit, occupancy rate, rental reversion, office rents, property prices, private home prices, property cooling measures]
+    keywords: [S-REIT results, Reit acquisition, distribution per unit, occupancy rate, rental reversion, office rents, property prices, private home prices, property cooling measures]
     icon: building-2
 
   # Economic Policy
   - id: monetary-policy
     name: Central Banking & Monetary Policy
     covers: Central-bank policy settings and transmission. Include MAS exchange-rate policy, rate decisions and forward guidance. Cover major global central banks and spillovers to Singapore. Exclude routine FX trading and inflation data releases.
-    keywords: [monetary policy, monetary policy statement, S$NEER, interest rate decision, rate cut, rate hike, Federal Reserve, Bank of Japan, forward guidance]
+    keywords: [monetary policy, monetary policy statement, interest rate decision, rate cut, rate hike, Federal Reserve, Bank of Japan, forward guidance]
+    match_terms: [S$NEER]
     icon: percent
   - id: economic-growth-inflation
     name: Economic Growth & Inflation
@@ -147,12 +154,12 @@ topics:
   - id: financial-stability
     name: Financial Stability & Systemic Risk
     covers: Vulnerabilities affecting the wider financial system. Include contagion, leverage, stress testing and systemic non-bank risks. Prioritise global shocks with material exposure for Singapore FIs. Exclude single-bank earnings and institution-specific resolution.
-    keywords: [financial stability, systemic risk, stress test, contagion, leverage, non-bank financial intermediation, Financial Stability Review, market turmoil, asset bubble]
+    keywords: [financial stability, systemic risk, bank stress test, contagion, leverage, shadow banking, Financial Stability Review, financial system vulnerabilities, asset bubble]
     icon: gauge
   - id: trade-geopolitics
     name: International Trade & Geopolitics
     covers: Trade relations, geopolitical tensions and supply-chain restrictions. Include tariffs, export controls, current-account imbalances and FTAs. Prioritise Singapore trade exposure, ASEAN and US-China developments. Exclude commodity prices and individual corporate M&A deals.
-    keywords: [tariffs, export controls, trade war, free trade agreement, US-China tensions, supply chain, current account, geopolitical risk, ASEAN trade]
+    keywords: [tariffs, export controls, trade war, free trade agreement, US-China tensions, supply chain, current account surplus, geopolitical risk, ASEAN trade]
     icon: globe
   - id: fiscal-policy
     name: Sovereign Debt & Fiscal Policy
@@ -164,7 +171,7 @@ topics:
   - id: sustainable-finance
     name: Climate & Sustainable Finance
     covers: Finance for climate transition and sustainability outcomes. Include green bonds, blended finance, taxonomies, climate risk and adaptation. Prioritise MAS frameworks and ASEAN transition-finance initiatives. Exclude ordinary energy prices and generic climate technology.
-    keywords: [sustainable finance, green bond, transition finance, blended finance, green taxonomy, climate risk, ESG disclosure, carbon credits, coal phase-out, FAST-P]
+    keywords: [sustainable finance, green bond, transition finance, blended finance, green taxonomy, climate risk, ESG disclosure, carbon credits, coal phase-out, Financing Asia's Transition Partnership]
     icon: leaf
   - id: consumer-protection
     name: Personal Finance & Consumer Protection
@@ -177,7 +184,44 @@ topics:
     keywords: [data centre, data center, cloud computing, hyperscaler, semiconductors, chip shortage, AI compute, GPU, submarine cable, digital economy]
     icon: server
 
+functions:
+  # MAS's five functions (MAS Topics 30 - Sheet1.csv, "MAS function"). Every topic sits in exactly
+  # one. watchlist is the function view's fixed preset (ticket 04) and always holds MAS; the
+  # sidebar sorts it, so order here does not matter.
+  - id: financial-supervision
+    name: Financial Supervision
+    topics: [aml-sanctions, asset-wealth-management, bank-resolution, banking-lending, corporate-governance, scams-fraud, financial-regulation, insurance-reinsurance, enforcement]
+    watchlist:
+      entities: [mas, dbs, ocbc, uob, hsbc]
+      topics: [aml-sanctions, banking-lending, financial-regulation]
+  - id: fintech-technology
+    name: FinTech & Technology
+    topics: [ai-quantum, cyber-resilience, digital-assets-blockchain, market-payment-infrastructure, payments-fintech]
+    watchlist:
+      entities: [mas, coinbase, circle, microsoft, aws]
+      topics: [digital-assets-blockchain, ai-quantum, cyber-resilience]
+  - id: markets-development
+    name: Markets & Financial Sector Development
+    topics: [asset-allocation, capital-markets-equities, commodities-energy, mergers-acquisitions, fixed-income-credit, fx-reserves, private-markets, property-reits]
+    watchlist:
+      entities: [mas, sgx, hkex, blackrock, temasek]
+      topics: [asset-allocation, capital-markets-equities]
+  - id: economic-policy
+    name: Economic Policy
+    topics: [monetary-policy, economic-growth-inflation, financial-stability, trade-geopolitics, fiscal-policy]
+    watchlist:
+      entities: [mas, singapore, mainland-china, malaysia, hong-kong, united-states, federal-reserve]
+      topics: [trade-geopolitics, monetary-policy, economic-growth-inflation]
+  - id: cross-cutting
+    name: Cross-cutting Functions
+    topics: [sustainable-finance, consumer-protection, tech-infrastructure]
+    watchlist:
+      entities: [mas, singtel, equinix, aws, housing]
+      topics: [tech-infrastructure, sustainable-finance, consumer-protection]
+
 groups:
+  # scripts/build_relationships.py derives belongs_to_sector links from these groups: a top-50
+  # entity to its one group among the first 8, any other entity to each of its groups.
   # MAS top 50 entities, by the list's parent category.
   - id: banking
     name: Banking
@@ -200,7 +244,7 @@ groups:
     topics: [payments-fintech, scams-fraud, cyber-resilience]
     members: [grab, seamoney, wise, airwallex, nium, stripe, 2c2p]
   - id: digital-asset-firms
-    name: Digital assets
+    name: Digital asset firms
     topics: [digital-assets-blockchain, cyber-resilience, aml-sanctions]
     members: [coinbase, crypto-com, circle, ripple, sygnum]
   - id: technology
@@ -221,7 +265,7 @@ groups:
   - id: central-banks
     name: Central banks and regulators
     topics: [monetary-policy, financial-regulation, financial-stability, enforcement]
-    members: [mas, hkma, bnm, bank-of-thailand, ojk]
+    members: [mas, hkma, bnm, bank-of-thailand, ojk, federal-reserve]
     sidebar: false
   - id: exchanges
     name: Exchanges
@@ -252,7 +296,7 @@ groups:
   - id: other-countries
     name: Other countries and territories
     topics: [economic-growth-inflation, monetary-policy, trade-geopolitics]
-    members: [hong-kong, mainland-china, taiwan, india, united-kingdom, australia, south-korea]
+    members: [hong-kong, mainland-china, taiwan, india, united-kingdom, australia, south-korea, united-states]
     sidebar: false
   - id: sectors
     name: Sectors
@@ -320,6 +364,13 @@ entities:
     kind: regulator
     aliases: [Otoritas Jasa Keuangan, Indonesian Financial Services Authority]
     domains: [ojk.go.id]
+  - id: federal-reserve
+    name: Federal Reserve
+    kind: central_bank
+    aliases: [Fed, FRB, Federal Reserve Board, US Federal Reserve, FOMC]
+    covers: the US central bank, the FOMC and the regional Federal Reserve Banks; not the US Treasury or other US agencies
+    domains: [federalreserve.gov, newyorkfed.org]
+    home: united-states
 
   - id: sgx
     name: SGX
@@ -562,6 +613,14 @@ entities:
     aliases: [Republic of Korea, Korea]
     covers: news only about North Korea is not about South Korea
     domains: [go.kr]
+  # "America" is left out of the aliases: whole-word matching would hit Bank of America and North
+  # America.
+  - id: united-states
+    name: United States
+    kind: country
+    aliases: [US, U.S., USA]
+    covers: the US economy, government, trade policy and markets; a firm being US-based or US-listed does not by itself make news about the United States
+    domains: [whitehouse.gov, treasury.gov]
 
   # Lending sectors in the banks' loan books (seed/collected/bank-exposures.yaml).
   - id: building-construction
@@ -601,6 +660,7 @@ entities:
     domains: [citigroup.com, citibank.com.sg]
     logo: /logos/citigroup.png
     logo_full: /logos/full/citigroup.svg
+    home: united-states
   - id: jpmorgan
     name: JPMorgan Chase
     kind: bank
@@ -608,6 +668,7 @@ entities:
     domains: [jpmorganchase.com, jpmorgan.com]
     logo: /logos/jpmorgan.svg
     logo_full: /logos/full/jpmorgan.svg
+    home: united-states
   - id: bank-of-china
     name: Bank of China
     kind: bank

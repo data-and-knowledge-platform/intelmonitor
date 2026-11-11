@@ -67,7 +67,8 @@ class Topic(BaseModel):
     id: str
     name: str
     covers: str
-    keywords: list[str]
+    keywords: list[str]  # search queries, also matched in candidate and trend matching
+    match_terms: list[str] = []  # matched like keywords, never sent as search queries
     icon: TopicIcon | None = None
 
 
@@ -96,8 +97,27 @@ class Entity(BaseModel):
     home: str | None = None
 
 
+class Watchlist(BaseModel):
+    entities: list[str]
+    topics: list[str]
+
+
+class Function(BaseModel):
+    """One of MAS's five functions: the topics it owns and its view's fixed watchlist."""
+
+    id: str
+    name: str
+    topics: list[str]
+    watchlist: Watchlist
+
+
+# Every function view's preset includes MAS.
+PRESET_ENTITY = "mas"
+
+
 class SubjectsSeed(BaseModel):
     topics: list[Topic]
+    functions: list[Function]
     groups: list[Group]
     entities: list[Entity]
 
@@ -121,6 +141,22 @@ class SubjectsSeed(BaseModel):
         for e in self.entities:
             if e.home is not None and e.home not in countries:
                 raise ValueError(f"entity {e.id}: home {e.home} is not a country entity")
+        if len({f.id for f in self.functions}) != len(self.functions):
+            raise ValueError("function ids must be unique")
+        owned = [t for f in self.functions for t in f.topics]
+        if twice := sorted({t for t in owned if owned.count(t) > 1}):
+            raise ValueError(f"topics in more than one function: {twice}")
+        if unknown := sorted(set(owned) - topic_ids):
+            raise ValueError(f"functions name unknown topics: {unknown}")
+        if missing := sorted(topic_ids - set(owned)):
+            raise ValueError(f"topics without a function: {missing}")
+        for f in self.functions:
+            if unknown := sorted(set(f.watchlist.entities) - entity_ids):
+                raise ValueError(f"function {f.id}: unknown watchlist entities {unknown}")
+            if unknown := sorted(set(f.watchlist.topics) - topic_ids):
+                raise ValueError(f"function {f.id}: unknown watchlist topics {unknown}")
+            if PRESET_ENTITY not in f.watchlist.entities:
+                raise ValueError(f"function {f.id}: watchlist must include {PRESET_ENTITY}")
         return self
 
 

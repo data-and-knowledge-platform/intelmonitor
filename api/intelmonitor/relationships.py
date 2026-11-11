@@ -1,13 +1,15 @@
 """The relationship store: standing links between subjects and endpoints, for indirect impact.
 
 api/seed/relationships.yaml (built by scripts/build_relationships.py) holds every relationship
-and an endpoint entry for each id that is not an entity subject. sync_relationships() copies it
-into the store at the start of a pipeline run; paths_to(), candidates() and shared() read it back
-for the impact step and GET /shared, links_from() for the briefs, and links_of() for the
-Related graph.
+and an endpoint entry for each id that is not an entity subject or seed group.
+sync_relationships() copies it into the store at the start of a pipeline run; paths_to(),
+candidates() and shared() read it back for the impact step and GET /shared, links_from() for the
+briefs, and links_of() for the Related graph.
 
 Direction: news about a relationship's `to` reaches its `from` (DBS exposed_to Hong Kong, FAST
-depends_on BCS, BCS subsidiary_of NETS, NETS owns BCS).
+depends_on BCS, NETS holds_stake_in BCS). partner_of is stored once per pair, ids in alphabetical
+order. belongs_to_sector links an entity to a seed group (its parent category), so seed group ids
+are valid link ends; it carries no impact and the Related and Shared sections leave it out.
 """
 
 import json
@@ -24,17 +26,18 @@ from intelmonitor.seed import EntityKind, load_subjects
 
 RELATIONSHIPS_PATH = SEED_DIR / "relationships.yaml"
 
+# The team's 10 one-way types (deck of 10 Nov 2026, slide 4; ticket 17).
 RelType = Literal[
+    "holds_stake_in",
+    "regulated_by",
+    "operates_in",
     "exposed_to",
     "depends_on",
-    "participates_in",
-    "owns",
-    "subsidiary_of",
-    "operates_in",
-    "supervised_by",
-    "shareholder_of",
     "member_of",
+    "participates_in",
+    "partner_of",
     "listed_on",
+    "belongs_to_sector",
 ]
 REL_TYPES: tuple[RelType, ...] = RelType.__args__
 Evidence = Literal["public", "reported", "assumed"]
@@ -140,7 +143,7 @@ class Relationship(_Model):
     to: str
     type: RelType
     # exposed_to: the headline figure's share of its total (a bank's gross customer loans, an
-    # issuer's reserves, a firm's revenue); owns, shareholder_of: ownership share
+    # issuer's reserves, a firm's revenue); holds_stake_in: the stake
     weight: float | None = None
     measure: HeadlineMeasure | None = None
     value: float | None = None
@@ -154,6 +157,9 @@ class Relationship(_Model):
     page: int | None = None
     quote: str | None = None
     detail: str
+    # One line built by the build script from the stored facts: the plain-words phrase with the
+    # share and its date, else `detail`; a controlling stake with no share says so.
+    reason: str
     service: Service | None = None
     figures: list[Figure] = []
 
@@ -174,8 +180,9 @@ class RelationshipsFile(_Model):
 
 
 def problems(data: RelationshipsFile, subject_ids: set[str]) -> list[str]:
-    """Why the file does not fit the subject seed: ids that are neither an entity subject nor an
-    endpoint, and endpoint entries for ids that are now subjects. Empty when it fits."""
+    """Why the file does not fit the subject seed: ids that are neither an entity subject, a seed
+    group nor an endpoint, and endpoint entries for ids that are now subjects or groups. Empty
+    when it fits. `subject_ids` holds the entity and group ids."""
     endpoint_ids = {e.id for e in data.endpoints}
     used = {r.from_ for r in data.relationships} | {r.to for r in data.relationships}
     used |= {m for e in data.endpoints for m in e.members}
@@ -186,11 +193,18 @@ def problems(data: RelationshipsFile, subject_ids: set[str]) -> list[str]:
     ]
 
 
+def link_ends() -> set[str]:
+    """Seed ids a link may end at without an endpoint entry: entities and groups."""
+    seed = load_subjects()
+    return {e.id for e in seed.entities} | {g.id for g in seed.groups}
+
+
 def load_relationships(path: Path = RELATIONSHIPS_PATH) -> RelationshipsFile:
-    """Read relationships.yaml and check it against the entity subjects in subjects.yaml. Raises
-    ValueError naming every unknown id; the fix is to rerun scripts/build_relationships.py."""
+    """Read relationships.yaml and check it against the entities and groups in subjects.yaml.
+    Raises ValueError naming every unknown id; the fix is to rerun
+    scripts/build_relationships.py."""
     data = RelationshipsFile.model_validate(yaml.safe_load(path.read_text()))
-    found = problems(data, {e.id for e in load_subjects().entities})
+    found = problems(data, link_ends())
     if found:
         raise ValueError(
             f"{path.name} does not fit the subject seed (rerun scripts/build_relationships.py): "
@@ -288,8 +302,8 @@ class ImpactPath(_Model):
 
 
 # A second hop counts only after one of these from the subject: what it takes part in, what it
-# depends on, its parent, and what it owns (OCBC owns OCBC Malaysia, which operates in Malaysia).
-FIRST_HOPS: tuple[RelType, ...] = ("participates_in", "depends_on", "subsidiary_of", "owns")
+# depends on, and what it holds a stake in (OCBC holds OCBC Malaysia, which operates in Malaysia).
+FIRST_HOPS: tuple[RelType, ...] = ("participates_in", "depends_on", "holds_stake_in")
 
 
 def _nodes(conn: sqlite3.Connection, ids: set[str]) -> dict[str, Node]:
@@ -300,10 +314,16 @@ def _nodes(conn: sqlite3.Connection, ids: set[str]) -> dict[str, Node]:
     nodes = {
         str(r["id"]): Node(id=r["id"], name=r["name"], kind=r["kind"], subject=False) for r in rows
     }
-    entities = {e.id: e for e in load_subjects().entities}
+    seed = load_subjects()
+    entities = {e.id: e for e in seed.entities}
+    groups = {g.id: g for g in seed.groups}
     for i in ids - nodes.keys():
-        e = entities[i]  # sync checked every id is a subject or an endpoint
-        nodes[i] = Node(id=i, name=e.name, kind=e.kind, subject=True)
+        # sync checked every id is an entity, a seed group or an endpoint
+        if i in groups:
+            nodes[i] = Node(id=i, name=groups[i].name, kind="group", subject=False)
+        else:
+            e = entities[i]
+            nodes[i] = Node(id=i, name=e.name, kind=e.kind, subject=True)
     return nodes
 
 
@@ -367,22 +387,38 @@ def paths_to(conn: sqlite3.Connection, target_id: str) -> list[ImpactPath]:
 
 
 # How an institution links to a place, sector, supplier or payment system on that subject's page:
-# one of LINKED_FIRST into it, or owning a company that has one of LINKED_SECOND into it.
+# one of LINKED_FIRST into it, or holding a stake in a company that has one of LINKED_SECOND into
+# it.
 LINKED_FIRST: tuple[RelType, ...] = (
     "exposed_to",
     "depends_on",
     "participates_in",
-    "owns",
+    "holds_stake_in",
     "operates_in",
 )
 LINKED_SECOND: tuple[RelType, ...] = ("operates_in", "exposed_to", "depends_on", "participates_in")
 
+# A published share at least this large counts as owning the held company (the usual line for
+# significant influence); a smaller one is a passive holding.
+OWNING_STAKE = 0.2
+
+
+def owns(r: Relationship) -> bool:
+    """Whether a holds_stake_in link counts as ownership: a share of at least OWNING_STAKE, or,
+    with no published share, a controlling owner, which the build's reason line names."""
+    if r.type != "holds_stake_in":
+        return False
+    if r.weight is None:
+        return r.reason.startswith("is the controlling owner")
+    return r.weight >= OWNING_STAKE
+
 
 def linked_paths(conn: sqlite3.Connection, target_id: str) -> list[ImpactPath]:
     """Every node linked to `target_id` (or to a region that covers it) by one LINKED_FIRST link,
-    or by owning a company with a LINKED_SECOND link into it, for the target's page. Unlike
-    paths_to, the first node may be an endpoint, so untracked institutions count; shareholders
-    that only hold a stake in a bank (Singtel in GXS Bank) are left to the caller to drop."""
+    or by owning (see `owns`) a company with a LINKED_SECOND link into it, for the target's page.
+    A holds_stake_in link counts only when it is ownership. Unlike paths_to, the first node may
+    be an endpoint, so untracked institutions count; shareholders that only hold a stake in a
+    bank (Singtel in GXS Bank) are left to the caller to drop."""
     ends = [target_id, *_regions(conn, target_id)]
     end_marks = ",".join("?" * len(ends))
     first_marks = ",".join("?" * len(LINKED_FIRST))
@@ -395,7 +431,8 @@ def linked_paths(conn: sqlite3.Connection, target_id: str) -> list[ImpactPath]:
     two = conn.execute(
         "SELECT r1.data AS first, r2.data AS second FROM relationships r1 "
         "JOIN relationships r2 ON r2.from_id = r1.to_id "
-        f"WHERE r1.type = 'owns' AND r2.type IN ({second_marks}) AND r2.to_id IN ({end_marks}) "
+        f"WHERE r1.type = 'holds_stake_in' AND r2.type IN ({second_marks}) "
+        f"AND r2.to_id IN ({end_marks}) "
         "AND r1.from_id != ?",
         [*LINKED_SECOND, *ends, target_id],
     ).fetchall()
@@ -406,6 +443,7 @@ def linked_paths(conn: sqlite3.Connection, target_id: str) -> list[ImpactPath]:
         ]
         for r in two
     ]
+    chains = [c for c in chains if c[0].type != "holds_stake_in" or owns(c[0])]
     if not chains:
         return []
     nodes = _nodes(conn, {c[0].from_ for c in chains} | {r.to for c in chains for r in c})
@@ -429,9 +467,11 @@ def links_from(
 
 
 def links_of(conn: sqlite3.Connection, subject_id: str) -> list[tuple[Relationship, Node]]:
-    """Every link from or to the subject, each with the node at its other end, by id."""
+    """Every link from or to the subject but belongs_to_sector, each with the node at its other
+    end, by id."""
     rows = conn.execute(
-        "SELECT data FROM relationships WHERE from_id = ? OR to_id = ? ORDER BY id",
+        "SELECT data FROM relationships WHERE (from_id = ? OR to_id = ?) "
+        "AND type != 'belongs_to_sector' ORDER BY id",
         (subject_id, subject_id),
     ).fetchall()
     rels = [Relationship.model_validate_json(r["data"]) for r in rows]
@@ -503,11 +543,13 @@ class SharedEndpoint(_Model):
 
 
 def shared(conn: sqlite3.Connection, a: str, b: str) -> list[SharedEndpoint]:
-    """The subjects and endpoints that both `a` and `b` link to, for GET /shared, by id."""
+    """The subjects and endpoints that both `a` and `b` link to, for GET /shared, by id. Seed
+    groups (belongs_to_sector) are left out."""
 
     def links(subject: str) -> dict[str, list[Relationship]]:
         rows = conn.execute(
-            "SELECT data FROM relationships WHERE from_id = ? OR to_id = ? ORDER BY id",
+            "SELECT data FROM relationships WHERE (from_id = ? OR to_id = ?) "
+            "AND type != 'belongs_to_sector' ORDER BY id",
             (subject, subject),
         ).fetchall()
         out: dict[str, list[Relationship]] = {}

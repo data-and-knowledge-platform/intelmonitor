@@ -237,7 +237,7 @@ def _mas_supervised(conn: sqlite3.Connection) -> list[str]:
     """Tracked entities with a supervised-by-MAS link; the three banks when the store has none."""
     subjects = all_subjects()
     rows = conn.execute(
-        "SELECT from_id FROM relationships WHERE type = 'supervised_by' AND to_id = 'mas'"
+        "SELECT from_id FROM relationships WHERE type = 'regulated_by' AND to_id = 'mas'"
     ).fetchall()
     found = [r["from_id"] for r in rows if r["from_id"] in subjects]
     return sorted(found, key=list(subjects).index) or BANKS

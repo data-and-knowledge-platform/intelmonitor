@@ -12,7 +12,7 @@
 # Not repeated here: FAST, PayNow, MEPS+, GIRO, eGIRO, NETS, SWIFT, card scheme and cloud rows
 # (tech-dependencies.yaml); D-SIB designations, COSMIC, Project Guardian, Partior and Climate
 # Impact X (entity-links.yaml); citibank and maybank MAS licence rows (an existing
-# supervised_by mas row from another source would make them repeats); Grab and Singtel
+# regulated_by mas row from another source would make them repeats); Grab and Singtel
 # ownership of GXS Bank (tech-dependencies.yaml).
 collected: 2026-10-26
 
@@ -20,7 +20,7 @@ relationships:
   # ------------------------------------------------------------ Standard Chartered
   - from: standard-chartered
     to: standard-chartered-singapore
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "Standard Chartered Bank (Singapore) Limited is an indirect wholly owned subsidiary of Standard Chartered Bank, whose ultimate parent is Standard Chartered PLC."
     evidence: public
@@ -30,7 +30,7 @@ relationships:
     quote: "The Company is an indirect wholly-owned subsidiary of Standard Chartered Bank (“SCB”) and its ultimate parent is Standard Chartered PLC"
   - from: standard-chartered-singapore
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS licenses Standard Chartered Bank (Singapore) Limited as a qualifying full bank; it is also an SGS primary dealer."
     evidence: public
@@ -40,7 +40,7 @@ relationships:
     quote: "STANDARD CHARTERED BANK (SINGAPORE) LIMITED | Incorporated in Singapore | Qualifying Full Bank | SGS Primary Dealer"
   - from: standard-chartered-singapore
     to: trust-bank
-    type: owns
+    type: holds_stake_in
     share: 0.6
     detail: "Standard Chartered Bank (Singapore) holds 60% of Trust Bank per the 2022 launch release; in July 2026 Standard Chartered announced a further investment in Trust and the transfer of part of its card and personal loan book to it, with no new stake disclosed."
     evidence: public
@@ -70,7 +70,7 @@ relationships:
     quote: "Standard Chartered ordinary shares are listed on the London Stock Exchange and Hong Kong Stock Exchange."
   - from: standard-chartered
     to: pra
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Standard Chartered Bank, the group's UK-incorporated bank, is authorised by the PRA and regulated by the FCA and PRA."
     evidence: public
@@ -82,7 +82,7 @@ relationships:
   # ------------------------------------------------------------ Trust Bank
   - from: trust-bank
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS lists Trust Bank Singapore Limited as a full bank incorporated in Singapore."
     evidence: public
@@ -92,7 +92,7 @@ relationships:
     quote: "TRUST BANK SINGAPORE LIMITED | Incorporated in Singapore | Full Bank"
   - from: ntuc-enterprise
     to: trust-bank
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "NTUC Enterprise and FairPrice Group own BetaPlus, the holding company with 40% of Trust Bank; the split between them is not given."
     evidence: public
@@ -102,7 +102,7 @@ relationships:
     quote: "Trust’s shareholders are Standard Chartered Bank (Singapore) Limited (“SCBSL”) and BetaPlus, a holding company owned by NTUC Enterprise and FairPrice Group."
   - from: fairprice-group
     to: trust-bank
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "FairPrice Group and NTUC Enterprise own BetaPlus, the holding company with 40% of Trust Bank; Trust rewards are integrated with FairPrice purchases."
     evidence: public
@@ -114,7 +114,7 @@ relationships:
   # ------------------------------------------------------------ GXS Bank
   - from: gxs-bank
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS lists GXS Bank Pte. Ltd. under the Local Bank category."
     evidence: public
@@ -126,7 +126,7 @@ relationships:
   # ------------------------------------------------------------ HSBC
   - from: hsbc
     to: hsbc-singapore
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "HSBC Bank (Singapore) Limited is an indirect wholly owned subsidiary of HSBC Holdings, held through The Hongkong and Shanghai Banking Corporation."
     evidence: public
@@ -146,7 +146,7 @@ relationships:
     quote: "HSBC Group has agreed to sell HSBC Life (Singapore) Pte. Ltd. to Allianz for a consideration of S$2.7 billion (US$2.1 billion) with completion expected in the first half of 2027, subject to regulatory approval."
   - from: hsbc-singapore
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS licenses The Hongkong and Shanghai Banking Corporation's Singapore branch as a full bank and SGS primary dealer; its retail subsidiary HSBC Bank (Singapore) Limited is a qualifying full bank."
     evidence: public
@@ -186,7 +186,7 @@ relationships:
     quote: "Its shares are also listed on the New York Stock Exchange."
   - from: hsbc
     to: pra
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "The PRA supervises HSBC's UK banks and fined HSBC Bank plc and HSBC UK Bank plc £57.4m (after discount) in January 2024 over depositor protection rules."
     evidence: public
@@ -198,8 +198,9 @@ relationships:
   # ------------------------------------------------------------ Citigroup
   - from: citigroup
     to: citibank
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Citigroup counts Citibank Singapore Ltd. within its Citibank bank entities; Citibank N.A. Singapore branch is part of the same node."
     evidence: public
     as_of: 2025-12-31
@@ -218,7 +219,7 @@ relationships:
     quote: "Citigroup’s common stock is listed on the NYSE under the ticker symbol “C”"
   - from: citigroup
     to: federal-reserve
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Citigroup is a bank holding company and financial holding company supervised by the Federal Reserve Board."
     evidence: public
@@ -228,7 +229,7 @@ relationships:
     quote: "Citigroup is a registered bank holding company and financial holding company and is regulated and supervised by the Federal Reserve Board (FRB)."
   - from: citibank
     to: occ
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Citibank N.A., including its overseas branches such as Singapore, is supervised by the OCC and the Federal Reserve."
     evidence: public
@@ -240,8 +241,9 @@ relationships:
   # ------------------------------------------------------------ J.P. Morgan
   - from: jpmorgan
     to: jpmorgan-singapore
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "JPMorgan Chase Bank, N.A., whose Singapore branch is the jpmorgan-singapore node, is JPMorganChase's principal bank subsidiary."
     evidence: public
     as_of: 2025-12-31
@@ -250,7 +252,7 @@ relationships:
     quote: "JPMorganChase’s principal bank subsidiary is JPMorgan Chase Bank, National Association (“JPMorgan Chase Bank, N.A.”)"
   - from: jpmorgan-singapore
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS licenses JPMorgan Chase Bank, N.A. in Singapore as a full bank."
     evidence: public
@@ -260,7 +262,7 @@ relationships:
     quote: "JPMORGAN CHASE BANK, N.A. | Incorporated in United States | Full Bank"
   - from: jpmorgan-singapore
     to: occ
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "JPMorgan Chase Bank, N.A. is supervised by the OCC."
     evidence: public
@@ -270,7 +272,7 @@ relationships:
     quote: "JPMorganChase’s national bank subsidiary, JPMorgan Chase Bank, N.A., is supervised and regulated by the Office of the Comptroller of the Currency (“OCC”)"
   - from: jpmorgan
     to: federal-reserve
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "The Federal Reserve sets capital requirements for JPMorganChase as a consolidated financial holding company."
     evidence: public
@@ -292,7 +294,7 @@ relationships:
   # ------------------------------------------------------------ Bank of China
   - from: central-huijin
     to: bank-of-china
-    type: owns
+    type: holds_stake_in
     share: 0.5859
     detail: "Central Huijin Investment holds 58.59% of Bank of China (A shares); the Ministry of Finance held 8.64% after the 2025 recapitalisation."
     evidence: public
@@ -322,7 +324,7 @@ relationships:
     quote: "The Bank was listed on the Hong Kong Stock Exchange and the Shanghai Stock Exchange in 2006, becoming the first Chinese bank to launch an A-Share and H-Share initial public offering and achieve a dual listing in both markets."
   - from: bank-of-china
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS licenses Bank of China Limited's Singapore branch as a qualifying full bank."
     evidence: public
@@ -344,7 +346,7 @@ relationships:
     quote: "Malayan Banking Berhad (“Maybank” or the “Bank”) is a public limited liability company, incorporated and domiciled in Malaysia and is listed on the Main Market of Bursa Malaysia Securities Berhad."
   - from: pnb
     to: maybank
-    type: shareholder_of
+    type: holds_stake_in
     share: 0.3429
     detail: "Permodalan Nasional Berhad holds 6.43% of Maybank directly and 27.86% indirectly through Amanah Saham Bumiputera (34.29% combined)."
     evidence: public
@@ -354,7 +356,7 @@ relationships:
     quote: "Permodalan Nasional Berhad (“PNB”), is a government-linked entity and a shareholder with significant influence on the Bank, with direct shareholding of 6.43% (2024: 6.52%) and indirect shareholding of 27.86% (2024: 30.51%) via Amanah Raya Trustee Berhad (Skim Amanah Saham Bumiputera) as at 31 December 2025."
   - from: maybank
     to: maybank-indonesia
-    type: owns
+    type: holds_stake_in
     share: 0.9852
     detail: "Maybank holds 98.52% of PT Bank Maybank Indonesia Tbk."
     evidence: public
@@ -376,7 +378,7 @@ relationships:
   # ------------------------------------------------------------ UBS
   - from: ubs
     to: ubs-singapore
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "UBS Group AG owns all of UBS AG, which operates in Singapore as a branch (the ubs-singapore node)."
     evidence: public
@@ -386,7 +388,7 @@ relationships:
     quote: "UBS Group AG owns 100% of the outstanding shares in UBS AG."
   - from: ubs-singapore
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS licenses UBS AG in Singapore as a wholesale bank."
     evidence: public
@@ -416,7 +418,7 @@ relationships:
     quote: "UBS Group AG shares are listed on the SIX Swiss Exchange and on the New York Stock Exchange"
   - from: ubs
     to: finma
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "FINMA supervises UBS; in 2025 its supervision focused on integrating Credit Suisse."
     evidence: public

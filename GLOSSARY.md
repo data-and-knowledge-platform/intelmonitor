@@ -45,5 +45,21 @@ One statement a single document makes about a subject; developments are built fr
 _Avoid_: Development (for the single-document statement)
 
 **Priority**:
-How much a development matters to one of its subjects: High, Medium or Low.
+How much a development matters to one of its subjects, judged only from what its sources show for Singapore (the entity's Singapore unit or services, or Singapore's financial system): High, Medium or Low, with a one-sentence reason. A topic takes the highest priority among the development's entities.
 _Avoid_: Risk rating, materiality, severity
+
+**Link**:
+A stored relationship between two entities, or between an entity and an endpoint (an institution, place or system the site does not monitor), of one of ten types such as holds_stake_in or depends_on, with its source and a one-line reason.
+_Avoid_: Edge (outside the graph view), connection
+
+**Link strength**:
+How strongly a material adverse event at one end of a link reaches the other end: Strong, Moderate or Weak, rated once for each direction.
+_Avoid_: Weight (the stake or exposure share a link stores), transmission (in the product)
+
+**Direct impact**:
+A development's priority for an entity it is about.
+_Avoid_: Primary impact
+
+**Indirect impact**:
+The level an adverse development passes through one link to an entity it is not about, read from a fixed table of the direct level and the link's strength in that direction: Medium or Low, never High.
+_Avoid_: Knock-on effect, contagion, second-order impact

@@ -44,9 +44,9 @@ _AMBIGUOUS = {
 def _trend_matchers() -> list[tuple[str, re.Pattern[str]]]:
     """Case-insensitive matchers for trending searches (typed in lower case): entity names and
     aliases, except countries (nearly every Singapore search names Singapore) and common words,
-    and topic names and keywords."""
+    and topic names, keywords and match terms."""
     seed = load_subjects()
-    named = [(t.id, [t.name, *t.keywords]) for t in seed.topics]
+    named = [(t.id, [t.name, *t.keywords, *t.match_terms]) for t in seed.topics]
     named += [(e.id, [e.name, *e.aliases]) for e in seed.entities if e.kind != "country"]
     matchers: list[tuple[str, re.Pattern[str]]] = []
     for subject_id, terms in named:

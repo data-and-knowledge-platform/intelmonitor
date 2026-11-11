@@ -30,10 +30,9 @@ export function edgeLabel(l: Link): string {
       return l.label.includes(", for ") ? l.label.split(", for ")[1] : "supplier";
     case "participates_in":
       return "takes part";
-    case "owns":
-      return l.weight === null ? "owned" : `${pct(l.weight)} owned`;
-    case "subsidiary_of":
-      return "parent";
+    case "holds_stake_in":
+      // With no published share the stake may be controlling or minor, so the word stays neutral.
+      return l.weight === null ? "stake" : `${pct(l.weight)} owned`;
     default:
       return l.label.split(",")[0];
   }

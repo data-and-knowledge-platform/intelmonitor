@@ -10,7 +10,9 @@
 # Schema
 #   relationships:            one row per (from, to, type)
 #     from, to                entity ids (see new_entities and the shared id list)
-#     type                    depends_on | participates_in | owns | operates_in
+#     type                    depends_on | participates_in | holds_stake_in | operates_in
+#                             (holds_stake_in was owns until 2026-11-11; controlling: true
+#                             marks a controlling stake, see entity-links.yaml)
 #                             participates_in = member or participant of a payment system,
 #                             card scheme or market infrastructure (complete lists where the
 #                             operator publishes one); operates_in = vendor region in a country
@@ -720,7 +722,8 @@ relationships:
   quote: At NETS Group, we manage and operate the clearing and payment infrastructure for the Singapore Clearing House Association as well as the core electronic transfer services of FAST, eGIRO, Inter-bank GIRO and PayNow.
 - from: nets
   to: bcs
-  type: owns
+  type: holds_stake_in
+  controlling: true
   detail: BCS is a NETS subsidiary within NETS Group.
   service: payments
   evidence: public
@@ -730,7 +733,7 @@ relationships:
   quote: Banking Computer Services Private Limited (BCS), a NETS subsidiary company.
 - from: dbs
   to: nets
-  type: owns
+  type: holds_stake_in
   detail: NETS is equally owned by DBS, OCBC and UOB, which NETS describes as Singapore's three largest banks.
   service: payments
   evidence: public
@@ -740,7 +743,7 @@ relationships:
   quote: Equally owned by Singapore’s three largest banks
 - from: ocbc
   to: nets
-  type: owns
+  type: holds_stake_in
   detail: NETS is equally owned by DBS, OCBC and UOB, which NETS describes as Singapore's three largest banks.
   service: payments
   evidence: public
@@ -750,7 +753,7 @@ relationships:
   quote: Equally owned by Singapore’s three largest banks
 - from: uob
   to: nets
-  type: owns
+  type: holds_stake_in
   detail: NETS is equally owned by DBS, OCBC and UOB, which NETS describes as Singapore's three largest banks.
   service: payments
   evidence: public
@@ -990,7 +993,7 @@ relationships:
   quote: As Grab looks to balance growth with cost discipline, it is using AWS Cloud to power the majority of its operations in Southeast Asia across verticals such as mobility, deliveries, and financial services and entities, including its digibanks in Indonesia, Malaysia, and Singapore.
 - from: singtel
   to: gxs-bank
-  type: owns
+  type: holds_stake_in
   detail: GXS Bank is backed by a Grab and Singtel consortium.
   service: telco
   evidence: public
@@ -1000,7 +1003,8 @@ relationships:
   quote: It is backed by a consortium consisting of Grab Holdings Inc. - Southeast Asia’s leading super app, and Singtel - Asia’s leading communications technology group.
 - from: grab
   to: gxs-bank
-  type: owns
+  type: holds_stake_in
+  controlling: true
   detail: GXS Bank is backed by a Grab and Singtel consortium.
   service: cloud
   evidence: public
@@ -1710,7 +1714,8 @@ relationships:
   quote: United Overseas Bank Ltd
 - from: sgx
   to: sgx-dc
-  type: owns
+  type: holds_stake_in
+  controlling: true
   detail: SGX Derivatives Clearing (SGX-DC), SGX's derivatives clearing house, is a 100% SGX subsidiary per SGX's legal entity chart.
   service: market_infrastructure
   evidence: public
@@ -1990,7 +1995,8 @@ relationships:
   quote: Prudential Visa Signature Card
 - from: sgx
   to: cdp
-  type: owns
+  type: holds_stake_in
+  controlling: true
   detail: SGX directly and fully owns The Central Depository (Pte) Limited (CDP)
   service: market_infrastructure
   evidence: public

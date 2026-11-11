@@ -36,7 +36,8 @@ def subject_matchers() -> list[SubjectMatcher]:
     seed = load_subjects()
     entity_terms = {e.id: [e.name, *e.aliases] for e in seed.entities}
     matchers = [
-        SubjectMatcher(t.id, t.name, "topic", _pattern([t.name, *t.keywords])) for t in seed.topics
+        SubjectMatcher(t.id, t.name, "topic", _pattern([t.name, *t.keywords, *t.match_terms]))
+        for t in seed.topics
     ]
     matchers += [
         SubjectMatcher(

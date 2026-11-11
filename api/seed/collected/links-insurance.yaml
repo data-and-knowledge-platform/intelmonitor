@@ -5,8 +5,8 @@
 # member lists, company sites and press releases, HKEX and SGX filings (AIA 2026 interim results,
 # HSBC and OCBC announcements), SEC filings (Manulife 2025 Form 40-F, Prudential plc HY2026 6-K,
 # PIMCO fund prospectus) and the MCCY ministerial statement on the Allianz-Income offer.
-# Links already in entity-links.yaml (ocbc owns great-eastern, great-eastern operates_in malaysia,
-# great-eastern and income-insurance supervised_by mas, great-eastern supervised_by bnm) and
+# Links already in entity-links.yaml (ocbc holds_stake_in great-eastern, great-eastern operates_in
+# malaysia, great-eastern and income-insurance regulated_by mas, great-eastern regulated_by bnm) and
 # tech-dependencies.yaml (great-eastern on oracle-cloud, singlife on aws) are not repeated.
 # Bancassurance ties are depends_on rows with service distribution (insurer depends on the bank's
 # distribution). Table quotes join the heading or row cells with " | " (cell text verbatim).
@@ -17,7 +17,7 @@ relationships:
   # ------------------------------------------------------------ Great Eastern
   - from: great-eastern
     to: great-eastern-general
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "Great Eastern underwrites its general insurance through wholly-owned Great Eastern General Insurance."
     evidence: public
@@ -27,7 +27,7 @@ relationships:
     quote: "The Group's general insurance business is underwritten by its wholly-owned subsidiary, Great Eastern General Insurance Limited (GEG), formerly known as the Overseas Assurance Corporation Limited (OAC) founded in 1920."
   - from: great-eastern
     to: lion-global-investors
-    type: owns
+    type: holds_stake_in
     share: 0.7
     detail: "Great Eastern Holdings owns 70% of Lion Global Investors; Orient Holdings (OCBC group) owns the other 30%."
     evidence: public
@@ -67,7 +67,7 @@ relationships:
     quote: "The Group also operates in Indonesia and Brunei."
   - from: great-eastern-general
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Great Eastern General Insurance is licensed by MAS as a direct insurer (composite)."
     evidence: public
@@ -99,7 +99,7 @@ relationships:
   # ------------------------------------------------------ Prudential Singapore
   - from: prudential-plc
     to: prudential-singapore
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "Prudential Assurance Company Singapore is an indirect wholly-owned subsidiary of Prudential plc."
     evidence: public
@@ -109,7 +109,7 @@ relationships:
     quote: "Prudential Assurance Company Singapore, an indirect wholly-owned subsidiary of Prudential plc, is one of Singapore’s leading life and health insurance companies."
   - from: prudential-singapore
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Prudential Assurance Company Singapore is licensed by MAS as a direct life insurer; MAS also designates it a D-SII."
     evidence: public
@@ -191,7 +191,7 @@ relationships:
   # ------------------------------------------------------------ AIA Singapore
   - from: aia-group
     to: aia-singapore
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "AIA Group's Singapore business is a wholly-owned subsidiary."
     evidence: public
@@ -201,7 +201,7 @@ relationships:
     quote: "It has a presence in 18 markets – wholly-owned branches and subsidiaries in the Chinese Mainland, Hong Kong SAR, Thailand, Singapore, Malaysia, Australia, Cambodia, Indonesia, Myanmar, New Zealand, the Philippines, South Korea, Sri Lanka, Taiwan (China), Vietnam, Brunei and Macau SAR, and a 49 per cent joint venture in India."
   - from: aia-singapore
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "AIA Singapore is licensed by MAS as a direct insurer (composite); MAS also designates it a D-SII."
     evidence: public
@@ -293,7 +293,7 @@ relationships:
   # --------------------------------------------------------- Income Insurance
   - from: ntuc-enterprise
     to: income-insurance
-    type: owns
+    type: holds_stake_in
     share: 0.72
     detail: "NTUC Enterprise holds about 72% of Income Insurance."
     evidence: public
@@ -335,7 +335,7 @@ relationships:
   # ------------------------------------------------------------------ Singlife
   - from: sumitomo-life
     to: singlife
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "Singlife has been a fully owned subsidiary of Japan's Sumitomo Life since March 2024."
     evidence: public
@@ -345,7 +345,7 @@ relationships:
     quote: "Leading homegrown financial services company, Singapore Life Holdings Pte Ltd (“Singlife”), is pleased to announce that it has become a fully owned subsidiary of Sumitomo Life Insurance Company (“Sumitomo Life”)."
   - from: singlife
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Singapore Life Ltd. is licensed by MAS as a direct insurer (composite) and a major payment institution."
     evidence: public
@@ -377,7 +377,7 @@ relationships:
   # -------------------------------------------------------- Manulife Singapore
   - from: manulife-financial
     to: manulife-singapore
-    type: owns
+    type: holds_stake_in
     share: 1.0
     detail: "Manulife Financial Corporation lists Manulife (Singapore) Pte. Ltd. as a 100%-owned major operating subsidiary."
     evidence: public
@@ -387,7 +387,7 @@ relationships:
     quote: "Manulife (Singapore) Pte. Ltd. | Singapore | Life insurance company"
   - from: manulife-singapore
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Manulife (Singapore) is licensed by MAS as a direct life insurer."
     evidence: public
@@ -499,8 +499,9 @@ relationships:
   # ------------------------------------------------------------------- Allianz
   - from: allianz
     to: pimco
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "PIMCO is a majority-owned indirect subsidiary of Allianz SE (exact stake not stated)."
     evidence: public
     as_of: 2026-04-10
@@ -509,7 +510,7 @@ relationships:
     quote: "PIMCO is a majority-owned indirect subsidiary of Allianz SE, a publicly traded European insurance and financial services company."
   - from: allianz
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "Allianz Insurance Singapore Pte. Ltd. is licensed by MAS as a direct insurer (composite); Allianz Global Corporate & Specialty SE's Singapore branch is a licensed direct general insurer."
     evidence: public

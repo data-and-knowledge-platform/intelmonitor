@@ -25,7 +25,7 @@ relationships:
   # ------------------------------------------------------------ CDP
   - from: cdp
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS lists The Central Depository (Pte) Limited, SGX's securities clearing house and depository, as an Approved Clearing House operating the Central Depository System."
     evidence: public
@@ -37,7 +37,7 @@ relationships:
   # ------------------------------------------------------------ CLS
   - from: cls-bank
     to: federal-reserve
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "CLS is regulated and supervised by the Federal Reserve Board and the Federal Reserve Bank of New York; the Fed chairs the CLS Oversight Committee."
     evidence: public
@@ -47,7 +47,7 @@ relationships:
     quote: "We are regulated and supervised by the Board of Governors of the Federal Reserve System and the Federal Reserve Bank of New York"
   - from: cls-bank
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS oversees CLS, which has settled SGD since September 2003, through the Fed-led cooperative oversight arrangement; CLS is a designated system under the Finality and Netting Act."
     evidence: public
@@ -57,7 +57,7 @@ relationships:
     quote: "The Continuous Linked Settlement (CLS) is a global payment system that MAS oversees via a cooperative oversight arrangement."
   - from: dbs
     to: cls-bank
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "DBS is on the CLS shareholders list; CLS is mutually owned by its member institutions (stake held in CLS Group, CLS Bank's parent)."
     evidence: public
@@ -67,7 +67,7 @@ relationships:
     quote: "Shareholders list | DBS Bank | Singapore"
   - from: ocbc
     to: cls-bank
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "OCBC is on the CLS shareholders list; CLS is mutually owned by its member institutions (stake held in CLS Group, CLS Bank's parent)."
     evidence: public
@@ -77,7 +77,7 @@ relationships:
     quote: "Shareholders list | Oversea-Chinese Banking Corporation | Singapore"
   - from: uob
     to: cls-bank
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "UOB is on the CLS shareholders list (stake held in CLS Group, CLS Bank's parent); it is not on the CLS settlement member list."
     evidence: public
@@ -87,7 +87,7 @@ relationships:
     quote: "Shareholders list | United Overseas Bank | Singapore"
   - from: citigroup
     to: cls-bank
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "Citibank (New York) is on the CLS shareholders list (stake held in CLS Group, CLS Bank's parent)."
     evidence: public
@@ -97,7 +97,7 @@ relationships:
     quote: "Shareholders list | Citibank | New York, US"
   - from: hsbc
     to: cls-bank
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "HSBC is on the CLS shareholders list (stake held in CLS Group, CLS Bank's parent)."
     evidence: public
@@ -107,7 +107,7 @@ relationships:
     quote: "Shareholders list | HSBC | London, England"
   - from: jpmorgan
     to: cls-bank
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "JPMorgan Chase is on the CLS shareholders list (stake held in CLS Group, CLS Bank's parent)."
     evidence: public
@@ -117,7 +117,7 @@ relationships:
     quote: "Shareholders list | JPMorgan Chase | New York, US"
   - from: standard-chartered
     to: cls-bank
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "Standard Chartered is on the CLS shareholders list (stake held in CLS Group, CLS Bank's parent)."
     evidence: public
@@ -127,7 +127,7 @@ relationships:
     quote: "Shareholders list | Standard Chartered | London, UK"
   - from: ubs
     to: cls-bank
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "UBS is on the CLS shareholders list (stake held in CLS Group, CLS Bank's parent)."
     evidence: public
@@ -139,7 +139,7 @@ relationships:
   # ------------------------------------------------------------ NETS and BCS
   - from: nets
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS lists NETS as the operator of the designated NETS EFTPOS payment system and as a major payment institution (account issuance, money transfer, merchant acquisition, e-money)."
     evidence: public
@@ -149,7 +149,7 @@ relationships:
     quote: "NETWORK FOR ELECTRONIC TRANSFERS (SINGAPORE) PTE LTD | Incorporated in Singapore | Designated Payment System Operator | NETS Electronic Fund Transfers at Point of Sale | Major Payment Institution"
   - from: bcs
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS lists BCS as the designated payment system operator of FAST, Inter-bank GIRO and the SGD and USD Cheque Clearing Systems."
     evidence: public
@@ -171,8 +171,9 @@ relationships:
     quote: "The Class A Ordinary Shares and Warrants are listed on NASDAQ under the symbols “GRAB” and “GRABW,” respectively."
   - from: grab
     to: grabpay
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "GPay Network (S) Pte. Ltd., the GrabPay wallet entity in Singapore, is a significant subsidiary of Grab Holdings Limited."
     evidence: public
     as_of: 2025-12-31
@@ -181,7 +182,7 @@ relationships:
     quote: "Subsidiaries of Grab Holdings Limited | GPay Network (S) Pte. Ltd. | Singapore"
   - from: grabpay
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS licenses GPay Network (S) Pte. Ltd. as a major payment institution under the Payment Services Act."
     evidence: public
@@ -191,7 +192,7 @@ relationships:
     quote: "GPAY NETWORK (S) PTE. LTD. | Incorporated in Singapore | Major Payment Institution"
   - from: uber
     to: grab
-    type: shareholder_of
+    type: holds_stake_in
     share: 0.131
     detail: "Uber holds 13.1% of Grab's ordinary shares (5.5% of voting power), from the 2018 sale of its Southeast Asia business."
     evidence: public
@@ -201,7 +202,7 @@ relationships:
     quote: "Uber Technologies, Inc.(6) | 535,902,982 | — | 13.1% | 5.5%"
   - from: softbank
     to: grab
-    type: shareholder_of
+    type: holds_stake_in
     share: 0.098
     detail: "SB Investment Advisers (UK), SoftBank's Vision Fund manager, holds 9.8% of Grab's ordinary shares (4.1% of voting power)."
     evidence: public
@@ -211,7 +212,7 @@ relationships:
     quote: "SB Investment Advisers (UK) Limited(5) | 401,796,672 | — | 9.8% | 4.1%"
   - from: toyota
     to: grab
-    type: shareholder_of
+    type: holds_stake_in
     share: 0.054
     detail: "Toyota holds 5.4% of Grab's ordinary shares (2.3% of voting power) and has a collaboration agreement with Grab."
     evidence: public
@@ -273,8 +274,9 @@ relationships:
   # ------------------------------------------------------------ SeaMoney (Monee) and Sea
   - from: sea-limited
     to: seamoney
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Sea Limited runs its digital financial services business as Monee, renamed from SeaMoney on 8 May 2025."
     evidence: public
     as_of: 2025-12-31
@@ -293,7 +295,7 @@ relationships:
     quote: "Our ADSs have been listed on the New York Stock Exchange since October 20, 2017 under the symbol “SE.”"
   - from: tencent
     to: sea-limited
-    type: shareholder_of
+    type: holds_stake_in
     share: 0.17
     detail: "Tencent entities hold 17.0% of Sea's ordinary shares; Tencent also licenses games to Sea's Garena."
     evidence: public
@@ -303,8 +305,9 @@ relationships:
     quote: "Principal Shareholders: | Tencent entities(12) | 104,264,743 | — | 17.0 | —"
   - from: seamoney
     to: maribank
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Monee (formerly SeaMoney) oversees Sea's digital banks, MariBank in Singapore and SeaBank in Indonesia and the Philippines."
     evidence: public
     as_of: 2025-05-08
@@ -313,7 +316,7 @@ relationships:
     quote: "The rebranded division will oversee the tech company’s two digital banks—MariBank in Singapore and SeaBank in Indonesia and the Philippines—along with its payments and lending services."
   - from: maribank
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS lists MariBank Singapore Private Limited under the Local Bank category; MariBank was licensed as a digital bank in 2020."
     evidence: public
@@ -323,8 +326,9 @@ relationships:
     quote: "MARIBANK SINGAPORE PRIVATE LIMITED | Incorporated in Singapore | Exempt Capital Markets Services Entity | Local Bank"
   - from: sea-limited
     to: shopeepay-singapore
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "ShopeePay Private Limited, Sea's Singapore e-wallet entity, is a principal subsidiary of Sea Limited."
     evidence: public
     as_of: 2025-12-31
@@ -333,7 +337,7 @@ relationships:
     quote: "List of Principal Subsidiaries and Consolidated Affiliated Entities of Sea Limited | ShopeePay Private Limited | Singapore"
   - from: shopeepay-singapore
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS licenses ShopeePay Private Limited as a major payment institution under the Payment Services Act."
     evidence: public
@@ -365,8 +369,9 @@ relationships:
     quote: "Our Class A ordinary shares are listed for trading on Nasdaq under the symbol “WSE” and on the LSE under the symbol “WISE.”"
   - from: wise
     to: wise-asia-pacific
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Wise Asia-Pacific Pte. Ltd. is the Wise Group entity in Singapore."
     evidence: public
     as_of: 2026-10-26
@@ -375,7 +380,7 @@ relationships:
     quote: "Asia and Pacific | Singapore | Wise Asia-Pacific Pte. Ltd."
   - from: wise-asia-pacific
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS licenses Wise Asia-Pacific as a major payment institution (licence PS20200413); it also holds a capital markets services licence."
     evidence: public
@@ -387,8 +392,9 @@ relationships:
   # ------------------------------------------------------------ Airwallex
   - from: airwallex
     to: airwallex-singapore
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Airwallex launched in Singapore in January 2022 after Airwallex (Singapore) Pte. Ltd. received its MAS major payment institution licence."
     evidence: public
     as_of: 2022-01-13
@@ -397,7 +403,7 @@ relationships:
     quote: "Leading fintech platform Airwallex today announced its official launch in Singapore, following its grant of a Major Payment Institution (MPI) license by the Monetary Authority of Singapore and a beta launch in November last year."
   - from: airwallex-singapore
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS licenses Airwallex (Singapore) Pte. Ltd. as a major payment institution under the Payment Services Act."
     evidence: public
@@ -407,7 +413,7 @@ relationships:
     quote: "AIRWALLEX (SINGAPORE) PTE. LTD. | Incorporated in Singapore | Major Payment Institution"
   - from: visa
     to: airwallex
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "Visa Ventures joined Airwallex's US$300m Series F in May 2025 as a strategic investor; stake not disclosed."
     evidence: public
@@ -419,7 +425,7 @@ relationships:
   # ------------------------------------------------------------ Nium
   - from: nium
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS licenses NIUM Pte. Ltd. as a major payment institution under the Payment Services Act."
     evidence: public
@@ -429,7 +435,7 @@ relationships:
     quote: "NIUM PTE. LTD. | Incorporated in Singapore | Major Payment Institution"
   - from: visa
     to: nium
-    type: shareholder_of
+    type: holds_stake_in
     share: null
     detail: "Visa invested in Nium's US$200m Series D in July 2021; stake not disclosed."
     evidence: reported
@@ -441,8 +447,9 @@ relationships:
   # ------------------------------------------------------------ Stripe
   - from: stripe
     to: stripe-singapore
-    type: owns
+    type: holds_stake_in
     share: null
+    controlling: true
     detail: "Stripe Payments Singapore Pte. Ltd. is the Stripe contracting entity for Singapore users."
     evidence: public
     as_of: 2026-10-26
@@ -451,7 +458,7 @@ relationships:
     quote: "Singapore | Stripe Payments Singapore Pte. Ltd."
   - from: stripe-singapore
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS licenses Stripe Payments Singapore Pte. Ltd. as a major payment institution under the Payment Services Act."
     evidence: public
@@ -462,7 +469,7 @@ relationships:
   # ------------------------------------------------------------ 2C2P
   - from: 2c2p
     to: mas
-    type: supervised_by
+    type: regulated_by
     share: null
     detail: "MAS licenses 2C2P Pte. Ltd., 2C2P's Singapore headquarters entity, as a major payment institution (money transfer and merchant acquisition)."
     evidence: public

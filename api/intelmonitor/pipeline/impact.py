@@ -38,6 +38,7 @@ from intelmonitor.relationships import (
     RelType,
     Service,
     candidates,
+    owns,
 )
 from intelmonitor.seed import EntityKind, load_subjects
 
@@ -45,15 +46,16 @@ from intelmonitor.seed import EntityKind, load_subjects
 EXPOSURE_MIN_WEIGHT = 0.05
 # An exposure (a loan share in a country, region or sector) carries only economic and market
 # news. A rule, a strategy move, a management change or an incident in a place binds or hits the
-# institutions there, which reach a bank through its own unit in the place (owns, subsidiary_of),
-# not through its loans.
+# institutions there, which reach a bank through its own unit in the place (holds_stake_in), not
+# through its loans.
 EXPOSURE_CATEGORIES: tuple[Category, ...] = ("market", "financial", "policy", "security")
-# A second hop into a place counts only through the subject's own unit there: OCBC owns OCBC
-# Malaysia, which operates in Malaysia; not UOB depends on AWS, which operates in Singapore.
-PLACE_FIRST_HOPS: tuple[RelType, ...] = ("owns", "subsidiary_of")
+# A second hop into a place counts only through the subject's own unit there: OCBC holds a stake
+# in OCBC Malaysia, which operates in Malaysia; not UOB depends on AWS, which operates in Singapore.
+PLACE_FIRST_HOPS: tuple[RelType, ...] = ("holds_stake_in",)
 # Links that never carry impact: a regulator's or an exchange's own news names the institutions
-# its rules or listings bind, so extraction tags them directly; the links stay for the graph.
-NO_IMPACT: tuple[RelType, ...] = ("supervised_by", "listed_on")
+# its rules or listings bind, so extraction tags them directly; the links stay for the graph. A
+# seed group (belongs_to_sector) is not an entity, and nothing is tagged to it.
+NO_IMPACT: tuple[RelType, ...] = ("regulated_by", "listed_on", "belongs_to_sector")
 # For the same reason, no path into a regulator or central bank counts: otherwise MEPS+, which
 # depends on MAS, would carry every MAS development to every MEPS+ bank. News about MEPS+ itself
 # tags MEPS+, and reaches the banks from there.
@@ -133,16 +135,16 @@ SERVICE_WORDS: dict[Service, str] = {
 
 # A link type in plain words, as the graph labels it: "DBS depends on AWS".
 LINK_WORDS: dict[RelType, str] = {
+    "holds_stake_in": "holds a stake in",
+    "regulated_by": "is regulated by",
+    "operates_in": "operates in",
     "exposed_to": "lends to",
     "depends_on": "depends on",
-    "participates_in": "takes part in",
-    "owns": "owns",
-    "subsidiary_of": "is a subsidiary of",
-    "operates_in": "operates in",
-    "supervised_by": "is supervised by",
-    "shareholder_of": "is a shareholder of",
     "member_of": "is a member of",
+    "participates_in": "takes part in",
+    "partner_of": "is a partner of",
     "listed_on": "is listed on",
+    "belongs_to_sector": "belongs to",
 }
 
 
@@ -229,15 +231,16 @@ def _share(weight: float) -> str:
 def link_words(r: Relationship, to: Node) -> str:
     """One link in plain words, without its subject: "depends on AWS for cloud services",
     "has 12.2% of its loans in Hong Kong", "holds 84.9% of its stablecoin reserves in the Circle
-    Reserve Fund", "owns 40.0% of GXS Bank"."""
+    Reserve Fund", "holds 28.3% of DBS", "owns Citibank" for a controlling stake with no share."""
     if r.type == "exposed_to":
         w = _exposure_words(r)
         share = f"{_share(r.weight)} of its {w.basis}" if r.weight is not None else w.basis
         return f"{w.verb} {share} {w.prep} {_place(to)}"
     phrase = f"{LINK_WORDS[r.type]} {to.name}"
-    if r.type in ("owns", "shareholder_of") and r.weight is not None:
-        verb = "owns" if r.type == "owns" else "holds"
-        phrase = f"{verb} {_share(r.weight)} of {to.name}"
+    if r.type == "holds_stake_in" and r.weight is not None:
+        phrase = f"holds {_share(r.weight)} of {to.name}"
+    elif owns(r):
+        phrase = f"owns {to.name}"
     if r.type == "depends_on" and r.service:
         phrase += f" for {SERVICE_WORDS[r.service]}"
     if r.chart_reading:
@@ -247,15 +250,15 @@ def link_words(r: Relationship, to: Node) -> str:
 
 def relationship_label(r: Relationship) -> str:
     """A stored link in plain words without its ends, as the graph labels it: "lends to, 12.2%
-    of loans", "earns revenue from, 24% of revenue", "depends on, for cloud services", "owns,
-    100%"."""
+    of loans", "earns revenue from, 24% of revenue", "depends on, for cloud services", "holds a
+    stake in, 100%"."""
     if r.type == "exposed_to":
         w = _exposure_words(r)
         if r.weight is None:
             return f"{w.head}, share not disclosed"
         return f"{w.head}, {_share(r.weight)} of {w.short}"
     label = LINK_WORDS[r.type]
-    if r.type in ("owns", "shareholder_of") and r.weight is not None:
+    if r.type == "holds_stake_in" and r.weight is not None:
         label += f", {_share(r.weight)}"
     if r.type == "depends_on" and r.service:
         label += f", for {SERVICE_WORDS[r.service]}"
@@ -264,32 +267,30 @@ def relationship_label(r: Relationship) -> str:
 
 # A link type read from its `to` end, as the Related graph labels it: "AWS, depended on by DBS".
 INBOUND_WORDS: dict[RelType, str] = {
+    "holds_stake_in": "held by",
+    "regulated_by": "regulates",
+    "operates_in": "hosts",
     "exposed_to": "lent to by",
     "depends_on": "depended on by",
-    "participates_in": "used by",
-    "owns": "owned by",
-    "subsidiary_of": "parent of",
-    "operates_in": "hosts",
-    "supervised_by": "supervises",
-    "shareholder_of": "held by",
     "member_of": "includes",
+    "participates_in": "used by",
+    "partner_of": "partner of",
     "listed_on": "lists",
+    "belongs_to_sector": "includes",
 }
 
 
 def short_label(r: Relationship, outbound: bool) -> str:
     """A stored link in a few words from one end, for the Related graph: from its `from` end
-    when `outbound` ("owns 100%", "24.4% of loans", "depends on"), else from its `to` end
-    ("owned 100% by", "3.1% of its loans", "depended on by")."""
+    when `outbound` ("holds 100%", "24.4% of loans", "depends on"), else from its `to` end
+    ("100% held by", "3.1% of its loans", "depended on by")."""
     share = _share(r.weight) if r.weight is not None else None
     if r.type == "exposed_to":
         w = _exposure_words(r)
         if share:
             return f"{share} of {w.short}" if outbound else f"{share} of its {w.short}"
         return w.head if outbound else w.inbound
-    if r.type == "owns" and share:
-        return f"owns {share}" if outbound else f"owned {share} by"
-    if r.type == "shareholder_of" and share:
+    if r.type == "holds_stake_in" and share:
         return f"holds {share}" if outbound else f"{share} held by"
     if not outbound:
         return INBOUND_WORDS[r.type]

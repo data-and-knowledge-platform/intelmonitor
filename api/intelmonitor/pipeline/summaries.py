@@ -80,9 +80,7 @@ BRIEF_LINK_TYPES: tuple[RelType, ...] = (
     "exposed_to",
     "depends_on",
     "participates_in",
-    "owns",
-    "subsidiary_of",
-    "shareholder_of",
+    "holds_stake_in",
     "operates_in",
 )
 BRIEF_LINKS_PER_TYPE = 2

@@ -591,10 +591,10 @@ class SharedRelationships(BaseModel):
 
 class LinkedRoute(BaseModel):
     """How an institution links to the subject: one stored link, or two through a company it
-    owns, written in plain words by code."""
+    holds a stake in, written in plain words by code."""
 
     text: str = Field(
-        description='"Has 12.2% of its loans in Hong Kong"; "Owns 100% of DBS Bank (Hong Kong), '
+        description='"Has 12.2% of its loans in Hong Kong"; "Holds 100% of DBS Bank (Hong Kong), '
         'which operates in Hong Kong"; region-level routes end ", a figure for the whole region"'
     )
     region: str | None = Field(description="The region's name when the route ends in a region")
@@ -611,7 +611,8 @@ class LinkedInstitution(BaseModel):
     subject: SubjectRef | None = Field(description="None when the institution is not tracked")
     region: bool = Field(description="Its largest figure covers a whole region, not the subject")
     routes: list[LinkedRoute] = Field(
-        description="Direct links first, then through a company it owns, then region-level"
+        description="Direct links first, then through a company it holds a stake in, then "
+        "region-level"
     )
     impacts: list[SubjectImpact] = Field(
         description="Developments in the last 7 days that reach it through these routes"
@@ -810,20 +811,20 @@ class DocumentDetail(BaseModel):
 
 
 NodeType = Literal["topic", "group", "entity", "endpoint", "development"]
-# The relationship store's types in capitals; MEMBER_OF also links an entity to its peer group in
-# the seed. AFFECTS: a development to what it happened to or who did it. IMPACTS: a development to
-# an entity it reaches indirectly.
+# The relationship store's types in capitals; BELONGS_TO_SECTOR links an entity to its seed
+# group. AFFECTS: a development to what it happened to or who did it. IMPACTS: a development to an
+# entity it reaches indirectly.
 LinkType = Literal[
+    "HOLDS_STAKE_IN",
+    "REGULATED_BY",
+    "OPERATES_IN",
     "EXPOSED_TO",
     "DEPENDS_ON",
-    "PARTICIPATES_IN",
-    "OWNS",
-    "SUBSIDIARY_OF",
-    "OPERATES_IN",
-    "SUPERVISED_BY",
-    "SHAREHOLDER_OF",
     "MEMBER_OF",
+    "PARTICIPATES_IN",
+    "PARTNER_OF",
     "LISTED_ON",
+    "BELONGS_TO_SECTOR",
     "AFFECTS",
     "IMPACTS",
 ]
@@ -1071,9 +1072,11 @@ class RelatedLink(BaseModel):
 
     id: str
     type: RelType
-    outbound: bool = Field(description="The centre is the link's from end: DBS owns DBS India")
+    outbound: bool = Field(
+        description="The centre is the link's from end: DBS holds a stake in DBS India"
+    )
     label: str = Field(
-        description='A few words from the centre: "owns 100%", "24.4% of loans", "depended on by"'
+        description='A few words from the centre: "holds 100%", "24.4% of loans", "depended on by"'
     )
 
 

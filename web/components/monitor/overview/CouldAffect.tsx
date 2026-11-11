@@ -19,7 +19,7 @@ type RelType = Schema<"RelationshipLink">["type"];
 
 const GROUPS: { title: string; types: RelType[] }[] = [
   { title: "Exposure", types: ["exposed_to"] },
-  { title: "Ownership and structure", types: ["owns", "subsidiary_of", "shareholder_of", "operates_in", "member_of"] },
+  { title: "Ownership and structure", types: ["holds_stake_in", "operates_in", "member_of"] },
   { title: "Dependency", types: ["depends_on", "participates_in"] },
 ];
 const GROUPED = new Set(GROUPS.flatMap((g) => g.types));
@@ -85,7 +85,7 @@ function LinkBlock({ rows, subject }: { rows: Impact[]; subject: Subject }) {
 }
 
 /**
- * The evidence for a route, one line per link ("DBS owns DBS Bank India: Public disclosure: ..."),
+ * The evidence for a route, one line per link ("DBS holds a stake in DBS Bank India: Public disclosure: ..."),
  * or a single line when every link comes from the same source.
  */
 export function RouteEvidence({ links }: { links: Schema<"RelationshipLink">[] }) {
