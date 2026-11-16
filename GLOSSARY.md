@@ -9,7 +9,7 @@ Anything the site monitors: a topic or an entity.
 _Avoid_: Monitor
 
 **Entity**:
-An institution, system, country or sector the site monitors, such as DBS or PayNow.
+An institution, system, country, region or sector the site monitors, such as DBS or PayNow.
 _Avoid_: Company, institution (as the general term)
 
 **Topic**:
@@ -49,8 +49,10 @@ How much a development matters to one of its subjects, judged only from what its
 _Avoid_: Risk rating, materiality, severity
 
 **Link**:
-A stored relationship between two entities, or between an entity and an endpoint (an institution, place or system the site does not monitor), of one of ten types such as holds_stake_in or depends_on, with its source and a one-line reason.
-_Avoid_: Edge (outside the graph view), connection
+A stored relationship between two entities, of one of ten types such as holds_stake_in or depends_on, with its source and a one-line reason.
+A unit of an entity, such as HSBC Singapore, is read as the entity itself, and a link into a region covers its member countries.
+The one exception is belongs_to_sector, which links an entity to its group.
+_Avoid_: Edge (outside the Related graph), connection
 
 **Link strength**:
 How strongly a material adverse event at one end of a link reaches the other end: Strong, Moderate or Weak, rated once for each direction.
