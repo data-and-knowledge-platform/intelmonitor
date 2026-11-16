@@ -258,9 +258,10 @@ class Build:
         built, with the reason: a row folds.yaml does not carry, a row whose ends fold into one
         entity, a row with an end that is not an entity (a seed group is one only for
         belongs_to_sector), and a repeat. Of two rows for one link where either was folded, the
-        row with the newer source is kept, and a folded link records in `rating_from` the id it
-        had before folding. A second unfolded row from the same source is merged into the first
-        (details joined, quotes joined with " | "), any other unfolded repeat dropped."""
+        row with the newer source is kept (on a tie the unfolded row, else the first), and a
+        folded link records in `rating_from` the id it had before folding. A second unfolded row
+        from the same source is merged into the first (details joined, quotes joined with " | "),
+        any other unfolded repeat dropped."""
         row = f"{rel.from_} {rel.type} {rel.to}"
         if rel.id in self.not_carried:
             self.drop(row, f"not carried (folds.yaml): {self.not_carried[rel.id]}")
@@ -288,7 +289,9 @@ class Build:
         if first is None:
             self.rels[rel.id] = rel
         elif first.rating_from or rel.rating_from:
-            newer = (rel.as_of or rel.last_confirmed) > (first.as_of or first.last_confirmed)
+            dated, before = rel.as_of or rel.last_confirmed, first.as_of or first.last_confirmed
+            unfolded = first.rating_from is not None and rel.rating_from is None
+            newer = dated > before or (dated == before and unfolded)
             kept, lost = (rel, first) if newer else (first, rel)
             self.rels[rel.id] = kept
             self.drop(
@@ -617,14 +620,16 @@ def stale(rels: list[Relationship]) -> list[str]:
 
 def with_ratings(rels: list[Relationship]) -> tuple[list[Relationship], list[str], list[str]]:
     """Every relationship with its strengths from transmission.yaml (belongs_to_sector has
-    none), the rateable ids with no entry, and the entries for links that no longer exist. A
-    folded link takes the rating of the unit's link it was (`rating_from`) while transmission.yaml
-    holds one, an interim until scripts/rate_relationships.py rates every link again and drops
-    the unit's entry; then it takes its own, and `rating_from` is cleared."""
+    none), the rateable ids with no entry, and the entries for links that no longer exist. A link
+    takes its own entry when transmission.yaml holds one, so a link that was already between two
+    entities keeps its strengths when a folded unit's newer row replaces its row. A folded link
+    with no entry of its own takes the rating of the unit's link it was (`rating_from`), an
+    interim until scripts/rate_relationships.py rates it under its own id; once it has its own,
+    `rating_from` is cleared."""
     ratings = load_ratings()
     out: list[Relationship] = []
     for r in rels:
-        key = r.rating_from if r.rating_from in ratings else r.id
+        key = r.rating_from if r.id not in ratings and r.rating_from in ratings else r.id
         update: dict[str, object] = {"rating_from": key if key != r.id else None}
         if rateable(r) and key in ratings:
             update["transmission"] = Transmission(
@@ -701,7 +706,7 @@ def report(build: Build, rels: list[Relationship]) -> None:
     grades: tuple[Evidence, ...] = Evidence.__args__
     counts = Counter((r.type, r.evidence) for r in rels)
     sectors = sum(r.type == "belongs_to_sector" for r in rels)
-    folded = [r for r in rels if r.rating_from is not None]
+    folded = [r for r in build.rels.values() if r.rating_from is not None]  # before with_ratings
     print(
         f"\n{len(rels)} relationships: {len(rels) - sectors} between two entities, of which "
         f"{len(folded)} folded from a unit's row; {sectors} belongs_to_sector"

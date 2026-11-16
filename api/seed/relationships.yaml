@@ -1949,22 +1949,21 @@ relationships:
   source_url: https://www.hkma.gov.hk/media/eng/publication-and-research/annual-report/2024/20_Annex.pdf
   source_title: 'HKMA Annual Report 2024, Annex: Authorized Institutions and Local Representative Offices
     at 31.12.2024'
-  quote: Licensed Banks | Incorporated in Hong Kong | DBS BANK (HONG KONG) LIMITED
-  detail: DBS Bank (Hong Kong) is an HKMA-authorized licensed bank incorporated in Hong Kong.
-  reason: DBS Bank (Hong Kong) is an HKMA-authorized licensed bank incorporated in Hong Kong.
+  quote: Licensed Banks | Incorporated outside Hong Kong | DBS BANK LTD.
+  detail: DBS Bank Ltd. also holds an HKMA licence for its Hong Kong branch, alongside its Hong Kong subsidiary.
+  reason: DBS Bank Ltd. also holds an HKMA licence for its Hong Kong branch, alongside its Hong Kong subsidiary.
   transmission:
     from_to:
       strength: Weak
-      reason: HKMA is the regulator of the whole Hong Kong banking system and DBS HK is only one of many
-        authorized institutions. A material adverse event at DBS HK would not normally impair HKMA's operations
-        or finances. The impact would be limited to supervisory workload and a possible financial stability
-        concern.
+      reason: A material adverse event at DBS would have only limited effect on HKMA. DBS is one of many
+        authorized institutions HKMA supervises, and HKMA has no financial exposure to it. The only effect
+        is a supervisory workload.
     to_from:
-      strength: Strong
-      reason: As the licensing and supervisory authority, HKMA controls DBS HK's authorization to operate
-        as a licensed bank. A material adverse HKMA action, such as sanctions, capital or conduct requirements,
-        or licence conditions, could significantly affect DBS HK's core operations.
-  rating_from: dbs-hong-kong:regulated_by:hkma
+      strength: Moderate
+      reason: HKMA licenses and supervises DBS's Hong Kong branch and subsidiary. An adverse HKMA action
+        such as sanctions, capital or liquidity requirements, or licence conditions could meaningfully
+        affect DBS's Hong Kong operations. The effect is contained because Hong Kong is only part of DBS's
+        group business, and the evidence shows only a licensing relationship.
 - id: dbs:regulated_by:mas
   from: dbs
   to: mas
@@ -2111,17 +2110,15 @@ relationships:
   transmission:
     from_to:
       strength: Weak
-      reason: A material adverse event at the insurer would normally have limited impact on MAS through
-        this relationship. MAS is a regulator and central bank with no evidenced financial exposure or
-        operational dependence on this licensee. Any effect would be supervisory workload or reputational,
-        not material.
+      reason: MAS is the regulator and supervisor of the whole sector. A material adverse event at Great
+        Eastern, even as a designated D-SII, would be handled within MAS's wider remit and would not materially
+        affect MAS's own operations or finances. Any impact is mostly supervisory workload or reputational.
     to_from:
       strength: Strong
-      reason: As licensing and supervisory authority, MAS can materially affect the insurer through its
-        licence, capital and conduct requirements, enforcement actions, or restrictions on business. The
-        insurer is licensed as a direct composite insurer, so its core operations depend on MAS authorisation,
-        and the insurer has no substitute regulator.
-  rating_from: great-eastern-general:regulated_by:mas
+      reason: As D-SII designated by MAS, Great Eastern is directly subject to MAS authority over licensing,
+        capital, and supervision. A material adverse event at MAS, such as a shift in its regulatory stance
+        or enforcement, could significantly change Great Eastern's capital requirements, compliance burden
+        and operating freedom. The regulatory dependency is non-substitutable.
 - id: gxs-bank:regulated_by:mas
   from: gxs-bank
   to: mas
@@ -2518,21 +2515,21 @@ relationships:
   source_url: https://www.hkma.gov.hk/media/eng/publication-and-research/annual-report/2024/20_Annex.pdf
   source_title: 'HKMA Annual Report 2024, Annex: Authorized Institutions and Local Representative Offices
     at 31.12.2024'
-  quote: Licensed Banks | Incorporated in Hong Kong | OCBC Bank (Hong Kong) Limited
-  detail: OCBC Bank (Hong Kong) is an HKMA-authorized licensed bank incorporated in Hong Kong.
-  reason: OCBC Bank (Hong Kong) is an HKMA-authorized licensed bank incorporated in Hong Kong.
+  quote: Licensed Banks | Incorporated outside Hong Kong | Oversea-Chinese Banking Corporation Limited
+  detail: OCBC also holds an HKMA licence for its Hong Kong branch, alongside OCBC Bank (Hong Kong).
+  reason: OCBC also holds an HKMA licence for its Hong Kong branch, alongside OCBC Bank (Hong Kong).
   transmission:
     from_to:
       strength: Weak
-      reason: HKMA supervises many authorized institutions, and a material adverse event at one licensed
-        bank would normally have limited effect on the regulator's own operations or finances. Any impact
-        would be contained, e.g. added supervisory workload.
+      reason: An adverse event at OCBC would have limited effect on HKMA. OCBC is one of many authorised
+        institutions HKMA supervises, and its Hong Kong branch is a small part of the regulated sector.
+        HKMA's operations and mandate do not depend on OCBC.
     to_from:
-      strength: Strong
-      reason: As the licensing authority and prudential regulator, HKMA can impose conditions, restrictions
-        or sanctions, or revoke authorization. Adverse HKMA action would materially affect OCBC Bank (Hong
-        Kong)'s ability to operate, and the bank is directly dependent on its authorization.
-  rating_from: ocbc-hong-kong:regulated_by:hkma
+      strength: Moderate
+      reason: An adverse HKMA action, such as a sanction, licence condition or tightened requirement,
+        would directly affect OCBC's Hong Kong branch licence and operations. The effect is contained
+        to the Hong Kong branch and OCBC Bank (Hong Kong), because OCBC's primary regulator is elsewhere
+        and the evidence shows no group-wide dependency on HKMA.
 - id: ocbc:regulated_by:mas
   from: ocbc
   to: mas
@@ -7199,16 +7196,14 @@ relationships:
   transmission:
     from_to:
       strength: Weak
-      reason: Bank of China is one of many eGIRO participating banks; the evidence gives no volume or
-        concentration data. The system is multi-participant and would continue operating if one participant
-        had an adverse event, so impact on eGIRO would be limited.
+      reason: GIRO is a multi-bank interbank system with many participating banks. A material adverse
+        event at Bank of China's Singapore operations would affect only its own flows and would not materially
+        impair the system, and no evidence suggests it is systemically significant within GIRO.
     to_from:
       strength: Moderate
-      reason: As a participating bank, Bank of China relies on eGIRO for part of its Singapore payment
-        and direct-debit services. A material eGIRO disruption would meaningfully affect that part of
-        its operations, but it is a small share of the bank's global business and it has alternative payment
-        channels.
-  rating_from: bank-of-china:participates_in:egiro
+      reason: As a participating bank, Bank of China relies on GIRO for Singapore retail and corporate
+        direct debit and credit services. A GIRO outage would disrupt that payments service, but this
+        is only part of its broader operations and alternative payment channels exist.
 - id: bank-of-china:participates_in:meps-plus
   from: bank-of-china
   to: meps-plus
@@ -7926,15 +7921,17 @@ relationships:
   transmission:
     from_to:
       strength: Moderate
-      reason: DBS is one of several eGIRO participating banks, so a material adverse event at DBS could
-        disrupt part of eGIRO's payment flows, but the system has other participating banks and no evidence
-        of DBS-specific concentration or criticality.
+      reason: DBS is one of several participating banks in Interbank GIRO and is a major Singapore bank,
+        so a material adverse event there (e.g., operational outage) could disrupt a meaningful share
+        of GIRO flows. However, the system has multiple participating banks and central infrastructure,
+        so the impact on GIRO as a whole is contained rather than systemic. No volume or share data is
+        given.
     to_from:
       strength: Moderate
-      reason: eGIRO is a payments service DBS offers to customers, so a material eGIRO failure could disrupt
-        that service line, but it is only one of many DBS payment and banking channels and the evidence
-        shows no major financial exposure.
-  rating_from: dbs:participates_in:egiro
+      reason: GIRO is one of the payment services DBS offers for its customers, so a GIRO-wide failure
+        would affect part of DBS's payments operations and customer service. DBS has other payment channels
+        (FAST, PayNow, cards, etc.), and no evidence shows GIRO is critical to its core business, so impact
+        is meaningful but contained.
 - id: dbs:participates_in:mastercard
   from: dbs
   to: mastercard
@@ -8920,15 +8917,15 @@ relationships:
   transmission:
     from_to:
       strength: Weak
-      reason: MariBank is one of many eGIRO participating banks; a material adverse event at MariBank
-        would likely have limited effect on the overall eGIRO system, which runs across numerous other
-        participants. No evidence of MariBank being a critical or dominant node.
+      reason: GIRO is a multi-bank interbank system with many participating banks; a material adverse
+        event at MariBank, a single participant, would not materially disrupt the system's overall operation,
+        and the evidence shows no outsized volume or concentration.
     to_from:
       strength: Moderate
-      reason: An eGIRO outage or failure would disrupt MariBank's participation in the payment service,
-        affecting its direct debit/payment capabilities. But this is only one service among its offerings,
-        and evidence doesn't show it as core to its operations, so the impact is meaningful but contained.
-  rating_from: maribank:participates_in:egiro
+      reason: As a participating bank, MariBank relies on GIRO for payments connectivity, so a material
+        GIRO disruption would meaningfully impair its payment services. However, the evidence does not
+        show GIRO is its sole payment channel, and alternatives such as FAST may partially mitigate the
+        impact.
 - id: maribank:participates_in:mastercard
   from: maribank
   to: mastercard
@@ -9073,15 +9070,16 @@ relationships:
   transmission:
     from_to:
       strength: Weak
-      reason: Maybank Singapore is one of many eGIRO participating banks; the evidence shows no concentration
-        or volume share, and the system can keep operating through the other participants, so a Maybank
-        adverse event would have limited impact on eGIRO.
+      reason: 'Maybank is one of many participating banks in Singapore''s interbank GIRO. Substitutability
+        is high: other participants keep the system running, and the evidence shows no concentration or
+        critical share of volume. A material adverse event at Maybank would have limited effect on GIRO
+        as a whole.'
     to_from:
       strength: Moderate
-      reason: eGIRO is one payments service among Maybank Singapore's offerings. A material eGIRO disruption
-        would affect its GIRO and direct-debit payment services and customers, but the impact is contained
-        and does not touch the bank's other operations. No exposure figures are provided.
-  rating_from: maybank:participates_in:egiro
+      reason: GIRO is a core payments rail for Maybank Singapore's retail and corporate clients. A GIRO
+        outage or disruption would affect part of its payment services, but Maybank has other channels
+        and business lines, and the evidence gives no quantified dependency, so the impact would be meaningful
+        but contained.
 - id: maybank:participates_in:meps-plus
   from: maybank
   to: meps-plus
@@ -9353,17 +9351,17 @@ relationships:
   service: payments
   transmission:
     from_to:
-      strength: Weak
-      reason: eGIRO is a multi-bank system with many participating banks, so a material adverse event
-        at OCBC would likely cause only limited disruption to the system, since other participants and
-        flows can continue. The evidence gives no figures on OCBC's share of eGIRO volume.
+      strength: Moderate
+      reason: OCBC is one of several participating banks in Singapore's interbank GIRO. A material adverse
+        event at OCBC (e.g., an operational outage) could disrupt GIRO flows to and from its customers,
+        but the system has multiple other participants and would keep operating, so the effect is meaningful
+        but contained.
     to_from:
       strength: Moderate
-      reason: eGIRO is a payments service OCBC offers to its customers, so an outage or failure of the
-        system would affect part of OCBC's payment operations and customer service. OCBC has other payment
-        channels and the evidence does not show it depends critically on eGIRO, so the impact is meaningful
-        but contained.
-  rating_from: ocbc:participates_in:egiro
+      reason: GIRO is a payments service OCBC offers to its customers. A material GIRO disruption would
+        affect OCBC's payment and transaction-banking operations and customer service. It is only one
+        of several payment channels, and the evidence gives no exposure figures, so the impact is meaningful
+        but not core to the whole business.
 - id: ocbc:participates_in:mastercard
   from: ocbc
   to: mastercard
@@ -9548,23 +9546,21 @@ relationships:
   source_url: https://www.mas.gov.sg/regulation/payments/meps
   source_title: MAS Electronic Payment System (MEPS+)
   quote: SGX Derivatives Clearing Limited
-  detail: Listed by MAS as a direct participant of MEPS+, the SGD real-time gross settlement system ("SGX
-    Derivatives Clearing Limited").
-  reason: Listed by MAS as a direct participant of MEPS+, the SGD real-time gross settlement system ("SGX
-    Derivatives Clearing Limited").
+  detail: SGX Derivatives Clearing, the SGX derivatives clearing house, is a direct participant of MEPS+
+  reason: SGX Derivatives Clearing, the SGX derivatives clearing house, is a direct participant of MEPS+
   service: market_infrastructure
   transmission:
     from_to:
       strength: Weak
-      reason: MEPS+ is a system-wide RTGS with many direct participants (banks, other infrastructures);
-        a failure at one participant, even a clearing house, would normally have limited impact on the
-        system's overall functioning, and no evidence suggests disproportionate volume or concentration.
+      reason: MEPS+ is a national RTGS system with many direct participants, mainly banks. An adverse
+        event at SGX or its derivatives clearing house would be one participant's failure and would likely
+        be contained by system safeguards, so the impact on MEPS+ itself would be limited.
     to_from:
       strength: Strong
-      reason: As a direct participant, SGX Derivatives Clearing relies on MEPS+ for SGD settlement; an
-        outage or disruption of the sole national SGD RTGS would materially impair its ability to settle
-        margin and payment flows, with low substitutability.
-  rating_from: sgx-dc:participates_in:meps-plus
+      reason: SGX Derivatives Clearing is a direct participant and probably relies on MEPS+ for SGD settlement
+        of margin and clearing flows. A MEPS+ outage or disruption would impair its settlement and liquidity
+        operations. No substitute RTGS for SGD is evidenced, so dependency on this core infrastructure
+        is high.
 - id: standard-chartered:participates_in:cls-bank
   from: standard-chartered
   to: cls-bank
@@ -10285,15 +10281,16 @@ relationships:
   transmission:
     from_to:
       strength: Moderate
-      reason: UOB is one of a dozen or so eGIRO participating banks, so a material adverse event at UOB
-        could disrupt part of eGIRO transaction flow, but the system has other participants and no evidence
-        shows UOB is critical or dominant to its operation.
+      reason: UOB is one of several participating GIRO banks (Singapore's major local banks and others
+        also participate), so a material adverse event at UOB would disrupt part of GIRO flows and could
+        affect its customers' transactions, but the system would continue operating through other participants.
+        No volume or concentration figures are given.
     to_from:
       strength: Moderate
-      reason: UOB uses eGIRO for payments services, so an eGIRO disruption would affect that service line
-        and its customers, but it is one channel among many for UOB and the evidence shows no concentration
-        or critical dependency.
-  rating_from: uob:participates_in:egiro
+      reason: GIRO is a core retail and corporate payment service for UOB's customers, so a material GIRO
+        outage or failure would meaningfully disrupt UOB's payment services. UOB retains other channels
+        such as FAST, cards and PayNow, and the evidence does not quantify its dependence on GIRO, so
+        the impact is contained.
 - id: uob:participates_in:mastercard
   from: uob
   to: mastercard
