@@ -6,7 +6,8 @@ A development reaches the subject through a node when its indirect impact on the
 (development_impacts, read by server/impacts.py) passes through the subject's link to that node:
 the entity the development is about, or a region that covers it. Links run either way, so news
 about Singtel reaches DBS through "DBS depends on Singtel" and news about DBS reaches Singtel
-through the same link."""
+through the same link. A hidden entity's node keeps its developments and its ref, whose
+`displayed` is false, so the web shows its name with no page link."""
 
 from intelmonitor.pipeline.impact import short_label
 from intelmonitor.relationships import SCHEMA, links_of

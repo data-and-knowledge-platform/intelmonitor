@@ -156,6 +156,7 @@ def shared_relationships(conn: sqlite3.Connection, a: str, b: str) -> SharedRela
                     name=e.node.name,
                     kind=e.node.kind,
                     subject=e.node.subject,
+                    displayed=e.node.subject and all_subjects()[e.node.id].displayed,
                     a_links=[relationship_link(r, names) for r in e.a_links],
                     b_links=[relationship_link(r, names) for r in e.b_links],
                 )

@@ -4,7 +4,7 @@ in one pass over the latest run's cached developments (server/queries.py `RunDev
 A development is in the period when it was last published after the period's start. Counts,
 ranking and the top development use direct priority only (`development_subjects`, where a topic
 holds the highest level among the development's entities); indirect impact never counts. New and
-the latest date ignore the period."""
+the latest date ignore the period. Hidden entities have no row."""
 
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -51,7 +51,7 @@ class _Tally:
 
 def subject_list(q: Queries, name: ListName, period: Period) -> SubjectList:
     kind = "entity" if name == "entities" else "topic"
-    subjects = [s for s in all_subjects().values() if s.type == kind]
+    subjects = [s for s in all_subjects().values() if s.type == kind and s.displayed]
     since = period_start(q, period)
     tallies = {s.id: _Tally() for s in subjects}
     # Topics in seed order, which breaks ties for a development's lead topic.

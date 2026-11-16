@@ -68,6 +68,9 @@ class SubjectRef(BaseModel):
     icon: TopicIcon | None = Field(
         default=None, description="Topic glyph from the web icon library"
     )
+    displayed: bool = Field(
+        description="False for a hidden entity, which has no page: its name shows as text"
+    )
 
 
 class FunctionRef(BaseModel):
@@ -452,6 +455,7 @@ class SharedEndpoint(BaseModel):
     name: str
     kind: EntityKind | EndpointKind
     subject: bool = Field(description="A tracked subject; otherwise a relationship endpoint")
+    displayed: bool = Field(description="A tracked subject with a page; false for a hidden entity")
     a_links: list[RelationshipLink]
     b_links: list[RelationshipLink]
 

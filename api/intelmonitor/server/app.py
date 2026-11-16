@@ -71,8 +71,8 @@ from intelmonitor.server.queries import (
     Queries,
     expand,
     functions,
+    page_subject,
     peers,
-    subject,
     subject_ref,
 )
 from intelmonitor.server.related_graph import related_graph
@@ -143,8 +143,8 @@ def health() -> dict[str, str]:
 
 @app.get("/subjects")
 def list_subjects(q: Q) -> list[SubjectSummary]:
-    """The catalogue: every topic, group and entity, with a topic's function."""
-    return [q.subject_summary(s) for s in all_subjects()]
+    """The catalogue: every topic, group and displayed entity, with a topic's function."""
+    return [q.subject_summary(i) for i, s in all_subjects().items() if s.displayed]
 
 
 @app.get("/functions")
@@ -163,13 +163,16 @@ def get_list(q: Q, list_name: ListName, period: Period = "week") -> SubjectList:
 
 @app.get("/subjects/{subject_id}")
 def get_subject(q: Q, subject_id: str) -> SubjectDetail:
+    """A topic, group or displayed entity; 404 for a hidden entity, which has no page."""
+    page_subject(subject_id)
     return q.subject_detail(subject_id)
 
 
 @app.get("/subjects/{subject_id}/page")
 def get_monitor_page(q: Q, subject_id: str) -> MonitorPage:
     """An entity or topic page: the subject, the run, its upcoming dates, whether it has a Data
-    tab, its brief and the developments that reach it indirectly."""
+    tab, its brief and the developments that reach it indirectly. 404 for a hidden entity."""
+    page_subject(subject_id)
     return MonitorPage(
         subject=q.subject_detail(subject_id),
         run=q.run,
@@ -189,7 +192,7 @@ def get_subject_impacts(
     """Developments in the latest run that reach the subject indirectly through stored
     relationships, last published within `days` of the run date (day, week or month filters).
     Never news about the subject itself."""
-    subject(subject_id)
+    page_subject(subject_id)
     return subject_impacts(q, subject_id, days)
 
 
@@ -198,7 +201,7 @@ def get_linked_institutions(q: Q, subject_id: str) -> list[LinkedInstitution]:
     """For a country, sector, technology provider or payment system: the banks and other
     institutions linked to it in the relationship store, directly or through a company they own,
     with the developments of the last 7 days that reach them that way. Empty for other subjects."""
-    subject(subject_id)
+    page_subject(subject_id)
     return linked_institutions(q, subject_id)
 
 
@@ -207,7 +210,7 @@ def get_related_graph(q: Q, subject_id: str, days: RelatedDays = RelatedDays.wee
     """Every subject and endpoint linked to the subject in the relationship store, either
     direction, each with its links and the shown developments of the last `days` (7, as the
     brief, 30 or 90) that reach the subject through it, with link-type counts for filters."""
-    subject(subject_id)
+    page_subject(subject_id)
     return related_graph(q, subject_id, days)
 
 
@@ -225,6 +228,7 @@ def get_subject_trend(q: Q, subject_id: str) -> trend_view.SubjectTrend:
     """The subject's series over the 12 months to the latest run with its High and Medium
     developments, and each run's note on why the series moved with the developments it cites
     and the facts it was given."""
+    page_subject(subject_id)
     return trend_view.trend(q, subject_id)
 
 
@@ -235,6 +239,7 @@ def get_subject_indicators(
     """The subject's measured series, primary then context, each with its latest value, change
     over 1 week, 1 month, 3 months and 1 year, percentile in its history and state, from what was
     available by the end of `as_of` (default today)."""
+    page_subject(subject_id)
     return series_views.subject_indicators(q.conn, subject_id, as_of or date.today())
 
 

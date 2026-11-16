@@ -58,6 +58,15 @@ def subject(subject_id: str) -> Subject:
     return found
 
 
+def page_subject(subject_id: str) -> Subject:
+    """A subject that has a page: any topic, group or displayed entity. A hidden entity is found
+    by subject() and named wherever it is tagged or reached, but has no page."""
+    found = subject(subject_id)
+    if not found.displayed:
+        raise NotFoundError(f"subject {subject_id} has no page")
+    return found
+
+
 def subject_ref(subject_id: str) -> SubjectRef:
     s = subject(subject_id)
     seed = load_subjects()
@@ -71,6 +80,7 @@ def subject_ref(subject_id: str) -> SubjectRef:
         logo=entity.logo if entity else None,
         logo_full=entity.logo_full if entity else None,
         icon=topic.icon if topic else None,
+        displayed=s.displayed,
     )
 
 
@@ -354,11 +364,13 @@ class Queries:
         return sorted(scoped, key=_display_key)
 
     def subject_summary(self, subject_id: str) -> SubjectSummary:
+        """The subject as the catalogue lists it; a group's members are its displayed ones."""
         s = subject(subject_id)
+        subjects = all_subjects()
         return SubjectSummary(
             **subject_ref(subject_id).model_dump(),
             aliases=aliases(subject_id),
-            members=list(s.members),
+            members=[m for m in s.members if subjects[m].displayed],
             function=function_ref(s.function) if s.function else None,
         )
 

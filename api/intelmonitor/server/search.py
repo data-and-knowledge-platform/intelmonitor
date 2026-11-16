@@ -33,11 +33,13 @@ def search(q: Queries, text: str, limit: int) -> SearchResults:
 
 
 def subjects(text: str) -> list[SearchHit]:
-    """Subjects by name and alias: exact matches first, then prefixes, then word prefixes, then
-    substrings."""
+    """Subjects by name and alias, hidden entities left out: exact matches first, then prefixes,
+    then word prefixes, then substrings."""
     needle = text.strip().lower()
     hits: list[tuple[int, int, SearchHit]] = []
     for position, s in enumerate(all_subjects().values()):
+        if not s.displayed:
+            continue
         best: tuple[int, str] | None = None
         for name in [s.name, *aliases(s.id)]:
             low = name.lower()

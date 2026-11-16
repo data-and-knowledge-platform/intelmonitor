@@ -28,17 +28,19 @@ SAMPLE = [
     "cyber-resilience",
     "dbs",
     "mas",
-    "microsoft-365",
-    "singapore",
+    "aws",
+    "hkma",
 ]
+# Hidden entities: tagged and linked, but with no page, list row or search hit.
+HIDDEN_SAMPLE = ["singapore", "singtel"]
 # What an entity or topic page carries, and nothing else.
 PAGE_FIELDS = {"subject", "run", "brief", "upcoming", "trend", "impacts"}
-# Seed facts the catalogue and the list pages must show.
-SEED_COUNTS = {"entity": 89, "topic": 30, "group": 17}
+# Seed facts the catalogue and the list pages must show: displayed entities only.
+SEED_COUNTS = {"entity": 57, "topic": 30, "group": 19}
 FUNCTION_COUNT = 5
 PRESET_ENTITY = "mas"
 # What a catalogue entry carries; the count fields /subjects once had stay out.
-SUMMARY_FIELDS = {"id", "name", "type", "kind", "logo", "logo_full", "icon"} | {
+SUMMARY_FIELDS = {"id", "name", "type", "kind", "logo", "logo_full", "icon", "displayed"} | {
     "aliases",
     "members",
     "function",
@@ -169,6 +171,12 @@ def check_catalogue(c: Check) -> str:
         need(set(w["topics"]) <= set(topics), f"{f['id']}: preset names a non-topic")
     detail = c.get(f"/subjects/{by_type['topic'][0]['id']}")
     need(detail["function"] == by_type["topic"][0]["function"], "detail carries the function")
+    need(all(s["displayed"] for s in subjects), "a hidden entity in the catalogue")
+    for sid in HIDDEN_SAMPLE:
+        need(sid not in entities, f"{sid}: hidden but in the catalogue")
+        c.get(f"/subjects/{sid}/page", expect=404)
+        hits = c.get("/search", params={"q": all_subjects()[sid].name})["subjects"]
+        need(all(h["subject"]["id"] != sid for h in hits), f"{sid}: hidden but in search")
     return f"{len(subjects)} subjects, {len(functions)} functions"
 
 
@@ -273,7 +281,8 @@ def main() -> int:
     c = Check(args.base)
     need(c.get("/health")["status"] == "ok", "health")
     subjects = c.get("/subjects")
-    need(len(subjects) == len(all_subjects()), "every seeded subject")
+    shown = [s for s in all_subjects().values() if s.displayed]
+    need(len(subjects) == len(shown), "every displayed subject")
 
     steps: list[tuple[str, Callable[[], object]]] = [
         ("read only", lambda: check_read_only(c)),
