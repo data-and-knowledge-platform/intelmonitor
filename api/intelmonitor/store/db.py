@@ -240,6 +240,7 @@ CREATE TABLE IF NOT EXISTS inference_records (
     duration_ms INTEGER NOT NULL,
     status TEXT NOT NULL,              -- ok, error, or refused (a usage-policy refusal)
     error TEXT,
+    refusal_category TEXT,             -- a refused call's stop_details.category, if it names one
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS inference_records_cache ON inference_records (stage, input_hash, status);
@@ -464,6 +465,8 @@ ADDED_COLUMNS = [
     ("development_subjects", "priority_reason", "TEXT NOT NULL DEFAULT ''"),
     # The prompt version of each call (pipeline/prompts.py).
     ("inference_records", "prompt_version", "TEXT"),
+    # A refused call's category (pipeline/claude.py).
+    ("inference_records", "refusal_category", "TEXT"),
 ]
 
 

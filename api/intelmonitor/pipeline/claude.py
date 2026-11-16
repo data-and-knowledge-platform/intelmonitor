@@ -1,6 +1,8 @@
 """Claude with structured JSON output: straight to the Anthropic API on ANTHROPIC_API_KEY, billed
 per token, or, with settings.claude_via_api off, through the Claude Agent SDK on the user's Claude
-login. Claude Haiku runs with thinking off; the other models think as they decide."""
+login. Claude Haiku runs with thinking off; the other models think adaptively, set explicitly
+(Sonnet 5.5 runs adaptive when no thinking setting is sent, so the setting changes no behaviour
+and, being outside the cache key, no recorded reply)."""
 
 import asyncio
 import os
@@ -70,7 +72,7 @@ async def ask_claude[T: BaseModel](
         skills=[],
         output_format={"type": "json_schema", "schema": schema.model_json_schema()},
         effort=effort,
-        thinking={"type": "disabled"} if model == HAIKU_MODEL else None,
+        thinking={"type": "disabled"} if model == HAIKU_MODEL else {"type": "adaptive"},
     )
     result: ResultMessage | None = None
     async for message in query(prompt=prompt, options=options):
@@ -104,13 +106,9 @@ def _tokens(usage: dict[str, object], *keys: str) -> int | None:
     return sum(counts) if counts else None
 
 
-class ClaudeRefusal(RuntimeError):
-    """The API declined the request (stop_reason "refusal")."""
-
-
-class ClaudeCutOff(RuntimeError):
-    """The API stopped before the output was complete (max_tokens, say). It carries the call's
-    tokens and cost, which were billed, so the error record keeps them."""
+class ClaudeBilled(RuntimeError):
+    """A call the API answered and billed without a usable output. It carries the call's tokens
+    and cost, so the error record keeps them."""
 
     def __init__(
         self, message: str, input_tokens: int, output_tokens: int, cost_usd: float | None
@@ -119,6 +117,26 @@ class ClaudeCutOff(RuntimeError):
         self.input_tokens = input_tokens
         self.output_tokens = output_tokens
         self.cost_usd = cost_usd
+
+
+class ClaudeRefusal(ClaudeBilled):
+    """The API declined the request (stop_reason "refusal"); `category` is its
+    stop_details.category (cyber, bio, reasoning_extraction, ...), None when it names none."""
+
+    def __init__(
+        self,
+        message: str,
+        input_tokens: int,
+        output_tokens: int,
+        cost_usd: float | None,
+        category: str | None,
+    ) -> None:
+        super().__init__(message, input_tokens, output_tokens, cost_usd)
+        self.category = category
+
+
+class ClaudeCutOff(ClaudeBilled):
+    """The API stopped before the output was complete (max_tokens, say)."""
 
 
 # USD per million tokens: input, output, cache read, cache write (5-minute TTL).
@@ -173,13 +191,11 @@ async def _ask_api[T: BaseModel](
             system=blocks,
             messages=messages,
             output_config=config,
+            thinking={"type": "adaptive"},
             # A cyber decline reruns on Claude's recommended fallback; bio declines are not rerun.
             betas=["server-side-fallback-2026-07-01"],
             fallbacks="default",
         )
-    # A refusal can cut the JSON off mid-string, so the stop reason is read before the output.
-    if response.stop_reason == "refusal":
-        raise ClaudeRefusal(f"refused: {response.stop_details}")
     u = response.usage
     read, written = u.cache_read_input_tokens or 0, u.cache_creation_input_tokens or 0
     prices = _PRICES.get(model)
@@ -194,6 +210,18 @@ async def _ask_api[T: BaseModel](
         if prices
         else None
     )
+    # A refusal can cut the JSON off mid-string, so the stop reason is read before the output.
+    if response.stop_reason == "refusal":
+        details = response.stop_details
+        category = details.category if details else None
+        explanation = details.explanation if details else None
+        raise ClaudeRefusal(
+            f"refused: {category or 'no category'}: {explanation or 'no explanation'}",
+            u.input_tokens + read + written,
+            u.output_tokens,
+            cost,
+            category,
+        )
     if response.stop_reason != "end_turn":
         raise ClaudeCutOff(
             f"Claude stopped before finishing its output ({response.stop_reason})",

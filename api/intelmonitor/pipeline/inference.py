@@ -15,7 +15,7 @@ from claude_agent_sdk import EffortLevel
 from pydantic import BaseModel
 
 from intelmonitor.config import get_settings
-from intelmonitor.pipeline.claude import ClaudeCutOff, ClaudeRefusal, ask_claude
+from intelmonitor.pipeline.claude import ClaudeBilled, ClaudeRefusal, ask_claude
 from intelmonitor.pipeline.params import (
     CLAUDE_API_CONCURRENCY,
     CLAUDE_CONCURRENCY,
@@ -163,8 +163,9 @@ class Inference:
                 except Exception as error:
                     refused = _is_refusal(error)
                     status = "refused" if refused else "error"
-                    # A reply cut off at max_tokens was billed, so its record keeps the cost.
-                    cut = error if isinstance(error, ClaudeCutOff) else None
+                    # A reply cut off at max_tokens, or refused, was billed, so its record keeps
+                    # the cost; a refusal's record keeps its category too.
+                    billed = error if isinstance(error, ClaudeBilled) else None
                     self._record(
                         stage,
                         "claude",
@@ -173,9 +174,12 @@ class Inference:
                         key,
                         started,
                         prompt_version=version,
-                        input_tokens=cut.input_tokens if cut else None,
-                        output_tokens=cut.output_tokens if cut else None,
-                        cost_usd=cut.cost_usd if cut else None,
+                        input_tokens=billed.input_tokens if billed else None,
+                        output_tokens=billed.output_tokens if billed else None,
+                        cost_usd=billed.cost_usd if billed else None,
+                        refusal_category=(
+                            error.category if isinstance(error, ClaudeRefusal) else None
+                        ),
                         error=error,
                         status=status,
                     )
@@ -252,6 +256,7 @@ class Inference:
         input_tokens: int | None = None,
         output_tokens: int | None = None,
         cost_usd: float | None = None,
+        refusal_category: str | None = None,
         error: Exception | None = None,
         status: str | None = None,
     ) -> None:
@@ -259,8 +264,8 @@ class Inference:
         self.conn.execute(
             "INSERT INTO inference_records (run_id, stage, engine, model, model_version, "
             "input_ref, input_hash, prompt_version, output, confidence, input_tokens, "
-            "output_tokens, cost_usd, duration_ms, status, error, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "output_tokens, cost_usd, duration_ms, status, error, refusal_category, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 self.run_id,
                 stage,
@@ -278,6 +283,7 @@ class Inference:
                 int((time.monotonic() - started) * 1000),
                 status or ("error" if error else "ok"),
                 f"{type(error).__name__}: {error}"[:2000] if error else None,
+                refusal_category,
                 datetime.now(UTC).isoformat(),
             ),
         )
