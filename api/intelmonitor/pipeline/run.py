@@ -94,7 +94,7 @@ async def compute_run(
             (run_id, run_id, len(docs), started_at),
         )
     conn.commit()
-    inf = Inference(conn, run_id, recorded_only=recorded_only)
+    inf = Inference(conn, run_id, recorded_only=recorded_only, rebuilds=True)
 
     def step(name: str) -> None:
         log(

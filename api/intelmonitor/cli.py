@@ -216,7 +216,8 @@ def headlines(
     if as_of is not None and as_of not in complete:
         raise typer.BadParameter(f"no complete run as of {as_of}")
     for run_id in complete if all_ else [str(as_of)]:
-        stats = asyncio.run(write_headlines(Inference(conn, run_id), conn, run_id))
+        inf = Inference(conn, run_id, rebuilds=True)  # every headline of the run
+        stats = asyncio.run(write_headlines(inf, conn, run_id))
         typer.echo(
             f"[{run_id}] {stats.written} written, {stats.from_code} from detectors, "
             f"{stats.refused} refused"

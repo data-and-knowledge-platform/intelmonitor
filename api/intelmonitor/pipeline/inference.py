@@ -73,14 +73,22 @@ def _hash(payload: object) -> str:
 class Inference:
     """Model calls for one run. Concurrency is capped across all callers on the loop.
     With `recorded_only`, a call with no record raises UnrecordedCall instead of reaching a model,
-    as in `im check past-run`. A run_id of None (`im trial`) records calls with no run."""
+    as in `im check past-run`. A run_id of None (`im trial`) records calls with no run. With
+    `rebuilds`, every stage it calls rewrites all of the run's labels of that stage (`im run`), so
+    a stage's first use replaces the run's earlier `run_prompts` rows of the stage."""
 
     def __init__(
-        self, conn: sqlite3.Connection, run_id: str | None, *, recorded_only: bool = False
+        self,
+        conn: sqlite3.Connection,
+        run_id: str | None,
+        *,
+        recorded_only: bool = False,
+        rebuilds: bool = False,
     ) -> None:
         self.conn = conn
         self.run_id = run_id
         self.recorded_only = recorded_only
+        self.rebuilds = rebuilds
         self.calls = 0
         self.cache_hits = 0
         self._versions: dict[tuple[str, str, str, str, str | None], str] = {}
@@ -200,12 +208,13 @@ class Inference:
         self, stage: str, template: str, schema: str, model: str, effort: str | None
     ) -> str:
         """The call's prompt version, registered in the store on its first use, and the run's use
-        of it noted once."""
+        of it noted once; with `rebuilds`, the stage's first use drops the run's earlier rows."""
         parts = (stage, template, schema, model, effort)
         if (vid := self._versions.get(parts)) is None:
             vid = self._versions[parts] = register_version(self.conn, *parts)
         if self.run_id is not None and (stage, vid) not in self._noted:
-            note_run(self.conn, self.run_id, stage, vid)
+            replace = self.rebuilds and all(s != stage for s, _ in self._noted)
+            note_run(self.conn, self.run_id, stage, vid, replace=replace)
             self._noted.add((stage, vid))
         return vid
 

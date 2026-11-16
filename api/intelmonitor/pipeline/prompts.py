@@ -85,8 +85,14 @@ def register_version(
     return vid
 
 
-def note_run(conn: sqlite3.Connection, run_id: str, stage: str, version: str) -> None:
-    """Records that the run's labels of the stage came from the version. Commits."""
+def note_run(
+    conn: sqlite3.Connection, run_id: str, stage: str, version: str, *, replace: bool = False
+) -> None:
+    """Records that the run's labels of the stage came from the version; with `replace`, first
+    drops the run's earlier versions of the stage, whose labels a recompute is replacing.
+    Commits."""
+    if replace:
+        conn.execute("DELETE FROM run_prompts WHERE run_id = ? AND stage = ?", (run_id, stage))
     conn.execute(
         "INSERT OR IGNORE INTO run_prompts (run_id, stage, version) VALUES (?, ?, ?)",
         (run_id, stage, version),

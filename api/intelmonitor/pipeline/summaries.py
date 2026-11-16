@@ -1060,6 +1060,6 @@ async def summarize_run(
     as_of = date.fromisoformat(run_id)
     base_id = previous_run(conn, run_id)
     changes = development_changes(conn, run_id, base_id)
-    return await write_summaries(
-        Inference(conn, run_id), conn, run_id, as_of, base_id, changes, subject_ids
-    )
+    # Every brief is rewritten when no subject is named, so the run's brief versions are replaced.
+    inf = Inference(conn, run_id, rebuilds=subject_ids is None)
+    return await write_summaries(inf, conn, run_id, as_of, base_id, changes, subject_ids)
