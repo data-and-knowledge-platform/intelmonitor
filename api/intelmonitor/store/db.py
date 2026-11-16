@@ -715,7 +715,7 @@ def _drop_endpoints(conn: sqlite3.Connection) -> None:
     goes, with every stored link that has an end the seed lacks (an entity, or a seed group for
     belongs_to_sector), so no stored link ends at an endpoint. It reads only the seed, never
     relationships.yaml, so a file the code cannot load yet (links not rated, say) never stops the
-    store from opening; the next run's sync replaces the links with the file's."""
+    store from opening; _relink then replaces links the model no longer reads."""
     exists = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'relationship_endpoints'"
     if conn.execute(exists).fetchone() is None:
         return
@@ -738,6 +738,65 @@ def _drop_endpoints(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+# The meta key holding the version of the link model the stored links were last checked against.
+LINKS_CHECKED = "links_checked"
+
+
+@cache
+def _links_version() -> str:
+    """The link model's version: the first 12 hex characters of the SHA-256 of its JSON schema."""
+    import hashlib
+    import json
+
+    from intelmonitor.relationships import Relationship
+
+    schema = json.dumps(Relationship.model_json_schema(), sort_keys=True)
+    return hashlib.sha256(schema.encode()).hexdigest()[:12]
+
+
+def _relink(conn: sqlite3.Connection) -> None:
+    """Only a run's sync rewrites the stored links, so a store synced before the link model
+    changed (the 22 types and the end of rating_from, 17 Nov 2026, spec steps 4 and 6 of
+    link-types-and-inferred-impact) holds rows the Relationship model rejects, and every reader of
+    them raises. Once per version of the model (_links_version, kept in meta LINKS_CHECKED)
+    every stored row is parsed. If one fails, the links are replaced with relationships.yaml, as a
+    run's sync would; if the file cannot load, only the failing rows go, until a run syncs the
+    store."""
+    import yaml
+    from pydantic import ValidationError
+
+    from intelmonitor.relationships import Relationship, insert_relationships, load_relationships
+
+    table = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'relationships'"
+    if conn.execute(table).fetchone() is None:
+        return  # never synced: nothing to read
+    version = _links_version()
+    checked = "SELECT 1 FROM meta WHERE key = ? AND value = ?"
+    if conn.execute(checked, (LINKS_CHECKED, version)).fetchone() is not None:
+        return
+    conn.execute("BEGIN IMMEDIATE")  # another connection may be migrating too
+    if conn.execute(checked, (LINKS_CHECKED, version)).fetchone() is not None:
+        conn.rollback()
+        return
+    failing: list[str] = []
+    for row in conn.execute("SELECT id, data FROM relationships"):
+        try:
+            Relationship.model_validate_json(row["data"])
+        except ValidationError:
+            failing.append(row["id"])
+    if failing:
+        try:
+            insert_relationships(conn, load_relationships())
+        except (OSError, ValueError, yaml.YAMLError):
+            conn.executemany("DELETE FROM relationships WHERE id = ?", [(i,) for i in failing])
+    conn.execute(
+        "INSERT INTO meta (key, value) VALUES (?, ?) "
+        "ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+        (LINKS_CHECKED, version),
+    )
+    conn.commit()
+
+
 def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     """Open the store and make sure the schema exists."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -754,6 +813,7 @@ def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     _drop_removed_features(conn)
     _drop_graph(conn)
     _drop_endpoints(conn)
+    _relink(conn)
     _impacts_by_table(conn)
     conn.execute(
         "CREATE INDEX IF NOT EXISTS inference_records_version "
