@@ -389,12 +389,12 @@ def outside_rows() -> list[dict[str, str]]:
     """The collected partner_of rows, outside the 22 types and not built, for the review sheet."""
     collected = SEED_DIR / "collected"
     paths = sorted({p for pattern in LINK_FILES for p in collected.glob(pattern)})
-    return [
-        row
-        for path in paths
-        for row in yaml.safe_load(path.read_text())["relationships"]
-        if row.get("outside_types")
-    ]
+    rows: list[dict[str, str]] = []
+    for path in paths:
+        # an empty file (links-new-types.yaml before any collection) holds no rows
+        doc: dict[str, list[dict[str, str]]] = yaml.safe_load(path.read_text()) or {}
+        rows += [row for row in doc.get("relationships", []) if row.get("outside_types")]
+    return rows
 
 
 def sheet(

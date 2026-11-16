@@ -1,8 +1,10 @@
 """Build api/seed/relationships.yaml from the collected relationship files.
 
 Reads api/seed/collected/bank-exposures.yaml, tech-dependencies.yaml, entity-links.yaml and every
-links-*.yaml (one per sector: structural links and service links), puts every link of the team's
-22 types in one schema (a partner_of row, outside the types, is listed and not built), folds each
+links-*.yaml (one per sector: structural links and service links; links-new-types.yaml holds the
+rows scripts/collect_links.py found, and an empty or missing file adds nothing), puts every link
+of the team's 22 types in one schema (a partner_of row, outside the types, is listed and not
+built), folds each
 unit of an entity into its parent (collected/folds.yaml), keeps a link only when both ends are
 entities of api/seed/subjects.yaml, derives each entity's belongs_to_sector links from the seed's
 groups, writes each link's one-line reason, merges each link's strengths from
@@ -40,6 +42,7 @@ from intelmonitor.relationships import (
     FigureMeasure,
     FigureUnit,
     Node,
+    PromptVersion,
     Relationship,
     RelType,
     Service,
@@ -168,17 +171,10 @@ class TechFile(Row):
 class LinkRow(Row):
     from_: str = Field(alias="from")
     to: str
-    type: Literal[
-        "holds_stake_in",
-        "operates_in",
-        "member_of",
-        "listed_on",
-        "regulated_by",
-        "jointly_offers_product_with",
-        "partner_of",
-    ]
-    # partner_of is not one of the 22 types: its rows are marked so, kept in the files and not
-    # built (ticket 02 of link-types-and-inferred-impact, P3)
+    # Any of the 22 types but belongs_to_sector, which comes from the seed's groups. partner_of is
+    # not one of the 22 types: its rows are marked so, kept in the files and not built (ticket 02
+    # of link-types-and-inferred-impact, P3)
+    type: Literal[RelType, "partner_of"]
     outside_types: bool = False
     share: float | None
     controlling: bool = False  # as on TechRow
@@ -188,12 +184,19 @@ class LinkRow(Row):
     source_url: str
     source_title: str
     quote: str
+    # A row of links-new-types.yaml: the id of the link collection prompt version that found it
+    # (the file's `prompts`) and the date it was collected, which stands for the file's date.
+    prompt_version: str | None = None
+    collected: date | None = None
 
     @model_validator(mode="after")
     def _outside(self) -> "LinkRow":
         assert (self.type == "partner_of") == self.outside_types, (
             f"{self.from_} {self.type} {self.to}: partner_of rows, and only they, are "
             "outside_types: true"
+        )
+        assert self.type != "belongs_to_sector", (
+            f"{self.from_} {self.type} {self.to}: belongs_to_sector comes from the seed's groups"
         )
         return self
 
@@ -216,9 +219,11 @@ class LinksFile(Row):
 
 class TeamLinksFile(Row):
     """A links-*.yaml file: structural links and service links for one sector's entities, checked
-    against their sources on `collected`."""
+    against their sources on `collected`. links-new-types.yaml also lists the versions of the link
+    collection prompt its rows name (`prompts`, as transmission.yaml lists the rating prompt's)."""
 
     collected: date
+    prompts: list[PromptVersion] = []
     relationships: list[LinkRow]
     service_links: list[TechRow]
     groups: list[GroupRow]
@@ -551,7 +556,7 @@ def build_links(build: Build, data: LinksFile, confirmed: date = LAST_CONFIRMED)
                 weight=r.share if r.type == "holds_stake_in" else None,
                 evidence=r.evidence,
                 as_of=r.as_of,
-                last_confirmed=confirmed,
+                last_confirmed=r.collected or confirmed,
                 source_url=r.source_url,
                 source_title=r.source_title,
                 quote=r.quote,
@@ -837,12 +842,37 @@ def report(build: Build, rels: list[Relationship]) -> None:
             print(f"    {row}")
 
 
+# The rows scripts/collect_links.py found (step 5 of link-types-and-inferred-impact).
+NEW_TYPES_FILE = "links-new-types.yaml"
+
+
+def report_new(build: Build, rels: list[Relationship], rows: list[LinkRow]) -> None:
+    """Per type, the rows of NEW_TYPES_FILE read and how many of their links are in the build
+    (under their own id, or folded into a parent's link that kept them)."""
+    if not rows:
+        return
+    ids = {r.id for r in rels} | set(build.folded.values())
+    read_n: Counter[str] = Counter()
+    built_n: Counter[str] = Counter()
+    for r in rows:
+        if r.type == "partner_of":
+            continue
+        src, dst = ends(RENAME.get(r.from_, r.from_), r.type, RENAME.get(r.to, r.to))
+        read_n[r.type] += 1
+        built_n[r.type] += rel_id(src, r.type, dst) in ids
+    print(f"\n{NEW_TYPES_FILE}: {len(rows)} rows read, {sum(built_n.values())} in the build")
+    for t in REL_TYPES:
+        if read_n[t]:
+            print(f"  {t:32}{read_n[t]:>5} read{built_n[t]:>5} in the build")
+
+
 def read(name: str) -> object:
     return yaml.safe_load((COLLECTED / name).read_text())
 
 
 def main() -> None:
     exposures = ExposuresFile.model_validate(read("bank-exposures.yaml"))
+    new_rows: list[LinkRow] = []
     tech = TechFile.model_validate(read("tech-dependencies.yaml"))
     links = LinksFile.model_validate(read("entity-links.yaml"))
     build = Build(load_subjects(), FoldsFile.model_validate(read("folds.yaml")))
@@ -850,7 +880,11 @@ def main() -> None:
     build_tech(build, tech)
     build_exposures(build, exposures)
     for path in sorted(COLLECTED.glob("links-*.yaml")):
-        team = TeamLinksFile.model_validate(read(path.name))
+        if (doc := read(path.name)) is None:  # an empty file
+            continue
+        team = TeamLinksFile.model_validate(doc)
+        if path.name == NEW_TYPES_FILE:
+            new_rows = team.relationships
         build_links(
             build,
             LinksFile(
@@ -866,6 +900,7 @@ def main() -> None:
     build_sectors(build)
     rels, unrated, orphans = with_ratings(with_reasons(build))
     report(build, rels)
+    report_new(build, rels, new_rows)
     rated = sum(r.transmission is not None for r in rels)
     versions = Counter(r.transmission.prompt_version for r in rels if r.transmission)
     print(
