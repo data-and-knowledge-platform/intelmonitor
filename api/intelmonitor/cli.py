@@ -354,7 +354,7 @@ def trial_priority(
         typer.Option(
             "--candidate",
             help="live (the current priority prompt) or a candidate of trial.py: medium, "
-            "medium-think, high, high-think",
+            "medium-think, high, high-think, price-promo, high-think-price-promo",
         ),
     ] = "live",
 ) -> None:
@@ -407,6 +407,8 @@ def _echo_unfound(pairs: "list[Pair]") -> None:
 def prompts(ctx: typer.Context, store: StoreOption = None) -> None:
     """List each stage's prompt versions in the store, with their calls and runs."""
     if ctx.invoked_subcommand is not None:
+        if store is not None:  # the command would read the app's store without saying so
+            raise typer.BadParameter(f"give --store after {ctx.invoked_subcommand}")
         return
     from contextlib import closing
 

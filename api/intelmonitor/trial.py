@@ -102,11 +102,35 @@ def _without_output(template: str) -> str:
     return head
 
 
+def _with_rules(template: str, rules: str) -> str:
+    """The template with the rules after its last rule, before its "## Output" section."""
+    head, found, tail = template.partition("\n\n## Output\n")
+    if not found:
+        raise ValueError("the priority template has no Output section to add rules before")
+    return f"{head}\n{rules}\n\n## Output\n{tail}"
+
+
 _TIDY = _without_output(PRIORITY_PROMPT)
 _TIDY_NOTE = "Slide 7 prompt without its JSON lines, field meanings in the schema"
+# Rules 4 and 5: what the rubric before 11 Nov 2026 said of price moves ("never High", and code
+# capped them at Medium with a Singapore institution or market, else Low) and of promotional news
+# (code capped it at Low), as prompt text. The last line keeps them to those findings: a first
+# wording (priority version 6 in the baseline), which said what a market shock must show to be
+# High, moved 70 of the sample's 300 pairs, about 15 of them price moves or promotional news.
+PRICE_AND_PROMO_RULES = """\
+4. A finding that only reports a price move is never High, however large the move: a share price, \
+an index, a currency, a yield, a commodity, or a market's day or week. It is at most Medium when \
+the move is in a Singapore market or in the shares of a Singapore financial institution, and Low \
+otherwise. A finding that also reports what the move did to {singapore} is rated on that effect.
+5. Promotional and product news is Low: the launch of a product, service or campaign, an award, a \
+sponsorship, a customer offer, or a pilot or partnership with no material consequence yet.
+Rules 4 and 5 cover only those two kinds of finding. Rate every other finding by the levels and \
+rules 1 to 3 alone."""
 # The sweep of ticket 09: the tidied prompt at medium and high effort, each with and without
 # THINK_FIRST as its last line. The levels and rules are the live prompt's, unchanged. "live" is
-# the current PRIORITY_PROMPT, PriorityRating and PRIORITY_EFFORT.
+# the current PRIORITY_PROMPT, PriorityRating and PRIORITY_EFFORT. "price-promo" is the live
+# prompt with PRICE_AND_PROMO_RULES added and nothing else changed, and "high-think-price-promo"
+# is "high-think" with them added.
 CANDIDATES: dict[str, Candidate] = {
     "live": Candidate(PRIORITY_PROMPT, PriorityRating, PRIORITY_EFFORT, None),
     "medium": Candidate(_TIDY, DescribedPriorityRating, "medium", f"{_TIDY_NOTE}; medium effort."),
@@ -122,6 +146,20 @@ CANDIDATES: dict[str, Candidate] = {
         DescribedPriorityRating,
         "high",
         f"{_TIDY_NOTE}; high effort; ends with THINK_FIRST.",
+    ),
+    "price-promo": Candidate(
+        _with_rules(PRIORITY_PROMPT, PRICE_AND_PROMO_RULES),
+        PriorityRating,
+        PRIORITY_EFFORT,
+        "Slide 7 prompt with rules 4 and 5 added and kept to their findings: a price move alone "
+        "is never High, and promotional and product news is Low; medium effort.",
+    ),
+    "high-think-price-promo": Candidate(
+        f"{_TIDY}\n{PRICE_AND_PROMO_RULES}\n\n{THINK_FIRST}",
+        DescribedPriorityRating,
+        "high",
+        f"{_TIDY_NOTE}; rules 4 and 5 added and kept to their findings (a price move alone is "
+        "never High, promotional and product news is Low); high effort; ends with THINK_FIRST.",
     ),
 }
 
