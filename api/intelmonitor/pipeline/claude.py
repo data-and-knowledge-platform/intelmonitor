@@ -269,8 +269,10 @@ WEB_TOOLS: list[BetaToolUnionParam] = [
     {"type": "web_search_20260318", "name": "web_search"},
     {"type": "web_fetch_20260318", "name": "web_fetch"},
 ]
-# Per request, so per resume; streamed, so a long request meets no HTTP timeout.
-_WEB_MAX_TOKENS = 64000
+# Per request, so per resume; streamed, so a long request meets no HTTP timeout. Sonnet 5.5's
+# limit: one trial entity wrote 55,096 output tokens in a request, and a request that ends on
+# max_tokens leaves its entity incomplete after the searches are paid for.
+_WEB_MAX_TOKENS = 128000
 
 
 @dataclass

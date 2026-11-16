@@ -18,19 +18,22 @@ all; an API error is retried the same way. An entity that ends otherwise (a refu
 an API error on every attempt, the rejections used up, or its cost passing --stop-at-usd) is listed
 as incomplete, keeps no rows and is collected again on the next run.
 
-A finished entity's result is kept in data/link-collection/<entity>.json with the prompt version
-that made it (and the whole conversation under transcripts/); a later run makes no call for an
-entity whose result has the current version. An entity whose result has an older version is
-collected again, its old result moved to superseded/ first, so that a turn which ends incomplete
-leaves it no rows. Each run then filters every kept result again and writes the rows that pass to
---out. Code keeps a row only if both ends are seed entities, the type is one of the 21, the link is
-not already stored, and the quote is found in the page the request fetched from the row's source
-URL (each side's text normalised: markdown links and footnote markers out, quotes, dashes and
-spaces unified, case ignored). Dropped rows are listed with the reason. Stored means built from a
-collected file other than links-new-types.yaml (build_relationships.build_collected), so a run
-after a build keeps the rows the file itself put into relationships.yaml. Kept rows are written
-with evidence `reported`, the prompt version and the date collected; the file lists every version
-its rows name in `prompts`, as transmission.yaml does.
+A finished entity's result is kept in data/link-collection/<prompt version>/<entity>.json (and the
+whole conversation under transcripts/); a later run makes no call for an entity that has a result
+under the current version. Results under another version are left where they are and not read: the
+entity is collected again, a turn that ends incomplete leaves it no rows, and putting an old prompt
+back finds its results again. The version is made from the prompt's template, which holds a
+placeholder where the list of entities goes, so a change to the seed's entities does not make every
+result stale; the filters below run on every write, so a row to an entity that has left the seed is
+dropped then. Each run filters every kept result again and writes the rows that pass to --out. Code
+keeps a row only if both ends are seed entities, the type is one of the 21, the link is not already
+stored, and the quote is found in the page the request fetched from the row's source URL (each
+side's text normalised: markdown links and footnote markers out, quotes, dashes and spaces unified,
+case ignored). Dropped rows are listed with the reason. Stored means built from a collected file
+other than links-new-types.yaml (build_relationships.build_collected), so a run after a build keeps
+the rows the file itself put into relationships.yaml. Kept rows are written with evidence
+`reported`, the prompt version and the date collected; the file lists every version its rows name
+in `prompts`, as transmission.yaml does.
 
 The prompt, its schema, the model and the effort make a prompt version, whose id is made as
 pipeline/prompts.py makes a stage's.
@@ -149,7 +152,7 @@ _NAMES = {e.id: e.name for e in SEED.entities}
 # (a system processes_transactions_for its participant). The framing
 # around them (one entity against the list, the web as the evidence, the quote and what finished
 # means) is ours. No JSON shape: the answer's fields are described in its schema (ticket 09).
-COLLECTION_PROMPT = f"""\
+COLLECTION_TEMPLATE = f"""\
 You are identifying evidenced relationships between Entity A and Entity B.
 A pair of entities may have multiple relationship types. Return each distinct relationship \
 separately.
@@ -208,14 +211,18 @@ has one entry for each of those 21 types: the relationships of that type you fou
 found none, the search queries you tried for it.
 
 ENTITIES
-{chr(10).join(entity_line(e, _NAMES) for e in SEED.entities)}
+{{entities}}
 
 {THINK_FIRST}"""
+# The system prompt: the template with the seed's entities listed.
+COLLECTION_PROMPT = COLLECTION_TEMPLATE.replace(
+    "{entities}", "\n".join(entity_line(e, _NAMES) for e in SEED.entities)
+)
 # Stored with the version when it is first used; edit it with the prompt.
 PROMPT_NOTE = (
     "The deck's identification rules 1 to 8 (16 Nov 2026, page 5), the 22 types with their "
     "meanings, the materiality rule, ticket 02's P2 for payment systems and market "
-    "infrastructures, the seed's 142 entities and what finished means, with THINK_FIRST; web "
+    "infrastructures, the seed's entities and what finished means, with THINK_FIRST; web "
     "search and web fetch, effort high."
 )
 
@@ -257,7 +264,7 @@ class Collection(_Out):
 
 
 VERSION = version_id(
-    STAGE, COLLECTION_PROMPT, schema_text(Collection.model_json_schema()), MODEL, EFFORT
+    STAGE, COLLECTION_TEMPLATE, schema_text(Collection.model_json_schema()), MODEL, EFFORT
 )
 
 
@@ -503,7 +510,9 @@ async def collect(e: Entity, stop_at: float | None, sem: asyncio.Semaphore) -> O
                 ],
                 candidates=check(turn.output, fetched_pages(responses)),
             )
-            (RESULTS / f"{e.id}.json").write_text(result.model_dump_json(indent=1, by_alias=True))
+            path = RESULTS / VERSION / f"{e.id}.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(result.model_dump_json(indent=1, by_alias=True))
             return done(None, result)
         if responses:
             save_transcript(e, responses)
@@ -511,8 +520,10 @@ async def collect(e: Entity, stop_at: float | None, sem: asyncio.Semaphore) -> O
 
 
 def load_results() -> dict[str, Result]:
+    """The finished results under the current prompt version, by entity id."""
     return {
-        p.stem: Result.model_validate_json(p.read_text()) for p in sorted(RESULTS.glob("*.json"))
+        p.stem: Result.model_validate_json(p.read_text())
+        for p in sorted((RESULTS / VERSION).glob("*.json"))
     }
 
 
@@ -649,10 +660,10 @@ HEADER = """\
 # Written by api/scripts/collect_links.py; read by api/scripts/build_relationships.py like any
 # links-*.yaml file.
 #
-# prompts[]: every version of the link collection prompt its rows name, numbered from 1 in the
-#   order first used: id (the first 12 hex characters of the SHA-256 of the stage, template,
-#   schema, model and effort, as api/intelmonitor/pipeline/prompts.py makes them), date, note,
-#   model, effort and its template's text.
+# prompts[]: the version of the link collection prompt its rows name, numbered from 1 in the
+#   order versions were first used: id (the first 12 hex characters of the SHA-256 of the stage,
+#   template, schema, model and effort, as api/intelmonitor/pipeline/prompts.py makes them), date,
+#   note, model, effort and its template's text (the seed's entities go where {entities} stands).
 # relationships[]: the rows code kept: both ends seed entities, one of the 21 collected types, not
 #   built from another collected file, the quote found in the page the request fetched. evidence is
 #   reported; prompt_version names the version that found the row; collected is when.
@@ -686,10 +697,9 @@ def write_out(path: Path, kept: list[tuple[Result, Candidate]]) -> None:
                 note=PROMPT_NOTE,
                 model=MODEL,
                 effort=EFFORT,
-                text=COLLECTION_PROMPT,
+                text=COLLECTION_TEMPLATE,
             ),
         ]
-    named = {r.prompt_version for r, _ in kept}
     order: list[str] = list(REL_TYPES)
     rows = [
         {
@@ -710,7 +720,7 @@ def write_out(path: Path, kept: list[tuple[Result, Candidate]]) -> None:
     ]
     doc = {
         "collected": max((r.finished for r, _ in kept), default=date.today()),
-        "prompts": [p.model_dump() for p in prompts if p.id in named or p.id == VERSION],
+        "prompts": [p.model_dump() for p in prompts if p.id == VERSION],
         "relationships": rows,
         "service_links": [],
         "groups": [],
@@ -737,16 +747,11 @@ async def main() -> int:
         parser.error(f"not seed entities: {', '.join(unknown)}")
     RESULTS.mkdir(parents=True, exist_ok=True)
     have = load_results()
-    todo = [i for i in wanted if (r := have.get(i)) is None or r.prompt_version != VERSION]
+    todo = [i for i in wanted if i not in have]
     print(
         f"{len(wanted)} entities: {len(wanted) - len(todo)} finished with prompt version "
         f"{VERSION}, no call; {len(todo)} to collect"
     )
-    for i in todo:
-        if (old := have.get(i)) is not None:  # an older version's result gives way
-            moved = RESULTS / "superseded" / f"{i}-{old.prompt_version}.json"
-            moved.parent.mkdir(exist_ok=True)
-            (RESULTS / f"{i}.json").rename(moved)
     sem = asyncio.Semaphore(args.concurrency)
     outcomes = list(await asyncio.gather(*(collect(by_id[i], args.stop_at_usd, sem) for i in todo)))
     results = {i: r for i, r in load_results().items() if i in wanted}
