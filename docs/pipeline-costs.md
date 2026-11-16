@@ -7,6 +7,8 @@ Updated 11 Nov 2026 for the team's deck (spec steps 2a, 3 and 3a): indirect impa
 Measured on 11 Nov 2026 by the October rebuild: the totals below are what the six runs cost, and they replace the estimates, which were about four times too low because the 30 topics bring in about 1,560 documents a week, not 425.
 The sections after "Measured, October rebuild" keep the estimate and its method as they were written.
 
+Noted 16 Nov 2026: trials of link strength judged per development cost $17.56 (measured); the work is not merged, and its code and cost record are on the branch `park/per-development-strength`.
+
 ## Totals
 
 | | Documents | Claude Haiku 5.5 | Claude Sonnet 5.5 | Total | Basis |
