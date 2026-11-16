@@ -98,8 +98,11 @@ def function_ref(function_id: str) -> FunctionRef:
 
 
 def subject_links(subject_id: str) -> SubjectLinks:
+    """A subject's topics, groups and member entities by seed group; the entities are the
+    displayed ones, as in the catalogue's `members`, so a hidden one is never listed as a peer."""
     seed = load_subjects()
     s = subject(subject_id)
+    subjects = all_subjects()
     if s.type == "topic":
         groups = [g for g in seed.groups if s.id in g.topics]
         topics: list[str] = []
@@ -116,7 +119,7 @@ def subject_links(subject_id: str) -> SubjectLinks:
     return SubjectLinks(
         topics=[subject_ref(t) for t in dict.fromkeys(topics)],
         groups=[subject_ref(g.id) for g in groups],
-        entities=[subject_ref(e) for e in dict.fromkeys(entities)],
+        entities=[subject_ref(e) for e in dict.fromkeys(entities) if subjects[e].displayed],
     )
 
 
