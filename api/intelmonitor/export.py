@@ -3,7 +3,7 @@
 it calls no model. `im export version` writes one prompt version's workbook the same way
 (`version_workbook`, `link_ratings_workbook`), and `im prompts compare` writes two versions'
 side by side (`compare_workbook`); both name and sort subjects by the store's seed as rated
-(trial.py), not the working tree's.
+(trial.py): the seed frozen into the baseline, else the working tree's.
 
 The labels workbook's sheets:
 Direct, Indirect and Dropped cover the latest complete run only. A run reads every document from

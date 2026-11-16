@@ -23,8 +23,10 @@ Tried on the baseline (data/intelmonitor-baseline-89-entities-2026-11-16.db), wh
 never change, so two versions differ only by prompt. The baseline is frozen: the commands open it
 without migrations (`open_store`), and it carries the seed its runs were rated with
 (`seed_as_rated`), which every prompt rebuilt on it is filled from, so a later seed edit does not
-move a pair off its version 1 record. A pair version 1 rated by a call whose record is still not
-found is listed by the trial and the comparison (`unfound`), never dropped silently."""
+move a pair off its version 1 record. A store that holds no frozen seed, such as the live one,
+is filled from the working tree's seed, which its runs are rerun with. A pair version 1 rated by
+a call whose record is still not found is listed by the trial and the comparison (`unfound`),
+never dropped silently."""
 
 import asyncio
 import json
@@ -58,7 +60,7 @@ from intelmonitor.pipeline.params import (
     priority_system,
 )
 from intelmonitor.pipeline.prompts import THINK_FIRST, register_version, schema_text
-from intelmonitor.pipeline.subjects import PrioritySubject, priority_subjects_of
+from intelmonitor.pipeline.subjects import PrioritySubject, priority_subjects, priority_subjects_of
 from intelmonitor.seed import SubjectsSeed, SubjectType
 from intelmonitor.store.db import get_meta, set_meta
 
@@ -140,6 +142,7 @@ class Label:
 # The meta key of the seed a frozen store's runs were rated with (`freeze_seed`). The baseline's
 # was written once on 16 Nov 2026 from api/seed/subjects.yaml at 2693b13, whose names, kinds and
 # homes are those of the 11 Nov rebuild: every pair version 1 rated by a call finds its record.
+# Only a frozen store holds it; the live store's runs follow the working tree's seed.
 SEED_KEY = "seed_as_rated"
 
 
@@ -164,14 +167,12 @@ def freeze_seed(conn: sqlite3.Connection, seed: SubjectsSeed, source: str) -> in
 
 
 def seed_as_rated(conn: sqlite3.Connection) -> dict[str, PrioritySubject]:
-    """The store's seed as rated, by subject id; raises LookupError when it holds none, rather
-    than fall back to the working tree's seed, which may have changed since the store's runs."""
+    """The seed the store's runs were rated with, by subject id: the one frozen into it, as in
+    the baseline, else the working tree's, which a live store's runs are rerun with. A pair the
+    seed no longer rebuilds as rated is not lost: its record is not found, and `unfound` lists
+    it."""
     if (value := get_meta(conn, SEED_KEY)) is None:
-        raise LookupError(
-            f"the store holds no seed as rated (meta key {SEED_KEY}), so the prompts its runs "
-            "rated with cannot be rebuilt; the working tree's seed is not used in its place. "
-            "Write the seed of the store's runs into it once with trial.freeze_seed"
-        )
+        return priority_subjects()
     return {s.id: s for s in SeedAsRated.model_validate_json(value).subjects}
 
 
@@ -212,7 +213,7 @@ def run_pairs(conn: sqlite3.Connection, run_id: str) -> list[Pair]:
 class Inputs:
     """The priority call's input of any pair of the store, rebuilt as its run gave it: the
     development's findings in that run, as the latest complete run loads them, and the subject
-    from the store's seed as rated. Raises LookupError when the store holds no seed as rated."""
+    from the store's seed as rated (`seed_as_rated`)."""
 
     def __init__(self, conn: sqlite3.Connection) -> None:
         self.subjects = seed_as_rated(conn)
