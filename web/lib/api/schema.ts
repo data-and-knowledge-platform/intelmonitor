@@ -155,9 +155,9 @@ export interface paths {
         };
         /**
          * Get Related Graph
-         * @description Every subject and endpoint linked to the subject in the relationship store, either
-         *     direction, each with its links and the shown developments of the last `days` (7, as the
-         *     brief, 30 or 90) that reach the subject through it, with link-type counts for filters.
+         * @description Every entity linked to the subject in the relationship store, either direction, each with
+         *     its links and the shown developments of the last `days` (7, as the brief, 30 or 90) that
+         *     reach the subject through it.
          */
         get: operations["get_related_graph"];
         put?: never;
@@ -1466,18 +1466,20 @@ export interface components {
         };
         /**
          * RelatedNode
-         * @description A subject or endpoint linked to the centre, with the developments that reach the centre
-         *     through it.
+         * @description An entity linked to the centre, with the developments that reach the centre through it.
          */
         RelatedNode: {
             /** Id */
             id: string;
             /** Name */
             name: string;
-            /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "international_body" | "country" | "region" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
-            /** @description None when the node is not tracked */
-            subject: components["schemas"]["SubjectRef"] | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "international_body" | "country" | "region" | "sector";
+            /** @description The entity; a hidden one has no page */
+            subject: components["schemas"]["SubjectRef"];
             /**
              * Links
              * @description Its links to the centre, either direction

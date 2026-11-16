@@ -152,7 +152,7 @@ export function LinkEvidence({ link: l }: { link: Link }) {
 }
 
 /** The link's other end from the entity reached: what the news is about, or its region. */
-function endpointOf(i: Impact): { id: string; name: string } {
+function farEnd(i: Impact): { id: string; name: string } {
   const l = i.link;
   return l.from_id === i.subject.id ? { id: l.to_id, name: l.to_name } : { id: l.from_id, name: l.from_name };
 }
@@ -169,17 +169,17 @@ export function reasonFrom({ subject, link: l }: Pick<Impact, "subject" | "link"
 /** Whether the entity reached is the link's `from` end, so the link reads from it ("DBS uses Singtel"). */
 const outward = (i: Impact) => i.link.from_id === i.subject.id;
 
-/** One sentence per route type and endpoint: "DBS, OCBC and UOB each lend over 40% of their loans in Singapore". */
+/** One sentence per route type and far end: "DBS, OCBC and UOB each lend over 40% of their loans in Singapore". */
 export function claims(impacts: Impact[]): string[] {
   const groups = new Map<string, Impact[]>();
   for (const i of impacts) {
-    const key = `${i.link.type}:${outward(i)}:${endpointOf(i).id}`;
+    const key = `${i.link.type}:${outward(i)}:${farEnd(i).id}`;
     groups.set(key, [...(groups.get(key) ?? []), i]);
   }
   return [...groups.values()].map((g) => {
     const who = names([...new Set(g.map((i) => i.subject.name))]);
     const many = g.length > 1;
-    const end = endpointOf(g[0]).name;
+    const end = farEnd(g[0]).name;
     const first = g[0].link;
     // Read from the far end ("Singtel, used by DBS"), only the plain wording fits.
     switch (outward(g[0]) ? first.type : null) {

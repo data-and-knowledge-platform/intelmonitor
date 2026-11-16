@@ -11,7 +11,6 @@ from intelmonitor.pipeline.extract import Tone
 from intelmonitor.pipeline.params import Priority
 from intelmonitor.pipeline.subjects import all_subjects
 from intelmonitor.relationships import (
-    EndpointKind,
     Evidence,
     FigureMeasure,
     FigureUnit,
@@ -667,13 +666,12 @@ class RelatedLink(BaseModel):
 
 
 class RelatedNode(BaseModel):
-    """A subject or endpoint linked to the centre, with the developments that reach the centre
-    through it."""
+    """An entity linked to the centre, with the developments that reach the centre through it."""
 
     id: str
     name: str
-    kind: EntityKind | EndpointKind
-    subject: SubjectRef | None = Field(description="None when the node is not tracked")
+    kind: EntityKind
+    subject: SubjectRef = Field(description="The entity; a hidden one has no page")
     links: list[RelatedLink] = Field(description="Its links to the centre, either direction")
     development_ids: list[str] = Field(
         description="Shown developments in the window that reach the centre through this node, "

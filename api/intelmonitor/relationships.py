@@ -1,12 +1,13 @@
-"""The relationship store: standing links between subjects and endpoints, for indirect impact.
+"""The relationship store: standing links between entities, for indirect impact.
 
-api/seed/relationships.yaml (built by scripts/build_relationships.py) holds every relationship
-and an endpoint entry for each id that is not an entity subject or seed group.
+api/seed/relationships.yaml (built by scripts/build_relationships.py) holds every relationship;
+each joins two entities of api/seed/subjects.yaml, or an entity and a seed group.
 sync_relationships() copies it into the store at the start of a pipeline run; reaches() reads it
 back for the impact step, links_from() for the briefs, and links_of() for the Related graph.
 
 A link reads from its `from` to its `to` (DBS exposed_to Hong Kong, FAST depends_on BCS, NETS
-holds_stake_in BCS). partner_of is stored once per pair, ids in alphabetical order.
+holds_stake_in BCS). partner_of is stored once per pair, ids in alphabetical order. A link into
+an entity of kind region (South and Southeast Asia) covers the region's member countries.
 belongs_to_sector links an entity to a seed group (its parent category), so seed group ids are
 valid link ends; it carries no impact and the Related graph leaves it out.
 
@@ -15,7 +16,6 @@ scripts/rate_relationships.py into api/seed/collected/transmission.yaml and merg
 build. Pipeline runs read the ratings and call no model for them.
 """
 
-import json
 import sqlite3
 from datetime import date
 from pathlib import Path
@@ -46,27 +46,6 @@ RelType = Literal[
 REL_TYPES: tuple[RelType, ...] = RelType.__args__
 Evidence = Literal["public", "reported", "assumed"]
 EVIDENCE_GRADES: tuple[Evidence, ...] = Evidence.__args__  # strongest first
-EndpointKind = Literal[
-    "bank",
-    "insurer",
-    "broker",
-    "investor",
-    "person",
-    "association",
-    "central_bank",
-    "regulator",
-    "market_infrastructure",
-    "payment_system",
-    "payment_institution",
-    "tech_provider",
-    "stablecoin_issuer",
-    "digital_asset_firm",
-    "blockchain",
-    "country",
-    "region",
-    "sector",
-    "group",
-]
 # The headline figure of an exposure; further figures add NPLs and ratios. A bank's exposure is
 # measured in loans (the first three); any other entity's in what its share is of: stablecoin
 # reserves, its reserve fund's repo book, revenue, distribution costs, token supply by chain or
@@ -214,6 +193,10 @@ class Relationship(_Model):
     figures: list[Figure] = []
     # Strength in each direction, from transmission.yaml; every rateable link has one.
     transmission: Transmission | None = None
+    # The id whose rating in transmission.yaml `transmission` is, when it is not this link's own:
+    # a unit's link folded into its parent (collected/folds.yaml) carries the unit link's rating
+    # until scripts/rate_relationships.py rates it under its own id.
+    rating_from: str | None = None
 
 
 def rateable(r: Relationship) -> bool:
@@ -221,48 +204,33 @@ def rateable(r: Relationship) -> bool:
     return r.type != "belongs_to_sector"
 
 
-class Endpoint(_Model):
-    """A relationship end that is not an entity subject; regions list the places they cover."""
-
-    id: str
-    name: str
-    kind: EndpointKind
-    members: list[str] = []
-    detail: str | None = None
-
-
 class RelationshipsFile(_Model):
     relationships: list[Relationship]
-    endpoints: list[Endpoint]
 
 
-def problems(data: RelationshipsFile, subject_ids: set[str]) -> list[str]:
-    """Why the file does not fit the subject seed: ids that are neither an entity subject, a seed
-    group nor an endpoint, and endpoint entries for ids that are now subjects or groups. Empty
-    when it fits. `subject_ids` holds the entity and group ids."""
-    endpoint_ids = {e.id for e in data.endpoints}
-    used = {r.from_ for r in data.relationships} | {r.to for r in data.relationships}
-    used |= {m for e in data.endpoints for m in e.members}
-    unknown = sorted(used - subject_ids - endpoint_ids)
-    both = sorted(endpoint_ids & subject_ids)
-    return [f"neither a subject nor an endpoint: {i}" for i in unknown] + [
-        f"both a subject and an endpoint: {i}" for i in both
-    ]
-
-
-def link_ends() -> set[str]:
-    """Seed ids a link may end at without an endpoint entry: entities and groups."""
-    seed = load_subjects()
-    return {e.id for e in seed.entities} | {g.id for g in seed.groups}
+def problems(data: RelationshipsFile, entity_ids: set[str], group_ids: set[str]) -> list[str]:
+    """Why the file does not fit the subject seed: links with an end that is not an entity, other
+    than a belongs_to_sector link to a seed group. Empty when it fits."""
+    found: list[str] = []
+    for r in data.relationships:
+        ends = entity_ids | group_ids if r.type == "belongs_to_sector" else entity_ids
+        if r.from_ not in entity_ids:
+            found.append(f"{r.id}: {r.from_} is not an entity")
+        if r.to not in ends:
+            found.append(
+                f"{r.id}: {r.to} is not an entity" + (" or group" if ends != entity_ids else "")
+            )
+    return found
 
 
 def load_relationships(path: Path = RELATIONSHIPS_PATH) -> RelationshipsFile:
     """Read relationships.yaml and check it against the entities and groups in subjects.yaml,
-    and that every rateable link has its strengths. Raises ValueError naming every unknown id
-    (the fix is to rerun scripts/build_relationships.py) or every unrated link (rerun
-    scripts/rate_relationships.py, then the build)."""
+    and that every rateable link has its strengths. Raises ValueError naming every link end that
+    is not in the seed (the fix is to rerun scripts/build_relationships.py) or every unrated link
+    (rerun scripts/rate_relationships.py, then the build)."""
     data = RelationshipsFile.model_validate(yaml.safe_load(path.read_text()))
-    found = problems(data, link_ends())
+    seed = load_subjects()
+    found = problems(data, {e.id for e in seed.entities}, {g.id for g in seed.groups})
     if found:
         raise ValueError(
             f"{path.name} does not fit the subject seed (rerun scripts/build_relationships.py): "
@@ -292,97 +260,61 @@ CREATE TABLE IF NOT EXISTS relationships (
 );
 CREATE INDEX IF NOT EXISTS relationships_from ON relationships (from_id);
 CREATE INDEX IF NOT EXISTS relationships_to ON relationships (to_id);
-CREATE TABLE IF NOT EXISTS relationship_endpoints (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    kind TEXT NOT NULL,
-    members TEXT NOT NULL,  -- JSON list; regions only
-    detail TEXT
-);
 """
 
 
 def sync_relationships(
     conn: sqlite3.Connection, path: Path = RELATIONSHIPS_PATH
 ) -> RelationshipsFile:
-    """Replace the store's relationships and endpoints with relationships.yaml, in one
-    transaction. Raises before touching the store if the file does not fit the subject seed.
-    Commits any transaction the caller has open, so call it before a run's writes."""
+    """Replace the store's relationships with relationships.yaml, in one transaction. Raises
+    before touching the store if the file does not fit the subject seed. Commits any transaction
+    the caller has open, so call it before a run's writes."""
     data = load_relationships(path)
     store_relationships(conn, data)
     return data
 
 
 def store_relationships(conn: sqlite3.Connection, data: RelationshipsFile) -> None:
-    """Replace the store's relationships and endpoints with `data`, unchecked, in one
-    transaction; sync_relationships checks the file first, the impact cases pass made-up links."""
+    """Replace the store's relationships with `data`, unchecked, in one transaction;
+    sync_relationships checks the file first, the impact cases pass made-up links."""
     conn.executescript(SCHEMA)
     with conn:
-        conn.execute("DELETE FROM relationships")
-        conn.execute("DELETE FROM relationship_endpoints")
-        conn.executemany(
-            "INSERT INTO relationships (id, from_id, to_id, type, weight, evidence, data) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [
-                (
-                    r.id,
-                    r.from_,
-                    r.to,
-                    r.type,
-                    r.weight,
-                    r.evidence,
-                    r.model_dump_json(by_alias=True),
-                )
-                for r in data.relationships
-            ],
-        )
-        conn.executemany(
-            "INSERT INTO relationship_endpoints (id, name, kind, members, detail) "
-            "VALUES (?, ?, ?, ?, ?)",
-            [(e.id, e.name, e.kind, json.dumps(e.members), e.detail) for e in data.endpoints],
-        )
+        insert_relationships(conn, data)
+
+
+def insert_relationships(conn: sqlite3.Connection, data: RelationshipsFile) -> None:
+    """Replace the rows of the relationships table with `data`, inside the caller's transaction."""
+    conn.execute("DELETE FROM relationships")
+    conn.executemany(
+        "INSERT INTO relationships (id, from_id, to_id, type, weight, evidence, data) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [
+            (r.id, r.from_, r.to, r.type, r.weight, r.evidence, r.model_dump_json(by_alias=True))
+            for r in data.relationships
+        ],
+    )
 
 
 class Node(_Model):
-    """A subject or endpoint on a path, named for the route a reader sees."""
+    """A link end named for the route a reader sees: an entity, or a seed group (the far end of
+    belongs_to_sector)."""
 
     id: str
     name: str
-    kind: EntityKind | EndpointKind
-    subject: bool  # a tracked entity subject; otherwise an endpoint
+    kind: EntityKind | Literal["group"]
 
 
-def load_nodes(conn: sqlite3.Connection, ids: set[str]) -> dict[str, Node]:
-    """Each id as a named node: endpoints from the store, entities and groups from the seed."""
-    marks = ",".join("?" * len(ids))
-    rows = conn.execute(
-        f"SELECT id, name, kind FROM relationship_endpoints WHERE id IN ({marks})", sorted(ids)
-    ).fetchall()
-    nodes = {
-        str(r["id"]): Node(id=r["id"], name=r["name"], kind=r["kind"], subject=False) for r in rows
-    }
+def load_nodes(ids: set[str]) -> dict[str, Node]:
+    """Each id, an entity or a seed group, as a named node from the seed."""
     seed = load_subjects()
-    entities = {e.id: e for e in seed.entities}
-    groups = {g.id: g for g in seed.groups}
-    for i in ids - nodes.keys():
-        # sync checked every id is an entity, a seed group or an endpoint
-        if i in groups:
-            nodes[i] = Node(id=i, name=groups[i].name, kind="group", subject=False)
-        else:
-            e = entities[i]
-            nodes[i] = Node(id=i, name=e.name, kind=e.kind, subject=True)
+    nodes = {g.id: Node(id=g.id, name=g.name, kind="group") for g in seed.groups if g.id in ids}
+    nodes |= {e.id: Node(id=e.id, name=e.name, kind=e.kind) for e in seed.entities if e.id in ids}
     return nodes
 
 
-def _regions(conn: sqlite3.Connection, target_id: str) -> list[str]:
-    """The region endpoints and region entities whose members include the target."""
-    rows = conn.execute(
-        "SELECT e.id FROM relationship_endpoints e, json_each(e.members) m "
-        "WHERE e.kind = 'region' AND m.value = ? ORDER BY e.id",
-        (target_id,),
-    ).fetchall()
-    entities = [e.id for e in load_subjects().entities if target_id in e.members]
-    return sorted([str(r["id"]) for r in rows] + entities)
+def _regions(target_id: str) -> list[str]:
+    """The region entities whose members include the target, by id."""
+    return sorted(e.id for e in load_subjects().entities if target_id in e.members)
 
 
 # A published share at least this large counts as owning the held company (the usual line for
@@ -412,7 +344,7 @@ def links_from(
     rels = [Relationship.model_validate_json(r["data"]) for r in rows]
     if not rels:
         return []
-    nodes = load_nodes(conn, {r.to for r in rels})
+    nodes = load_nodes({r.to for r in rels})
     return [(r, nodes[r.to]) for r in rels]
 
 
@@ -428,15 +360,14 @@ def links_of(conn: sqlite3.Connection, subject_id: str) -> list[tuple[Relationsh
     if not rels:
         return []
     other = {r.id: r.to if r.from_ == subject_id else r.from_ for r in rels}
-    nodes = load_nodes(conn, set(other.values()))
+    nodes = load_nodes(set(other.values()))
     return [(r, nodes[other[r.id]]) for r in rels]
 
 
 class Reach(_Model):
     """One link by which an event at `source` reaches the seed entity `reached`, with the link's
-    strength in that direction. `region` names the region (an endpoint, or an entity of kind
-    region) when the link goes into a region that covers the source (UOB's Greater China loans,
-    for news about Taiwan)."""
+    strength in that direction. `region` names the region entity when the link goes into a region
+    that covers the source (UOB's Greater China loans, for news about Taiwan)."""
 
     source: str
     reached: str
@@ -448,13 +379,13 @@ class Reach(_Model):
 def reaches(conn: sqlite3.Connection, source_id: str) -> list[Reach]:
     """Every seed entity one link from the entity `source_id`, for indirect impact (ticket 20):
     each link with the source at one end, read from_to when the source is its `from` and to_from
-    when it is its `to`; and each link into a region endpoint or region entity whose members
-    include the source, read to_from only. belongs_to_sector, unrated links, endpoints, groups
-    and the source itself carry or get nothing, and nothing goes a second hop. By link id."""
+    when it is its `to`; and each link into a region entity whose members (its `members` in the
+    seed) include the source, read to_from only. belongs_to_sector, unrated links, groups and the
+    source itself carry or get nothing, and nothing goes a second hop. By link id."""
     entities = {e.id for e in load_subjects().entities}
     if source_id not in entities:
         return []
-    ends = [source_id, *_regions(conn, source_id)]
+    ends = [source_id, *_regions(source_id)]
     marks = ",".join("?" * len(ends))
     rows = conn.execute(
         "SELECT data FROM relationships WHERE type != 'belongs_to_sector' "

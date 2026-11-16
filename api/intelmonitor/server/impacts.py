@@ -23,13 +23,10 @@ IMPACT_PERIOD_DAYS = 7
 
 
 def display_names(conn: sqlite3.Connection) -> dict[str, str]:
-    """Display names of every subject and relationship endpoint, by id. A store the pipeline has
-    not synced yet gets the relationship tables empty, so it serves no links instead of failing."""
+    """Display names of every subject, by id. A store the pipeline has not synced yet gets the
+    relationships table empty, so it serves no links instead of failing."""
     conn.executescript(SCHEMA)
-    names = {i: s.name for i, s in all_subjects().items()}
-    for r in conn.execute("SELECT id, name FROM relationship_endpoints"):
-        names.setdefault(r["id"], r["name"])
-    return names
+    return {i: s.name for i, s in all_subjects().items()}
 
 
 def relationship_link(r: Relationship, names: dict[str, str]) -> RelationshipLink:
@@ -86,7 +83,7 @@ def _impacts(q: Queries, where: str, args: tuple[object, ...]) -> list[IndirectI
     links = [Relationship.model_validate_json(r["data"]) for r in rows]
     names = display_names(q.conn)
     ends = {i for link in links for i in (link.from_, link.to)}
-    nodes = load_nodes(q.conn, ends | {r["source_id"] for r in rows})
+    nodes = load_nodes(ends | {r["source_id"] for r in rows})
     return [
         IndirectImpact(
             development_id=r["development_id"],

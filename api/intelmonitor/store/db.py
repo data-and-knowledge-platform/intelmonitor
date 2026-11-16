@@ -166,7 +166,7 @@ CREATE TABLE IF NOT EXISTS development_impacts (
     subject_id TEXT NOT NULL,          -- the entity reached
     source_id TEXT NOT NULL,           -- the tagged entity the development is adverse for
     relationship_id TEXT NOT NULL,     -- the link it passes through
-    region TEXT,                       -- the region endpoint, when the link covers the source in it
+    region TEXT,                       -- the region entity, when the link covers the source in it
     strength TEXT NOT NULL,            -- from the source's end: Strong, Moderate or Weak
     level INTEGER NOT NULL,            -- 0 Low or 1 Medium, never High
     PRIMARY KEY (run_id, development_id, subject_id)
@@ -709,6 +709,27 @@ def _drop_graph(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _drop_endpoints(conn: sqlite3.Connection) -> None:
+    """Stores synced before every link joined two entities (16 Nov 2026, spec step 3b of
+    link-types-and-inferred-impact) hold relationship_endpoints and links to endpoints. The table
+    goes, and the store's links are replaced with relationships.yaml, as a run's sync would, so no
+    stored link ends at an id the seed lacks. Raises, changing nothing, if the file does not fit
+    the seed."""
+    exists = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'relationship_endpoints'"
+    if conn.execute(exists).fetchone() is None:
+        return
+    from intelmonitor.relationships import insert_relationships, load_relationships
+
+    data = load_relationships()
+    conn.execute("BEGIN IMMEDIATE")  # another connection may be migrating too
+    if conn.execute(exists).fetchone() is None:
+        conn.rollback()
+        return
+    insert_relationships(conn, data)
+    conn.execute("DROP TABLE relationship_endpoints")
+    conn.commit()
+
+
 def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     """Open the store and make sure the schema exists."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -724,6 +745,7 @@ def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     _drop_social(conn)
     _drop_removed_features(conn)
     _drop_graph(conn)
+    _drop_endpoints(conn)
     _impacts_by_table(conn)
     conn.execute(
         "CREATE INDEX IF NOT EXISTS inference_records_version "

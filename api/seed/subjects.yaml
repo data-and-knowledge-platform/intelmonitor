@@ -1,4 +1,4 @@
-# Subjects tracked by the POC: 30 topics and 139 entities, in 19 groups, and MAS's five functions.
+# Subjects tracked by the POC: 30 topics and 142 entities, in 19 groups, and MAS's five functions.
 # The first 8 groups are the parent categories of the MAS top 50 entities, and banking and fintech
 # also hold banks and fintechs added later; the other 11 keep the remaining entities, such as
 # countries, payment systems, cloud providers, agencies and international bodies.
@@ -292,7 +292,7 @@ groups:
   - id: other-countries
     name: Other countries and territories
     topics: [economic-growth-inflation, monetary-policy, trade-geopolitics]
-    members: [hong-kong, mainland-china, taiwan, india, united-kingdom, australia, south-korea, united-states, japan, middle-east, dubai]
+    members: [hong-kong, mainland-china, taiwan, india, united-kingdom, australia, south-korea, united-states, japan, middle-east, dubai, south-and-southeast-asia, greater-china, rest-of-greater-china]
   - id: sectors
     name: Sectors
     topics: [property-reits, banking-lending]
@@ -312,7 +312,7 @@ entities:
     name: DBS
     kind: bank
     displayed: true
-    aliases: [DBS Bank, DBS Group, DBS Group Holdings, Development Bank of Singapore]
+    aliases: [DBS Bank, DBS Group, DBS Group Holdings, Development Bank of Singapore, DBS Bank (China) Limited, DBS Bank (Hong Kong) Limited, DBS Bank India Limited, PT Bank DBS Indonesia, DBS Bank (Taiwan) Limited, DBS Digital Exchange Pte. Ltd.]
     domains: [dbs.com]
     logo: /logos/dbs.svg
     logo_full: /logos/full/dbs.svg
@@ -321,7 +321,7 @@ entities:
     name: OCBC
     kind: bank
     displayed: true
-    aliases: [OCBC Bank, Oversea-Chinese Banking Corporation, OCBC Group]
+    aliases: [OCBC Bank, Oversea-Chinese Banking Corporation, OCBC Group, OCBC Bank Limited (China), OCBC Bank (Hong Kong) Limited, PT Bank OCBC NISP Tbk, OCBC Bank (Macau) Limited, OCBC Bank (Malaysia) Berhad]
     domains: [ocbc.com]
     logo: /logos/ocbc.svg
     logo_full: /logos/full/ocbc.svg
@@ -330,7 +330,7 @@ entities:
     name: UOB
     kind: bank
     displayed: true
-    aliases: [United Overseas Bank, UOB Group]
+    aliases: [United Overseas Bank, UOB Group, United Overseas Bank (China) Limited, PT Bank UOB Indonesia, United Overseas Bank (Malaysia) Bhd, United Overseas Bank (Thai) Public Company Limited, United Overseas Bank (Vietnam) Limited]
     domains: [uobgroup.com]
     logo: /logos/uob.svg
     logo_full: /logos/full/uob.svg
@@ -386,7 +386,7 @@ entities:
     name: SGX
     kind: market_infrastructure
     displayed: true
-    aliases: [Singapore Exchange, SGX Group, SGX RegCo]
+    aliases: [Singapore Exchange, SGX Group, SGX RegCo, Singapore Exchange Derivatives Clearing Limited]
     domains: [sgx.com]
     logo: /logos/sgx.svg
     logo_full: /logos/full/sgx.svg
@@ -426,7 +426,7 @@ entities:
     name: GIRO
     kind: payment_system
     displayed: false
-    aliases: [Interbank GIRO, IBG, Inter-bank GIRO]
+    aliases: [Interbank GIRO, IBG, Inter-bank GIRO, eGIRO]
     covers: Singapore's interbank direct debit and credit system, including eGIRO
     domains: [abs.org.sg]
     home: singapore
@@ -543,7 +543,7 @@ entities:
     name: Circle
     kind: stablecoin_issuer
     displayed: true
-    aliases: [Circle Internet Group, Circle Internet Financial, Circle Internet Singapore, CRCL, USDC, USD Coin, EURC, Circle Payments Network, Circle Reserve Fund]
+    aliases: [Circle Internet Group, Circle Internet Financial, Circle Internet Singapore, CRCL, USDC, USD Coin, EURC, Circle Payments Network, Circle Reserve Fund, Circle Internet Singapore Pte. Ltd.]
     domains: [circle.com]
     covers: "Circle Internet Group, the NYSE-listed issuer of the USDC and EURC stablecoins: its reserves and attestations, licences (including its Singapore entity), distribution deals, Arc blockchain, and USDC depegs, freezes and enforcement; not circle shapes, Circle K stores, the Circles.Life telco or the Circle MRT line"
     logo: /logos/circle.svg
@@ -570,7 +570,7 @@ entities:
     name: Coinbase
     kind: digital_asset_firm
     displayed: true
-    aliases: [Coinbase Global, Coinbase Global Inc, Coinbase Inc, Coinbase Singapore, Coinbase Exchange, Coinbase International Exchange, Coinbase Custody, Coinbase Prime, Deribit]
+    aliases: [Coinbase Global, Coinbase Global Inc, Coinbase Inc, Coinbase Singapore, Coinbase Exchange, Coinbase International Exchange, Coinbase Custody, Coinbase Prime, Deribit, Coinbase Singapore Pte. Ltd.]
     domains: [coinbase.com]
     logo: /logos/coinbase.svg
     logo_full: /logos/full/coinbase.svg
@@ -692,7 +692,7 @@ entities:
     name: Standard Chartered
     kind: bank
     displayed: true
-    aliases: [Standard Chartered Bank, Standard Chartered PLC, StanChart, Standard Chartered Bank (Singapore)]
+    aliases: [Standard Chartered Bank, Standard Chartered PLC, StanChart, Standard Chartered Bank (Singapore), Standard Chartered Singapore]
     domains: [sc.com]
     logo: /logos/standard-chartered.svg
     logo_full: /logos/full/standard-chartered.svg
@@ -719,7 +719,7 @@ entities:
     name: JPMorgan Chase
     kind: bank
     displayed: true
-    aliases: [JPMorgan, J.P. Morgan, JPMorgan Chase & Co, JP Morgan, Kinexys]
+    aliases: [JPMorgan, J.P. Morgan, JPMorgan Chase & Co, JP Morgan, Kinexys, JPMorgan Chase Singapore]
     domains: [jpmorganchase.com, jpmorgan.com]
     logo: /logos/jpmorgan.svg
     logo_full: /logos/full/jpmorgan.svg
@@ -738,7 +738,7 @@ entities:
     name: Maybank
     kind: bank
     displayed: true
-    aliases: [Malayan Banking, Malayan Banking Berhad, Maybank Singapore]
+    aliases: [Malayan Banking, Malayan Banking Berhad, Maybank Singapore, Maybank Indonesia]
     domains: [maybank.com, maybank2u.com.sg]
     logo: /logos/maybank.svg
     logo_full: /logos/full/maybank.svg
@@ -777,7 +777,7 @@ entities:
     name: Great Eastern
     kind: insurer
     displayed: true
-    aliases: [Great Eastern Holdings, Great Eastern Life, Great Eastern General Insurance]
+    aliases: [Great Eastern Holdings, Great Eastern Life, Great Eastern General Insurance, Great Eastern General Insurance Limited]
     covers: "Great Eastern, the OCBC-controlled life and general insurer; not the Great Eastern Highway or other uses of the phrase"
     domains: [greateasternlife.com]
     logo: /logos/great-eastern.svg
@@ -797,7 +797,7 @@ entities:
     name: AIA Singapore
     kind: insurer
     displayed: true
-    aliases: [AIA Group, AIA Singapore Private Limited, American International Assurance]
+    aliases: [AIA Group, AIA Singapore Private Limited, American International Assurance, AIA Group Limited]
     covers: "AIA Group, the Hong Kong-listed pan-Asian life insurer, and AIA Singapore; not unrelated organisations abbreviated AIA"
     domains: [aia.com.sg, aia.com]
     logo: /logos/aia-singapore.svg
@@ -826,7 +826,7 @@ entities:
     name: Manulife Singapore
     kind: insurer
     displayed: true
-    aliases: [Manulife, Manulife Financial, Manulife (Singapore)]
+    aliases: [Manulife, Manulife Financial, Manulife (Singapore), Manulife Financial Corporation]
     domains: [manulife.com.sg, manulife.com]
     logo: /logos/manulife-singapore.svg
     logo_full: /logos/full/manulife-singapore.svg
@@ -845,7 +845,7 @@ entities:
     name: BlackRock
     kind: asset_manager
     displayed: true
-    aliases: [BlackRock Inc, iShares, BlackRock Singapore]
+    aliases: [BlackRock Inc, iShares, BlackRock Singapore, BlackRock (Singapore) Limited]
     domains: [blackrock.com]
     logo: /logos/blackrock.png
     logo_full: /logos/full/blackrock.svg
@@ -862,7 +862,7 @@ entities:
     name: Schroders
     kind: asset_manager
     displayed: true
-    aliases: [Schroders plc, Schroder Investment Management, Schroders Singapore]
+    aliases: [Schroders plc, Schroder Investment Management, Schroders Singapore, Schroder Investment Management (Singapore) Ltd.]
     domains: [schroders.com]
     logo: /logos/schroders.png
     logo_full: /logos/full/schroders.svg
@@ -870,7 +870,7 @@ entities:
     name: PIMCO
     kind: asset_manager
     displayed: true
-    aliases: [Pacific Investment Management Company, PIMCO Asia]
+    aliases: [Pacific Investment Management Company, PIMCO Asia, PIMCO Asia Pte Ltd]
     domains: [pimco.com]
     logo: /logos/pimco.png
     logo_full: /logos/full/pimco.svg
@@ -936,7 +936,7 @@ entities:
     name: SeaMoney
     kind: payment_institution
     displayed: true
-    aliases: [Monee, Sea Money, ShopeePay, Sea Limited, SPayLater]
+    aliases: [Monee, Sea Money, ShopeePay, Sea Limited, SPayLater, ShopeePay Singapore]
     covers: "Monee (formerly SeaMoney), Sea Limited's digital financial services arm, including ShopeePay and SPayLater; Sea Limited news counts when it is about these businesses"
     domains: [monee.com]
     home: singapore
@@ -990,7 +990,7 @@ entities:
     name: Crypto.com
     kind: digital_asset_firm
     displayed: true
-    aliases: [Foris DAX, Foris DAX Asia, Cronos, Crypto.com Exchange]
+    aliases: [Foris DAX, Foris DAX Asia, Cronos, Crypto.com Exchange, Foris DAX Asia Pte. Ltd., Foris Asia Pte. Ltd.]
     domains: [crypto.com]
     logo: /logos/crypto-com.svg
     logo_full: /logos/full/crypto-com.svg
@@ -999,7 +999,7 @@ entities:
     name: Ripple
     kind: digital_asset_firm
     displayed: true
-    aliases: [Ripple Labs, Ripple Markets APAC, RLUSD, Ripple USD, XRP Ledger]
+    aliases: [Ripple Labs, Ripple Markets APAC, RLUSD, Ripple USD, XRP Ledger, Ripple Markets APAC Pte. Ltd.]
     covers: "Ripple, the blockchain payments company behind RLUSD and the XRP Ledger; not ripple effects or the generic word ripple"
     domains: [ripple.com]
     logo: /logos/ripple.svg
@@ -1008,7 +1008,7 @@ entities:
     name: Sygnum
     kind: digital_asset_firm
     displayed: true
-    aliases: [Sygnum Bank, Sygnum Pte Ltd, Sygnum Singapore]
+    aliases: [Sygnum Bank, Sygnum Pte Ltd, Sygnum Singapore, Sygnum Pte. Ltd.]
     domains: [sygnum.com]
     logo: /logos/sygnum.png
     logo_full: /logos/full/sygnum.svg
@@ -1039,7 +1039,7 @@ entities:
     name: Temasek
     kind: investor
     displayed: true
-    aliases: [Temasek Holdings, Temasek Holdings (Private) Limited]
+    aliases: [Temasek Holdings, Temasek Holdings (Private) Limited, Seviora Holdings]
     covers: "Temasek Holdings, the Singapore state investor; not Temasek Polytechnic or other places and institutions named Temasek"
     domains: [temasek.com.sg]
     logo: /logos/temasek.png
@@ -1058,7 +1058,7 @@ entities:
     name: Vertex Ventures
     kind: investor
     displayed: true
-    aliases: [Vertex Ventures Southeast Asia and India, Vertex Ventures SEA and India, Vertex Holdings]
+    aliases: [Vertex Ventures Southeast Asia and India, Vertex Ventures SEA and India, Vertex Holdings, Vertex Venture Holdings Ltd]
     covers: "Vertex Ventures, the Temasek-backed venture capital funds; not Vertex Pharmaceuticals or other companies named Vertex"
     domains: [vertexventures.sg]
     logo: /logos/vertex-ventures.png
@@ -1170,7 +1170,7 @@ entities:
     name: China Construction Bank
     kind: bank
     displayed: false
-    aliases: [CCB, China Construction Bank Corporation, CCB Singapore]
+    aliases: [CCB, China Construction Bank Corporation, CCB Singapore, China Construction Bank Singapore]
     domains: [ccb.com]
     home: mainland-china
   - id: icbc
@@ -1242,6 +1242,29 @@ entities:
     aliases: []
     domains: []
     members: [dubai]
+  # Regions a bank discloses its loans for instead of countries (bank-exposures.yaml); a link into
+  # one covers its member countries that are entities (Macau is not one).
+  - id: south-and-southeast-asia
+    name: South and Southeast Asia
+    kind: region
+    displayed: false
+    aliases: []
+    domains: []
+    members: [india, indonesia, malaysia, thailand, vietnam]
+  - id: greater-china
+    name: Greater China
+    kind: region
+    displayed: false
+    aliases: []
+    domains: []
+    members: [hong-kong, mainland-china, taiwan]
+  - id: rest-of-greater-china
+    name: Greater China excluding Hong Kong
+    kind: region
+    displayed: false
+    aliases: []
+    domains: []
+    members: [mainland-china, taiwan]
   - id: world-bank
     name: World Bank
     kind: international_body

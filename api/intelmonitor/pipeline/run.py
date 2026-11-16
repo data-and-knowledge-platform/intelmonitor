@@ -102,7 +102,7 @@ async def compute_run(
         )
 
     try:
-        step(f"relationships: {len(synced.relationships)} links, {len(synced.endpoints)} endpoints")
+        step(f"relationships: {len(synced.relationships)} links")
         step(
             f"detectors: {detected.events} events in the corpus window "
             f"{dict(detected.by_detector)}, {detected.added} new documents"

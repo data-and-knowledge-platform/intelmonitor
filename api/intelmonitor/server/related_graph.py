@@ -1,6 +1,6 @@
-"""The Overview's Related graph (GET /subjects/{id}/related-graph): every subject and endpoint
-linked to the subject in the relationship store, in either direction, each with its links in a
-few words and the shown developments of the window that reach the subject through it.
+"""The Overview's Related graph (GET /subjects/{id}/related-graph): every entity linked to the
+subject in the relationship store, in either direction, each with its links in a few words and
+the shown developments of the window that reach the subject through it.
 
 A development reaches the subject through a node when its indirect impact on the subject
 (development_impacts, read by server/impacts.py) passes through the subject's link to that node:
@@ -27,13 +27,15 @@ def related_graph(q: Queries, subject_id: str, days: RelatedDays) -> RelatedGrap
     q.conn.executescript(SCHEMA)  # a store the pipeline has not synced serves no links
     nodes: dict[str, RelatedNode] = {}
     for r, node in links_of(q.conn, subject_id):
+        if node.kind == "group":  # belongs_to_sector, which links_of leaves out
+            continue
         found = nodes.setdefault(
             node.id,
             RelatedNode(
                 id=node.id,
                 name=node.name,
                 kind=node.kind,
-                subject=subject_ref(node.id) if node.subject else None,
+                subject=subject_ref(node.id),
                 links=[],
                 development_ids=[],
                 harmful=0,

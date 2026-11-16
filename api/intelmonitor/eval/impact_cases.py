@@ -19,10 +19,13 @@ Every way the table logic could fail, and the cases that catch it:
   tagged entity leaks to another (`not-adverse-*`);
 - a Low direct item passes something by default, or more than Strong to Low when switched on
   (`cell-*`, `low-*`);
-- anything reaches two hops, through an entity or an endpoint (`two-hops-*`);
+- anything reaches two hops (`two-hops-*`);
 - a region figure misses its member country, covers a place outside the region, carries an event
-  out of the lender towards the region's members, or loses to a weaker direct link (`region-*`);
-- belongs_to_sector carries something, or an endpoint or a group gets a row (`no-carry-*`);
+  out of the lender towards the region's members (it reaches the region entity itself, as any
+  link's far end), or loses to a weaker direct link (`region-*`;
+  Greater China is the seed's region entity, whose members are Hong Kong, Mainland China and
+  Taiwan);
+- belongs_to_sector carries something, or a group gets a row (`no-carry-*`);
 - a topic tag passes something (`topic-*`);
 - the run step reads the wrong level or adverse flag from development_subjects, stores the wrong
   row, or counts the two settings wrongly (`store`).
@@ -32,7 +35,7 @@ directory."""
 
 import json
 import sqlite3
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 
 from intelmonitor.eval.common import EVAL_DIR
@@ -40,7 +43,6 @@ from intelmonitor.pipeline.impact import Reached, Tagged, indirect_level, reache
 from intelmonitor.pipeline.params import PRIORITY_LABELS, Priority
 from intelmonitor.relationships import (
     SCHEMA,
-    Endpoint,
     Rating,
     Relationship,
     RelationshipsFile,
@@ -93,15 +95,6 @@ def link(
     )
 
 
-GREATER_CHINA = Endpoint(
-    id="greater-china",
-    name="Greater China",
-    kind="region",
-    members=["hong-kong", "mainland-china", "taiwan", "macau"],
-)
-VENDOR = Endpoint(id="case-vendor", name="A vendor no page tracks", kind="tech_provider")
-
-
 @dataclass(frozen=True)
 class Expect:
     """The one row an entity must get."""
@@ -120,7 +113,6 @@ class Case:
     tagged: dict[str, Tagged]
     expected: dict[str, Expect]
     # Every entity that gets a row must be in `expected`.
-    endpoints: list[Endpoint] = field(default_factory=list[Endpoint])
     from_low: bool = False
     reason: str = ""
 
@@ -299,20 +291,8 @@ CASES: list[Case] = [
         reason="Singtel reaches DBS; nothing goes on from DBS to OCBC",
     ),
     Case(
-        id="two-hops-endpoint",
-        links=[
-            link("dbs", "depends_on", VENDOR.id, "Weak", "Strong"),
-            link(VENDOR.id, "depends_on", "singtel", "Weak", "Strong"),
-        ],
-        endpoints=[VENDOR],
-        tagged={"singtel": adverse(HIGH)},
-        expected={},
-        reason="An endpoint gets no row and passes nothing on",
-    ),
-    Case(
         id="region-member",
         links=[link("uob", "exposed_to", "greater-china", "Weak", "Moderate", weight=0.135)],
-        endpoints=[GREATER_CHINA],
         tagged={"taiwan": adverse(HIGH)},
         expected={
             "uob": Expect(
@@ -324,7 +304,6 @@ CASES: list[Case] = [
     Case(
         id="region-not-member",
         links=[link("uob", "exposed_to", "greater-china", "Weak", "Strong", weight=0.135)],
-        endpoints=[GREATER_CHINA],
         tagged={"singapore": adverse(HIGH)},
         expected={},
         reason="Singapore is not in Greater China",
@@ -332,10 +311,12 @@ CASES: list[Case] = [
     Case(
         id="region-to-from-only",
         links=[link("uob", "exposed_to", "greater-china", "Strong", "Strong", weight=0.135)],
-        endpoints=[GREATER_CHINA],
         tagged={"uob": adverse(HIGH)},
-        expected={},
-        reason="UOB's own event does not reach the region's members through its figure",
+        expected={
+            "greater-china": Expect("Medium", "uob", "uob:exposed_to:greater-china", "Strong")
+        },
+        reason="UOB's own event reaches the region entity at from_to, but not the region's "
+        "members through its figure",
     ),
     Case(
         id="region-beats-weaker-direct",
@@ -343,7 +324,6 @@ CASES: list[Case] = [
             link("dbs", "exposed_to", "hong-kong", "Weak", "Weak", weight=0.122),
             link("dbs", "exposed_to", "greater-china", "Weak", "Strong", weight=0.2),
         ],
-        endpoints=[GREATER_CHINA],
         tagged={"hong-kong": adverse(HIGH)},
         expected={
             "dbs": Expect(
@@ -363,14 +343,6 @@ CASES: list[Case] = [
         reason="belongs_to_sector carries nothing, even between two entities",
     ),
     Case(
-        id="no-carry-endpoint",
-        links=[link("dbs", "depends_on", VENDOR.id, "Strong", "Strong")],
-        endpoints=[VENDOR],
-        tagged={"dbs": adverse(HIGH)},
-        expected={},
-        reason="An endpoint is not a seed entity and gets no row",
-    ),
-    Case(
         id="topic-passes-nothing",
         links=[link("dbs", "depends_on", "singtel", "Strong", "Strong")],
         tagged={"banking-lending": adverse(HIGH)},
@@ -380,13 +352,13 @@ CASES: list[Case] = [
 ]
 
 
-def _store(links: list[Relationship], endpoints: list[Endpoint]) -> sqlite3.Connection:
+def _store(links: list[Relationship]) -> sqlite3.Connection:
     """An in-memory store with the run tables and these links."""
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     conn.executescript(STORE_SCHEMA)
     conn.executescript(SCHEMA)
-    store_relationships(conn, RelationshipsFile(relationships=links, endpoints=endpoints))
+    store_relationships(conn, RelationshipsFile(relationships=links))
     return conn
 
 
@@ -452,7 +424,7 @@ def check_store() -> list[str]:
         link("uob", "depends_on", "singtel", "Weak", "Weak"),
         link("ocbc", "exposed_to", "greater-china", "Weak", "Moderate", weight=0.2),
     ]
-    conn = _store(links, [GREATER_CHINA])
+    conn = _store(links)
     tags = [
         # dev-a: Singtel High and adverse reaches DBS (Medium) and UOB (Low)
         ("dev-a", "singtel", HIGH, 1),
@@ -503,7 +475,7 @@ class Result:
 def run() -> None:
     results = [Result("table", not (p := check_table()), p, [], "indirect_level by cell")]
     for case in CASES:
-        conn = _store(case.links, case.endpoints)
+        conn = _store(case.links)
         rows = reached(conn, case.tagged, from_low=case.from_low)
         problems = check(case, rows)
         rows_out = [_row(r) for r in rows]

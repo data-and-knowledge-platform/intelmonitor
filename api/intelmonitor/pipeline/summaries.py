@@ -302,7 +302,7 @@ def subject_impacts(
     ).fetchall()
     links = [Relationship.model_validate_json(r["data"]) for r in rows]
     ends = {i for link in links for i in (link.from_, link.to)}
-    nodes = load_nodes(conn, ends | {r["source_id"] for r in rows}) if rows else {}
+    nodes = load_nodes(ends | {r["source_id"] for r in rows}) if rows else {}
     found: list[BriefImpact] = []
     for r, link in zip(rows, links, strict=True):
         if (backing := gate.get(r["development_id"])) is None or not backing.shown:

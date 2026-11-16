@@ -160,21 +160,22 @@ class End(BaseModel):
     description: str | None
 
 
-def ends(data: RelationshipsFile) -> dict[str, End]:
-    """Every id a link may end at: entities (kind, and `covers` where the seed has one), seed
-    groups (their members) and endpoints (their detail, or the places a region covers)."""
+def ends() -> dict[str, End]:
+    """Every id a link may end at: entities (kind, and `covers` where the seed has one, or the
+    places a region covers) and seed groups (their members)."""
     seed = load_subjects()
     names = {e.id: e.name for e in seed.entities}
     out = {
-        e.id: End(name=e.name, kind=e.kind.replace("_", " "), description=e.covers)
+        e.id: End(
+            name=e.name,
+            kind=e.kind.replace("_", " "),
+            description=e.covers or (f"covers {', '.join(e.members)}" if e.members else None),
+        )
         for e in seed.entities
     }
     for g in seed.groups:
         members = ", ".join(names[m] for m in g.members)
         out[g.id] = End(name=g.name, kind="group of entities", description=f"members: {members}")
-    for e in data.endpoints:
-        covers = f"covers {', '.join(e.members)}" if e.members else None
-        out[e.id] = End(name=e.name, kind=e.kind.replace("_", " "), description=e.detail or covers)
     return out
 
 
@@ -343,7 +344,7 @@ async def main() -> int:
     args = parser.parse_args()
 
     data = RelationshipsFile.model_validate(yaml.safe_load(RELATIONSHIPS_PATH.read_text()))
-    names = ends(data)
+    names = ends()
     rels = [r for r in data.relationships if rateable(r)]
     ids = {r.id for r in rels}
     old = load_ratings()

@@ -271,7 +271,7 @@
     "/subjects/{subject_id}/related-graph": {
       "get": {
         "summary": "Get Related Graph",
-        "description": "Every subject and endpoint linked to the subject in the relationship store, either\ndirection, each with its links and the shown developments of the last `days` (7, as the\nbrief, 30 or 90) that reach the subject through it, with link-type counts for filters.",
+        "description": "Every entity linked to the subject in the relationship store, either direction, each with\nits links and the shown developments of the last `days` (7, as the brief, 30 or 90) that\nreach the subject through it.",
         "operationId": "get_related_graph",
         "parameters": [
           {
@@ -3199,66 +3199,31 @@
             "title": "Name"
           },
           "kind": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "bank",
-                  "central_bank",
-                  "regulator",
-                  "agency",
-                  "market_infrastructure",
-                  "payment_system",
-                  "tech_provider",
-                  "asset_manager",
-                  "investor",
-                  "insurer",
-                  "payment_institution",
-                  "stablecoin_issuer",
-                  "digital_asset_firm",
-                  "international_body",
-                  "country",
-                  "region",
-                  "sector"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "bank",
-                  "insurer",
-                  "broker",
-                  "investor",
-                  "person",
-                  "association",
-                  "central_bank",
-                  "regulator",
-                  "market_infrastructure",
-                  "payment_system",
-                  "payment_institution",
-                  "tech_provider",
-                  "stablecoin_issuer",
-                  "digital_asset_firm",
-                  "blockchain",
-                  "country",
-                  "region",
-                  "sector",
-                  "group"
-                ]
-              }
+            "type": "string",
+            "enum": [
+              "bank",
+              "central_bank",
+              "regulator",
+              "agency",
+              "market_infrastructure",
+              "payment_system",
+              "tech_provider",
+              "asset_manager",
+              "investor",
+              "insurer",
+              "payment_institution",
+              "stablecoin_issuer",
+              "digital_asset_firm",
+              "international_body",
+              "country",
+              "region",
+              "sector"
             ],
             "title": "Kind"
           },
           "subject": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SubjectRef"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "None when the node is not tracked"
+            "$ref": "#/components/schemas/SubjectRef",
+            "description": "The entity; a hidden one has no page"
           },
           "links": {
             "items": {
@@ -3293,7 +3258,7 @@
           "harmful"
         ],
         "title": "RelatedNode",
-        "description": "A subject or endpoint linked to the centre, with the developments that reach the centre\nthrough it."
+        "description": "An entity linked to the centre, with the developments that reach the centre through it."
       },
       "RelationshipFigure": {
         "properties": {

@@ -189,9 +189,9 @@ def get_subject_impacts(
 
 @app.get("/subjects/{subject_id}/related-graph")
 def get_related_graph(q: Q, subject_id: str, days: RelatedDays = RelatedDays.week) -> RelatedGraph:
-    """Every subject and endpoint linked to the subject in the relationship store, either
-    direction, each with its links and the shown developments of the last `days` (7, as the
-    brief, 30 or 90) that reach the subject through it, with link-type counts for filters."""
+    """Every entity linked to the subject in the relationship store, either direction, each with
+    its links and the shown developments of the last `days` (7, as the brief, 30 or 90) that
+    reach the subject through it."""
     page_subject(subject_id)
     return related_graph(q, subject_id, days)
 

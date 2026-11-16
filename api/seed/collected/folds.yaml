@@ -1,0 +1,219 @@
+# Units of entities, each folded into its parent entity by scripts/build_relationships.py
+# (spec step 3b of link-types-and-inferred-impact; the user's list of 16 Nov 2026 in
+# wayfind/link-types-and-inferred-impact/assets/13/entity-check.md, section 5). Written by hand,
+# not by name matching.
+#
+# folds[]: one per unit.
+#   unit      the id the collected files use for the unit
+#   parent    the entity it folds into; the build reads the unit's links as the parent's, and a
+#             link that folds to the parent at both ends is not built
+#   name      the unit's name, which is also one of the parent's aliases in subjects.yaml
+#   evidence  why it is a unit of the parent, from the collected link's own detail line
+# not_carried[]: collected links that are not built once their ends fold, by their id before
+#   folding, with the reason.
+
+folds:
+  - unit: barclays-singapore
+    parent: barclays
+    name: Barclays Singapore
+    evidence: Barclays Bank PLC's Singapore branch; MAS lists it as an SGS primary dealer
+  - unit: bnp-paribas-singapore
+    parent: bnp-paribas
+    name: BNP Paribas Singapore
+    evidence: BNP Paribas's Singapore branch, a MEPS+, FAST, GIRO and PayNow participant
+  - unit: ccb-singapore
+    parent: china-construction-bank
+    name: China Construction Bank Singapore
+    evidence: MAS's MEPS+ list names the participant "China Construction Bank", the parent's own branch
+  - unit: icbc-singapore
+    parent: icbc
+    name: ICBC Singapore
+    evidence: '"Industrial and Commercial Bank of China Limited is an eGIRO participating bank", the parent''s own branch'
+  - unit: sbi-singapore
+    parent: state-bank-of-india
+    name: State Bank of India Singapore
+    evidence: ABS lists the FAST participant as "State Bank of India", the parent's own branch
+  - unit: citibank
+    parent: citigroup
+    name: Citibank
+    evidence: '"Citigroup counts Citibank Singapore Ltd. within its Citibank bank entities"'
+  - unit: hsbc-singapore
+    parent: hsbc
+    name: HSBC Singapore
+    evidence: HSBC Bank (Singapore) Limited, an indirect wholly owned subsidiary of HSBC Holdings
+  - unit: jpmorgan-singapore
+    parent: jpmorgan
+    name: JPMorgan Chase Singapore
+    evidence: Singapore branch of JPMorgan Chase Bank, N.A., JPMorganChase's principal bank
+  - unit: standard-chartered-singapore
+    parent: standard-chartered
+    name: Standard Chartered Singapore
+    evidence: Standard Chartered Bank (Singapore) Limited, an indirect wholly owned subsidiary
+  - unit: ubs-singapore
+    parent: ubs
+    name: UBS Singapore
+    evidence: UBS AG's Singapore branch; UBS Group owns all of UBS AG
+  - unit: maybank-indonesia
+    parent: maybank
+    name: Maybank Indonesia
+    evidence: Maybank holds 98.52% of PT Bank Maybank Indonesia
+  - unit: dbs-china
+    parent: dbs
+    name: DBS Bank (China) Limited
+    evidence: DBS holds 100% of DBS Bank (China)
+  - unit: dbs-hong-kong
+    parent: dbs
+    name: DBS Bank (Hong Kong) Limited
+    evidence: DBS holds 100% of DBS Bank (Hong Kong)
+  - unit: dbs-india
+    parent: dbs
+    name: DBS Bank India Limited
+    evidence: DBS holds 100% of DBS Bank India
+  - unit: dbs-indonesia
+    parent: dbs
+    name: PT Bank DBS Indonesia
+    evidence: DBS holds 99% of PT Bank DBS Indonesia
+  - unit: dbs-taiwan
+    parent: dbs
+    name: DBS Bank (Taiwan) Limited
+    evidence: DBS holds 100% of DBS Bank (Taiwan)
+  - unit: dbs-digital-exchange
+    parent: dbs
+    name: DBS Digital Exchange Pte. Ltd.
+    evidence: DBS holds 93% through DBS Finnovation; see section 1 for SGX's row
+  - unit: ocbc-china
+    parent: ocbc
+    name: OCBC Bank Limited (China)
+    evidence: OCBC owns 100% of OCBC Bank Limited (China)
+  - unit: ocbc-hong-kong
+    parent: ocbc
+    name: OCBC Bank (Hong Kong) Limited
+    evidence: OCBC owns 100% of OCBC Bank (Hong Kong)
+  - unit: ocbc-indonesia
+    parent: ocbc
+    name: PT Bank OCBC NISP Tbk
+    evidence: OCBC owns 85% of PT Bank OCBC NISP
+  - unit: ocbc-macau
+    parent: ocbc
+    name: OCBC Bank (Macau) Limited
+    evidence: OCBC owns 100% of OCBC Bank (Macau)
+  - unit: ocbc-malaysia
+    parent: ocbc
+    name: OCBC Bank (Malaysia) Berhad
+    evidence: OCBC owns 100% of OCBC Bank (Malaysia)
+  - unit: uob-china
+    parent: uob
+    name: United Overseas Bank (China) Limited
+    evidence: UOB owns 100% of United Overseas Bank (China)
+  - unit: uob-indonesia
+    parent: uob
+    name: PT Bank UOB Indonesia
+    evidence: UOB owns 99% of PT Bank UOB Indonesia
+  - unit: uob-malaysia
+    parent: uob
+    name: United Overseas Bank (Malaysia) Bhd
+    evidence: UOB owns 100% of United Overseas Bank (Malaysia)
+  - unit: uob-thailand
+    parent: uob
+    name: United Overseas Bank (Thai) Public Company Limited
+    evidence: UOB owns 99.7% of United Overseas Bank (Thai)
+  - unit: uob-vietnam
+    parent: uob
+    name: United Overseas Bank (Vietnam) Limited
+    evidence: UOB owns 100% of United Overseas Bank (Vietnam)
+  - unit: great-eastern-general
+    parent: great-eastern
+    name: Great Eastern General Insurance Limited
+    evidence: Wholly owned general insurer of Great Eastern
+  - unit: blackrock-singapore
+    parent: blackrock
+    name: BlackRock (Singapore) Limited
+    evidence: BlackRock (Singapore) Limited, a BlackRock subsidiary
+  - unit: pimco-asia
+    parent: pimco
+    name: PIMCO Asia Pte Ltd
+    evidence: PIMCO Asia Pte Ltd, PIMCO's Singapore operating company
+  - unit: schroders-singapore
+    parent: schroders
+    name: Schroder Investment Management (Singapore) Ltd.
+    evidence: Schroders holds 100% of Schroder Investment Management (Singapore)
+  - unit: sgx-dc
+    parent: sgx
+    name: Singapore Exchange Derivatives Clearing Limited
+    evidence: SGX Derivatives Clearing, a 100% SGX subsidiary
+  - unit: egiro
+    parent: giro
+    name: eGIRO
+    evidence: 'A product of GIRO: the seed''s GIRO covers reads "including eGIRO"'
+  - unit: coinbase-singapore
+    parent: coinbase
+    name: Coinbase Singapore Pte. Ltd.
+    evidence: Coinbase Singapore Pte. Ltd., holder of Coinbase's MAS licence
+  - unit: foris-dax-asia
+    parent: crypto-com
+    name: Foris DAX Asia Pte. Ltd.
+    evidence: The Singapore entity trading as Crypto.com; already a Crypto.com alias
+  - unit: foris-asia
+    parent: crypto-com
+    name: Foris Asia Pte. Ltd.
+    evidence: Issues the Crypto.com Visa Card in Singapore under its own MPI licence
+  - unit: ripple-markets-apac
+    parent: ripple
+    name: Ripple Markets APAC Pte. Ltd.
+    evidence: Ripple's Singapore subsidiary and MAS licence holder
+  - unit: sygnum-singapore
+    parent: sygnum
+    name: Sygnum Pte. Ltd.
+    evidence: Sygnum's MAS-licensed Singapore entity
+  - unit: circle-singapore
+    parent: circle
+    name: Circle Internet Singapore Pte. Ltd.
+    evidence: Circle Internet Singapore Pte. Ltd., a subsidiary of Circle Internet Group
+  - unit: airwallex-singapore
+    parent: airwallex
+    name: Airwallex Singapore
+    evidence: Airwallex (Singapore) Pte. Ltd., its MAS-licensed entity
+  - unit: stripe-singapore
+    parent: stripe
+    name: Stripe Payments Singapore
+    evidence: Stripe Payments Singapore Pte. Ltd., Stripe's Singapore contracting entity
+  - unit: wise-asia-pacific
+    parent: wise
+    name: Wise Asia-Pacific
+    evidence: Wise Asia-Pacific Pte. Ltd., the Wise Group entity in Singapore
+  - unit: worldfirst
+    parent: ant-international
+    name: WorldFirst
+    evidence: Acquired by Ant in 2019, runs Ant International's cross-border accounts; already an alias
+  - unit: shopeepay-singapore
+    parent: seamoney
+    name: ShopeePay Singapore
+    evidence: ShopeePay, part of Monee (SeaMoney); "ShopeePay" is already an alias
+  - unit: grabpay
+    parent: grab
+    name: GrabPay
+    evidence: GPay Network (S), a significant subsidiary of Grab Holdings; already an alias
+  - unit: seviora
+    parent: temasek
+    name: Seviora Holdings
+    evidence: Seviora Group is wholly owned by Temasek
+  - unit: aia-group
+    parent: aia-singapore
+    name: AIA Group Limited
+    evidence: The parent, already an alias of aia-singapore and named in its covers; "AIA Group's Singapore business is a wholly-owned subsidiary"
+  - unit: prudential-plc
+    parent: prudential-singapore
+    name: Prudential plc
+    evidence: The parent, already an alias of prudential-singapore and named in its covers
+  - unit: manulife-financial
+    parent: manulife-singapore
+    name: Manulife Financial Corporation
+    evidence: The parent, already an alias of manulife-singapore and named in its covers
+  - unit: vertex-holdings
+    parent: vertex-ventures
+    name: Vertex Venture Holdings Ltd
+    evidence: Vertex Venture Holdings anchors the Vertex funds; "Vertex Holdings" is already an alias of vertex-ventures (Temasek owns it, and folding into either gives the same links)
+
+not_carried:
+  - id: sgx:holds_stake_in:dbs-digital-exchange
+    reason: SGX holds a minority stake in DBS Digital Exchange, not in DBS; folded, it would read as SGX holding a stake in DBS

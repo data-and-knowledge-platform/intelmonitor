@@ -62,14 +62,9 @@ class Sheet:
     rows: list[list[Cell]]
 
 
-def _names(conn: sqlite3.Connection) -> dict[str, str]:
-    """Display names for every id a label can name: the store's link endpoints and the seed's
-    topics, groups and entities."""
-    names = {
-        r["id"]: r["name"] for r in conn.execute("SELECT id, name FROM relationship_endpoints")
-    }
-    names.update({i: s.name for i, s in all_subjects().items()})
-    return names
+def _names() -> dict[str, str]:
+    """Display names for every id a label can name: the seed's topics, groups and entities."""
+    return {i: s.name for i, s in all_subjects().items()}
 
 
 def _latest_run(conn: sqlite3.Connection) -> str | None:
@@ -376,7 +371,7 @@ def export_labels(store: Path, out: Path) -> dict[str, int]:
     """Write the workbook from the store at `store` to `out`; the row count of each sheet."""
     conn = open_store(store)
     try:
-        names = _names(conn)
+        names = _names()
         sheets = [
             direct_sheet(conn, names),
             indirect_sheet(conn, names),
@@ -489,8 +484,7 @@ def link_ratings_workbook(out: Path) -> dict[str, int]:
     transmission.yaml as it stands, named from relationships.yaml and the seed. transmission.yaml
     records no prompt versions yet, so every rating in it is version 1. The row count."""
     data = load_relationships()
-    names = {e.id: e.name for e in data.endpoints}
-    names.update({i: s.name for i, s in all_subjects().items()})
+    names = {i: s.name for i, s in all_subjects().items()}
     links = {r.id: r for r in data.relationships}
     rows: list[list[Cell]] = []
     for e in load_ratings().values():

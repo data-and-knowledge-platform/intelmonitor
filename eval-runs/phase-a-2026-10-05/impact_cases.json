@@ -429,13 +429,6 @@
     "reason": "Singtel reaches DBS; nothing goes on from DBS to OCBC"
   },
   {
-    "id": "two-hops-endpoint",
-    "ok": true,
-    "problems": [],
-    "rows": [],
-    "reason": "An endpoint gets no row and passes nothing on"
-  },
-  {
     "id": "region-member",
     "ok": true,
     "problems": [],
@@ -462,8 +455,17 @@
     "id": "region-to-from-only",
     "ok": true,
     "problems": [],
-    "rows": [],
-    "reason": "UOB's own event does not reach the region's members through its figure"
+    "rows": [
+      {
+        "subject": "greater-china",
+        "level": "Medium",
+        "source": "uob",
+        "link": "uob:exposed_to:greater-china",
+        "strength": "Strong",
+        "region": null
+      }
+    ],
+    "reason": "UOB's own event reaches the region entity at from_to, but not the region's members through its figure"
   },
   {
     "id": "region-beats-weaker-direct",
@@ -487,13 +489,6 @@
     "problems": [],
     "rows": [],
     "reason": "belongs_to_sector carries nothing, even between two entities"
-  },
-  {
-    "id": "no-carry-endpoint",
-    "ok": true,
-    "problems": [],
-    "rows": [],
-    "reason": "An endpoint is not a seed entity and gets no row"
   },
   {
     "id": "topic-passes-nothing",

@@ -2,9 +2,11 @@
 
 Reads api/seed/collected/bank-exposures.yaml, tech-dependencies.yaml, entity-links.yaml and every
 links-*.yaml (one per sector: structural links, dependencies and participations), puts
-every link in one schema, decides subject or endpoint from api/seed/subjects.yaml, derives each
-entity's belongs_to_sector links from the seed's groups, writes each link's one-line reason, merges
-each link's strengths from api/seed/collected/transmission.yaml, and prints a build report. The
+every link in one schema, folds each unit of an entity into its parent (collected/folds.yaml),
+keeps a link only when both ends are entities of api/seed/subjects.yaml, derives each entity's
+belongs_to_sector links from the seed's groups, writes each link's one-line reason, merges each
+link's strengths from api/seed/collected/transmission.yaml, and prints a build report that lists
+every collected row not built, with its reason. The collected rows stay in their files. The
 output is deterministic: a second run produces no diff. Rerun after any edit to the collected files
 or to the subject seed, then run scripts/rate_relationships.py and build again: a link whose input
 changed keeps its old rating until it is rated again. The report lists unrated links and stale
@@ -30,18 +32,16 @@ from intelmonitor.relationships import (
     RELATIONSHIPS_PATH,
     TRANSMISSION_PATH,
     Dimension,
-    Endpoint,
-    EndpointKind,
     Evidence,
     Figure,
     FigureMeasure,
     FigureUnit,
     Node,
     Relationship,
-    RelationshipsFile,
     RelType,
     Service,
     Transmission,
+    load_nodes,
     load_ratings,
     rateable,
 )
@@ -71,27 +71,6 @@ NOT_TARGETS = {
     "ccyb-others": "residual bucket",
     "other-asia-pacific": "residual bucket",
     "other-industries": "residual bucket",
-}
-# Regions a bank discloses loans for instead of countries, and the places each one covers.
-REGION_MEMBERS = {
-    "greater-china": ["hong-kong", "mainland-china", "taiwan", "macau"],
-    "rest-of-greater-china": ["mainland-china", "taiwan", "macau"],
-    "south-and-southeast-asia": ["india", "indonesia", "malaysia", "thailand", "vietnam"],
-}
-# Endpoints no collected file declares (or declares with the wrong kind). Used only when the id
-# is not a subject, so parking a subject such as Maybank lands it here.
-EXTRA_ENDPOINTS: dict[str, tuple[str, EndpointKind]] = {
-    "bangkok-bank": ("Bangkok Bank", "bank"),
-    "bank-of-china": ("Bank of China Singapore", "bank"),
-    "cimb": ("CIMB Bank", "bank"),
-    "citibank": ("Citibank", "bank"),
-    "great-eastern": ("Great Eastern", "insurer"),
-    "gxs-bank": ("GXS Bank", "bank"),
-    "income-insurance": ("Income Insurance", "insurer"),
-    "maybank": ("Maybank", "bank"),
-    "temenos": ("Temenos", "tech_provider"),
-    "trust-bank": ("Trust Bank", "bank"),
-    "egiro": ("eGIRO", "payment_system"),
 }
 
 
@@ -225,34 +204,48 @@ def ends(src: str, type_: RelType, dst: str) -> tuple[str, str]:
     return (min(src, dst), max(src, dst)) if type_ == "partner_of" else (src, dst)
 
 
-# Collected entity kinds that differ from the endpoint kinds.
-KIND_ALIASES: dict[str, EndpointKind] = {
-    "central-bank": "central_bank",
-    "exchange": "market_infrastructure",
-    "consortium": "group",
-    "platform": "group",
-    "taskforce": "group",
-    "index": "group",
-}
+class Fold(Row):
+    unit: str
+    parent: str
+    name: str
+    evidence: str
 
 
-def endpoint_kind(kind: str) -> EndpointKind:
-    if kind in KIND_ALIASES:
-        return KIND_ALIASES[kind]
-    kinds: tuple[EndpointKind, ...] = EndpointKind.__args__
-    assert kind in kinds, f"unknown entity kind {kind}"
-    return kind
+class NotCarried(Row):
+    id: str
+    reason: str
+
+
+class FoldsFile(Row):
+    """collected/folds.yaml: units of entities, each read as its parent."""
+
+    folds: list[Fold]
+    not_carried: list[NotCarried]
+
+
+def collected_row(r: Relationship) -> str:
+    """A link as the collected row it was built from, "from type to", before any folding."""
+    return (r.rating_from or r.id).replace(":", " ")
 
 
 class Build:
-    """Relationships, endpoint declarations and dropped rows, collected file by file."""
+    """Relationships and the collected rows not built, collected file by file."""
 
-    def __init__(self, seed: SubjectsSeed) -> None:
+    def __init__(self, seed: SubjectsSeed, folds: FoldsFile) -> None:
         self.seed = seed
-        self.subjects = {e.id: e.name for e in seed.entities}  # entity subject id -> name
-        self.groups = {g.id: g.name for g in seed.groups}  # seed groups are link ends too
+        self.subjects = {e.id: e.name for e in seed.entities}  # entity id -> name
+        self.groups = {g.id: g.name for g in seed.groups}  # belongs_to_sector ends at a group
+        self.fold = {f.unit: f.parent for f in folds.folds}
+        self.not_carried = {n.id: n.reason for n in folds.not_carried}
+        entities = {e.id: e for e in seed.entities}
+        for f in folds.folds:
+            assert f.unit not in entities, f"fold {f.unit} is an entity"
+            parent = entities.get(f.parent)
+            assert parent is not None, f"fold {f.unit}: parent {f.parent} is not an entity"
+            assert f.name in [parent.name, *parent.aliases], (
+                f"fold {f.unit}: {f.name} is not a name or alias of {f.parent} in subjects.yaml"
+            )
         self.rels: dict[str, Relationship] = {}
-        self.declared: dict[str, Endpoint] = {}  # first declaration wins
         self.dropped: list[tuple[str, str]] = []  # (row, reason)
         self.merged: list[str] = []  # ids that took a second row from the same source
         self.partner_rows = 0  # collected partner_of rows read
@@ -260,19 +253,48 @@ class Build:
     def drop(self, row: str, reason: str) -> None:
         self.dropped.append((row, reason))
 
-    def declare(self, endpoint: Endpoint) -> None:
-        self.declared.setdefault(endpoint.id, endpoint)
-
     def add(self, rel: Relationship) -> None:
-        """Add a relationship; a second row for the same link from the same source is merged
-        into the first (details joined, quotes joined with " | "), any other repeat dropped."""
+        """Add a relationship from a collected row, its unit ends folded into their parents. Not
+        built, with the reason: a row folds.yaml does not carry, a row whose ends fold into one
+        entity, a row with an end that is not an entity (a seed group is one only for
+        belongs_to_sector), and a repeat. Of two rows for one link where either was folded, the
+        row with the newer source is kept, and a folded link records in `rating_from` the id it
+        had before folding. A second unfolded row from the same source is merged into the first
+        (details joined, quotes joined with " | "), any other unfolded repeat dropped."""
         row = f"{rel.from_} {rel.type} {rel.to}"
+        if rel.id in self.not_carried:
+            self.drop(row, f"not carried (folds.yaml): {self.not_carried[rel.id]}")
+            return
+        src, dst = self.fold.get(rel.from_, rel.from_), self.fold.get(rel.to, rel.to)
+        if (src, dst) != (rel.from_, rel.to):
+            if src == dst:
+                self.drop(row, "folds into a link from its parent to itself")
+                return
+            src, dst = ends(src, rel.type, dst)
+            update = {"id": rel_id(src, rel.type, dst), "from_": src, "to": dst}
+            rel = rel.model_copy(update=update | {"rating_from": rel.id})
+            row += f" (folded: {rel.id})"
         if rel.from_ == rel.to:
             self.drop(row, "links an entity to itself")
+            return
+        outside = [] if rel.from_ in self.subjects else [rel.from_]
+        sector = rel.type == "belongs_to_sector" and rel.to in self.groups
+        if rel.to not in self.subjects and not sector:
+            outside.append(rel.to)
+        if outside:
+            self.drop(f"{row}: {', '.join(outside)}", "an end is not an entity")
             return
         first = self.rels.get(rel.id)
         if first is None:
             self.rels[rel.id] = rel
+        elif first.rating_from or rel.rating_from:
+            newer = (rel.as_of or rel.last_confirmed) > (first.as_of or first.last_confirmed)
+            kept, lost = (rel, first) if newer else (first, rel)
+            self.rels[rel.id] = kept
+            self.drop(
+                f"{collected_row(lost)} (as {rel.id}; kept: {collected_row(kept)})",
+                "folds onto a link already there; the row with the newer source is kept",
+            )
         elif first.source_url == rel.source_url and first.quote and rel.quote:
             self.merged.append(rel.id)
             self.rels[rel.id] = first.model_copy(
@@ -343,20 +365,6 @@ def build_exposures(build: Build, data: ExposuresFile) -> None:
         industry = sum(sgd_m(r) for r in loans if r.dimension == "industry")
         assert abs(geo - industry) < 1, f"{bank}: loans by geography and industry disagree"
         totals[bank] = geo
-    industries = {r.market for r in data.exposures if r.dimension == "industry"}
-    for m in data.markets:
-        id_ = RENAME.get(m.id, m.id)
-        if m.id in NOT_TARGETS or id_ != m.id:
-            continue
-        if id_ in REGION_MEMBERS:
-            members = REGION_MEMBERS[id_]
-            build.declare(
-                Endpoint(id=id_, name=m.name.split(" (")[0], kind="region", members=members)
-            )
-        else:
-            build.declare(
-                Endpoint(id=id_, name=m.name, kind="sector" if id_ in industries else "country")
-            )
     pairs: dict[tuple[str, str], list[ExposureRow]] = {}
     for row in data.exposures:
         label = f"{row.bank} {row.measure} {row.dimension} {row.market} ({row.segment})"
@@ -431,8 +439,6 @@ def build_exposures(build: Build, data: ExposuresFile) -> None:
 
 
 def build_tech(build: Build, data: TechFile, confirmed: date = LAST_CONFIRMED) -> None:
-    for e in data.new_entities:
-        build.declare(Endpoint(id=RENAME.get(e.id, e.id), name=e.name, kind=endpoint_kind(e.kind)))
     for r in data.relationships:
         src, dst = RENAME.get(r.from_, r.from_), RENAME.get(r.to, r.to)
         build.add(
@@ -475,10 +481,6 @@ REPORTED_MEMBERS = {("nexus-global-payments", "bank-indonesia")}
 
 
 def build_links(build: Build, data: LinksFile, confirmed: date = LAST_CONFIRMED) -> None:
-    group_ids = {g.id for g in data.groups}
-    for e in data.new_entities:
-        kind = "group" if e.id in group_ids else endpoint_kind(e.kind)
-        build.declare(Endpoint(id=RENAME.get(e.id, e.id), name=e.name, kind=kind))
     titles = {r.source_url: r.source_title for r in reversed(data.relationships)}
     for r in data.relationships:
         src, dst = ends(RENAME.get(r.from_, r.from_), r.type, RENAME.get(r.to, r.to))
@@ -502,7 +504,6 @@ def build_links(build: Build, data: LinksFile, confirmed: date = LAST_CONFIRMED)
             )
         )
     for g in data.groups:
-        build.declared[g.id] = Endpoint(id=g.id, name=g.name, kind="group", detail=g.detail)
         title = titles.get(g.source_url) or GROUP_SOURCE_TITLES[g.id]
         for member in g.members:
             src = RENAME.get(member, member)
@@ -555,19 +556,6 @@ def build_sectors(build: Build) -> None:
             )
 
 
-def endpoints_for(build: Build) -> tuple[list[Endpoint], list[str]]:
-    """The endpoint entry for every id in use that is not an entity subject, and the ids that
-    have neither (must be none)."""
-    used = {r.from_ for r in build.rels.values()} | {r.to for r in build.rels.values()}
-    for e in build.declared.values():
-        if e.id in used:
-            used.update(e.members)
-    ids = sorted(used - build.subjects.keys() - build.groups.keys())
-    return [build.declared[i] for i in ids if i in build.declared], [
-        i for i in ids if i not in build.declared
-    ]
-
-
 def unsourced(rels: list[Relationship]) -> list[str]:
     """Relationships missing a source URL, title or quote, unless graded assumed or derived from
     the seed (belongs_to_sector)."""
@@ -606,23 +594,22 @@ def reason(r: Relationship, to: Node) -> str:
     return r.detail
 
 
-def with_reasons(build: Build, endpoints: list[Endpoint]) -> list[Relationship]:
+def with_reasons(build: Build) -> list[Relationship]:
     """Every relationship with its reason written."""
-    entities = {e.id: e for e in build.seed.entities}
-    nodes = {e.id: Node(id=e.id, name=e.name, kind=e.kind, subject=False) for e in endpoints}
-    nodes |= {i: Node(id=i, name=n, kind="group", subject=False) for i, n in build.groups.items()}
-    nodes |= {i: Node(id=i, name=e.name, kind=e.kind, subject=True) for i, e in entities.items()}
+    nodes = load_nodes({r.to for r in build.rels.values()})
     return [r.model_copy(update={"reason": reason(r, nodes[r.to])}) for r in build.rels.values()]
 
 
-def stale(rels: list[Relationship], endpoints: list[Endpoint]) -> list[str]:
-    """Links whose model rating was made from another input than the link's current prompt."""
-    names = rating.ends(RelationshipsFile(relationships=rels, endpoints=endpoints))
+def stale(rels: list[Relationship]) -> list[str]:
+    """Links whose model rating was made from another input than the link's current prompt. A
+    link carrying a folded unit's rating (`rating_from`) is listed apart, not here."""
+    names = rating.ends()
     ratings = load_ratings()
     return sorted(
         r.id
         for r in rels
-        if (e := ratings.get(r.id)) is not None
+        if r.rating_from is None
+        and (e := ratings.get(r.id)) is not None
         and e.rated_by == "model"
         and e.input_hash != rating.input_hash(rating.user_prompt(r, names))
     )
@@ -630,23 +617,23 @@ def stale(rels: list[Relationship], endpoints: list[Endpoint]) -> list[str]:
 
 def with_ratings(rels: list[Relationship]) -> tuple[list[Relationship], list[str], list[str]]:
     """Every relationship with its strengths from transmission.yaml (belongs_to_sector has
-    none), the rateable ids with no entry, and the entries for links that no longer exist."""
+    none), the rateable ids with no entry, and the entries for links that no longer exist. A
+    folded link takes the rating of the unit's link it was (`rating_from`) while transmission.yaml
+    holds one, an interim until scripts/rate_relationships.py rates every link again and drops
+    the unit's entry; then it takes its own, and `rating_from` is cleared."""
     ratings = load_ratings()
-    out = [
-        r.model_copy(
-            update={
-                "transmission": Transmission(
-                    from_to=ratings[r.id].from_to, to_from=ratings[r.id].to_from
-                )
-            }
-        )
-        if rateable(r) and r.id in ratings
-        else r
-        for r in rels
-    ]
-    unrated = [r.id for r in rels if rateable(r) and r.id not in ratings]
-    ids = {r.id for r in rels if rateable(r)}
-    return out, sorted(unrated), sorted(ratings.keys() - ids)
+    out: list[Relationship] = []
+    for r in rels:
+        key = r.rating_from if r.rating_from in ratings else r.id
+        update: dict[str, object] = {"rating_from": key if key != r.id else None}
+        if rateable(r) and key in ratings:
+            update["transmission"] = Transmission(
+                from_to=ratings[key].from_to, to_from=ratings[key].to_from
+            )
+        out.append(r.model_copy(update=update))
+    unrated = [r.id for r in out if rateable(r) and r.transmission is None]
+    used = {r.rating_from or r.id for r in out if rateable(r)}
+    return out, sorted(unrated), sorted(ratings.keys() - used)
 
 
 HEADER = """\
@@ -688,9 +675,11 @@ HEADER = """\
 #   transmission  every type but belongs_to_sector: from_to and to_from, each a strength (Strong,
 #                 Moderate or Weak) and a reason: how strongly a material adverse event at the
 #                 first end reaches the second; from api/seed/collected/transmission.yaml
+#   rating_from   a link folded from a unit's row (api/seed/collected/folds.yaml) whose
+#                 transmission is, for now, the rating of that unit's link, under this id
 #   Keys left out are null, false or empty.
-# endpoints[]: every id above that is not an entity subject or group in api/seed/subjects.yaml,
-#   with name and kind; regions list the places they cover in members.
+# Both ends of every link are entities in api/seed/subjects.yaml, apart from belongs_to_sector,
+# which ends at a seed group; a link into a region entity covers its member countries.
 """
 
 
@@ -701,20 +690,22 @@ class NoAliasDumper(yaml.SafeDumper):
         return True
 
 
-def write(rels: list[Relationship], endpoints: list[Endpoint]) -> None:
+def write(rels: list[Relationship]) -> None:
     order = sorted(rels, key=lambda r: (REL_TYPES.index(r.type), r.from_, r.to))
-    doc = {
-        "relationships": [r.model_dump(by_alias=True, exclude_defaults=True) for r in order],
-        "endpoints": [e.model_dump(exclude_defaults=True) for e in endpoints],
-    }
+    doc = {"relationships": [r.model_dump(by_alias=True, exclude_defaults=True) for r in order]}
     body = yaml.dump(doc, Dumper=NoAliasDumper, sort_keys=False, allow_unicode=True, width=100)
     OUT.write_text(HEADER + "\n" + body)
 
 
-def report(build: Build, rels: list[Relationship], endpoints: list[Endpoint]) -> None:
+def report(build: Build, rels: list[Relationship]) -> None:
     grades: tuple[Evidence, ...] = Evidence.__args__
     counts = Counter((r.type, r.evidence) for r in rels)
-    print(f"\n{len(rels)} relationships")
+    sectors = sum(r.type == "belongs_to_sector" for r in rels)
+    folded = [r for r in rels if r.rating_from is not None]
+    print(
+        f"\n{len(rels)} relationships: {len(rels) - sectors} between two entities, of which "
+        f"{len(folded)} folded from a unit's row; {sectors} belongs_to_sector"
+    )
     print(f"  {'type':16}{'all':>5}" + "".join(f"{g:>10}" for g in grades))
     for t in REL_TYPES:
         row = [counts[(t, g)] for g in grades]
@@ -754,12 +745,8 @@ def report(build: Build, rels: list[Relationship], endpoints: list[Endpoint]) ->
         f"  pairs stored both ways with one type: {', '.join(both_ways(rels)) or 'none'}; "
         f"mutual {'/'.join(MUTUAL)}, kept: {', '.join(both_ways(rels, mutual=True)) or 'none'}"
     )
-    kinds = Counter(e.kind for e in endpoints)
-    print(
-        f"\n{len(endpoints)} endpoints: " + ", ".join(f"{k} {n}" for k, n in sorted(kinds.items()))
-    )
     print(f"\nmerged a second row from the same source into: {', '.join(build.merged)}")
-    print(f"\n{len(build.dropped)} collected rows dropped")
+    print(f"\n{len(build.dropped)} collected rows not built")
     by_reason: dict[str, list[str]] = {}
     for row, reason in build.dropped:
         by_reason.setdefault(reason, []).append(row)
@@ -777,9 +764,7 @@ def main() -> None:
     exposures = ExposuresFile.model_validate(read("bank-exposures.yaml"))
     tech = TechFile.model_validate(read("tech-dependencies.yaml"))
     links = LinksFile.model_validate(read("entity-links.yaml"))
-    build = Build(load_subjects())
-    for id_, (name, kind) in EXTRA_ENDPOINTS.items():
-        build.declare(Endpoint(id=id_, name=name, kind=kind))
+    build = Build(load_subjects(), FoldsFile.model_validate(read("folds.yaml")))
     build_links(build, links)  # first, so its ownership shares win over tech's repeats
     build_tech(build, tech)
     build_exposures(build, exposures)
@@ -798,21 +783,20 @@ def main() -> None:
             team.collected,
         )
     build_sectors(build)
-    endpoints, unknown = endpoints_for(build)
-    if unknown:
-        # Reasons name each link's `to` node, so stop before writing them.
-        print(
-            *(f"neither a subject nor an endpoint: {i}" for i in unknown), "\nnot written", sep="\n"
-        )
-        sys.exit(1)
-    rels, unrated, orphans = with_ratings(with_reasons(build, endpoints))
-    report(build, rels, endpoints)
+    rels, unrated, orphans = with_ratings(with_reasons(build))
+    report(build, rels)
     rated = sum(r.transmission is not None for r in rels)
+    carried = sorted((r.id, r.rating_from) for r in rels if r.rating_from is not None)
     print(
         f"\nstrengths from {TRANSMISSION_PATH.name}: {rated} links rated, "
         f"{len(unrated)} rateable links unrated, {len(orphans)} entries for links that no "
         "longer exist"
     )
+    print(
+        f"  {len(carried)} folded links carry the rating of the unit's link they were "
+        "(rating_from), until scripts/rate_relationships.py rates them under their own id:"
+    )
+    print(*(f"    {i} <- {f}" for i, f in carried), sep="\n")
     for i in orphans:
         print(f"  no such link: {i}")
     if unrated:
@@ -820,7 +804,7 @@ def main() -> None:
             f"  {len(unrated)} unrated (load_relationships refuses them): run "
             "scripts/rate_relationships.py, then build again"
         )
-    outdated = stale([r for r in rels if rateable(r)], endpoints)
+    outdated = stale([r for r in rels if rateable(r)])
     print(f"  {len(outdated)} stale ratings (input changed since the link was rated)")
     if outdated:
         print(*(f"    {i}" for i in outdated), sep="\n")
@@ -830,8 +814,8 @@ def main() -> None:
     if problems:
         print("\n".join(problems), "\nnot written", sep="\n")
         sys.exit(1)
-    write(rels, endpoints)
-    print(f"\nwrote {OUT}: no unknown ids")
+    write(rels)
+    print(f"\nwrote {OUT}: every link joins two entities, or an entity and a seed group")
 
 
 if __name__ == "__main__":
