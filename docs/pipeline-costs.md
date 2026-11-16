@@ -103,6 +103,7 @@ The seed pays every call afresh: the new topics, prompts and models change every
 ## Link rating, once
 
 `scripts/rate_relationships.py` rated all 812 rateable links on Claude Sonnet 5.5 at effort medium on 11 Nov 2026 for $2.49, measured, with no failures (spec step 2a).
+On 17 Nov 2026 it rated all 543 links again, belongs_to_sector included, with the four-value prompt of the deck of 16 Nov 2026 (link rating version 2) at effort high, in 543 calls for $1.76, measured, with no cut-offs, refusals or failures (spec step 6 of link-types-and-inferred-impact).
 Pipeline runs read the ratings from `api/seed/collected/transmission.yaml` and call no model for them.
 A rerun pays only for links that are new or whose input changed.
 
