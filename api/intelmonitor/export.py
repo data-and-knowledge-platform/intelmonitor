@@ -12,8 +12,8 @@ the corpus start to its date, so the latest run holds every development of the e
 - Direct: one row per development and entity it is about. A development that names no entity
   gets one row per topic instead, since each such topic is rated itself.
 - Indirect: one row per indirect impact (development_impacts).
-- Links: the step 2a review sheet, one row per rated link in the store's copy of
-  relationships.yaml (every type but belongs_to_sector), with `rated_by` from transmission.yaml.
+- Links: the step 2a review sheet, one row per link in the store's copy of relationships.yaml,
+  with `rated_by` from transmission.yaml.
 - Dropped: the findings the run left out as promotional or price moves.
 """
 
@@ -36,8 +36,8 @@ from intelmonitor.pipeline.subjects import PrioritySubject, all_subjects, priori
 from intelmonitor.relationships import (
     Relationship,
     load_ratings,
+    load_ratings_file,
     load_relationships,
-    rateable,
 )
 from intelmonitor.store.db import PROMPT_VERSION_TABLES, open_store
 from intelmonitor.trial import (
@@ -272,8 +272,6 @@ def links_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
     rows: list[list[Cell]] = []
     for row in conn.execute("SELECT data FROM relationships ORDER BY id"):
         r = Relationship.model_validate_json(row["data"])
-        if not rateable(r):
-            continue
         t = r.transmission
         e = ratings.get(r.id)
         rows.append(
@@ -479,15 +477,21 @@ def version_workbook(store: Path, stage: str, number: int, out: Path) -> dict[st
     return {s.name: len(s.rows) for s in sheets}
 
 
-def link_ratings_workbook(out: Path) -> dict[str, int]:
-    """Link rating version 1's workbook, the review sheet: one row per rating in
-    transmission.yaml as it stands, named from relationships.yaml and the seed. transmission.yaml
-    records no prompt versions yet, so every rating in it is version 1. The row count."""
+def link_ratings_workbook(number: int, out: Path) -> dict[str, int]:
+    """A link rating version's workbook, the review sheet: one row per rating in
+    transmission.yaml that the version made, named from relationships.yaml and the seed. The row
+    count. Raises LookupError when transmission.yaml lists no such version."""
+    ratings = load_ratings_file()
+    version = next((p.id for p in ratings.prompts if p.number == number), None)
+    if version is None:
+        raise LookupError(f"transmission.yaml lists no link rating version {number}")
     data = load_relationships()
     names = {i: s.name for i, s in all_subjects().items()}
     links = {r.id: r for r in data.relationships}
     rows: list[list[Cell]] = []
-    for e in load_ratings().values():
+    for e in ratings.ratings:
+        if e.prompt_version != version:
+            continue
         from_, type_, to = e.id.split(":")
         r = links.get(e.id)
         rows.append(

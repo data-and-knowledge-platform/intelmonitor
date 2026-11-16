@@ -1124,7 +1124,7 @@ export interface components {
              * @description The link's strength from the source's end
              * @enum {string}
              */
-            strength: "Strong" | "Moderate" | "Weak";
+            strength: "Strong" | "Moderate" | "Weak" | "Non-propagating";
             /** @description The entity the development is about */
             source: components["schemas"]["SubjectRef"];
             /**
@@ -1615,12 +1615,12 @@ export interface components {
              * From To
              * @description How strongly a material adverse event at `from` reaches `to`; null for a link that is not rated (belongs_to_sector)
              */
-            from_to: ("Strong" | "Moderate" | "Weak") | null;
+            from_to: ("Strong" | "Moderate" | "Weak" | "Non-propagating") | null;
             /**
              * To From
              * @description The same, from `to` to `from`
              */
-            to_from: ("Strong" | "Moderate" | "Weak") | null;
+            to_from: ("Strong" | "Moderate" | "Weak" | "Non-propagating") | null;
             /** Figures */
             figures: components["schemas"]["RelationshipFigure"][];
         };
@@ -2054,7 +2054,7 @@ export interface components {
              * @description The link's strength from the source's end
              * @enum {string}
              */
-            strength: "Strong" | "Moderate" | "Weak";
+            strength: "Strong" | "Moderate" | "Weak" | "Non-propagating";
             /** @description The entity the development is about */
             source: components["schemas"]["SubjectRef"];
             /**

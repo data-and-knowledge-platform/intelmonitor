@@ -109,10 +109,11 @@ MATERIAL_LEVEL = 1
 # Indirect impact (pipeline/impact.py; deck of 10 Nov 2026, slide 8; ticket 20): the level a
 # development adverse for a tagged entity passes through one link to a neighbour, by the entity's
 # direct level and the link's strength in that direction; None passes nothing, and nothing is High.
+# A Non-propagating direction (deck of 16 Nov 2026, page 6) passes nothing.
 INDIRECT_TABLE: dict[int, dict[Strength, int | None]] = {
-    2: {"Strong": 1, "Moderate": 1, "Weak": 0},
-    1: {"Strong": 1, "Moderate": 0, "Weak": None},
-    0: {"Strong": 0, "Moderate": None, "Weak": None},
+    2: {"Strong": 1, "Moderate": 1, "Weak": 0, "Non-propagating": None},
+    1: {"Strong": 1, "Moderate": 0, "Weak": None, "Non-propagating": None},
+    0: {"Strong": 0, "Moderate": None, "Weak": None, "Non-propagating": None},
 }
 # Whether a Low direct item passes, as the slide draws it (Low to a Strong link as Low). Off by
 # default; the run prints the row count under both settings for the first rebuilt week's pick.

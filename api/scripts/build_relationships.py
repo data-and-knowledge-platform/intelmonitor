@@ -46,7 +46,6 @@ from intelmonitor.relationships import (
     Transmission,
     load_nodes,
     load_ratings,
-    rateable,
 )
 from intelmonitor.seed import SubjectsSeed, load_subjects
 
@@ -258,9 +257,10 @@ class FoldsFile(Row):
     not_carried: list[NotCarried]
 
 
-def collected_row(r: Relationship) -> str:
-    """A link as the collected row it was built from, "from type to", before any folding."""
-    return (r.rating_from or r.id).replace(":", " ")
+def collected_row(link_id: str, origin: str | None) -> str:
+    """A link as the collected row it was built from, "from type to": its id before folding
+    (`origin`) for a folded row."""
+    return (origin or link_id).replace(":", " ")
 
 
 class Build:
@@ -281,6 +281,8 @@ class Build:
                 f"fold {f.unit}: {f.name} is not a name or alias of {f.parent} in subjects.yaml"
             )
         self.rels: dict[str, Relationship] = {}
+        # A folded link's id -> the id of the collected row it was built from, before folding
+        self.folded: dict[str, str] = {}
         self.dropped: list[tuple[str, str]] = []  # (row, reason)
         self.merged: list[str] = []  # ids that took a second row from the same source
         self.partner_rows: list[str] = []  # collected partner_of rows, outside the 22 types
@@ -294,11 +296,12 @@ class Build:
         built, with the reason: a row folds.yaml does not carry, a row whose ends fold into one
         entity, a row with an end that is not an entity (a seed group is one only for
         belongs_to_sector), and a repeat. Of two rows for one link where either was folded, the
-        row with the newer source is kept (on a tie the unfolded row, else the first), and a
-        folded link records in `rating_from` the id it had before folding. A second unfolded row
-        from the same source is merged into the first (details joined, quotes joined with " | "),
-        any other unfolded repeat dropped."""
+        row with the newer source is kept (on a tie the unfolded row, else the first), and
+        `folded` records the id a kept folded row had before folding. A second unfolded row from
+        the same source is merged into the first (details joined, quotes joined with " | "), any
+        other unfolded repeat dropped."""
         row = f"{rel.from_} {rel.type} {rel.to}"
+        origin: str | None = None  # the row's id before folding, for a folded row
         if rel.id in self.not_carried:
             self.drop(row, f"not carried (folds.yaml): {self.not_carried[rel.id]}")
             return
@@ -308,8 +311,8 @@ class Build:
                 self.drop(row, "folds into a link from its parent to itself")
                 return
             src, dst = ends(src, rel.type, dst)
-            update = {"id": rel_id(src, rel.type, dst), "from_": src, "to": dst}
-            rel = rel.model_copy(update=update | {"rating_from": rel.id})
+            origin = rel.id
+            rel = rel.model_copy(update={"id": rel_id(src, rel.type, dst), "from_": src, "to": dst})
             row += f" (folded: {rel.id})"
         if rel.from_ == rel.to:
             self.drop(row, "links an entity to itself")
@@ -322,16 +325,26 @@ class Build:
             self.drop(f"{row}: {', '.join(outside)}", "an end is not an entity")
             return
         first = self.rels.get(rel.id)
+        first_origin = self.folded.get(rel.id)
         if first is None:
             self.rels[rel.id] = rel
-        elif first.rating_from or rel.rating_from:
+            if origin:
+                self.folded[rel.id] = origin
+        elif first_origin or origin:
             dated, before = rel.as_of or rel.last_confirmed, first.as_of or first.last_confirmed
-            unfolded = first.rating_from is not None and rel.rating_from is None
+            unfolded = first_origin is not None and origin is None
             newer = dated > before or (dated == before and unfolded)
-            kept, lost = (rel, first) if newer else (first, rel)
-            self.rels[rel.id] = kept
+            kept, lost = (rel, origin), (first, first_origin)
+            if not newer:
+                kept, lost = lost, kept
+            self.rels[rel.id] = kept[0]
+            if kept[1]:
+                self.folded[rel.id] = kept[1]
+            else:
+                self.folded.pop(rel.id, None)
             self.drop(
-                f"{collected_row(lost)} (as {rel.id}; kept: {collected_row(kept)})",
+                f"{collected_row(rel.id, lost[1])} (as {rel.id}; kept: "
+                f"{collected_row(rel.id, kept[1])})",
                 "folds onto a link already there; the row with the newer source is kept",
             )
         elif first.source_url == rel.source_url and first.quote and rel.quote:
@@ -654,41 +667,37 @@ def with_reasons(build: Build) -> list[Relationship]:
 
 
 def stale(rels: list[Relationship]) -> list[str]:
-    """Links whose model rating was made from another input than the link's current prompt. A
-    link carrying a folded unit's rating (`rating_from`) is listed apart, not here."""
+    """Links whose model rating was made from another input than the current prompt version and
+    the link's user prompt."""
     names = rating.ends()
     ratings = load_ratings()
     return sorted(
         r.id
         for r in rels
-        if r.rating_from is None
-        and (e := ratings.get(r.id)) is not None
+        if (e := ratings.get(r.id)) is not None
         and e.rated_by == "model"
         and e.input_hash != rating.input_hash(rating.user_prompt(r, names))
     )
 
 
 def with_ratings(rels: list[Relationship]) -> tuple[list[Relationship], list[str], list[str]]:
-    """Every relationship with its strengths from transmission.yaml (belongs_to_sector has
-    none), the rateable ids with no entry, and the entries for links that no longer exist. A link
-    takes its own entry when transmission.yaml holds one, so a link that was already between two
-    entities keeps its strengths when a folded unit's newer row replaces its row. A folded link
-    with no entry of its own takes the rating of the unit's link it was (`rating_from`), an
-    interim until scripts/rate_relationships.py rates it under its own id; once it has its own,
-    `rating_from` is cleared."""
+    """Every relationship with its strengths and prompt version from its own entry in
+    transmission.yaml, the ids with no entry, and the entries for links that no longer exist."""
     ratings = load_ratings()
-    out: list[Relationship] = []
-    for r in rels:
-        key = r.rating_from if r.id not in ratings and r.rating_from in ratings else r.id
-        update: dict[str, object] = {"rating_from": key if key != r.id else None}
-        if rateable(r) and key in ratings:
-            update["transmission"] = Transmission(
-                from_to=ratings[key].from_to, to_from=ratings[key].to_from
-            )
-        out.append(r.model_copy(update=update))
-    unrated = [r.id for r in out if rateable(r) and r.transmission is None]
-    used = {r.rating_from or r.id for r in out if rateable(r)}
-    return out, sorted(unrated), sorted(ratings.keys() - used)
+    out = [
+        r.model_copy(
+            update={
+                "transmission": Transmission(
+                    from_to=e.from_to, to_from=e.to_from, prompt_version=e.prompt_version
+                )
+            }
+        )
+        if (e := ratings.get(r.id)) is not None
+        else r
+        for r in rels
+    ]
+    unrated = sorted(r.id for r in out if r.transmission is None)
+    return out, unrated, sorted(ratings.keys() - {r.id for r in rels})
 
 
 HEADER = """\
@@ -740,11 +749,11 @@ HEADER = """\
 #   figures[]     exposed_to only: further figures for the same entity and target (loans by
 #                 currency, Pillar 3 RWA, NPLs; other reserve, revenue or counterparty figures),
 #                 each with its own source and quote
-#   transmission  every type but belongs_to_sector: from_to and to_from, each a strength (Strong,
-#                 Moderate or Weak) and a reason: how strongly a material adverse event at the
-#                 first end reaches the second; from api/seed/collected/transmission.yaml
-#   rating_from   a link folded from a unit's row (api/seed/collected/folds.yaml) whose
-#                 transmission is, for now, the rating of that unit's link, under this id
+#   transmission  every link: from_to and to_from, each a strength (Strong, Moderate, Weak or
+#                 Non-propagating) and a reason: how strongly a material adverse event at the
+#                 first end reaches the second; prompt_version, the id of the link rating prompt
+#                 version that rated it (null for a hand entry); from
+#                 api/seed/collected/transmission.yaml
 #   Keys left out are null, false or empty.
 # Both ends of every link are entities in api/seed/subjects.yaml, apart from belongs_to_sector,
 # which ends at a seed group; a link into a region entity covers its member countries.
@@ -769,10 +778,9 @@ def report(build: Build, rels: list[Relationship]) -> None:
     grades: tuple[Evidence, ...] = Evidence.__args__
     counts = Counter((r.type, r.evidence) for r in rels)
     sectors = sum(r.type == "belongs_to_sector" for r in rels)
-    folded = [r for r in build.rels.values() if r.rating_from is not None]  # before with_ratings
     print(
         f"\n{len(rels)} relationships: {len(rels) - sectors} between two entities, of which "
-        f"{len(folded)} folded from a unit's row; {sectors} belongs_to_sector"
+        f"{len(build.folded)} folded from a unit's row; {sectors} belongs_to_sector"
     )
     print(f"  {'type':32}{'all':>5}" + "".join(f"{g:>10}" for g in grades))
     for t in REL_TYPES:
@@ -859,17 +867,13 @@ def main() -> None:
     rels, unrated, orphans = with_ratings(with_reasons(build))
     report(build, rels)
     rated = sum(r.transmission is not None for r in rels)
-    carried = sorted((r.id, r.rating_from) for r in rels if r.rating_from is not None)
+    versions = Counter(r.transmission.prompt_version for r in rels if r.transmission)
     print(
         f"\nstrengths from {TRANSMISSION_PATH.name}: {rated} links rated, "
-        f"{len(unrated)} rateable links unrated, {len(orphans)} entries for links that no "
-        "longer exist"
+        f"{len(unrated)} links unrated, {len(orphans)} entries for links that no longer exist; "
+        "by prompt version: "
+        + ", ".join(f"{v or 'hand'} {n}" for v, n in sorted(versions.items(), key=str))
     )
-    print(
-        f"  {len(carried)} folded links carry the rating of the unit's link they were "
-        "(rating_from), until scripts/rate_relationships.py rates them under their own id:"
-    )
-    print(*(f"    {i} <- {f}" for i, f in carried), sep="\n")
     for i in orphans:
         print(f"  no such link: {i}")
     if unrated:
@@ -877,7 +881,7 @@ def main() -> None:
             f"  {len(unrated)} unrated (load_relationships refuses them): run "
             "scripts/rate_relationships.py, then build again"
         )
-    outdated = stale([r for r in rels if rateable(r)])
+    outdated = stale(rels)
     print(f"  {len(outdated)} stale ratings (input changed since the link was rated)")
     if outdated:
         print(*(f"    {i}" for i in outdated), sep="\n")

@@ -6,9 +6,10 @@ adverse for, every seed entity one link away (relationships.reaches) and not its
 level from INDIRECT_TABLE (pipeline/params.py): the tagged entity's direct level by the link's
 strength in the direction from the tagged entity to the neighbour. High gives Medium, Medium,
 Low for a Strong, Moderate, Weak link; Medium gives Medium, Low, nothing; Low passes nothing
-unless INDIRECT_FROM_LOW. Never High, and never a second hop; a link into a region entity counts
-for each member country. Where several routes reach the same entity, the highest level wins, then
-the stronger link, the larger share, the link id, the source id.
+unless INDIRECT_FROM_LOW; a Non-propagating direction passes nothing. Never High, and never a
+second hop; a link into a region entity counts for each member country. Where several routes reach
+the same entity, the highest level wins, then the stronger link, the larger share, the link id,
+the source id.
 
 The rows go to development_impacts, apart from development_subjects, so an indirect impact is
 never shown as news about the entity itself. The wording helpers below write links in plain

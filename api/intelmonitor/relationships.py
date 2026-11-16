@@ -14,9 +14,10 @@ Southeast Asia) covers the region's member countries.
 belongs_to_sector links an entity to a seed group (its parent category), so seed group ids are
 valid link ends; it carries no impact and the Related graph leaves it out.
 
-Every other link carries `transmission`, its strength in each direction, rated once by
-scripts/rate_relationships.py into api/seed/collected/transmission.yaml and merged in by the
-build. Pipeline runs read the ratings and call no model for them.
+Every link carries `transmission`, its strength in each direction and the prompt version that
+rated it, rated once by scripts/rate_relationships.py into api/seed/collected/transmission.yaml and
+merged in by the build; belongs_to_sector is rated too, as the deck asks, though it carries
+nothing. Pipeline runs read the ratings and call no model for them.
 """
 
 import sqlite3
@@ -265,7 +266,9 @@ class Figure(_Model):
     note: str | None = None
 
 
-Strength = Literal["Strong", "Moderate", "Weak"]
+# The deck's four values (16 Nov 2026, page 6), strongest first: a Non-propagating direction
+# passes nothing.
+Strength = Literal["Strong", "Moderate", "Weak", "Non-propagating"]
 
 
 class Rating(_Model):
@@ -277,10 +280,13 @@ class Rating(_Model):
 
 class Transmission(_Model):
     """A link's strength in each direction (ticket 18): from_to is how strongly an event at its
-    `from` reaches its `to`, to_from the reverse (news about Hong Kong reaching DBS)."""
+    `from` reaches its `to`, to_from the reverse (news about Hong Kong reaching DBS).
+    `prompt_version` is the id of the link rating prompt version that rated it (the `prompts`
+    of transmission.yaml); null for a hand entry."""
 
     from_to: Rating
     to_from: Rating
+    prompt_version: str | None = None
 
 
 class RatingEntry(_Model):
@@ -293,19 +299,42 @@ class RatingEntry(_Model):
     to_from: Rating
     model: str | None = None  # the model that answered; null for a hand entry
     date: date
-    input_hash: str | None = None  # of the model and both prompts; null for a hand entry
+    # of the prompt version and the link's user prompt; null for a hand entry
+    input_hash: str | None = None
+    prompt_version: str | None = None  # the id of the version that rated it; null for a hand entry
     rated_by: Literal["model", "hand"]
 
 
+class PromptVersion(_Model):
+    """A version of the link rating prompt, as transmission.yaml lists it: its id (the first 12
+    hex characters of the SHA-256 of the stage, template, schema, model and effort, as
+    pipeline/prompts.py makes it), its number counting up from 1, the date it was first used, a
+    note, its model and effort, and its template's text."""
+
+    id: str
+    number: int
+    date: date
+    note: str
+    model: str
+    effort: str
+    text: str
+
+
 class RatingsFile(_Model):
+    prompts: list[PromptVersion] = []
     ratings: list[RatingEntry]
 
 
-def load_ratings(path: Path = TRANSMISSION_PATH) -> dict[str, RatingEntry]:
-    """transmission.yaml by link id; empty when the file does not exist yet."""
+def load_ratings_file(path: Path = TRANSMISSION_PATH) -> RatingsFile:
+    """transmission.yaml; empty when the file does not exist yet."""
     if not path.exists():
-        return {}
-    return {e.id: e for e in RatingsFile.model_validate(yaml.safe_load(path.read_text())).ratings}
+        return RatingsFile(ratings=[])
+    return RatingsFile.model_validate(yaml.safe_load(path.read_text()))
+
+
+def load_ratings(path: Path = TRANSMISSION_PATH) -> dict[str, RatingEntry]:
+    """transmission.yaml's ratings by link id; empty when the file does not exist yet."""
+    return {e.id: e for e in load_ratings_file(path).ratings}
 
 
 class Relationship(_Model):
@@ -340,17 +369,9 @@ class Relationship(_Model):
     controlling: bool = False
     service: Service | None = None
     figures: list[Figure] = []
-    # Strength in each direction, from transmission.yaml; every rateable link has one.
+    # Strength in each direction and the prompt version that rated it, from transmission.yaml;
+    # every link has one.
     transmission: Transmission | None = None
-    # The id whose rating in transmission.yaml `transmission` is, when it is not this link's own:
-    # a unit's link folded into its parent (collected/folds.yaml) carries the unit link's rating
-    # until scripts/rate_relationships.py rates it under its own id.
-    rating_from: str | None = None
-
-
-def rateable(r: Relationship) -> bool:
-    """Whether a link is rated: every type but belongs_to_sector, which carries no impact."""
-    return r.type != "belongs_to_sector"
 
 
 class RelationshipsFile(_Model):
@@ -374,7 +395,7 @@ def problems(data: RelationshipsFile, entity_ids: set[str], group_ids: set[str])
 
 def load_relationships(path: Path = RELATIONSHIPS_PATH) -> RelationshipsFile:
     """Read relationships.yaml and check it against the entities and groups in subjects.yaml,
-    and that every rateable link has its strengths. Raises ValueError naming every link end that
+    and that every link has its strengths. Raises ValueError naming every link end that
     is not in the seed (the fix is to rerun scripts/build_relationships.py) or every unrated link
     (rerun scripts/rate_relationships.py, then the build)."""
     data = RelationshipsFile.model_validate(yaml.safe_load(path.read_text()))
@@ -385,7 +406,7 @@ def load_relationships(path: Path = RELATIONSHIPS_PATH) -> RelationshipsFile:
             f"{path.name} does not fit the subject seed (rerun scripts/build_relationships.py): "
             + "; ".join(found)
         )
-    unrated = [r.id for r in data.relationships if rateable(r) and r.transmission is None]
+    unrated = [r.id for r in data.relationships if r.transmission is None]
     if unrated:
         raise ValueError(
             f"{path.name} has {len(unrated)} links with no strength rating (run "
@@ -546,8 +567,9 @@ def reaches(conn: sqlite3.Connection, source_id: str) -> list[Reach]:
     """Every seed entity one link from the entity `source_id`, for indirect impact (ticket 20):
     each link with the source at one end, read from_to when the source is its `from` and to_from
     when it is its `to`; and each link into a region entity whose members (its `members` in the
-    seed) include the source, read to_from only. belongs_to_sector, unrated links, groups and the
-    source itself carry or get nothing, and nothing goes a second hop. By link id."""
+    seed) include the source, read to_from only. belongs_to_sector, unrated links (only made-up
+    links in the impact cases), groups and the source itself carry or get nothing, and nothing
+    goes a second hop. By link id."""
     entities = {e.id for e in load_subjects().entities}
     if source_id not in entities:
         return []

@@ -325,21 +325,18 @@ def export_version(
 ) -> None:
     """Write one prompt version's workbook. Priority: About, Summary and a sheet per run, from
     the store opened read-only, with no migration, and its seed as rated. link_rating: the
-    review sheet of transmission.yaml as it stands, which holds version 1 only. Calls no
-    model."""
+    review sheet of the ratings in transmission.yaml that the version made. Calls no model."""
     from intelmonitor.export import link_ratings_workbook, version_workbook
 
     if not out.endswith(".xlsx"):
         raise typer.BadParameter("--out must name an .xlsx file")
-    if stage == "link_rating":
-        if version != 1:
-            raise typer.BadParameter("transmission.yaml holds link rating version 1 only")
-        counts = link_ratings_workbook(Path(out))
-    else:
-        try:
+    try:
+        if stage == "link_rating":
+            counts = link_ratings_workbook(version, Path(out))
+        else:
             counts = version_workbook(_store(store), stage, version, Path(out))
-        except LookupError as error:
-            raise typer.BadParameter(str(error)) from error
+    except LookupError as error:
+        raise typer.BadParameter(str(error)) from error
     typer.echo(f"wrote {out}: " + ", ".join(f"{n} {name}" for name, n in counts.items()))
 
 
