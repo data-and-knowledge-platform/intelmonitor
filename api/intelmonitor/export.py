@@ -1,8 +1,10 @@
 """`im export labels`: the labels the runs gave, as an Excel workbook for the team's audit
 (ticket 24). It opens the store read-only, so it runs no migration and writes nothing there, and
-it calls no model.
+it calls no model. `im export version` writes one prompt version's workbook the same way
+(`version_workbook`, `link_ratings_workbook`), and `im prompts compare` writes two versions'
+side by side (`compare_workbook`).
 
-Sheets:
+The labels workbook's sheets:
 Direct, Indirect and Dropped cover the latest complete run only. A run reads every document from
 the corpus start to its date, so the latest run holds every development of the earlier runs.
 
@@ -16,6 +18,7 @@ the corpus start to its date, so the latest run holds every development of the e
 
 import sqlite3
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -29,7 +32,22 @@ from intelmonitor.ingest.models import corpus_start
 from intelmonitor.pipeline.developments import COLLECTION_RANK, load_findings
 from intelmonitor.pipeline.params import PRIORITY_LABELS
 from intelmonitor.pipeline.subjects import all_subjects
-from intelmonitor.relationships import Relationship, load_ratings, rateable
+from intelmonitor.relationships import (
+    Relationship,
+    load_ratings,
+    load_relationships,
+    rateable,
+)
+from intelmonitor.trial import (
+    Comparison,
+    Label,
+    changed_developments,
+    complete_runs,
+    count_table,
+    input_ref,
+    labels,
+    version_row,
+)
 
 Cell = str | int | bool | date | None
 
@@ -84,14 +102,44 @@ def _per_development(
     return out
 
 
-def direct_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
+DIRECT_COLUMNS = [
+    ("Run date", 11),
+    ("Development id", 20),
+    ("Headline", 60),
+    ("Subject", 24),
+    ("Kind", 7),
+    ("Topics", 30),
+    ("Level", 8),
+    ("Reason", 80),
+    ("Adverse", 8),
+    ("Category", 12),
+    ("Sources", 8),
+    ("First published", 11),
+    ("Last published", 11),
+    ("Top source URL", 50),
+]
+LEVEL_COLUMN = 6
+
+
+def direct_rows(
+    conn: sqlite3.Connection,
+    names: dict[str, str],
+    run: str | None,
+    only: set[str] | None = None,
+    given: Mapping[str, Label] | None = None,
+) -> list[list[Cell]]:
+    """One row per development of the run (those in `only`, when given) and entity it is about,
+    or per topic when it names no entity, with the stored level and reason. With `given`, a
+    prompt version's labels by input_ref, the level and reason are the version's, and a pair it
+    did not rate has no row."""
     subjects = all_subjects()
-    run = _latest_run(conn)
     devs = conn.execute(
         "SELECT run_id, id, coalesce(headline, title) AS headline, category, first_published, "
         "last_published FROM developments WHERE run_id = ? ORDER BY id",
         (run,),
     ).fetchall()
+    if only is not None:
+        devs = [d for d in devs if d["id"] in only]
     tagged = _per_development(
         conn,
         "SELECT development_id, subject_id, adverse, priority_level, priority_reason "
@@ -127,6 +175,13 @@ def direct_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
             default=None,
         )
         for s in entities or topics:
+            label = Label(s["priority_level"], s["priority_reason"])
+            if given is not None:
+                # A development's findings are its sources' rows, one per finding.
+                found = given.get(input_ref(key, len(docs), s["subject_id"]))
+                if found is None:
+                    continue
+                label = found
             rows.append(
                 [
                     _day(d["run_id"]),
@@ -135,8 +190,8 @@ def direct_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
                     names.get(s["subject_id"], s["subject_id"]),
                     "entity" if entities else "topic",
                     ", ".join(names[t["subject_id"]] for t in topics),
-                    PRIORITY_LABELS[s["priority_level"]],
-                    s["priority_reason"],
+                    PRIORITY_LABELS[label.level],
+                    label.reason,
                     bool(s["adverse"]),
                     d["category"],
                     len({x["document_id"] for x in docs}),
@@ -145,26 +200,11 @@ def direct_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
                     top["url"] if top else None,
                 ]
             )
-    return Sheet(
-        "Direct",
-        [
-            ("Run date", 11),
-            ("Development id", 20),
-            ("Headline", 60),
-            ("Subject", 24),
-            ("Kind", 7),
-            ("Topics", 30),
-            ("Level", 8),
-            ("Reason", 80),
-            ("Adverse", 8),
-            ("Category", 12),
-            ("Sources", 8),
-            ("First published", 11),
-            ("Last published", 11),
-            ("Top source URL", 50),
-        ],
-        rows,
-    )
+    return rows
+
+
+def direct_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
+    return Sheet("Direct", DIRECT_COLUMNS, direct_rows(conn, names, _latest_run(conn)))
 
 
 def indirect_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
@@ -223,6 +263,20 @@ def indirect_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
     )
 
 
+LINK_COLUMNS = [
+    ("Id", 40),
+    ("From", 24),
+    ("Type", 16),
+    ("To", 24),
+    ("Reason", 50),
+    ("From-to strength", 10),
+    ("From-to reason", 60),
+    ("To-from strength", 10),
+    ("To-from reason", 60),
+    ("Rated by", 8),
+]
+
+
 def links_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
     ratings = load_ratings()
     rows: list[list[Cell]] = []
@@ -246,22 +300,7 @@ def links_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
                 e.rated_by if e else None,
             ]
         )
-    return Sheet(
-        "Links",
-        [
-            ("Id", 40),
-            ("From", 24),
-            ("Type", 16),
-            ("To", 24),
-            ("Reason", 50),
-            ("From-to strength", 10),
-            ("From-to reason", 60),
-            ("To-from strength", 10),
-            ("To-from reason", 60),
-            ("Rated by", 8),
-        ],
-        rows,
-    )
+    return Sheet("Links", LINK_COLUMNS, rows)
 
 
 def dropped_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
@@ -353,3 +392,151 @@ def export_labels(store: Path, out: Path) -> dict[str, int]:
         conn.close()
     write_workbook(sheets, out)
     return {s.name: len(s.rows) for s in sheets}
+
+
+def _about(rows: list[tuple[str, Cell]]) -> Sheet:
+    return Sheet("About", [("Field", 18), ("Value", 120)], [[k, v] for k, v in rows])
+
+
+def version_workbook(store: Path, stage: str, number: int, out: Path) -> dict[str, int]:
+    """One priority version's workbook from the store at `store`, written to `out`: About,
+    Summary, then a sheet per run with the pairs of a development and an entity (a topic, when
+    it names none) new or updated in that run. A run that used the version shows its stored
+    labels; any other run shows the version's recorded labels of the pairs it rated, and has no
+    sheet when it rated none. The row count of each sheet."""
+    if stage != "priority":
+        raise LookupError(f"no workbook for {stage} versions yet")
+    conn = connect_readonly(store)
+    try:
+        version = version_row(conn, stage, number)
+        names = _names(conn)
+        used = {
+            r["run_id"]
+            for r in conn.execute(
+                "SELECT run_id FROM run_prompts WHERE stage = ? AND version = ?",
+                (stage, version["id"]),
+            )
+        }
+        given = labels(conn, version["id"])
+        weeks: list[Sheet] = []
+        for run in complete_runs(conn):
+            only = changed_developments(conn, run)
+            rows = direct_rows(conn, names, run, only, None if run in used else given)
+            if rows:
+                weeks.append(Sheet(run, DIRECT_COLUMNS, rows))
+        runs = complete_runs(conn)
+    finally:
+        conn.close()
+    entities = sum(s.type == "entity" for s in all_subjects().values())
+    about = _about(
+        [
+            ("Stage", stage),
+            ("Version", version["number"]),
+            ("Id", version["id"]),
+            ("Note", version["note"]),
+            ("Model", version["model"]),
+            ("Effort", version["effort"] or "the model's own"),
+            ("First used", version["first_used"][:10]),
+            ("Dataset", store.stem.removeprefix("intelmonitor-")),
+            ("Entities", f"{entities}, in the seed when this file was written"),
+            ("Runs", f"{runs[0]} to {runs[-1]}" if runs else "none"),
+            ("Written", date.today()),
+            ("Prompt", version["template"]),
+        ]
+    )
+    summary = Sheet(
+        "Summary",
+        [("Run date", 11), ("Pairs", 8), ("High", 8), ("Medium", 8), ("Low", 8)],
+        [
+            [
+                _day(w.name),
+                len(w.rows),
+                *(
+                    sum(r[LEVEL_COLUMN] == label for r in w.rows)
+                    for label in ("High", "Medium", "Low")
+                ),
+            ]
+            for w in weeks
+        ],
+    )
+    sheets = [about, summary, *weeks]
+    write_workbook(sheets, out)
+    return {s.name: len(s.rows) for s in sheets}
+
+
+def link_ratings_workbook(out: Path) -> dict[str, int]:
+    """Link rating version 1's workbook, the review sheet: one row per rating in
+    transmission.yaml as it stands, named from relationships.yaml and the seed. transmission.yaml
+    records no prompt versions yet, so every rating in it is version 1. The row count."""
+    data = load_relationships()
+    names = {e.id: e.name for e in data.endpoints}
+    names.update({i: s.name for i, s in all_subjects().items()})
+    links = {r.id: r for r in data.relationships}
+    rows: list[list[Cell]] = []
+    for e in load_ratings().values():
+        from_, type_, to = e.id.split(":")
+        r = links.get(e.id)
+        rows.append(
+            [
+                e.id,
+                names.get(from_, from_),
+                type_,
+                names.get(to, to),
+                r.reason if r else None,
+                e.from_to.strength,
+                e.from_to.reason,
+                e.to_from.strength,
+                e.to_from.reason,
+                e.rated_by,
+                e.model,
+                e.date,
+            ]
+        )
+    sheet = Sheet("Links", [*LINK_COLUMNS, ("Model", 18), ("Date", 11)], rows)
+    write_workbook([sheet], out)
+    return {sheet.name: len(rows)}
+
+
+def compare_workbook(c: Comparison, names: dict[str, str], out: Path) -> dict[str, int]:
+    """Two versions compared: the count table of level under a against level under b, then a
+    sheet per run with the pairs whose level moved, both levels and both reasons."""
+    a, b = f"v{c.a['number']}", f"v{c.b['number']}"
+    table = count_table(c)
+    counts = Sheet("Counts", [(str(h), 12) for h in table[0]], [list(r) for r in table[1:]])
+    weeks = [
+        Sheet(
+            run,
+            [
+                ("Development id", 20),
+                ("Subject", 24),
+                (f"Level {a}", 9),
+                (f"Reason {a}", 70),
+                (f"Level {b}", 9),
+                (f"Reason {b}", 70),
+            ],
+            [
+                [
+                    m.pair.development_id,
+                    names.get(m.pair.subject_id, m.pair.subject_id),
+                    PRIORITY_LABELS[m.a.level],
+                    m.a.reason,
+                    PRIORITY_LABELS[m.b.level],
+                    m.b.reason,
+                ]
+                for m in moved
+            ],
+        )
+        for run, moved in sorted(c.moved.items())
+    ]
+    sheets = [counts, *weeks]
+    write_workbook(sheets, out)
+    return {s.name: len(s.rows) for s in sheets}
+
+
+def store_names(store: Path) -> dict[str, str]:
+    """Display names for the ids a store's labels name."""
+    conn = connect_readonly(store)
+    try:
+        return _names(conn)
+    finally:
+        conn.close()

@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -13,6 +14,24 @@ check_app = typer.Typer(no_args_is_help=True, help="Checks the walkthrough runs 
 app.add_typer(check_app, name="check")
 export_app = typer.Typer(no_args_is_help=True, help="Export what the runs stored, for the team.")
 app.add_typer(export_app, name="export")
+trial_app = typer.Typer(no_args_is_help=True, help="Try the current prompt on a store's pairs.")
+app.add_typer(trial_app, name="trial")
+prompts_app = typer.Typer(help="Prompt versions: list, show and compare.")
+app.add_typer(prompts_app, name="prompts")
+
+# The --store option of the prompt version commands: a path to a store, the app's by default.
+StoreOption = Annotated[
+    str | None, typer.Option("--store", help="The store's .db file; the app's store by default")
+]
+
+
+def _store(store: str | None) -> Path:
+    from intelmonitor.store.db import DB_PATH
+
+    path = Path(store) if store else DB_PATH
+    if not path.exists():
+        raise typer.BadParameter(f"no store at {path}")
+    return path
 
 
 @app.command()
@@ -277,6 +296,139 @@ def export_labels(
     if not out.endswith(".xlsx"):
         raise typer.BadParameter("--out must name an .xlsx file")
     counts = export(DB_PATH, Path(out))
+    typer.echo(f"wrote {out}: " + ", ".join(f"{n} {name}" for name, n in counts.items()))
+
+
+@export_app.command("version")
+def export_version(
+    stage: Annotated[str, typer.Option("--stage", help="priority, or link_rating")],
+    version: Annotated[int, typer.Option("--version", help="The version's number")],
+    out: Annotated[str, typer.Option("--out", help="The .xlsx file to write")],
+    store: StoreOption = None,
+) -> None:
+    """Write one prompt version's workbook. Priority: About, Summary and a sheet per run, from
+    the store opened read-only. link_rating: the review sheet of transmission.yaml as it stands,
+    which holds version 1 only. Calls no model."""
+    from intelmonitor.export import link_ratings_workbook, version_workbook
+
+    if not out.endswith(".xlsx"):
+        raise typer.BadParameter("--out must name an .xlsx file")
+    if stage == "link_rating":
+        if version != 1:
+            raise typer.BadParameter("transmission.yaml holds link rating version 1 only")
+        counts = link_ratings_workbook(Path(out))
+    else:
+        try:
+            counts = version_workbook(_store(store), stage, version, Path(out))
+        except LookupError as error:
+            raise typer.BadParameter(str(error)) from error
+    typer.echo(f"wrote {out}: " + ", ".join(f"{n} {name}" for name, n in counts.items()))
+
+
+@trial_app.command("priority")
+def trial_priority(
+    store: Annotated[str, typer.Option("--store", help="The store's .db file, the baseline")],
+    weeks: Annotated[
+        str, typer.Option("--weeks", help="sample (300 pairs), a run date, or all")
+    ] = "sample",
+) -> None:
+    """Rate the store's pairs that priority version 1 rated with the current priority prompt,
+    from the same input. Calls are recorded with their prompt version, so a version already
+    tried replays from the cache; no development_subjects row is written."""
+    from contextlib import closing
+
+    from intelmonitor.pipeline.inference import Inference
+    from intelmonitor.store.db import connect
+    from intelmonitor.trial import trial_priority as trial
+
+    with closing(connect(_store(store))) as conn:
+        try:
+            r = asyncio.run(trial(Inference(conn, None), weeks))
+        except (LookupError, ValueError) as error:
+            raise typer.BadParameter(str(error)) from error
+    typer.echo(
+        f"priority version {r.number} ({r.version}) on {r.pairs} pairs: {r.calls} calls, "
+        f"{r.cache_hits} from the cache, ${r.cost_usd:.4f} (measured), {r.refused} refused; "
+        + ", ".join(f"{r.levels[label]} {label}" for label in ("High", "Medium", "Low"))
+    )
+
+
+@prompts_app.callback(invoke_without_command=True)
+def prompts(ctx: typer.Context, store: StoreOption = None) -> None:
+    """List each stage's prompt versions in the store, with their calls and runs."""
+    if ctx.invoked_subcommand is not None:
+        return
+    from contextlib import closing
+
+    from intelmonitor.export import connect_readonly
+
+    with closing(connect_readonly(_store(store))) as conn:
+        rows = conn.execute(
+            "SELECT v.stage, v.number, v.id, v.model, v.effort, v.first_used, v.note, "
+            "(SELECT count(*) FROM inference_records r WHERE r.prompt_version = v.id) AS calls, "
+            "(SELECT count(*) FROM run_prompts p WHERE p.version = v.id) AS runs "
+            "FROM prompt_versions v ORDER BY v.stage, v.number"
+        ).fetchall()
+    for r in rows:
+        typer.echo(
+            f"{r['stage']} {r['number']}  {r['id']}  {r['model']} {r['effort'] or '-'}  "
+            f"first used {r['first_used'][:10]}  {r['calls']} calls, {r['runs']} runs  "
+            f"{r['note']}"
+        )
+    if not rows:
+        typer.echo("no prompt versions in the store")
+
+
+@prompts_app.command("show")
+def prompts_show(stage: str, number: int, store: StoreOption = None) -> None:
+    """Print a version's template."""
+    from contextlib import closing
+
+    from intelmonitor.export import connect_readonly
+    from intelmonitor.trial import version_row
+
+    try:
+        with closing(connect_readonly(_store(store))) as conn:
+            v = version_row(conn, stage, number)
+    except LookupError as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(f"{v['stage']} {v['number']} ({v['id']}), {v['model']}, effort {v['effort']}")
+    typer.echo(f"{v['note']}\n\n{v['template']}")
+
+
+@prompts_app.command("compare")
+def prompts_compare(
+    stage: str,
+    a: int,
+    b: int,
+    out: Annotated[str, typer.Option("--out", help="The .xlsx file to write")],
+    store: StoreOption = None,
+) -> None:
+    """Compare two versions on the pairs both rated: write the count table of level under a
+    against level under b and, per run, the pairs that moved; print the table and the hand-set
+    cases under each. Calls no model."""
+    from contextlib import closing
+
+    from intelmonitor.export import compare_workbook, connect_readonly, store_names
+    from intelmonitor.trial import compare, count_table
+
+    if not out.endswith(".xlsx"):
+        raise typer.BadParameter("--out must name an .xlsx file")
+    path = _store(store)
+    with closing(connect_readonly(path)) as conn:
+        try:
+            c = compare(conn, stage, a, b)
+        except LookupError as error:
+            raise typer.BadParameter(str(error)) from error
+    counts = compare_workbook(c, store_names(path), Path(out))
+    for row in count_table(c):
+        typer.echo("".join(f"{v!s:>10}" for v in row))
+    for case, ok_a, ok_b, detail_a, detail_b in c.cases:
+        typer.echo(
+            f"case {case}: v{a} {'pass' if ok_a else 'FAIL'}, v{b} {'pass' if ok_b else 'FAIL'}"
+        )
+        for v, detail in ((a, detail_a), (b, detail_b)):
+            typer.echo(f"  v{v}: {detail}")
     typer.echo(f"wrote {out}: " + ", ".join(f"{n} {name}" for name, n in counts.items()))
 
 

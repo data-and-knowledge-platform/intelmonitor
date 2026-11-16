@@ -6,10 +6,12 @@ extraction prompt, are in adverse_cases.py.
 
 Checked against a store's latest complete run, read only and with no model calls, the app's store
 by default: `uv run python -m intelmonitor.eval cases [store path]`. The run must have been
-computed with roles. Writes cases.json in the eval directory."""
+computed with roles. Writes cases.json in the eval directory. `im prompts compare` checks the
+priority cases against two prompt versions' labels instead of the stored ones."""
 
 import json
 import sqlite3
+from collections.abc import Callable
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -159,21 +161,48 @@ def check_adverse(conn: sqlite3.Connection, run_id: str, case: AdverseCase) -> C
     )
 
 
-def check_priority(conn: sqlite3.Connection, run_id: str, case: PriorityCase) -> CaseResult:
+def priority_pairs(
+    conn: sqlite3.Connection, run_id: str, case: PriorityCase
+) -> list[tuple[str, str]]:
+    """The development and subject pairs of the run that the case checks."""
+    found = _matching(conn, case.document_ids, case.match)
+    devs = dict.fromkeys(d for r in found if (d := _development(conn, run_id, r["id"])))
+    return [
+        (dev, sid)
+        for dev in devs
+        for sid in _subjects(conn, run_id, dev)
+        if not case.subject_ids or sid in case.subject_ids
+    ]
+
+
+def check_priority(
+    conn: sqlite3.Connection,
+    run_id: str,
+    case: PriorityCase,
+    level_of: Callable[[str, str], int | None] | None = None,
+) -> CaseResult:
+    """The case on the run's stored levels, or on `level_of(development_id, subject_id)`: a prompt
+    version's level for the pair, None where it gave none, which is left unchecked."""
     found = _matching(conn, case.document_ids, case.match)
     allowed = max(i for i, label in enumerate(PRIORITY_LABELS) if label == case.highest)
     levels: list[str] = []
     over: list[str] = []
+    checked = 0
     for dev in dict.fromkeys(d for r in found if (d := _development(conn, run_id, r["id"]))):
         for sid, s in _subjects(conn, run_id, dev).items():
-            label = PRIORITY_LABELS[int(s["priority_level"])]
+            level = int(s["priority_level"]) if level_of is None else level_of(dev, sid)
+            if level is None:
+                levels.append(f"{dev} {sid}: not rated ({s['role']})")
+                continue
+            checked += 1
+            label = PRIORITY_LABELS[level]
             levels.append(f"{dev} {sid}: {label} ({s['role']})")
-            if (not case.subject_ids or sid in case.subject_ids) and s["priority_level"] > allowed:
+            if (not case.subject_ids or sid in case.subject_ids) and level > allowed:
                 over.append(f"{dev} is {label} for {sid}")
     return CaseResult(
         id=case.id,
         run_id=run_id,
-        ok=bool(found) and not over,  # a case with nothing to check must not pass
+        ok=checked > 0 and not over,  # a case with nothing to check must not pass
         findings=[_described(r) for r in found],
         detail="; ".join(over or levels) or ("no subjects" if found else "no matching finding"),
         reason=case.reason,
