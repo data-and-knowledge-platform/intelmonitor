@@ -1,6 +1,9 @@
-# Subjects tracked by the POC: 30 topics and 89 entities, in 17 groups, and MAS's five functions.
-# The first 8 groups hold the MAS top 50 entities; the other 9 keep the remaining entities, such
-# as countries, payment systems and cloud providers.
+# Subjects tracked by the POC: 30 topics and 139 entities, in 19 groups, and MAS's five functions.
+# The first 8 groups are the parent categories of the MAS top 50 entities, and banking and fintech
+# also hold banks and fintechs added later; the other 11 keep the remaining entities, such as
+# countries, payment systems, cloud providers, agencies and international bodies.
+# `displayed` marks the 57 entities shown in the app (displayed-and-hidden-2026-11-16.xlsx); a
+# hidden one is searched, tagged, rated and linked, but has no list row, page or watchlist entry.
 # Topics and entities are monitored. Groups are peer sets: the Entities list's Group filter, peer
 # comparison, relationships and search queries; nothing is screened for or tagged to a group
 # (phase1-decisions.md, S3).
@@ -185,8 +188,8 @@ topics:
 
 functions:
   # MAS's five functions (MAS Topics 30 - Sheet1.csv, "MAS function"). Every topic sits in exactly
-  # one. watchlist is the function view's fixed preset (ticket 04) and always holds MAS; the
-  # sidebar sorts it, so order here does not matter.
+  # one. watchlist is the function view's fixed preset (ticket 04), of displayed entities only, and
+  # always holds MAS; the sidebar sorts it, so order here does not matter.
   - id: financial-supervision
     name: Financial Supervision
     topics: [aml-sanctions, asset-wealth-management, bank-resolution, banking-lending, corporate-governance, scams-fraud, financial-regulation, insurance-reinsurance, enforcement]
@@ -203,29 +206,30 @@ functions:
     name: Markets & Financial Sector Development
     topics: [asset-allocation, capital-markets-equities, commodities-energy, mergers-acquisitions, fixed-income-credit, fx-reserves, private-markets, property-reits]
     watchlist:
-      entities: [mas, sgx, hkex, blackrock, temasek]
+      entities: [mas, sgx, blackrock, temasek]
       topics: [asset-allocation, capital-markets-equities]
   - id: economic-policy
     name: Economic Policy
     topics: [monetary-policy, economic-growth-inflation, financial-stability, trade-geopolitics, fiscal-policy]
     watchlist:
-      entities: [mas, singapore, mainland-china, malaysia, hong-kong, united-states, federal-reserve]
+      entities: [mas]
       topics: [trade-geopolitics, monetary-policy, economic-growth-inflation]
   - id: cross-cutting
     name: Cross-cutting Functions
     topics: [sustainable-finance, consumer-protection, tech-infrastructure]
     watchlist:
-      entities: [mas, singtel, equinix, aws, housing]
+      entities: [mas, aws]
       topics: [tech-infrastructure, sustainable-finance, consumer-protection]
 
 groups:
-  # scripts/build_relationships.py derives belongs_to_sector links from these groups: a top-50
-  # entity to its one group among the first 8, any other entity to each of its groups.
-  # MAS top 50 entities, by the list's parent category.
+  # scripts/build_relationships.py derives belongs_to_sector links from these groups: an entity
+  # in one of the first 8 to that group alone, any other entity to each of its groups.
+  # MAS top 50 entities, by the list's parent category; banking and fintech also hold the banks
+  # and fintechs added on 16 Nov 2026.
   - id: banking
     name: Banking
     topics: [banking-lending, financial-regulation, cyber-resilience, aml-sanctions]
-    members: [dbs, ocbc, uob, standard-chartered, hsbc, citigroup, jpmorgan, bank-of-china, maybank, ubs, gxs-bank, trust-bank]
+    members: [dbs, ocbc, uob, standard-chartered, hsbc, citigroup, jpmorgan, bank-of-china, maybank, ubs, gxs-bank, trust-bank, credit-suisse, barclays, bank-of-singapore, anext-bank, maribank, bnp-paribas, china-construction-bank, icbc, state-bank-of-india]
   - id: insurance
     name: Insurance
     topics: [insurance-reinsurance, financial-regulation, cyber-resilience]
@@ -241,7 +245,7 @@ groups:
   - id: fintech
     name: Fintech
     topics: [payments-fintech, scams-fraud, cyber-resilience]
-    members: [grab, seamoney, wise, airwallex, nium, stripe, 2c2p]
+    members: [grab, seamoney, wise, airwallex, nium, stripe, 2c2p, moneysmart, revolut, chocolate-finance, youtrip]
   - id: digital-asset-firms
     name: Digital asset firms
     topics: [digital-assets-blockchain, cyber-resilience, aml-sanctions]
@@ -263,24 +267,24 @@ groups:
   - id: central-banks
     name: Central banks and regulators
     topics: [monetary-policy, financial-regulation, financial-stability, enforcement]
-    members: [mas, hkma, bnm, bank-of-thailand, ojk, federal-reserve]
+    members: [mas, hkma, bnm, bank-of-thailand, ojk, federal-reserve, uk-fca, pra, us-sec, us-cftc, bank-of-japan, world-bank, imf, bcbs, bis, rba, ecb, fsb, fatf, bank-of-england, eiopa]
   - id: exchanges
     name: Exchanges
     topics: [capital-markets-equities, market-payment-infrastructure]
-    members: [sgx, hkex]
+    members: [sgx, hkex, nasdaq, nyse, lse]
   - id: payment-systems
     name: Payment systems
     topics: [market-payment-infrastructure, payments-fintech, cyber-resilience]
-    members: [meps-plus, fast, paynow, giro, nets, bcs, swift, visa, mastercard]
+    members: [meps-plus, fast, paynow, giro, nets, bcs, swift, visa, mastercard, paypal, alipay]
   - id: tech-providers
     name: Technology providers
     topics: [cyber-resilience, tech-infrastructure]
-    members: [aws, microsoft-azure, microsoft-365, google-cloud, oracle-cloud, equinix, crowdstrike, singtel, thought-machine, toppan-next-tech]
+    members: [aws, microsoft-azure, microsoft-365, google-cloud, oracle-cloud, equinix, crowdstrike, singtel, thought-machine, toppan-next-tech, tencent, meta, anthropic, openai, nvidia, amd, apple]
   # Exchange hacks and outages, custody and reserve bank concentration, AML/CFT enforcement.
   - id: digital-assets
     name: Digital assets
     topics: [digital-assets-blockchain, cyber-resilience, aml-sanctions]
-    members: [circle, straitsx, okx, coinbase]
+    members: [circle, straitsx, okx, coinbase, metacomp]
   - id: sea-countries
     name: SEA countries
     topics: [economic-growth-inflation, monetary-policy, trade-geopolitics]
@@ -288,17 +292,26 @@ groups:
   - id: other-countries
     name: Other countries and territories
     topics: [economic-growth-inflation, monetary-policy, trade-geopolitics]
-    members: [hong-kong, mainland-china, taiwan, india, united-kingdom, australia, south-korea, united-states]
+    members: [hong-kong, mainland-china, taiwan, india, united-kingdom, australia, south-korea, united-states, japan, middle-east, dubai]
   - id: sectors
     name: Sectors
     topics: [property-reits, banking-lending]
     members: [building-construction, housing]
+  - id: agencies
+    name: Government agencies
+    topics: [economic-growth-inflation, tech-infrastructure, trade-geopolitics]
+    members: [mti, edb, imda]
+  - id: international-bodies
+    name: International bodies
+    topics: [economic-growth-inflation, financial-regulation, trade-geopolitics]
+    members: [wto, eu, asean]
 
 # kind sets how the models are told what the entity is (pipeline/subjects.py).
 entities:
   - id: dbs
     name: DBS
     kind: bank
+    displayed: true
     aliases: [DBS Bank, DBS Group, DBS Group Holdings, Development Bank of Singapore]
     domains: [dbs.com]
     logo: /logos/dbs.svg
@@ -307,6 +320,7 @@ entities:
   - id: ocbc
     name: OCBC
     kind: bank
+    displayed: true
     aliases: [OCBC Bank, Oversea-Chinese Banking Corporation, OCBC Group]
     domains: [ocbc.com]
     logo: /logos/ocbc.svg
@@ -315,6 +329,7 @@ entities:
   - id: uob
     name: UOB
     kind: bank
+    displayed: true
     aliases: [United Overseas Bank, UOB Group]
     domains: [uobgroup.com]
     logo: /logos/uob.svg
@@ -324,6 +339,7 @@ entities:
   - id: mas
     name: MAS
     kind: central_bank
+    displayed: true
     aliases: [Monetary Authority of Singapore]
     domains: [mas.gov.sg]
     logo: /logos/mas.svg
@@ -332,6 +348,7 @@ entities:
   - id: hkma
     name: HKMA
     kind: central_bank
+    displayed: true
     aliases: [Hong Kong Monetary Authority]
     domains: [hkma.gov.hk]
     logo: /logos/hkma.svg
@@ -339,6 +356,7 @@ entities:
   - id: bnm
     name: BNM
     kind: central_bank
+    displayed: false
     aliases: [Bank Negara, Bank Negara Malaysia, Central Bank of Malaysia]
     domains: [bnm.gov.my]
     logo: /logos/bnm.svg
@@ -346,16 +364,19 @@ entities:
   - id: bank-of-thailand
     name: Bank of Thailand
     kind: central_bank
+    displayed: false
     aliases: [BOT]
     domains: [bot.or.th]
   - id: ojk
     name: OJK
     kind: regulator
+    displayed: false
     aliases: [Otoritas Jasa Keuangan, Indonesian Financial Services Authority]
     domains: [ojk.go.id]
   - id: federal-reserve
     name: Federal Reserve
     kind: central_bank
+    displayed: false
     aliases: [Fed, FRB, Federal Reserve Board, US Federal Reserve, FOMC]
     covers: the US central bank, the FOMC and the regional Federal Reserve Banks; not the US Treasury or other US agencies
     domains: [federalreserve.gov, newyorkfed.org]
@@ -364,6 +385,7 @@ entities:
   - id: sgx
     name: SGX
     kind: market_infrastructure
+    displayed: true
     aliases: [Singapore Exchange, SGX Group, SGX RegCo]
     domains: [sgx.com]
     logo: /logos/sgx.svg
@@ -372,12 +394,14 @@ entities:
   - id: hkex
     name: HKEX
     kind: market_infrastructure
+    displayed: false
     aliases: [Hong Kong Exchanges and Clearing, Hong Kong stock exchange]
     domains: [hkex.com.hk]
 
   - id: meps-plus
     name: MEPS+
     kind: payment_system
+    displayed: false
     aliases: [MAS Electronic Payment System, MEPS Plus, MEPS]
     covers: Singapore's real-time gross settlement system for interbank Singapore dollar payments and government securities, run by MAS
     domains: []
@@ -385,6 +409,7 @@ entities:
   - id: fast
     name: FAST
     kind: payment_system
+    displayed: false
     aliases: [Fast And Secure Transfers]
     covers: Singapore's real-time interbank funds transfer system, which also carries PayNow
     domains: [abs.org.sg]
@@ -392,6 +417,7 @@ entities:
   - id: paynow
     name: PayNow
     kind: payment_system
+    displayed: false
     aliases: [PayNow Corporate, PayNow QR]
     covers: Singapore's instant transfer service addressed by mobile number, NRIC or UEN, and its links with other countries' fast payment systems
     domains: [abs.org.sg]
@@ -399,6 +425,7 @@ entities:
   - id: giro
     name: GIRO
     kind: payment_system
+    displayed: false
     aliases: [Interbank GIRO, IBG, Inter-bank GIRO]
     covers: Singapore's interbank direct debit and credit system, including eGIRO
     domains: [abs.org.sg]
@@ -406,6 +433,7 @@ entities:
   - id: nets
     name: NETS
     kind: payment_system
+    displayed: true
     aliases: [Network for Electronic Transfers, NETS Group]
     covers: Singapore's electronic payment network for debit cards, ATMs and QR payments
     domains: [nets.com.sg]
@@ -415,6 +443,7 @@ entities:
   - id: bcs
     name: BCS
     kind: payment_system
+    displayed: true
     aliases: [Banking Computer Services, Banking Computer Services Pte Ltd]
     covers: the Singapore company that runs the interbank clearing house behind cheque clearing, GIRO and FAST
     domains: []
@@ -422,18 +451,21 @@ entities:
   - id: swift
     name: SWIFT
     kind: payment_system
+    displayed: false
     aliases: [Society for Worldwide Interbank Financial Telecommunication, Swift]
     covers: the global messaging network banks use for cross-border payments
     domains: [swift.com]
   - id: visa
     name: Visa
     kind: payment_system
+    displayed: false
     aliases: [Visa Inc]
     covers: the card payment network
     domains: [visa.com]
   - id: mastercard
     name: Mastercard
     kind: payment_system
+    displayed: false
     aliases: [Mastercard Inc]
     covers: the card payment network
     domains: [mastercard.com]
@@ -441,6 +473,7 @@ entities:
   - id: aws
     name: AWS
     kind: tech_provider
+    displayed: true
     aliases: [Amazon Web Services]
     domains: [aws.amazon.com]
     logo: /logos/full/aws.svg
@@ -448,18 +481,21 @@ entities:
   - id: microsoft-azure
     name: Microsoft Azure
     kind: tech_provider
+    displayed: false
     aliases: [Azure]
     covers: Microsoft's cloud computing platform, its regions, services, outages and incidents
     domains: [azure.microsoft.com, azure.status.microsoft]
   - id: microsoft-365
     name: Microsoft 365
     kind: tech_provider
+    displayed: false
     aliases: [Office 365, M365]
     covers: Microsoft's productivity and collaboration services (Outlook, Teams, Exchange Online, SharePoint, OneDrive), their outages, incidents and security events, and their effect on the organisations that use them
     domains: []
   - id: google-cloud
     name: Google Cloud
     kind: tech_provider
+    displayed: true
     aliases: [Google Cloud Platform, GCP]
     domains: [cloud.google.com]
     logo: /logos/google-cloud.svg
@@ -467,32 +503,38 @@ entities:
   - id: oracle-cloud
     name: Oracle Cloud
     kind: tech_provider
+    displayed: false
     aliases: [Oracle Cloud Infrastructure, OCI, Oracle Exadata]
     domains: [oracle.com, oraclecloud.com]
   - id: equinix
     name: Equinix
     kind: tech_provider
+    displayed: false
     aliases: [Equinix data centre]
     domains: [equinix.com]
   - id: crowdstrike
     name: CrowdStrike
     kind: tech_provider
+    displayed: false
     aliases: [CrowdStrike Falcon]
     domains: [crowdstrike.com]
   - id: singtel
     name: Singtel
     kind: tech_provider
+    displayed: false
     aliases: [Singapore Telecommunications]
     domains: [singtel.com]
     home: singapore
   - id: thought-machine
     name: Thought Machine
     kind: tech_provider
+    displayed: false
     aliases: [Vault Core]
     domains: [thoughtmachine.net]
   - id: toppan-next-tech
     name: Toppan Next Tech
     kind: tech_provider
+    displayed: false
     aliases: [Toppan Next Tech Pte Ltd]
     domains: []
 
@@ -500,6 +542,7 @@ entities:
   - id: circle
     name: Circle
     kind: stablecoin_issuer
+    displayed: true
     aliases: [Circle Internet Group, Circle Internet Financial, Circle Internet Singapore, CRCL, USDC, USD Coin, EURC, Circle Payments Network, Circle Reserve Fund]
     domains: [circle.com]
     covers: "Circle Internet Group, the NYSE-listed issuer of the USDC and EURC stablecoins: its reserves and attestations, licences (including its Singapore entity), distribution deals, Arc blockchain, and USDC depegs, freezes and enforcement; not circle shapes, Circle K stores, the Circles.Life telco or the Circle MRT line"
@@ -508,6 +551,7 @@ entities:
   - id: straitsx
     name: StraitsX
     kind: stablecoin_issuer
+    displayed: false
     # Fazz is left out: its news is mostly Indonesian agent banking.
     aliases: [StraitsX Group, Xfers, Xfers Pte Ltd, XSGD, XUSD, XIDR, StraitsX SGD Issuance, StraitsX USD Issuance, StraitsX Payment Services]
     domains: [straitsx.com]
@@ -518,12 +562,14 @@ entities:
   - id: okx
     name: OKX
     kind: digital_asset_firm
+    displayed: false
     aliases: [OKX SG, OKX Singapore, OKX SG Pte Ltd, OKEx, Aux Cayes Fintech, OKX Middle East, OKX Europe, OKX Pay, OKX Wallet, OKB, X Layer, OKXICE]
     domains: [okx.com]
     covers: "OKX, the global crypto exchange and Web3 wallet group (formerly OKEx), and its licensed entities including OKX SG in Singapore; its products such as OKX Pay, OKX Card, OKX Wallet, the OKB token and the X Layer blockchain; and its licences, enforcement, hacks, outages and funding; not the word 'ok' or unrelated companies with OK in their name"
   - id: coinbase
     name: Coinbase
     kind: digital_asset_firm
+    displayed: true
     aliases: [Coinbase Global, Coinbase Global Inc, Coinbase Inc, Coinbase Singapore, Coinbase Exchange, Coinbase International Exchange, Coinbase Custody, Coinbase Prime, Deribit]
     domains: [coinbase.com]
     logo: /logos/coinbase.svg
@@ -533,6 +579,7 @@ entities:
   - id: singapore
     name: Singapore
     kind: country
+    displayed: false
     aliases: [Republic of Singapore]
     domains: [gov.sg]
     logo: /logos/singapore.svg
@@ -540,6 +587,7 @@ entities:
   - id: malaysia
     name: Malaysia
     kind: country
+    displayed: false
     aliases: []
     domains: [gov.my]
     logo: /logos/malaysia.svg
@@ -547,6 +595,7 @@ entities:
   - id: indonesia
     name: Indonesia
     kind: country
+    displayed: false
     aliases: [Republic of Indonesia]
     domains: [go.id]
     logo: /logos/indonesia.svg
@@ -554,6 +603,7 @@ entities:
   - id: thailand
     name: Thailand
     kind: country
+    displayed: false
     aliases: [Kingdom of Thailand]
     domains: [go.th]
     logo: /logos/thailand.svg
@@ -561,6 +611,7 @@ entities:
   - id: vietnam
     name: Vietnam
     kind: country
+    displayed: false
     aliases: [Viet Nam]
     domains: [gov.vn]
     logo: /logos/vietnam.svg
@@ -568,37 +619,44 @@ entities:
   - id: hong-kong
     name: Hong Kong
     kind: country
+    displayed: false
     aliases: [Hong Kong SAR, HKSAR, HK]
     domains: [gov.hk]
   - id: mainland-china
     name: Mainland China
     kind: country
+    displayed: false
     aliases: [China, PRC, People's Republic of China]
     covers: news only about Hong Kong, Macau or Taiwan is not about Mainland China
     domains: [gov.cn]
   - id: taiwan
     name: Taiwan
     kind: country
+    displayed: false
     aliases: []
     domains: [gov.tw]
   - id: india
     name: India
     kind: country
+    displayed: false
     aliases: [Republic of India]
     domains: [gov.in]
   - id: united-kingdom
     name: United Kingdom
     kind: country
+    displayed: false
     aliases: [UK, Britain]
     domains: [gov.uk]
   - id: australia
     name: Australia
     kind: country
+    displayed: false
     aliases: []
     domains: [gov.au]
   - id: south-korea
     name: South Korea
     kind: country
+    displayed: false
     aliases: [Republic of Korea, Korea]
     covers: news only about North Korea is not about South Korea
     domains: [go.kr]
@@ -607,6 +665,7 @@ entities:
   - id: united-states
     name: United States
     kind: country
+    displayed: false
     aliases: [US, U.S., USA]
     covers: the US economy, government, trade policy and markets; a firm being US-based or US-listed does not by itself make news about the United States
     domains: [whitehouse.gov, treasury.gov]
@@ -615,11 +674,14 @@ entities:
   - id: building-construction
     name: Real estate and construction
     kind: sector
-    aliases: [property market, real estate, property developers, building and construction, construction]
+    displayed: false
+    aliases: [property market, real estate, property developers, building and construction, construction, Property]
+    covers: property in the sense of real estate; not property in other senses, such as intellectual property
     domains: []
   - id: housing
     name: Housing
     kind: sector
+    displayed: false
     aliases: [residential property, housing market, home prices, housing loans, mortgages]
     domains: []
 
@@ -629,6 +691,7 @@ entities:
   - id: standard-chartered
     name: Standard Chartered
     kind: bank
+    displayed: true
     aliases: [Standard Chartered Bank, Standard Chartered PLC, StanChart, Standard Chartered Bank (Singapore)]
     domains: [sc.com]
     logo: /logos/standard-chartered.svg
@@ -637,6 +700,7 @@ entities:
   - id: hsbc
     name: HSBC
     kind: bank
+    displayed: true
     aliases: [HSBC Holdings, HSBC Bank, HSBC Bank (Singapore), HSBC Singapore]
     domains: [hsbc.com, hsbc.com.sg]
     logo: /logos/hsbc.svg
@@ -645,6 +709,7 @@ entities:
   - id: citigroup
     name: Citigroup
     kind: bank
+    displayed: true
     aliases: [Citi, Citibank, Citibank Singapore, Citigroup Inc]
     domains: [citigroup.com, citibank.com.sg]
     logo: /logos/citigroup.png
@@ -653,6 +718,7 @@ entities:
   - id: jpmorgan
     name: JPMorgan Chase
     kind: bank
+    displayed: true
     aliases: [JPMorgan, J.P. Morgan, JPMorgan Chase & Co, JP Morgan, Kinexys]
     domains: [jpmorganchase.com, jpmorgan.com]
     logo: /logos/jpmorgan.svg
@@ -661,8 +727,9 @@ entities:
   - id: bank-of-china
     name: Bank of China
     kind: bank
+    displayed: true
     aliases: [Bank of China Singapore, BOC Singapore, Bank of China Ltd]
-    covers: "Bank of China, the Chinese state-owned bank, and its Singapore branch; not the People's Bank of China (the central bank) or other Chinese banks"
+    covers: "Bank of China, the Chinese state-owned bank, and its Singapore branch; not the People's Bank of China (the central bank), the Industrial and Commercial Bank of China (ICBC) or other Chinese banks"
     domains: [bankofchina.com]
     logo: /logos/bank-of-china.svg
     logo_full: /logos/full/bank-of-china.svg
@@ -670,6 +737,7 @@ entities:
   - id: maybank
     name: Maybank
     kind: bank
+    displayed: true
     aliases: [Malayan Banking, Malayan Banking Berhad, Maybank Singapore]
     domains: [maybank.com, maybank2u.com.sg]
     logo: /logos/maybank.svg
@@ -678,6 +746,7 @@ entities:
   - id: ubs
     name: UBS
     kind: bank
+    displayed: true
     aliases: [UBS Group, UBS AG, UBS Singapore]
     domains: [ubs.com]
     logo: /logos/ubs.svg
@@ -685,6 +754,7 @@ entities:
   - id: gxs-bank
     name: GXS Bank
     kind: bank
+    displayed: true
     aliases: [GXS, GXS Bank Pte Ltd, GXS FlexiLoan]
     covers: the Grab and Singtel digital bank in Singapore and Malaysia
     domains: [gxs.com.sg]
@@ -694,6 +764,7 @@ entities:
   - id: trust-bank
     name: Trust Bank
     kind: bank
+    displayed: true
     aliases: [Trust Bank Singapore, Trust Bank Singapore Limited]
     covers: "Trust Bank, the Singapore digital bank of Standard Chartered and FairPrice Group; not unrelated banks or trusts with Trust in their name"
     domains: [trustbank.sg]
@@ -705,6 +776,7 @@ entities:
   - id: great-eastern
     name: Great Eastern
     kind: insurer
+    displayed: true
     aliases: [Great Eastern Holdings, Great Eastern Life, Great Eastern General Insurance]
     covers: "Great Eastern, the OCBC-controlled life and general insurer; not the Great Eastern Highway or other uses of the phrase"
     domains: [greateasternlife.com]
@@ -714,6 +786,7 @@ entities:
   - id: prudential-singapore
     name: Prudential Singapore
     kind: insurer
+    displayed: true
     aliases: [Prudential Assurance Company Singapore, Prudential plc, Prudential Singapore Holdings]
     covers: "Prudential plc, the Asia and Africa insurer, and its Singapore life insurer; not Prudential Financial, the separate US insurer"
     domains: [prudential.com.sg, prudentialplc.com]
@@ -723,6 +796,7 @@ entities:
   - id: aia-singapore
     name: AIA Singapore
     kind: insurer
+    displayed: true
     aliases: [AIA Group, AIA Singapore Private Limited, American International Assurance]
     covers: "AIA Group, the Hong Kong-listed pan-Asian life insurer, and AIA Singapore; not unrelated organisations abbreviated AIA"
     domains: [aia.com.sg, aia.com]
@@ -732,6 +806,7 @@ entities:
   - id: income-insurance
     name: Income Insurance
     kind: insurer
+    displayed: true
     aliases: [NTUC Income, Income Insurance Limited]
     covers: "Income Insurance, formerly NTUC Income, the Singapore insurer; not personal or household income, income tax or income funds"
     domains: [income.com.sg]
@@ -741,6 +816,7 @@ entities:
   - id: singlife
     name: Singlife
     kind: insurer
+    displayed: true
     aliases: [Singapore Life, Singlife with Aviva]
     domains: [singlife.com]
     logo: /logos/singlife.png
@@ -749,6 +825,7 @@ entities:
   - id: manulife-singapore
     name: Manulife Singapore
     kind: insurer
+    displayed: true
     aliases: [Manulife, Manulife Financial, Manulife (Singapore)]
     domains: [manulife.com.sg, manulife.com]
     logo: /logos/manulife-singapore.svg
@@ -757,6 +834,7 @@ entities:
   - id: allianz
     name: Allianz
     kind: insurer
+    displayed: true
     aliases: [Allianz SE, Allianz Insurance Singapore, Allianz Global Investors]
     domains: [allianz.com, allianz.sg]
     logo: /logos/allianz.svg
@@ -766,6 +844,7 @@ entities:
   - id: blackrock
     name: BlackRock
     kind: asset_manager
+    displayed: true
     aliases: [BlackRock Inc, iShares, BlackRock Singapore]
     domains: [blackrock.com]
     logo: /logos/blackrock.png
@@ -773,6 +852,7 @@ entities:
   - id: vanguard
     name: Vanguard
     kind: asset_manager
+    displayed: true
     aliases: [The Vanguard Group, Vanguard Group]
     covers: "The Vanguard Group, the US asset manager; not 'vanguard' in its general sense or unrelated companies named Vanguard"
     domains: [vanguard.com]
@@ -781,6 +861,7 @@ entities:
   - id: schroders
     name: Schroders
     kind: asset_manager
+    displayed: true
     aliases: [Schroders plc, Schroder Investment Management, Schroders Singapore]
     domains: [schroders.com]
     logo: /logos/schroders.png
@@ -788,6 +869,7 @@ entities:
   - id: pimco
     name: PIMCO
     kind: asset_manager
+    displayed: true
     aliases: [Pacific Investment Management Company, PIMCO Asia]
     domains: [pimco.com]
     logo: /logos/pimco.png
@@ -795,6 +877,7 @@ entities:
   - id: gic
     name: GIC
     kind: investor
+    displayed: true
     aliases: [GIC Private Limited, Government of Singapore Investment Corporation]
     covers: "GIC, Singapore's sovereign wealth fund; not unrelated firms abbreviated GIC such as General Insurance Corporation of India"
     domains: [gic.com.sg]
@@ -804,6 +887,7 @@ entities:
   - id: fullerton-fund-management
     name: Fullerton Fund Management
     kind: asset_manager
+    displayed: true
     aliases: [Fullerton Fund Management Company, Fullerton Fund]
     covers: "Fullerton Fund Management, the Temasek-owned (Seviora) asset manager; not the Fullerton Hotel or Fullerton Health"
     domains: [fullertonfund.com]
@@ -812,6 +896,7 @@ entities:
   - id: lion-global-investors
     name: Lion Global Investors
     kind: asset_manager
+    displayed: true
     aliases: [LionGlobal, Lion Global Investors Limited]
     domains: [lionglobalinvestors.com]
     logo: /logos/lion-global-investors.png
@@ -821,6 +906,7 @@ entities:
   - id: cdp
     name: CDP
     kind: market_infrastructure
+    displayed: true
     aliases: [The Central Depository, Central Depository, SGX CDP, SGX-CDP, The Central Depository (Pte) Limited]
     covers: "The Central Depository, SGX's securities depository and clearing house; not other uses of CDP such as the Carbon Disclosure Project"
     domains: []
@@ -828,6 +914,7 @@ entities:
   - id: cls-bank
     name: CLS
     kind: market_infrastructure
+    displayed: true
     aliases: [CLS Bank, CLS Bank International, CLS Group, Continuous Linked Settlement]
     covers: "CLS, the FX settlement system run by CLS Bank International; not unrelated uses of the letters CLS"
     domains: [cls-group.com]
@@ -838,6 +925,7 @@ entities:
   - id: grab
     name: Grab
     kind: payment_institution
+    displayed: true
     aliases: [Grab Holdings, Grab Financial Group, GrabPay, GrabFin, GPay Network]
     covers: "Grab Holdings, the Southeast Asian superapp, and its financial services (GrabPay, lending, insurance and its digital bank stakes); not the verb grab"
     domains: [grab.com]
@@ -847,13 +935,15 @@ entities:
   - id: seamoney
     name: SeaMoney
     kind: payment_institution
-    aliases: [Monee, Sea Money, ShopeePay, MariBank, Sea Limited, SPayLater]
-    covers: "Monee (formerly SeaMoney), Sea Limited's digital financial services arm, including ShopeePay, SPayLater and MariBank; Sea Limited news counts when it is about these businesses"
-    domains: [monee.com, maribank.sg]
+    displayed: true
+    aliases: [Monee, Sea Money, ShopeePay, Sea Limited, SPayLater]
+    covers: "Monee (formerly SeaMoney), Sea Limited's digital financial services arm, including ShopeePay and SPayLater; Sea Limited news counts when it is about these businesses"
+    domains: [monee.com]
     home: singapore
   - id: wise
     name: Wise
     kind: payment_institution
+    displayed: true
     aliases: [Wise plc, Wise Group, Wise Asia-Pacific, TransferWise]
     covers: "Wise, the cross-border money transfer company (formerly TransferWise); not the word wise"
     domains: [wise.com]
@@ -862,6 +952,7 @@ entities:
   - id: airwallex
     name: Airwallex
     kind: payment_institution
+    displayed: true
     aliases: [Airwallex Singapore, Airwallex Pte Ltd]
     domains: [airwallex.com]
     logo: /logos/airwallex.svg
@@ -869,6 +960,7 @@ entities:
   - id: nium
     name: Nium
     kind: payment_institution
+    displayed: true
     aliases: [Nium Pte Ltd, Instarem]
     domains: [nium.com]
     logo: /logos/nium.png
@@ -877,6 +969,7 @@ entities:
   - id: stripe
     name: Stripe
     kind: payment_institution
+    displayed: true
     aliases: [Stripe Inc, Stripe Payments Singapore]
     covers: "Stripe, the online payments company, and its businesses such as Bridge and Tempo; not stripes or striped things"
     domains: [stripe.com]
@@ -885,6 +978,7 @@ entities:
   - id: 2c2p
     name: 2C2P
     kind: payment_institution
+    displayed: true
     aliases: [2C2P Pte Ltd]
     domains: [2c2p.com]
     logo: /logos/2c2p.png
@@ -895,6 +989,7 @@ entities:
   - id: crypto-com
     name: Crypto.com
     kind: digital_asset_firm
+    displayed: true
     aliases: [Foris DAX, Foris DAX Asia, Cronos, Crypto.com Exchange]
     domains: [crypto.com]
     logo: /logos/crypto-com.svg
@@ -903,6 +998,7 @@ entities:
   - id: ripple
     name: Ripple
     kind: digital_asset_firm
+    displayed: true
     aliases: [Ripple Labs, Ripple Markets APAC, RLUSD, Ripple USD, XRP Ledger]
     covers: "Ripple, the blockchain payments company behind RLUSD and the XRP Ledger; not ripple effects or the generic word ripple"
     domains: [ripple.com]
@@ -911,6 +1007,7 @@ entities:
   - id: sygnum
     name: Sygnum
     kind: digital_asset_firm
+    displayed: true
     aliases: [Sygnum Bank, Sygnum Pte Ltd, Sygnum Singapore]
     domains: [sygnum.com]
     logo: /logos/sygnum.png
@@ -920,6 +1017,7 @@ entities:
   - id: microsoft
     name: Microsoft
     kind: tech_provider
+    displayed: true
     aliases: [Microsoft Corp, Microsoft Corporation, Microsoft Copilot]
     covers: "Microsoft as a company: its AI (Copilot and its OpenAI partnership), security incidents, earnings and deals; news only about an Azure or Microsoft 365 outage belongs to those subjects"
     domains: [microsoft.com]
@@ -928,8 +1026,9 @@ entities:
   - id: ant-international
     name: Ant International
     kind: payment_institution
-    aliases: [Alipay+, Antom, WorldFirst, ANEXT Bank, Ant Group]
-    covers: "Ant International, the Singapore-headquartered unit of Ant Group (Alipay+, Antom, WorldFirst, ANEXT Bank); Ant Group news counts when it touches these businesses or its overseas operations"
+    displayed: true
+    aliases: [Alipay+, Antom, WorldFirst, Ant Group]
+    covers: "Ant International, the Singapore-headquartered unit of Ant Group (Alipay+, Antom, WorldFirst); Ant Group news counts when it touches these businesses or its overseas operations; not Alipay, Ant Group's payment app in mainland China"
     domains: [ant-intl.com]
     logo: /logos/ant-international.svg
     logo_full: /logos/full/ant-international.svg
@@ -939,6 +1038,7 @@ entities:
   - id: temasek
     name: Temasek
     kind: investor
+    displayed: true
     aliases: [Temasek Holdings, Temasek Holdings (Private) Limited]
     covers: "Temasek Holdings, the Singapore state investor; not Temasek Polytechnic or other places and institutions named Temasek"
     domains: [temasek.com.sg]
@@ -948,6 +1048,7 @@ entities:
   - id: edbi
     name: EDBI
     kind: investor
+    displayed: true
     aliases: [EDB Investments, EDB Investments Pte Ltd]
     domains: [edbi.com]
     logo: /logos/edbi.png
@@ -956,8 +1057,383 @@ entities:
   - id: vertex-ventures
     name: Vertex Ventures
     kind: investor
+    displayed: true
     aliases: [Vertex Ventures Southeast Asia and India, Vertex Ventures SEA and India, Vertex Holdings]
     covers: "Vertex Ventures, the Temasek-backed venture capital funds; not Vertex Pharmaceuticals or other companies named Vertex"
     domains: [vertexventures.sg]
     logo: /logos/vertex-ventures.png
+    home: singapore
+
+  # Added on 16 Nov 2026: five displayed entities (MoneySmart and four UK and US regulators) and
+  # 45 hidden ones. Names with a common reading carry a `covers` line, since matching is
+  # whole-word and case-sensitive (ingest/candidates.py).
+  # Displayed
+  - id: moneysmart
+    name: MoneySmart
+    kind: payment_institution
+    displayed: true
+    aliases: [MoneySmart.sg, MoneySmart Group]
+    covers: "MoneySmart, the Singapore personal finance comparison platform; not Australia's ASIC Moneysmart website"
+    domains: [moneysmart.sg]
+    home: singapore
+  - id: uk-fca
+    name: UK FCA
+    kind: regulator
+    displayed: true
+    aliases: [FCA, Financial Conduct Authority]
+    domains: [fca.org.uk]
+    logo: /logos/uk-fca.svg
+    logo_full: /logos/full/uk-fca.svg
+    home: united-kingdom
+  # No domain: the PRA shares bankofengland.co.uk with the Bank of England, whose mark it uses.
+  - id: pra
+    name: UK PRA
+    kind: regulator
+    displayed: true
+    aliases: [PRA, Prudential Regulation Authority]
+    domains: []
+    logo: /logos/pra.svg
+    logo_full: /logos/full/pra.svg
+    home: united-kingdom
+  - id: us-sec
+    name: US SEC
+    kind: regulator
+    displayed: true
+    aliases: [SEC, U.S. SEC, Securities and Exchange Commission]
+    covers: "the US Securities and Exchange Commission only; not Thailand's, the Philippines' or any other country's securities commission"
+    domains: [sec.gov]
+    logo: /logos/us-sec.svg
+    logo_full: /logos/full/us-sec.svg
+    home: united-states
+  - id: us-cftc
+    name: US CFTC
+    kind: regulator
+    displayed: true
+    aliases: [CFTC, Commodity Futures Trading Commission]
+    domains: [cftc.gov]
+    logo: /logos/us-cftc.svg
+    logo_full: /logos/full/us-cftc.svg
+    home: united-states
+
+  # Hidden, linked in seed/collected/ as endpoints or through a Singapore branch before 16 Nov 2026
+  - id: tencent
+    name: Tencent
+    kind: tech_provider
+    displayed: false
+    aliases: [Tencent Holdings, WeChat Pay, Tenpay]
+    domains: [tencent.com]
+    home: mainland-china
+  - id: edb
+    name: EDB
+    kind: agency
+    displayed: false
+    aliases: [Economic Development Board, Singapore Economic Development Board]
+    covers: "Singapore's Economic Development Board; not EDBI (EDB Investments)"
+    domains: [edb.gov.sg]
+    home: singapore
+  - id: barclays
+    name: Barclays
+    kind: bank
+    displayed: false
+    aliases: [Barclays PLC, Barclays Bank, Barclays Singapore]
+    domains: [home.barclays]
+    home: united-kingdom
+  - id: bank-of-singapore
+    name: Bank of Singapore
+    kind: bank
+    displayed: false
+    aliases: [Bank of Singapore Limited]
+    covers: "Bank of Singapore, OCBC's private bank; not the Development Bank of Singapore (DBS)"
+    domains: [bankofsingapore.com]
+    home: singapore
+  - id: anext-bank
+    name: ANEXT Bank
+    kind: bank
+    displayed: false
+    aliases: [ANEXT, ANEXT Bank Pte Ltd]
+    domains: [anext.com.sg]
+    home: singapore
+  - id: maribank
+    name: MariBank
+    kind: bank
+    displayed: false
+    aliases: [Maribank, MariBank Singapore]
+    domains: [maribank.sg]
+    home: singapore
+  - id: bnp-paribas
+    name: BNP Paribas
+    kind: bank
+    displayed: false
+    aliases: [BNP Paribas SA, BNP Paribas Singapore]
+    domains: [group.bnpparibas]
+  - id: china-construction-bank
+    name: China Construction Bank
+    kind: bank
+    displayed: false
+    aliases: [CCB, China Construction Bank Corporation, CCB Singapore]
+    domains: [ccb.com]
+    home: mainland-china
+  - id: icbc
+    name: ICBC
+    kind: bank
+    displayed: false
+    aliases: [Industrial and Commercial Bank of China, ICBC Singapore]
+    domains: [icbc-ltd.com, icbc.com.cn]
+    home: mainland-china
+  # Bare "SBI" is left out: SBI Holdings of Japan is a Project Guardian member.
+  - id: state-bank-of-india
+    name: State Bank of India
+    kind: bank
+    displayed: false
+    aliases: [SBI Singapore, State Bank of India Singapore]
+    domains: [sbi.bank.in]
+    home: india
+  - id: nasdaq
+    name: Nasdaq
+    kind: market_infrastructure
+    displayed: false
+    aliases: [Nasdaq Inc, NASDAQ, Nasdaq Stock Market]
+    covers: "Nasdaq Inc, the exchange operator, and its exchanges and technology business; not moves in the Nasdaq indices or a firm being Nasdaq-listed"
+    domains: [nasdaq.com]
+    home: united-states
+  - id: nyse
+    name: NYSE
+    kind: market_infrastructure
+    displayed: false
+    aliases: [New York Stock Exchange, NYSE Group]
+    covers: "the New York Stock Exchange as an exchange operator; not market moves or a firm being NYSE-listed"
+    domains: [nyse.com]
+    home: united-states
+  # LSEG is left out: its data business would bring news no one asked for.
+  - id: lse
+    name: London Stock Exchange
+    kind: market_infrastructure
+    displayed: false
+    aliases: [LSE, London Stock Exchange plc]
+    covers: "the London Stock Exchange; not the London School of Economics"
+    domains: [londonstockexchange.com]
+    home: united-kingdom
+  - id: revolut
+    name: Revolut
+    kind: payment_institution
+    displayed: false
+    aliases: [Revolut Ltd, Revolut Technologies Singapore]
+    domains: [revolut.com]
+    home: united-kingdom
+
+  # Hidden, new
+  - id: bank-of-japan
+    name: Bank of Japan
+    kind: central_bank
+    displayed: false
+    aliases: [BOJ, BoJ]
+    domains: [boj.or.jp]
+    home: japan
+  - id: japan
+    name: Japan
+    kind: country
+    displayed: false
+    aliases: []
+    domains: [go.jp]
+  - id: middle-east
+    name: Middle East
+    kind: region
+    displayed: false
+    aliases: []
+    domains: []
+    members: [dubai]
+  - id: world-bank
+    name: World Bank
+    kind: international_body
+    displayed: false
+    aliases: [World Bank Group, International Bank for Reconstruction and Development]
+    domains: [worldbank.org]
+  - id: imf
+    name: IMF
+    kind: international_body
+    displayed: false
+    aliases: [International Monetary Fund]
+    domains: [imf.org]
+  # No domain: the BCBS shares bis.org with the BIS.
+  - id: bcbs
+    name: BCBS
+    kind: international_body
+    displayed: false
+    aliases: [Basel Committee on Banking Supervision, Basel Committee]
+    domains: []
+  - id: bis
+    name: BIS
+    kind: international_body
+    displayed: false
+    aliases: [Bank for International Settlements]
+    covers: "the Bank for International Settlements in Basel; not the US Commerce Department's Bureau of Industry and Security"
+    domains: [bis.org]
+  - id: rba
+    name: RBA
+    kind: central_bank
+    displayed: false
+    aliases: [Reserve Bank of Australia]
+    domains: [rba.gov.au]
+    home: australia
+  - id: ecb
+    name: ECB
+    kind: central_bank
+    displayed: false
+    aliases: [European Central Bank]
+    domains: [ecb.europa.eu]
+  - id: meta
+    name: Meta
+    kind: tech_provider
+    displayed: false
+    aliases: [Meta Platforms, Meta Platforms Inc]
+    covers: "Meta Platforms, the owner of Facebook, Instagram and WhatsApp; not the word meta in other senses"
+    domains: [meta.com]
+    home: united-states
+  - id: anthropic
+    name: Anthropic
+    kind: tech_provider
+    displayed: false
+    aliases: [Anthropic PBC]
+    domains: [anthropic.com]
+    home: united-states
+  - id: openai
+    name: OpenAI
+    kind: tech_provider
+    displayed: false
+    aliases: [ChatGPT]
+    domains: [openai.com]
+    home: united-states
+  - id: fsb
+    name: FSB
+    kind: international_body
+    displayed: false
+    aliases: [Financial Stability Board]
+    covers: "the Financial Stability Board; not Russia's Federal Security Service"
+    domains: [fsb.org]
+  - id: fatf
+    name: FATF
+    kind: international_body
+    displayed: false
+    aliases: [Financial Action Task Force]
+    domains: [fatf-gafi.org]
+  - id: paypal
+    name: PayPal
+    kind: payment_institution
+    displayed: false
+    aliases: [PayPal Holdings, Paypal, PYUSD]
+    domains: [paypal.com]
+    home: united-states
+  - id: alipay
+    name: Alipay
+    kind: payment_institution
+    displayed: false
+    aliases: []
+    covers: "Alipay, Ant Group's payment app in mainland China; not Alipay+, Ant International's cross-border payment network"
+    domains: [alipay.com]
+    home: mainland-china
+  - id: metacomp
+    name: MetaComp
+    kind: digital_asset_firm
+    displayed: false
+    aliases: [MetaComp Pte Ltd]
+    domains: [mce.sg]
+    home: singapore
+  - id: nvidia
+    name: NVIDIA
+    kind: tech_provider
+    displayed: false
+    aliases: [Nvidia, NVIDIA Corporation]
+    domains: [nvidia.com]
+    home: united-states
+  - id: amd
+    name: AMD
+    kind: tech_provider
+    displayed: false
+    aliases: [Advanced Micro Devices]
+    domains: [amd.com]
+    home: united-states
+  - id: apple
+    name: Apple
+    kind: tech_provider
+    displayed: false
+    aliases: [Apple Inc, Apple Pay]
+    covers: "Apple Inc, its devices and services and Apple Pay; not the fruit or other uses of the word"
+    domains: [apple.com]
+    home: united-states
+  # Renamed the Ministry of Energy, Trade and Industry on 1 Oct 2026. Bare "METI" is left out: it
+  # is also Japan's Ministry of Economy, Trade and Industry.
+  - id: mti
+    name: MTI
+    kind: agency
+    displayed: false
+    aliases: [Ministry of Trade and Industry, "Ministry of Energy, Trade and Industry"]
+    domains: [meti.gov.sg]
+    home: singapore
+  - id: imda
+    name: IMDA
+    kind: agency
+    displayed: false
+    aliases: [Infocomm Media Development Authority]
+    domains: [imda.gov.sg]
+    home: singapore
+  - id: wto
+    name: WTO
+    kind: international_body
+    displayed: false
+    aliases: [World Trade Organization, World Trade Organisation]
+    domains: [wto.org]
+  # No member is an entity yet, so a link into the EU reaches no country.
+  - id: eu
+    name: EU
+    kind: region
+    displayed: false
+    aliases: [European Union]
+    domains: [europa.eu]
+  - id: asean
+    name: ASEAN
+    kind: region
+    displayed: false
+    aliases: [Association of Southeast Asian Nations]
+    domains: [asean.org]
+    members: [singapore, malaysia, indonesia, thailand, vietnam]
+  - id: bank-of-england
+    name: Bank of England
+    kind: central_bank
+    displayed: false
+    aliases: [BoE, BOE]
+    covers: "the UK central bank; not BOE Technology, the Chinese display maker"
+    domains: [bankofengland.co.uk]
+    home: united-kingdom
+  - id: dubai
+    name: Dubai
+    kind: country
+    displayed: false
+    aliases: [Emirate of Dubai]
+    domains: [dubai.ae]
+  # No domain: credit-suisse.com forwards to ubs.com.
+  - id: credit-suisse
+    name: Credit Suisse
+    kind: bank
+    displayed: false
+    aliases: [Credit Suisse Group, Credit Suisse AG]
+    domains: []
+  - id: eiopa
+    name: EIOPA
+    kind: regulator
+    displayed: false
+    aliases: [European Insurance and Occupational Pensions Authority]
+    domains: [eiopa.europa.eu]
+  - id: chocolate-finance
+    name: Chocolate Finance
+    kind: asset_manager
+    displayed: false
+    aliases: [Chocfin, Chocfin Pte Ltd]
+    domains: [chocolatefinance.com]
+    home: singapore
+  - id: youtrip
+    name: YouTrip
+    kind: payment_institution
+    displayed: false
+    aliases: [YouTrip Pte Ltd, YouBiz]
+    domains: [you.co]
     home: singapore

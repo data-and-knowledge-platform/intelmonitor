@@ -24,7 +24,9 @@ EntityKind = Literal[
     "payment_institution",
     "stablecoin_issuer",
     "digital_asset_firm",
+    "international_body",
     "country",
+    "region",
     "sector",
 ]
 SubjectType = Literal["topic", "group", "entity"]
@@ -93,6 +95,13 @@ class Entity(BaseModel):
     # The country entity a bank is based in. Its loans there carry no indirect impact: news that
     # matters to a bank at home names it (pipeline/impact.py).
     home: str | None = None
+    # A region's member countries, each a country entity: a link into the region covers them
+    # (relationships.py `reaches`). Empty for every other kind.
+    members: list[str] = []
+    # Displayed: on the Entities list, in search, watchlists and function presets, with a page.
+    # A hidden entity is still searched, tagged, rated and linked, and passes indirect impact;
+    # where it is named its name shows as text.
+    displayed: bool
 
 
 class Watchlist(BaseModel):
@@ -139,6 +148,11 @@ class SubjectsSeed(BaseModel):
         for e in self.entities:
             if e.home is not None and e.home not in countries:
                 raise ValueError(f"entity {e.id}: home {e.home} is not a country entity")
+            if e.members and e.kind != "region":
+                raise ValueError(f"entity {e.id}: only a region lists members")
+            if unknown := sorted(set(e.members) - countries):
+                raise ValueError(f"region {e.id}: members {unknown} are not country entities")
+        displayed = {e.id for e in self.entities if e.displayed}
         if len({f.id for f in self.functions}) != len(self.functions):
             raise ValueError("function ids must be unique")
         owned = [t for f in self.functions for t in f.topics]
@@ -151,6 +165,8 @@ class SubjectsSeed(BaseModel):
         for f in self.functions:
             if unknown := sorted(set(f.watchlist.entities) - entity_ids):
                 raise ValueError(f"function {f.id}: unknown watchlist entities {unknown}")
+            if hidden := sorted(set(f.watchlist.entities) - displayed):
+                raise ValueError(f"function {f.id}: hidden watchlist entities {hidden}")
             if unknown := sorted(set(f.watchlist.topics) - topic_ids):
                 raise ValueError(f"function {f.id}: unknown watchlist topics {unknown}")
             if PRESET_ENTITY not in f.watchlist.entities:

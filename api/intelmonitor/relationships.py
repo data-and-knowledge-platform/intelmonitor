@@ -397,13 +397,14 @@ def load_nodes(conn: sqlite3.Connection, ids: set[str]) -> dict[str, Node]:
 
 
 def _regions(conn: sqlite3.Connection, target_id: str) -> list[str]:
-    """The region endpoints whose members include the target."""
+    """The region endpoints and region entities whose members include the target."""
     rows = conn.execute(
         "SELECT e.id FROM relationship_endpoints e, json_each(e.members) m "
         "WHERE e.kind = 'region' AND m.value = ? ORDER BY e.id",
         (target_id,),
     ).fetchall()
-    return [str(r["id"]) for r in rows]
+    entities = [e.id for e in load_subjects().entities if target_id in e.members]
+    return sorted([str(r["id"]) for r in rows] + entities)
 
 
 def _path(target_id: str, rels: list[Relationship], nodes: dict[str, Node]) -> ImpactPath:
@@ -519,8 +520,9 @@ def links_of(conn: sqlite3.Connection, subject_id: str) -> list[tuple[Relationsh
 
 class Reach(_Model):
     """One link by which an event at `source` reaches the seed entity `reached`, with the link's
-    strength in that direction. `region` names the region endpoint when the link goes into a
-    region that covers the source (UOB's Greater China loans, for news about Taiwan)."""
+    strength in that direction. `region` names the region (an endpoint, or an entity of kind
+    region) when the link goes into a region that covers the source (UOB's Greater China loans,
+    for news about Taiwan)."""
 
     source: str
     reached: str
@@ -532,9 +534,9 @@ class Reach(_Model):
 def reaches(conn: sqlite3.Connection, source_id: str) -> list[Reach]:
     """Every seed entity one link from the entity `source_id`, for indirect impact (ticket 20):
     each link with the source at one end, read from_to when the source is its `from` and to_from
-    when it is its `to`; and each link into a region endpoint whose members include the source,
-    read to_from only. belongs_to_sector, unrated links, endpoints, groups and the source itself
-    carry or get nothing, and nothing goes a second hop. By link id."""
+    when it is its `to`; and each link into a region endpoint or region entity whose members
+    include the source, read to_from only. belongs_to_sector, unrated links, endpoints, groups
+    and the source itself carry or get nothing, and nothing goes a second hop. By link id."""
     entities = {e.id for e in load_subjects().entities}
     if source_id not in entities:
         return []

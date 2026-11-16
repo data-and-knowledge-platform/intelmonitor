@@ -686,7 +686,7 @@ def _rules(s: Subject, fx: bool) -> str:
         "\n- This is a topic: opportunities and policy progress count as well as threats."
         if s.type == "topic"
         else "\n- For a market, sector or system, opportunities count as well as threats."
-        if s.kind in ("country", "sector", "market_infrastructure", "payment_system")
+        if s.kind in ("country", "region", "sector", "market_infrastructure", "payment_system")
         else ""
     )
     fx_rule = (

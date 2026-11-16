@@ -98,9 +98,10 @@ def relevance_criterion() -> str:
     the entities by name."""
     seed = load_subjects()
     topics = "\n".join(f"- {t.name}: {t.covers}" for t in seed.topics)
-    countries = ", ".join(e.name for e in seed.entities if e.kind == "country")
+    places = ("country", "region")
+    countries = ", ".join(e.name for e in seed.entities if e.kind in places)
     sectors = ", ".join(e.name for e in seed.entities if e.kind == "sector")
-    others = ", ".join(e.name for e in seed.entities if e.kind not in ("country", "sector"))
+    others = ", ".join(e.name for e in seed.entities if e.kind not in (*places, "sector"))
     return (
         f"Staff at the Monetary Authority of Singapore track these topics:\n{topics}\n"
         f"They also track these institutions and systems: {others}; the economies, markets and "

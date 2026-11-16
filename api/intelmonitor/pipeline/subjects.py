@@ -28,9 +28,15 @@ _KIND_LABEL: dict[EntityKind, str] = {
     "digital_asset_firm": (
         "crypto exchange, broker or custodian (digital payment token service provider)"
     ),
+    "international_body": "international organisation or standard-setting body",
     "country": "country or territory",
+    "region": "region or group of countries",
     "sector": "sector",
 }
+
+
+# Kinds that are news scopes rather than organisations.
+_SCOPE_KINDS: tuple[EntityKind, ...] = ("country", "region", "sector")
 
 
 @dataclass(frozen=True)
@@ -42,6 +48,8 @@ class Subject:
     description: str  # what counts as being about this subject; groups are never asked about
     members: tuple[str, ...]  # entity ids, for groups
     function: str | None = None  # the id of the MAS function that owns a topic
+    # False for a hidden entity: no list row, page, search hit or watchlist entry (seed.py).
+    displayed: bool = True
 
 
 @lru_cache
@@ -66,9 +74,9 @@ def all_subjects() -> dict[str, Subject]:
     for e in seed.entities:
         aliases = f", also {', '.join(e.aliases)}" if e.aliases else ""
         label = _KIND_LABEL[e.kind]
-        # Countries and sectors are news scopes rather than organisations, so they say what
-        # belongs to them.
-        if e.kind == "country":
+        # Countries, regions and sectors are news scopes rather than organisations, so they say
+        # what belongs to them.
+        if e.kind in ("country", "region"):
             about = (
                 f"the {label} {e.name}{aliases}: its economy, markets (such as property, credit "
                 "and currency), financial system, economic and financial policy, and political or "
@@ -83,9 +91,9 @@ def all_subjects() -> dict[str, Subject]:
         else:
             about = f"{e.name}{aliases}, the {label}"
         if e.covers:
-            # Country and sector descriptions already carry a colon.
-            about += f"; {e.covers}" if e.kind in ("country", "sector") else f": {e.covers}"
-        subjects[e.id] = Subject(e.id, e.name, "entity", e.kind, about, ())
+            # Country, region and sector descriptions already carry a colon.
+            about += f"; {e.covers}" if e.kind in _SCOPE_KINDS else f": {e.covers}"
+        subjects[e.id] = Subject(e.id, e.name, "entity", e.kind, about, (), displayed=e.displayed)
     return subjects
 
 
@@ -105,12 +113,21 @@ _SERVICE_KINDS: tuple[EntityKind, ...] = (
     "payment_system",
     "market_infrastructure",
 )
-_SYSTEM_KINDS: tuple[EntityKind, ...] = ("country", "sector", "central_bank", "regulator")
+_SYSTEM_KINDS: tuple[EntityKind, ...] = (
+    "country",
+    "region",
+    "sector",
+    "central_bank",
+    "regulator",
+    "agency",
+    "international_body",
+)
 
 
 def _singapore_phrase(entity: Entity | None) -> str:
-    """The Singapore phrase for a subject: Singapore's financial system for a country, sector,
-    central bank or regulator (MAS included), and for a topic (None); else the whole institution
+    """The Singapore phrase for a subject: Singapore's financial system for a country, region,
+    sector, central bank, regulator (MAS included), government agency or international body, and
+    for a topic (None); else the whole institution
     when its home is Singapore; else a tech provider, payment system or market infrastructure's
     services to financial institutions in Singapore; any other institution's Singapore branch or
     subsidiary."""
