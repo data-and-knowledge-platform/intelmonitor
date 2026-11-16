@@ -200,30 +200,6 @@ CREATE TABLE IF NOT EXISTS run_changes (
 );
 CREATE INDEX IF NOT EXISTS run_changes_run ON run_changes (run_id, kind);
 
-CREATE TABLE IF NOT EXISTS graph_nodes (
-    run_id TEXT NOT NULL,
-    id TEXT NOT NULL,                  -- subject or endpoint id, or dev:<development_id>
-    type TEXT NOT NULL,                -- topic, group, entity, endpoint or development
-    label TEXT NOT NULL,
-    data TEXT NOT NULL,                -- JSON
-    PRIMARY KEY (run_id, id)
-);
-
-CREATE TABLE IF NOT EXISTS graph_edges (
-    run_id TEXT NOT NULL,
-    from_id TEXT NOT NULL,
-    to_id TEXT NOT NULL,
-    type TEXT NOT NULL,                -- a relationship type in capitals, AFFECTS or IMPACTS
-    source TEXT NOT NULL,              -- relationships (a stored link), claude or detector
-                                       -- (AFFECTS), table (IMPACTS); seed and jev when older
-    confidence REAL NOT NULL,
-    label TEXT NOT NULL DEFAULT '',    -- the link in plain words
-    detail TEXT NOT NULL DEFAULT '{}', -- JSON: a link's relationship_id, evidence, weight, reason,
-                                       -- from_to and to_from; IMPACTS: route, level, strength,
-                                       -- source_id and link_id
-    PRIMARY KEY (run_id, from_id, to_id, type)
-);
-
 CREATE TABLE IF NOT EXISTS inference_records (
     id INTEGER PRIMARY KEY,
     run_id TEXT,                       -- the run that made the call
@@ -446,9 +422,6 @@ ADDED_COLUMNS = [
     ("development_subjects", "priority_level", "INTEGER NOT NULL DEFAULT 0"),
     ("development_subjects", "priority_score", "REAL NOT NULL DEFAULT 0"),
     ("development_subjects", "priority_confidence", "REAL NOT NULL DEFAULT 0"),
-    # Plain labels and relationship details on graph edges (phase1-plan.md, item I).
-    ("graph_edges", "label", "TEXT NOT NULL DEFAULT ''"),
-    ("graph_edges", "detail", "TEXT NOT NULL DEFAULT '{}'"),
     # The structured entity brief (phase1-plan.md, item B).
     ("run_summaries", "direction_reason", "TEXT NOT NULL DEFAULT ''"),
     ("run_summaries", "direction_flagged", "INTEGER NOT NULL DEFAULT 0"),
@@ -715,6 +688,27 @@ def _drop_removed_features(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+# The graph view's tables, written by the run's graph stage until both were removed on 16 Nov 2026
+# (spec step 3b of link-types-and-inferred-impact).
+GRAPH_TABLES = ["graph_nodes", "graph_edges"]
+
+
+def _drop_graph(conn: sqlite3.Connection) -> None:
+    """Stores made before the graph view was removed hold its per-run nodes and edges; both
+    tables go."""
+    marks = ",".join("?" for _ in GRAPH_TABLES)
+    exists = f"SELECT 1 FROM sqlite_master WHERE type = 'table' AND name IN ({marks})"  # noqa: S608
+    if conn.execute(exists, GRAPH_TABLES).fetchone() is None:
+        return
+    conn.execute("BEGIN IMMEDIATE")  # another connection may be dropping them too
+    if conn.execute(exists, GRAPH_TABLES).fetchone() is None:
+        conn.rollback()
+        return
+    for table in GRAPH_TABLES:
+        conn.execute(f"DROP TABLE IF EXISTS {table}")
+    conn.commit()
+
+
 def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     """Open the store and make sure the schema exists."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -729,6 +723,7 @@ def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     _drop_columns(conn)
     _drop_social(conn)
     _drop_removed_features(conn)
+    _drop_graph(conn)
     _impacts_by_table(conn)
     conn.execute(
         "CREATE INDEX IF NOT EXISTS inference_records_version "

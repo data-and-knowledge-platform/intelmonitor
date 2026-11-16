@@ -23,12 +23,10 @@ import { Route as TopicsIdRouteImport } from './routes/topics/$id'
 import { Route as EntitiesIdIndexRouteImport } from './routes/entities/$id/index'
 import { Route as EntitiesIdDataRouteImport } from './routes/entities/$id/data'
 import { Route as EntitiesIdDevelopmentsRouteImport } from './routes/entities/$id/developments'
-import { Route as EntitiesIdGraphRouteImport } from './routes/entities/$id/graph'
 import { Route as EntitiesIdRelatedRouteImport } from './routes/entities/$id/related'
 import { Route as TopicsIdIndexRouteImport } from './routes/topics/$id/index'
 import { Route as TopicsIdDataRouteImport } from './routes/topics/$id/data'
 import { Route as TopicsIdDevelopmentsRouteImport } from './routes/topics/$id/developments'
-import { Route as TopicsIdGraphRouteImport } from './routes/topics/$id/graph'
 import { Route as TopicsIdRelatedRouteImport } from './routes/topics/$id/related'
 
 const IndexRoute = IndexRouteImport.update({
@@ -101,11 +99,6 @@ const EntitiesIdDevelopmentsRoute = EntitiesIdDevelopmentsRouteImport.update({
   path: '/developments',
   getParentRoute: () => EntitiesIdRoute,
 } as any)
-const EntitiesIdGraphRoute = EntitiesIdGraphRouteImport.update({
-  id: '/graph',
-  path: '/graph',
-  getParentRoute: () => EntitiesIdRoute,
-} as any)
 const EntitiesIdRelatedRoute = EntitiesIdRelatedRouteImport.update({
   id: '/related',
   path: '/related',
@@ -124,11 +117,6 @@ const TopicsIdDataRoute = TopicsIdDataRouteImport.update({
 const TopicsIdDevelopmentsRoute = TopicsIdDevelopmentsRouteImport.update({
   id: '/developments',
   path: '/developments',
-  getParentRoute: () => TopicsIdRoute,
-} as any)
-const TopicsIdGraphRoute = TopicsIdGraphRouteImport.update({
-  id: '/graph',
-  path: '/graph',
   getParentRoute: () => TopicsIdRoute,
 } as any)
 const TopicsIdRelatedRoute = TopicsIdRelatedRouteImport.update({
@@ -151,11 +139,9 @@ export interface FileRoutesByFullPath {
   '/topics/': typeof TopicsIndexRoute
   '/entities/$id/data': typeof EntitiesIdDataRoute
   '/entities/$id/developments': typeof EntitiesIdDevelopmentsRoute
-  '/entities/$id/graph': typeof EntitiesIdGraphRoute
   '/entities/$id/related': typeof EntitiesIdRelatedRoute
   '/topics/$id/data': typeof TopicsIdDataRoute
   '/topics/$id/developments': typeof TopicsIdDevelopmentsRoute
-  '/topics/$id/graph': typeof TopicsIdGraphRoute
   '/topics/$id/related': typeof TopicsIdRelatedRoute
   '/entities/$id/': typeof EntitiesIdIndexRoute
   '/topics/$id/': typeof TopicsIdIndexRoute
@@ -172,11 +158,9 @@ export interface FileRoutesByTo {
   '/topics': typeof TopicsIndexRoute
   '/entities/$id/data': typeof EntitiesIdDataRoute
   '/entities/$id/developments': typeof EntitiesIdDevelopmentsRoute
-  '/entities/$id/graph': typeof EntitiesIdGraphRoute
   '/entities/$id/related': typeof EntitiesIdRelatedRoute
   '/topics/$id/data': typeof TopicsIdDataRoute
   '/topics/$id/developments': typeof TopicsIdDevelopmentsRoute
-  '/topics/$id/graph': typeof TopicsIdGraphRoute
   '/topics/$id/related': typeof TopicsIdRelatedRoute
   '/entities/$id': typeof EntitiesIdIndexRoute
   '/topics/$id': typeof TopicsIdIndexRoute
@@ -196,11 +180,9 @@ export interface FileRoutesById {
   '/topics/': typeof TopicsIndexRoute
   '/entities/$id/data': typeof EntitiesIdDataRoute
   '/entities/$id/developments': typeof EntitiesIdDevelopmentsRoute
-  '/entities/$id/graph': typeof EntitiesIdGraphRoute
   '/entities/$id/related': typeof EntitiesIdRelatedRoute
   '/topics/$id/data': typeof TopicsIdDataRoute
   '/topics/$id/developments': typeof TopicsIdDevelopmentsRoute
-  '/topics/$id/graph': typeof TopicsIdGraphRoute
   '/topics/$id/related': typeof TopicsIdRelatedRoute
   '/entities/$id/': typeof EntitiesIdIndexRoute
   '/topics/$id/': typeof TopicsIdIndexRoute
@@ -221,11 +203,9 @@ export interface FileRouteTypes {
     | '/topics/'
     | '/entities/$id/data'
     | '/entities/$id/developments'
-    | '/entities/$id/graph'
     | '/entities/$id/related'
     | '/topics/$id/data'
     | '/topics/$id/developments'
-    | '/topics/$id/graph'
     | '/topics/$id/related'
     | '/entities/$id/'
     | '/topics/$id/'
@@ -242,11 +222,9 @@ export interface FileRouteTypes {
     | '/topics'
     | '/entities/$id/data'
     | '/entities/$id/developments'
-    | '/entities/$id/graph'
     | '/entities/$id/related'
     | '/topics/$id/data'
     | '/topics/$id/developments'
-    | '/topics/$id/graph'
     | '/topics/$id/related'
     | '/entities/$id'
     | '/topics/$id'
@@ -265,11 +243,9 @@ export interface FileRouteTypes {
     | '/topics/'
     | '/entities/$id/data'
     | '/entities/$id/developments'
-    | '/entities/$id/graph'
     | '/entities/$id/related'
     | '/topics/$id/data'
     | '/topics/$id/developments'
-    | '/topics/$id/graph'
     | '/topics/$id/related'
     | '/entities/$id/'
     | '/topics/$id/'
@@ -389,13 +365,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EntitiesIdDevelopmentsRouteImport
       parentRoute: typeof EntitiesIdRoute
     }
-    '/entities/$id/graph': {
-      id: '/entities/$id/graph'
-      path: '/graph'
-      fullPath: '/entities/$id/graph'
-      preLoaderRoute: typeof EntitiesIdGraphRouteImport
-      parentRoute: typeof EntitiesIdRoute
-    }
     '/entities/$id/related': {
       id: '/entities/$id/related'
       path: '/related'
@@ -424,13 +393,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TopicsIdDevelopmentsRouteImport
       parentRoute: typeof TopicsIdRoute
     }
-    '/topics/$id/graph': {
-      id: '/topics/$id/graph'
-      path: '/graph'
-      fullPath: '/topics/$id/graph'
-      preLoaderRoute: typeof TopicsIdGraphRouteImport
-      parentRoute: typeof TopicsIdRoute
-    }
     '/topics/$id/related': {
       id: '/topics/$id/related'
       path: '/related'
@@ -444,7 +406,6 @@ declare module '@tanstack/react-router' {
 interface EntitiesIdRouteChildren {
   EntitiesIdDataRoute: typeof EntitiesIdDataRoute
   EntitiesIdDevelopmentsRoute: typeof EntitiesIdDevelopmentsRoute
-  EntitiesIdGraphRoute: typeof EntitiesIdGraphRoute
   EntitiesIdRelatedRoute: typeof EntitiesIdRelatedRoute
   EntitiesIdIndexRoute: typeof EntitiesIdIndexRoute
 }
@@ -452,7 +413,6 @@ interface EntitiesIdRouteChildren {
 const EntitiesIdRouteChildren: EntitiesIdRouteChildren = {
   EntitiesIdDataRoute: EntitiesIdDataRoute,
   EntitiesIdDevelopmentsRoute: EntitiesIdDevelopmentsRoute,
-  EntitiesIdGraphRoute: EntitiesIdGraphRoute,
   EntitiesIdRelatedRoute: EntitiesIdRelatedRoute,
   EntitiesIdIndexRoute: EntitiesIdIndexRoute,
 }
@@ -464,7 +424,6 @@ const EntitiesIdRouteWithChildren = EntitiesIdRoute._addFileChildren(
 interface TopicsIdRouteChildren {
   TopicsIdDataRoute: typeof TopicsIdDataRoute
   TopicsIdDevelopmentsRoute: typeof TopicsIdDevelopmentsRoute
-  TopicsIdGraphRoute: typeof TopicsIdGraphRoute
   TopicsIdRelatedRoute: typeof TopicsIdRelatedRoute
   TopicsIdIndexRoute: typeof TopicsIdIndexRoute
 }
@@ -472,7 +431,6 @@ interface TopicsIdRouteChildren {
 const TopicsIdRouteChildren: TopicsIdRouteChildren = {
   TopicsIdDataRoute: TopicsIdDataRoute,
   TopicsIdDevelopmentsRoute: TopicsIdDevelopmentsRoute,
-  TopicsIdGraphRoute: TopicsIdGraphRoute,
   TopicsIdRelatedRoute: TopicsIdRelatedRoute,
   TopicsIdIndexRoute: TopicsIdIndexRoute,
 }

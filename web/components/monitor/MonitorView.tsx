@@ -19,7 +19,7 @@ import { subjectLink } from "@/lib/links";
 import { PERSONAL, recordView, usePersonalWatchlist, useView } from "@/lib/viewerState";
 
 import { SummaryBand } from "./overview/SummaryBand";
-import { useRelated } from "./Related";
+import { hasRelated } from "./Related";
 import { RelatedGraph } from "./RelatedGraph";
 import { TopDevelopments } from "./SubjectDevelopments";
 
@@ -39,7 +39,6 @@ function Overview({ page: p }: { page: Page }) {
   // The card's own first query: every stored link shows in any window, so 7 days tells whether any
   // exist. The card stays out until it answers, so it never shows and then goes.
   const graph = useRelatedGraph(p.subject.id, 7).data;
-  const related = useRelated(p);
   return (
     <>
       <MonitorHead page={p} view="overview" />
@@ -49,7 +48,7 @@ function Overview({ page: p }: { page: Page }) {
           <div className="panel ov-card">
             <TopDevelopments subject={p.subject} />
           </div>
-          {graph && graph.nodes.length > 0 && <RelatedGraph subject={p.subject} relatedTab={related?.show ?? false} />}
+          {graph && graph.nodes.length > 0 && <RelatedGraph subject={p.subject} relatedTab={hasRelated(p)} />}
         </div>
       </div>
     </>
@@ -60,14 +59,13 @@ export type MonitorTab = "overview" | "developments" | "related" | "data";
 
 /**
  * The page head: logo, name and one line on what it is, and Add to watchlist, over the tabs.
- * Related shows when something links to the subject, Data when it has listed series. Every tab
+ * Related shows when a development reaches the subject through a link, Data when it has listed series. Every tab
  * renders it once its subject has loaded, so it records the page in Recently viewed.
  */
 export function MonitorHead({ page: p, view }: { page: Page; view: MonitorTab }) {
   const id = p.subject.id;
   useEffect(() => recordView(id), [id]);
   const indicators = useIndicators(p.subject.id, p.run.as_of);
-  const related = useRelated(p);
   const hasData = p.trend || (indicators.data?.indicators.some((i) => i.series.listed) ?? false);
   const current = (tab: MonitorTab) => (view === tab ? ("page" as const) : undefined);
   return (
@@ -95,7 +93,7 @@ export function MonitorHead({ page: p, view }: { page: Page; view: MonitorTab })
         <Link {...subjectLink(p.subject, "developments")} aria-current={current("developments")}>
           Developments
         </Link>
-        {(view === "related" || related?.show) && (
+        {(view === "related" || hasRelated(p)) && (
           <Link {...subjectLink(p.subject, "related")} aria-current={current("related")}>
             Related
           </Link>

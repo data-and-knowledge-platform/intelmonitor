@@ -30,7 +30,7 @@
   color: var(--ink);
 }
 
-/* In-page panel on the canvas (monitor columns, graph view). Scoped away from dialog.panel. */
+/* In-page panel on the canvas (monitor columns). Scoped away from dialog.panel. */
 .panel:not(dialog) {
   background: var(--surface);
   border-radius: var(--r-widget);
@@ -609,8 +609,7 @@
 .brief-concerns strong {
   font-weight: 600;
 }
-.ca-group h3,
-.sw-head {
+.ca-group h3 {
   margin: 0 0 var(--s-1);
   font-size: var(--fs-meta);
   line-height: var(--lh-meta);
@@ -688,158 +687,12 @@
   margin-top: var(--s-2);
 }
 
-/* Linked institutions (overview/Linked.tsx): the name in a fixed column, then each route with
-   its evidence line and this week's news through it. */
-.ln-rows {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.ln-row {
-  display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: var(--s-3);
-  padding: var(--s-2) 0;
-  border-top: 1px solid var(--line);
-}
-.ln-rows > .ln-row:first-child {
-  border-top: 0;
-}
-.ln-head {
-  padding: var(--s-4) 0 var(--s-1);
-  font-size: var(--fs-meta);
-  font-weight: 500;
-  color: var(--ink2);
-}
-.ln-name {
-  display: flex;
-  flex-direction: column;
-  font-weight: 500;
-  overflow-wrap: anywhere;
-}
-/* Names that open a page carry a quiet underline, so they read as links beside plain names. */
-:is(.ln-name, .ln-names, .sw-mid) .subject-link {
-  text-decoration: underline;
-  text-decoration-color: var(--line-field);
-  text-underline-offset: 3px;
-}
-:is(.ln-name, .ln-names, .sw-mid) .subject-link:hover {
-  text-decoration-color: currentColor;
-}
-.ln-none {
-  font-size: var(--fs-meta);
-  font-weight: 400;
-  color: var(--ink3);
-}
-.ln-routes {
-  display: grid;
-  gap: var(--s-2);
-  min-width: 0;
-}
-.ln-route p {
-  margin: 0;
-}
-.ln-week h3 {
-  margin: 0 0 2px;
-  font-size: var(--fs-meta);
-  font-weight: 500;
-  color: var(--ink2);
-}
-.ln-week ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 2px;
-}
-.ln-same {
-  margin-top: var(--s-3);
-}
-.ln-rows ~ .ln-same {
-  padding-top: var(--s-3);
-  border-top: 1px solid var(--line);
-}
-.ln-names {
-  margin: var(--s-3) 0 0;
-  padding: 0;
-  list-style: none;
-  columns: 3 200px;
-  column-gap: var(--s-5);
-}
-.ln-names li {
-  padding: 2px 0;
-  break-inside: avoid;
-  font-weight: 500;
-}
-.ln-legend {
-  margin: var(--s-3) 0 0;
-}
-
-/* Shared with (overview/SharedWith.tsx): a peer select in the header, a claim, then a ladder of
-   the bank's link, the shared thing and the peer's link, with the sources under each rung. */
-select.input.sw-pick {
-  width: auto;
-  height: 28px;
-}
-.sw-claim {
-  margin: var(--s-3) 0 0;
-}
-.sw-ladder {
-  margin-top: var(--s-3);
-}
-.sw-cols,
-.sw-rung {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(120px, auto) minmax(0, 1fr);
-  column-gap: var(--s-3);
-  align-items: baseline;
-}
-.sw-cols {
-  padding-bottom: var(--s-1);
-  border-bottom: 1px solid var(--line-strong);
-}
-.sw-cols > :first-child,
-.sw-a {
-  text-align: right;
-}
-.sw-cols > :nth-child(2),
-.sw-mid {
-  text-align: center;
-}
-.sw-head {
-  margin: var(--s-3) 0 0;
-}
-.sw-rung {
-  padding: var(--s-2) 0;
-  border-top: 1px solid var(--line);
-}
-.sw-head + .sw-rung {
-  border-top: 0;
-}
-.sw-mid {
-  font-weight: 600;
-}
-.sw-src {
-  grid-column: 1 / -1;
-  margin: 2px 0 0;
-  text-align: center;
-  color: var(--ink3);
-}
-.sw-src a {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
 @container main (width < 640px) {
   .ca-row {
     grid-template-columns: minmax(0, 1fr) auto;
   }
   .ca-dir {
     grid-column: 1 / -1;
-  }
-  .ln-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--s-1);
   }
 }
 

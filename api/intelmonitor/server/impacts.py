@@ -1,5 +1,5 @@
-"""Indirect impacts, direct subjects and shared relationships, read from the latest run's
-development_impacts and the relationship store (pipeline/impact.py, relationships.py)."""
+"""Indirect impacts and direct subjects, read from the latest run's development_impacts and the
+relationship store (pipeline/impact.py, relationships.py)."""
 
 import sqlite3
 from datetime import timedelta
@@ -7,15 +7,13 @@ from datetime import timedelta
 from intelmonitor.pipeline.impact import relationship_label, route_text
 from intelmonitor.pipeline.params import PRIORITY_LABELS
 from intelmonitor.pipeline.subjects import all_subjects
-from intelmonitor.relationships import SCHEMA, Relationship, load_nodes, shared
+from intelmonitor.relationships import SCHEMA, Relationship, load_nodes
 from intelmonitor.server.models import (
     DirectSubject,
     IndirectImpact,
     IndirectLevel,
     RelationshipFigure,
     RelationshipLink,
-    SharedEndpoint,
-    SharedRelationships,
     SubjectImpact,
 )
 from intelmonitor.server.queries import Queries, subject_ref
@@ -141,27 +139,3 @@ def direct_subjects(q: Queries, development_id: str) -> list[DirectSubject]:
         )
         if r["subject_id"] in subjects
     ]
-
-
-def shared_relationships(conn: sqlite3.Connection, a: str, b: str) -> SharedRelationships:
-    """What links both entities in the relationship store, each link with its type and source."""
-    names = display_names(conn)
-    return SharedRelationships(
-        a=subject_ref(a),
-        b=subject_ref(b),
-        endpoints=sorted(
-            (
-                SharedEndpoint(
-                    id=e.node.id,
-                    name=e.node.name,
-                    kind=e.node.kind,
-                    subject=e.node.subject,
-                    displayed=e.node.subject and all_subjects()[e.node.id].displayed,
-                    a_links=[relationship_link(r, names) for r in e.a_links],
-                    b_links=[relationship_link(r, names) for r in e.b_links],
-                )
-                for e in shared(conn, a, b)
-            ),
-            key=lambda e: e.name,
-        ),
-    )

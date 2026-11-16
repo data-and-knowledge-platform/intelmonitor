@@ -206,12 +206,11 @@ const query = (q: string) => (q ? `?${q.replace(/^\?/, "")}` : "");
 const TARGETS = {
   home: async () => "/",
   // An entity's or topic's tabs: Overview, Developments (the query sets its feed's period and
-  // facets), Related and Data; the graph view is reachable by URL only.
+  // facets), Related and Data.
   page: async (q: string) => pagePath(q),
   "page-developments": async (q: string, search = "") => `${await pagePath(q)}/developments${query(search)}`,
   related: async (q: string) => `${await pagePath(q)}/related`,
   data: async (q: string) => `${await pagePath(q)}/data`,
-  graph: async (q: string) => `${await pagePath(q)}/graph`,
   // The list pages; the query sets the period and filters (`period=4w&group=banking`).
   entities: async (search = "") => `/entities${query(search)}`,
   topics: async (search = "") => `/topics${query(search)}`,
@@ -376,7 +375,7 @@ const HELP = `pnpm -C web verify <command>
   url <target> [arg]          page URL for a target
   open <target> [arg]         open it in the harness browser (session ${SESSION}, 1440x900)
       targets: home, page <subject>, page-developments <subject> [query],
-               related <subject>, data <subject>, graph <subject>,
+               related <subject>, data <subject>,
                entities [query], topics [query], development <development-id> [subject]
       <subject> is an id or a name that matches one item
   state show | clear | set '<json>'

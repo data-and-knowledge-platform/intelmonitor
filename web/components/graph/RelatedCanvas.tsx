@@ -3,9 +3,9 @@
 // and stops (shared pieces in force.ts). A node's size grows with its developments, so one with 5
 // is three times one with 1; it is red when one could hurt the subject and blue otherwise. Each
 // node shows its count inside, following it on every frame. Nodes keep their places while the same
-// ones have news. Dragging a node reheats the layout, as in the graph view; dragging the
-// background pans and the wheel zooms, and the fit button puts the frame back. `data-layout` on the stage reads "running" while nodes move
-// and "settled" once they stop.
+// ones have news. Dragging a node reheats the layout; dragging the background pans and the wheel
+// zooms, and the fit button puts the frame back. `data-layout` on the stage reads "running" while
+// nodes move and "settled" once they stop.
 import { forceCollide, forceSimulation, type Simulation, type SimulationLinkDatum } from "d3-force";
 import type Graph from "graphology";
 import { useMemo, useRef } from "react";

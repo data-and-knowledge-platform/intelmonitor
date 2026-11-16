@@ -33,14 +33,11 @@ export const keys = {
   development: (id: string, scope?: DevelopmentScope) => ["development", id, scope],
   developments: (query: DevelopmentsQuery) => ["developments", query],
   monitorPage: (id: string) => ["monitor-page", id],
-  linked: (id: string) => ["linked", id],
   relatedGraph: (id: string, days: RelatedDays) => ["related-graph", id, days],
-  shared: (a: string, b: string) => ["shared", a, b],
   trend: (id: string) => ["trend", id],
   indicators: (id: string, asOf?: string) => ["indicators", id, asOf],
   series: (id: string, range: SeriesRange) => ["series", id, range],
   search: (text: string) => ["search", text],
-  graph: (query: GraphQuery) => ["graph", query],
 } as const;
 
 /** Query parameters of GET /developments: a scope (some subjects) and filters. */
@@ -54,9 +51,6 @@ export type SeriesRange = NonNullable<operations["get_series"]["parameters"]["qu
 
 /** The Related graph's window in days: 7 (the brief's week), 30 or 90. */
 export type RelatedDays = Schema<"RelatedDays">;
-
-/** Query parameters of GET /graph: center subject, hops (1 or 2) and optional filters. */
-export type GraphQuery = NonNullable<operations["get_graph"]["parameters"]["query"]>;
 
 export const subjectsOptions = queryOptions({ queryKey: keys.subjects, queryFn: () => unwrap(api.GET("/subjects")) });
 
@@ -136,14 +130,6 @@ export const monitorPageOptions = (id: string) =>
 
 export const useMonitorPage = (id: string) => useQuery(monitorPageOptions(id));
 
-/** The institutions linked to a country, sector, technology provider or payment system. */
-export const useLinked = (id: string, enabled = true) =>
-  useQuery({
-    queryKey: keys.linked(id),
-    enabled,
-    queryFn: () => unwrap(api.GET("/subjects/{subject_id}/linked", { params: { path: { subject_id: id } } })),
-  });
-
 /**
  * Everything linked to a subject in the relationship store, with the developments of the last
  * `days` that reach it through each node. Keeps the previous graph while the window refetches.
@@ -158,14 +144,6 @@ export const useRelatedGraph = (id: string, days: RelatedDays) =>
         }),
       ),
     placeholderData: keepPreviousData,
-  });
-
-/** What links two entities in the relationship store; idle until both are known. */
-export const useShared = (a: string, b: string | null) =>
-  useQuery({
-    queryKey: keys.shared(a, b ?? ""),
-    enabled: b !== null,
-    queryFn: () => unwrap(api.GET("/shared", { params: { query: { a, b: b ?? "" } } })),
   });
 
 /**
@@ -204,14 +182,6 @@ export const useSeries = (id: string, range: SeriesRange = {}) =>
     queryKey: keys.series(id, range),
     queryFn: () =>
       unwrap(api.GET("/series/{series_id}", { params: { path: { series_id: id }, query: range } })),
-  });
-
-/** The graph neighbourhood around a subject. Keeps the previous graph while filters refetch. */
-export const useGraph = (query: GraphQuery) =>
-  useQuery({
-    queryKey: keys.graph(query),
-    queryFn: () => unwrap(api.GET("/graph", { params: { query } })),
-    placeholderData: keepPreviousData,
   });
 
 /**

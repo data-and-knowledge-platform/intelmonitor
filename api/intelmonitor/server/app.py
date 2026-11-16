@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from datetime import date
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -26,15 +26,12 @@ from intelmonitor.server import series as series_views
 from intelmonitor.server import trend as trend_view
 from intelmonitor.server.developments import DevelopmentQuery, development_list
 from intelmonitor.server.evidence import development_sources, document_detail, new_documents
-from intelmonitor.server.graph import neighbourhood
 from intelmonitor.server.impacts import (
     IMPACT_PERIOD_DAYS,
     development_impacts,
     direct_subjects,
-    shared_relationships,
     subject_impacts,
 )
-from intelmonitor.server.linked import linked_institutions
 from intelmonitor.server.lists import subject_list
 from intelmonitor.server.models import (
     DataSources,
@@ -42,22 +39,16 @@ from intelmonitor.server.models import (
     DevelopmentDetail,
     DevelopmentList,
     DocumentDetail,
-    EntityId,
     FunctionDetail,
-    Graph,
     LatestRun,
-    LinkedInstitution,
-    LinkType,
     ListName,
     MaterialityLevel,
     MonitorPage,
-    NodeType,
     Period,
     RelatedDays,
     RelatedGraph,
     RunInfo,
     SearchResults,
-    SharedRelationships,
     SubjectConfidence,
     SubjectDetail,
     SubjectId,
@@ -196,15 +187,6 @@ def get_subject_impacts(
     return subject_impacts(q, subject_id, days)
 
 
-@app.get("/subjects/{subject_id}/linked")
-def get_linked_institutions(q: Q, subject_id: str) -> list[LinkedInstitution]:
-    """For a country, sector, technology provider or payment system: the banks and other
-    institutions linked to it in the relationship store, directly or through a company they own,
-    with the developments of the last 7 days that reach them that way. Empty for other subjects."""
-    page_subject(subject_id)
-    return linked_institutions(q, subject_id)
-
-
 @app.get("/subjects/{subject_id}/related-graph")
 def get_related_graph(q: Q, subject_id: str, days: RelatedDays = RelatedDays.week) -> RelatedGraph:
     """Every subject and endpoint linked to the subject in the relationship store, either
@@ -212,15 +194,6 @@ def get_related_graph(q: Q, subject_id: str, days: RelatedDays = RelatedDays.wee
     brief, 30 or 90) that reach the subject through it, with link-type counts for filters."""
     page_subject(subject_id)
     return related_graph(q, subject_id, days)
-
-
-@app.get("/shared")
-def get_shared(q: Q, a: EntityId, b: EntityId) -> SharedRelationships:
-    """What links both entities in the relationship store: shared vendors, payment systems,
-    markets, ventures and memberships, each link with its type and source."""
-    if a == b:
-        raise HTTPException(422, "shared relationships need two different entities")
-    return shared_relationships(q.conn, a, b)
 
 
 @app.get("/subjects/{subject_id}/trend")
@@ -266,7 +239,7 @@ def search(
     return search_all(q, text, limit)
 
 
-# ---- developments, evidence, documents, graph
+# ---- developments, evidence and documents
 
 
 @app.get("/developments")
@@ -338,27 +311,6 @@ def get_document(q: Q, document_id: str) -> DocumentDetail:
     if doc is None:
         raise NotFoundError(f"document {document_id}")
     return doc
-
-
-@app.get("/graph")
-def get_graph(
-    q: Q,
-    center: str,
-    hops: Annotated[int, Query(ge=1, le=2)] = 1,
-    node_type: Annotated[list[NodeType] | None, Query()] = None,
-    link_type: Annotated[list[LinkType] | None, Query()] = None,
-    window_days: Annotated[int | None, Query(ge=1, le=365)] = None,
-) -> Graph:
-    """The neighbourhood of `center` at 1 or 2 hops. Filters: node types, link types, and a
-    time window on development nodes (last source within `window_days` of the run date)."""
-    return neighbourhood(
-        q,
-        center,
-        hops,
-        set(node_type or NodeType.__args__),
-        set(link_type or LinkType.__args__),
-        window_days,
-    )
 
 
 @app.get("/materiality-levels")

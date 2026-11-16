@@ -41,7 +41,7 @@ Two agents driving at once each set `VERIFY_SESSION=<name>` for their own browse
 2. Set the browser state the recipe starts from: `pnpm -C web verify state show`, `state clear` (a first visit) or `state set '{"watchlist":["mas","dbs"],"view":"personal"}'`.
    Clear and set end on the Entities list, which records nothing in Recently viewed, so the page holds exactly the written state.
 3. `pnpm -C web verify open <target> [args]` to reach the starting page.
-   Targets: `home`, `page <subject>`, `page-developments <subject> [query]`, `related <subject>`, `data <subject>`, `graph <subject>`, `entities [query]`, `topics [query]`, `development <development-id> [subject]`.
+   Targets: `home`, `page <subject>`, `page-developments <subject> [query]`, `related <subject>`, `data <subject>`, `entities [query]`, `topics [query]`, `development <development-id> [subject]`.
    `page` resolves to `/entities/<id>` or `/topics/<id>`; a list query sets its period and filters (`period=4w&group=banking`); a development opens over its subject's page, else over the Entities list.
    A subject is an id or a name; a name that matches several items fails and lists their ids.
    Opening an entity or topic page records it in Recently viewed, as a visit does.

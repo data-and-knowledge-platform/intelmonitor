@@ -146,7 +146,7 @@ _PRICES = {
     "claude-opus-5-5": (4.0, 20.0, 0.20, 5.0),
 }
 _MAX_TOKENS = 16000
-# Haiku's replies (screen, same_event, theme, custom_match) stay under 1,000 output tokens; a
+# Haiku's replies (screen, same_event) stay under 1,000 output tokens; a
 # runaway reply stops here within seconds instead of running to _MAX_TOKENS.
 _HAIKU_MAX_TOKENS = 2000
 _clients: WeakKeyDictionary[asyncio.AbstractEventLoop, AsyncAnthropic] = WeakKeyDictionary()

@@ -7,7 +7,6 @@ import "@/styles/globals.css";
 import "@/styles/shell.css";
 import "@/styles/sheet.css";
 import "@/styles/monitor.css";
-import "@/styles/graph.css";
 import "@/styles/related.css";
 import "@/styles/trend.css";
 import "@/styles/help.css";

@@ -5,7 +5,7 @@ from typing import Literal
 
 from intelmonitor.relationships import Strength
 
-# Screen, same_event, theme and custom_match run on Claude Haiku 5.5 with thinking off; a Haiku
+# Screen and same_event run on Claude Haiku 5.5 with thinking off; a Haiku
 # refusal is retried once on REFUSAL_FALLBACK_MODEL (pipeline/inference.py). The other stages run
 # on settings.anthropic_model.
 HAIKU_MODEL = "claude-haiku-5-5"

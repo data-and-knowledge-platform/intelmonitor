@@ -100,21 +100,6 @@ def check_subject(c: Check, sid: str) -> dict[str, int]:
         hits = c.get("/search", params={"q": detail["aliases"][0]})["subjects"]
         need(any(h["subject"]["id"] == sid for h in hits), f"{sid}: search by alias")
 
-    one = c.get("/graph", params={"center": sid, "hops": 1})
-    two = c.get("/graph", params={"center": sid, "hops": 2})
-    need(len(one["nodes"]) > 1 and one["edges"], f"{sid}: graph at 1 hop")
-    need(len(two["nodes"]) >= len(one["nodes"]), f"{sid}: graph at 2 hops")
-    need(any(n["has_new"] for n in two["nodes"]), f"{sid}: no new developments in graph")
-    subjects_only = c.get(
-        "/graph",
-        params={"center": sid, "hops": 2, "node_type": ["topic", "group", "entity"]},
-    )
-    need(all(n["type"] != "development" for n in subjects_only["nodes"]), "node type filter")
-    # A topic links to no subject, so without developments its graph is the topic alone.
-    need(len(subjects_only["nodes"]) > (kind != "topic"), f"{sid}: subject-only graph")
-    affects = c.get("/graph", params={"center": sid, "link_type": "AFFECTS", "window_days": 14})
-    need(all(e["type"] == "AFFECTS" for e in affects["edges"]), "link type filter")
-
     devs = c.get("/developments", params={"subject_id": sid, "limit": 5})["developments"]
     need(devs, f"{sid}: no developments")
     check_evidence(c, devs[0]["id"])

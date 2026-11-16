@@ -35,7 +35,6 @@ PROMPT_NOTES: dict[str, str] = {
     "headline": "A development's display headline and key points.",
     "note": "A subject's note on why its series moved in the week.",
     "brief": "A subject's brief: state, concerns and direction.",
-    "theme": "Haiku: the theme a development belongs to, for the graph.",
 }
 
 

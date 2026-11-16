@@ -8,7 +8,6 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, Field
 
 from intelmonitor.pipeline.extract import Tone
-from intelmonitor.pipeline.graph import Theme
 from intelmonitor.pipeline.params import Priority
 from intelmonitor.pipeline.subjects import all_subjects
 from intelmonitor.relationships import (
@@ -43,15 +42,8 @@ def _known_subject(value: str) -> str:
     return value
 
 
-def _known_entity(value: str) -> str:
-    if _known_subject(value) and all_subjects()[value].type != "entity":
-        raise ValueError(f"{value!r} is not an entity")
-    return value
-
-
 # A seeded subject id, such as "ocbc" or "singapore-banks".
 SubjectId = Annotated[str, AfterValidator(_known_subject)]
-EntityId = Annotated[str, AfterValidator(_known_entity)]
 
 
 class SubjectRef(BaseModel):
@@ -448,54 +440,6 @@ class DirectSubject(BaseModel):
     tone: Tone
 
 
-class SharedEndpoint(BaseModel):
-    """A subject or endpoint both entities link to, with each one's links to it."""
-
-    id: str
-    name: str
-    kind: EntityKind | EndpointKind
-    subject: bool = Field(description="A tracked subject; otherwise a relationship endpoint")
-    displayed: bool = Field(description="A tracked subject with a page; false for a hidden entity")
-    a_links: list[RelationshipLink]
-    b_links: list[RelationshipLink]
-
-
-class SharedRelationships(BaseModel):
-    a: SubjectRef
-    b: SubjectRef
-    endpoints: list[SharedEndpoint] = Field(description="By name")
-
-
-class LinkedRoute(BaseModel):
-    """How an institution links to the subject: one stored link, or two through a company it
-    holds a stake in, written in plain words by code."""
-
-    text: str = Field(
-        description='"Has 12.2% of its loans in Hong Kong"; "Holds 100% of DBS Bank (Hong Kong), '
-        'which operates in Hong Kong"; region-level routes end ", a figure for the whole region"'
-    )
-    region: str | None = Field(description="The region's name when the route ends in a region")
-    links: list[RelationshipLink] = Field(description="From the institution outward")
-
-
-class LinkedInstitution(BaseModel):
-    """A bank or other financial institution linked to a country, sector, supplier or payment
-    system in the relationship store (GET /subjects/{id}/linked)."""
-
-    id: str
-    name: str
-    kind: EntityKind | EndpointKind
-    subject: SubjectRef | None = Field(description="None when the institution is not tracked")
-    region: bool = Field(description="Its largest figure covers a whole region, not the subject")
-    routes: list[LinkedRoute] = Field(
-        description="Direct links first, then through a company it holds a stake in, then "
-        "region-level"
-    )
-    impacts: list[SubjectImpact] = Field(
-        description="Developments in the last 7 days that reach it through these routes"
-    )
-
-
 class MonitorPage(BaseModel):
     subject: SubjectDetail
     run: RunRef
@@ -641,64 +585,6 @@ class DocumentDetail(BaseModel):
     published_at: datetime
     text: str
     quotes: list[Quote] = Field(description="Every verified quote in the document, by offset")
-
-
-NodeType = Literal["topic", "group", "entity", "endpoint", "development"]
-# The relationship store's types in capitals; BELONGS_TO_SECTOR links an entity to its seed
-# group. AFFECTS: a development to what it happened to or who did it. IMPACTS: a development to an
-# entity it reaches indirectly.
-LinkType = Literal[
-    "HOLDS_STAKE_IN",
-    "REGULATED_BY",
-    "OPERATES_IN",
-    "EXPOSED_TO",
-    "DEPENDS_ON",
-    "MEMBER_OF",
-    "PARTICIPATES_IN",
-    "PARTNER_OF",
-    "LISTED_ON",
-    "BELONGS_TO_SECTOR",
-    "AFFECTS",
-    "IMPACTS",
-]
-
-
-class GraphNode(BaseModel):
-    id: str = Field(description="Subject or endpoint id, or dev:<development id>")
-    type: NodeType
-    label: str
-    kind: EntityKind | EndpointKind | None
-    hop: int
-    has_new: bool = Field(
-        description="A development: new or updated this run. A subject: affected by one."
-    )
-    needs_attention: bool
-    materiality_level: int | None
-    last_published: date | None
-    theme: Theme | None = Field(description="A development's theme, which the view groups by")
-
-
-class GraphEdge(BaseModel):
-    source: str
-    target: str
-    type: LinkType
-    label: str = Field(description='The link in plain words: "depends on, for cloud services"')
-    origin: str = Field(
-        description="relationships for a stored link, claude or detector for AFFECTS (who tagged "
-        "it), table for IMPACTS; seed and jev in older runs"
-    )
-    confidence: float
-    relationship_id: str | None = Field(description="A stored relationship's id")
-    route: str | None = Field(description="IMPACTS: the route in plain words")
-
-
-class Graph(BaseModel):
-    run: RunRef
-    center: str
-    hops: int
-    nodes: list[GraphNode]
-    edges: list[GraphEdge]
-    truncated_developments: int = Field(description="Development nodes left out by the cap")
 
 
 class SearchHit(BaseModel):

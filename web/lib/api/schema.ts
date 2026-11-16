@@ -146,28 +146,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/subjects/{subject_id}/linked": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Linked Institutions
-         * @description For a country, sector, technology provider or payment system: the banks and other
-         *     institutions linked to it in the relationship store, directly or through a company they own,
-         *     with the developments of the last 7 days that reach them that way. Empty for other subjects.
-         */
-        get: operations["get_linked_institutions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/subjects/{subject_id}/related-graph": {
         parameters: {
             query?: never;
@@ -182,27 +160,6 @@ export interface paths {
          *     brief, 30 or 90) that reach the subject through it, with link-type counts for filters.
          */
         get: operations["get_related_graph"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/shared": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Shared
-         * @description What links both entities in the relationship store: shared vendors, payment systems,
-         *     markets, ventures and memberships, each link with its type and source.
-         */
-        get: operations["get_shared"];
         put?: never;
         post?: never;
         delete?: never;
@@ -348,27 +305,6 @@ export interface paths {
         };
         /** Get Document */
         get: operations["get_document"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/graph": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Graph
-         * @description The neighbourhood of `center` at 1 or 2 hops. Filters: node types, link types, and a
-         *     time window on development nodes (last source within `window_days` of the run date).
-         */
-        get: operations["get_graph"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1114,92 +1050,6 @@ export interface components {
             /** Name */
             name: string;
         };
-        /** Graph */
-        Graph: {
-            run: components["schemas"]["RunRef"];
-            /** Center */
-            center: string;
-            /** Hops */
-            hops: number;
-            /** Nodes */
-            nodes: components["schemas"]["GraphNode"][];
-            /** Edges */
-            edges: components["schemas"]["GraphEdge"][];
-            /**
-             * Truncated Developments
-             * @description Development nodes left out by the cap
-             */
-            truncated_developments: number;
-        };
-        /** GraphEdge */
-        GraphEdge: {
-            /** Source */
-            source: string;
-            /** Target */
-            target: string;
-            /**
-             * Type
-             * @enum {string}
-             */
-            type: "HOLDS_STAKE_IN" | "REGULATED_BY" | "OPERATES_IN" | "EXPOSED_TO" | "DEPENDS_ON" | "MEMBER_OF" | "PARTICIPATES_IN" | "PARTNER_OF" | "LISTED_ON" | "BELONGS_TO_SECTOR" | "AFFECTS" | "IMPACTS";
-            /**
-             * Label
-             * @description The link in plain words: "depends on, for cloud services"
-             */
-            label: string;
-            /**
-             * Origin
-             * @description relationships for a stored link, claude or detector for AFFECTS (who tagged it), table for IMPACTS; seed and jev in older runs
-             */
-            origin: string;
-            /** Confidence */
-            confidence: number;
-            /**
-             * Relationship Id
-             * @description A stored relationship's id
-             */
-            relationship_id: string | null;
-            /**
-             * Route
-             * @description IMPACTS: the route in plain words
-             */
-            route: string | null;
-        };
-        /** GraphNode */
-        GraphNode: {
-            /**
-             * Id
-             * @description Subject or endpoint id, or dev:<development id>
-             */
-            id: string;
-            /**
-             * Type
-             * @enum {string}
-             */
-            type: "topic" | "group" | "entity" | "endpoint" | "development";
-            /** Label */
-            label: string;
-            /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "international_body" | "country" | "region" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group") | null;
-            /** Hop */
-            hop: number;
-            /**
-             * Has New
-             * @description A development: new or updated this run. A subject: affected by one.
-             */
-            has_new: boolean;
-            /** Needs Attention */
-            needs_attention: boolean;
-            /** Materiality Level */
-            materiality_level: number | null;
-            /** Last Published */
-            last_published: string | null;
-            /**
-             * Theme
-             * @description A development's theme, which the view groups by
-             */
-            theme: ("regulation" | "digital-assets" | "technology" | "strategy" | "markets" | "macro") | null;
-        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1337,58 +1187,6 @@ export interface components {
             value: number;
             /** Preliminary */
             preliminary: boolean;
-        };
-        /**
-         * LinkedInstitution
-         * @description A bank or other financial institution linked to a country, sector, supplier or payment
-         *     system in the relationship store (GET /subjects/{id}/linked).
-         */
-        LinkedInstitution: {
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "international_body" | "country" | "region" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
-            /** @description None when the institution is not tracked */
-            subject: components["schemas"]["SubjectRef"] | null;
-            /**
-             * Region
-             * @description Its largest figure covers a whole region, not the subject
-             */
-            region: boolean;
-            /**
-             * Routes
-             * @description Direct links first, then through a company it holds a stake in, then region-level
-             */
-            routes: components["schemas"]["LinkedRoute"][];
-            /**
-             * Impacts
-             * @description Developments in the last 7 days that reach it through these routes
-             */
-            impacts: components["schemas"]["SubjectImpact"][];
-        };
-        /**
-         * LinkedRoute
-         * @description How an institution links to the subject: one stored link, or two through a company it
-         *     holds a stake in, written in plain words by code.
-         */
-        LinkedRoute: {
-            /**
-             * Text
-             * @description "Has 12.2% of its loans in Hong Kong"; "Holds 100% of DBS Bank (Hong Kong), which operates in Hong Kong"; region-level routes end ", a figure for the whole region"
-             */
-            text: string;
-            /**
-             * Region
-             * @description The region's name when the route ends in a region
-             */
-            region: string | null;
-            /**
-             * Links
-             * @description From the institution outward
-             */
-            links: components["schemas"]["RelationshipLink"][];
         };
         /** ListRow */
         ListRow: {
@@ -2162,42 +1960,6 @@ export interface components {
              */
             role: "primary" | "context";
         };
-        /**
-         * SharedEndpoint
-         * @description A subject or endpoint both entities link to, with each one's links to it.
-         */
-        SharedEndpoint: {
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "international_body" | "country" | "region" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
-            /**
-             * Subject
-             * @description A tracked subject; otherwise a relationship endpoint
-             */
-            subject: boolean;
-            /**
-             * Displayed
-             * @description A tracked subject with a page; false for a hidden entity
-             */
-            displayed: boolean;
-            /** A Links */
-            a_links: components["schemas"]["RelationshipLink"][];
-            /** B Links */
-            b_links: components["schemas"]["RelationshipLink"][];
-        };
-        /** SharedRelationships */
-        SharedRelationships: {
-            a: components["schemas"]["SubjectRef"];
-            b: components["schemas"]["SubjectRef"];
-            /**
-             * Endpoints
-             * @description By name
-             */
-            endpoints: components["schemas"]["SharedEndpoint"][];
-        };
         /** SourceTypeCount */
         SourceTypeCount: {
             /**
@@ -2800,37 +2562,6 @@ export interface operations {
             };
         };
     };
-    get_linked_institutions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                subject_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LinkedInstitution"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_related_graph: {
         parameters: {
             query?: {
@@ -2851,38 +2582,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RelatedGraph"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_shared: {
-        parameters: {
-            query: {
-                a: string;
-                b: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SharedRelationships"];
                 };
             };
             /** @description Validation Error */
@@ -3129,41 +2828,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentDetail"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_graph: {
-        parameters: {
-            query: {
-                center: string;
-                hops?: number;
-                node_type?: ("topic" | "group" | "entity" | "endpoint" | "development")[] | null;
-                link_type?: ("HOLDS_STAKE_IN" | "REGULATED_BY" | "OPERATES_IN" | "EXPOSED_TO" | "DEPENDS_ON" | "MEMBER_OF" | "PARTICIPATES_IN" | "PARTNER_OF" | "LISTED_ON" | "BELONGS_TO_SECTOR" | "AFFECTS" | "IMPACTS")[] | null;
-                window_days?: number | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Graph"];
                 };
             };
             /** @description Validation Error */

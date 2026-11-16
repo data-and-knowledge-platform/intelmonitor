@@ -1,5 +1,4 @@
-// What the sigma canvases share: GraphCanvas (the graph view) and RelatedCanvas (the Overview's
-// Related card). `useSigmaStage` holds the stage's lifecycle; the pieces under it are colors read
+// The sigma canvas pieces of RelatedCanvas (the Overview's Related card). `useSigmaStage` holds the stage's lifecycle; the pieces under it are colors read
 // from the `--g-*` tokens for WebGL, a d3-force layout that animates until it cools and then stops,
 // the camera fit, label placement, hover focus, and drag: a dragged node reheats the layout so its
 // neighbours follow, and floats free once released.
@@ -42,13 +41,6 @@ export function tokenColors(el: HTMLElement): (name: string) => string {
     const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
     return `rgba(${r},${g},${b},${(a / 255).toFixed(3)})`;
   };
-}
-
-/** A stable pseudo-random angle for a node id, so the first layout is the same on every visit. */
-export function angleOf(id: string): number {
-  let h = 0;
-  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return (h % 3600) / 3600 * 2 * Math.PI;
 }
 
 /** Copies simulation positions onto the graph in one update, so sigma redraws once. */

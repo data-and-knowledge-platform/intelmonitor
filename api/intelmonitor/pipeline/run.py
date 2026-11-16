@@ -11,7 +11,7 @@ transaction, so the app keeps serving the run instead of falling back to an olde
 
 Order (phase1-plan.md, section 5): sync the relationship store, detectors, screen, extract, merge
 and priority, headlines, indirect impact by table, upcoming dates, indicators and notes, diff,
-briefs, graph.
+briefs.
 """
 
 import sqlite3
@@ -27,7 +27,6 @@ from intelmonitor.pipeline.detectors import store_detections
 from intelmonitor.pipeline.developments import build_developments
 from intelmonitor.pipeline.diff import development_changes, previous_run, store_changes
 from intelmonitor.pipeline.extract import extract_documents
-from intelmonitor.pipeline.graph import store_graph
 from intelmonitor.pipeline.headlines import write_headlines
 from intelmonitor.pipeline.impact import ImpactStats, store_impacts
 from intelmonitor.pipeline.indicators import store_run_indicators
@@ -157,8 +156,6 @@ async def compute_run(
             inf, conn, run_id, as_of, base_id, changes
         )
         step(f"{briefs} briefs, {unbriefed} still breaking their rules, {briefs_refused} refused")
-        nodes, edges = await store_graph(inf, conn, run_id, changes)
-        step(f"graph {nodes} nodes, {edges} edges")
     except Exception as error:
         message = f"{type(error).__name__}: {error}"
         runlog.fail(conn, execution_id, message)

@@ -526,10 +526,10 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       await expect(feed.locator(".frow")).toHaveCount(only.developments.length);
       expect(new Set(await badges(feed)), `only ${level} rows`).toEqual(new Set([level]));
 
-      // Related lists Could affect and Shared with.
+      // Related lists Could affect.
       await tabs.getByRole("link", { name: "Related" }).click();
       await expect(page).toHaveURL(/\/entities\/dbs\/related$/);
-      await expect(page.locator("main .mon-sec h2")).toHaveText(["Could affect DBS", "Shared with"]);
+      await expect(page.locator("main .mon-sec h2")).toHaveText(["Could affect DBS"]);
       await expect(page.getByRole("region", { name: "Could affect DBS" }).locator(".ca-row")).not.toHaveCount(0);
 
       // Data: the chart marks High and Medium developments, in plain words.
@@ -550,11 +550,10 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       }
       await expect(page.getByRole("heading", { level: 1, name: "DBS" })).toBeVisible();
 
-      // A group link opens the Entities list filtered to that group: the graph view's group node.
+      // A group's page URL opens the Entities list filtered to that group.
       const group = subjects.find((s) => s.type === "group" && s.members.includes("dbs"));
       if (!group) throw new Error("DBS is in no group");
-      await page.goto("/entities/dbs/graph");
-      await page.locator(`[data-testid=graph-nodes] [data-node="${group.id}"]`).click();
+      await page.goto(`/entities/${group.id}`);
       await expect(page).toHaveURL(new RegExp(`/entities\\?group=${group.id}$`));
       await expect(facetButton(page, "Group", group.name)).toHaveAttribute("aria-pressed", "true");
 

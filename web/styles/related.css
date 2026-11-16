@@ -24,8 +24,7 @@
   padding-top: var(--s-3);
 }
 
-/* The graph beside its list, as the graph view's canvas beside In view; the list scrolls within
-   the graph's height. Under 900px the list goes under the graph. */
+/* The graph beside its list; the list scrolls within the graph's height. Under 900px the list goes under the graph. */
 .rg-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 400px;

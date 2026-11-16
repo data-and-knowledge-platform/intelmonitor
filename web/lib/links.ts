@@ -10,13 +10,13 @@ import { subjectsOptions } from "@/lib/api/queries";
 /** What a page link needs of a subject. */
 export type PageSubject = Pick<Schema<"SubjectRef">, "id" | "type">;
 
-/** A page's tabs; the graph view is reachable by URL only. */
-export type SubjectTab = "overview" | "developments" | "related" | "data" | "graph";
+/** A page's tabs. */
+export type SubjectTab = "overview" | "developments" | "related" | "data";
 
 /** The top-level path a subject's page sits under. */
 export type PageSection = "entities" | "topics";
 
-const TABS: SubjectTab[] = ["overview", "developments", "related", "data", "graph"];
+const TABS: SubjectTab[] = ["overview", "developments", "related", "data"];
 const isTab = (segment: string): segment is SubjectTab => TABS.some((t) => t === segment);
 
 const PATHS = {
@@ -25,14 +25,12 @@ const PATHS = {
     developments: "/entities/$id/developments",
     related: "/entities/$id/related",
     data: "/entities/$id/data",
-    graph: "/entities/$id/graph",
   },
   topics: {
     overview: "/topics/$id",
     developments: "/topics/$id/developments",
     related: "/topics/$id/related",
     data: "/topics/$id/data",
-    graph: "/topics/$id/graph",
   },
 } as const;
 

@@ -1,6 +1,5 @@
 // An entity's peers: the other members of the groups it belongs to, read from each group's subject
-// detail (the same cache entries useSubject fills). The monitor page head names them, and a bank's
-// "Shared with" picks from them.
+// detail (the same cache entries useSubject fills). The monitor page head names them.
 import { useQueries } from "@tanstack/react-query";
 
 import { api, type Schema } from "./client";
