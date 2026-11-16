@@ -348,7 +348,9 @@ async def main() -> int:
     rels = [r for r in data.relationships if rateable(r)]
     ids = {r.id for r in rels}
     old = load_ratings()
-    entries = {i: e for i, e in old.items() if i in ids or e.rated_by == "hand"}
+    # A folded link borrows its unit link's entry (rating_from) until it is rated under its own id.
+    borrowed = {r.rating_from for r in rels if r.rating_from is not None}
+    entries = {i: e for i, e in old.items() if i in ids or i in borrowed or e.rated_by == "hand"}
     todo: list[tuple[Relationship, str]] = []
     for r in rels:
         prompt = user_prompt(r, names)
