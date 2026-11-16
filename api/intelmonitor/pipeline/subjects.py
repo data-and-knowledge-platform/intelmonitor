@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from intelmonitor.pipeline.params import SINGAPORE_SYSTEM
-from intelmonitor.seed import EntityKind, SubjectType, load_subjects
+from intelmonitor.seed import Entity, EntityKind, SubjectsSeed, SubjectType, load_subjects
 
 _KIND_LABEL: dict[EntityKind, str] = {
     "bank": "bank",
@@ -108,14 +108,12 @@ _SERVICE_KINDS: tuple[EntityKind, ...] = (
 _SYSTEM_KINDS: tuple[EntityKind, ...] = ("country", "sector", "central_bank", "regulator")
 
 
-@lru_cache
-def singapore_phrase(subject_id: str) -> str:
-    """The Singapore phrase for a subject, from the seed: Singapore's financial system for a
-    country, sector, central bank or regulator (MAS included), and for a topic; else the whole
-    institution when its home is Singapore; else a tech provider, payment system or market
-    infrastructure's services to financial institutions in Singapore; any other institution's
-    Singapore branch or subsidiary."""
-    entity = next((e for e in load_subjects().entities if e.id == subject_id), None)
+def _singapore_phrase(entity: Entity | None) -> str:
+    """The Singapore phrase for a subject: Singapore's financial system for a country, sector,
+    central bank or regulator (MAS included), and for a topic (None); else the whole institution
+    when its home is Singapore; else a tech provider, payment system or market infrastructure's
+    services to financial institutions in Singapore; any other institution's Singapore branch or
+    subsidiary."""
     if entity is None or entity.kind in _SYSTEM_KINDS:
         return SINGAPORE_SYSTEM
     if entity.home == "singapore":
@@ -123,6 +121,32 @@ def singapore_phrase(subject_id: str) -> str:
     if entity.kind in _SERVICE_KINDS:
         return SINGAPORE_SERVICES
     return SINGAPORE_BRANCH
+
+
+@dataclass(frozen=True)
+class PrioritySubject:
+    """A topic or entity as the priority prompt names it. A frozen store keeps its subjects as
+    they were rated (trial.py), so prompts rebuilt on it do not follow later seed edits."""
+
+    id: str
+    name: str
+    type: SubjectType
+    singapore: str  # its Singapore phrase
+
+
+def priority_subjects_of(seed: SubjectsSeed) -> dict[str, PrioritySubject]:
+    """The seed's topics and entities, in seed order, with their names and Singapore phrases."""
+    topics = [PrioritySubject(t.id, t.name, "topic", _singapore_phrase(None)) for t in seed.topics]
+    entities = [
+        PrioritySubject(e.id, e.name, "entity", _singapore_phrase(e)) for e in seed.entities
+    ]
+    return {s.id: s for s in [*topics, *entities]}
+
+
+@lru_cache
+def priority_subjects() -> dict[str, PrioritySubject]:
+    """The working tree seed's priority subjects, which the pipeline rates with."""
+    return priority_subjects_of(load_subjects())
 
 
 def resolve_groups(subject_ids: Iterable[str]) -> list[str]:

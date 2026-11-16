@@ -2,10 +2,14 @@
 
 import asyncio
 import os
+import sqlite3
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
+
+if TYPE_CHECKING:
+    from intelmonitor.trial import Pair
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 series_app = typer.Typer(no_args_is_help=True, help="Fetch measured series (api/seed/series.yaml).")
@@ -32,6 +36,18 @@ def _store(store: str | None) -> Path:
     if not path.exists():
         raise typer.BadParameter(f"no store at {path}")
     return path
+
+
+def _open(store: str | None, *, write: bool = False) -> sqlite3.Connection:
+    """The store at --store opened as it is, read-only unless `write`: no schema or migration
+    runs, so a frozen store such as the baseline keeps its schema. It must hold the prompt
+    version tables as the code has them."""
+    from intelmonitor.store.db import PROMPT_VERSION_TABLES, StoreLacks, open_store
+
+    try:
+        return open_store(_store(store), PROMPT_VERSION_TABLES, write=write)
+    except StoreLacks as error:
+        raise typer.BadParameter(str(error)) from error
 
 
 @app.command()
@@ -308,8 +324,9 @@ def export_version(
     store: StoreOption = None,
 ) -> None:
     """Write one prompt version's workbook. Priority: About, Summary and a sheet per run, from
-    the store opened read-only. link_rating: the review sheet of transmission.yaml as it stands,
-    which holds version 1 only. Calls no model."""
+    the store opened read-only, with no migration, and its seed as rated. link_rating: the
+    review sheet of transmission.yaml as it stands, which holds version 1 only. Calls no
+    model."""
     from intelmonitor.export import link_ratings_workbook, version_workbook
 
     if not out.endswith(".xlsx"):
@@ -342,19 +359,20 @@ def trial_priority(
     ] = "live",
 ) -> None:
     """Rate the store's pairs that priority version 1 rated with the current priority prompt, or
-    a candidate's template, schema and effort, from the same input. Calls are recorded with their
-    prompt version, so a version already tried replays from the cache; no development_subjects
-    row is written."""
+    a candidate's template, schema and effort, from the same input: the subject's name and
+    Singapore phrase come from the store's seed as rated. Calls are recorded with their prompt
+    version, so a version already tried replays from the cache; no development_subjects row is
+    written, and the store is opened with no migration. Pairs version 1 rated whose record is not
+    found are listed."""
     from contextlib import closing
 
     from intelmonitor.pipeline.inference import Inference
-    from intelmonitor.store.db import connect
     from intelmonitor.trial import CANDIDATES
     from intelmonitor.trial import trial_priority as trial
 
     if candidate not in CANDIDATES:
         raise typer.BadParameter(f"no candidate {candidate}; one of {', '.join(CANDIDATES)}")
-    with closing(connect(_store(store))) as conn:
+    with closing(_open(store, write=True)) as conn:
         try:
             r = asyncio.run(trial(Inference(conn, None), weeks, CANDIDATES[candidate]))
         except (LookupError, ValueError) as error:
@@ -375,6 +393,14 @@ def trial_priority(
     )
     for failure in r.failed:
         typer.echo(f"failed: {failure}")
+    _echo_unfound(r.unfound)
+
+
+def _echo_unfound(pairs: "list[Pair]") -> None:
+    """The count of pairs version 1 rated by a call whose record is not found, then each one."""
+    typer.echo(f"{len(pairs)} pairs version 1 rated by a call have no version 1 record found")
+    for p in pairs:
+        typer.echo(f"unfound: {p.run_id} {p.development_id} {p.subject_id}")
 
 
 @prompts_app.callback(invoke_without_command=True)
@@ -384,9 +410,7 @@ def prompts(ctx: typer.Context, store: StoreOption = None) -> None:
         return
     from contextlib import closing
 
-    from intelmonitor.export import connect_readonly
-
-    with closing(connect_readonly(_store(store))) as conn:
+    with closing(_open(store)) as conn:
         rows = conn.execute(
             "SELECT v.stage, v.number, v.id, v.model, v.effort, v.first_used, v.note, "
             "(SELECT count(*) FROM inference_records r WHERE r.prompt_version = v.id) AS calls, "
@@ -408,11 +432,10 @@ def prompts_show(stage: str, number: int, store: StoreOption = None) -> None:
     """Print a version's template."""
     from contextlib import closing
 
-    from intelmonitor.export import connect_readonly
     from intelmonitor.trial import version_row
 
     try:
-        with closing(connect_readonly(_store(store))) as conn:
+        with closing(_open(store)) as conn:
             v = version_row(conn, stage, number)
     except LookupError as error:
         raise typer.BadParameter(str(error)) from error
@@ -428,29 +451,30 @@ def prompts_compare(
     out: Annotated[str, typer.Option("--out", help="The .xlsx file to write")],
     store: StoreOption = None,
 ) -> None:
-    """Compare two versions on the pairs both rated: write the count table of level under a
-    against level under b and, per run, the pairs that moved; print the table and the hand-set
-    cases under each. Calls no model."""
+    """Compare two versions on the pairs both rated, from the store opened read-only with no
+    migration and its seed as rated: write the count table of level under a against level under
+    b and, per run, the pairs that moved; print the table, the hand-set cases under each, and the
+    pairs version 1 rated whose record is not found. Calls no model."""
     from contextlib import closing
 
-    from intelmonitor.export import compare_workbook, connect_readonly, store_names
+    from intelmonitor.export import compare_workbook
     from intelmonitor.trial import compare, count_table
 
     if not out.endswith(".xlsx"):
         raise typer.BadParameter("--out must name an .xlsx file")
-    path = _store(store)
-    with closing(connect_readonly(path)) as conn:
+    with closing(_open(store)) as conn:
         try:
             c = compare(conn, stage, a, b)
         except LookupError as error:
             raise typer.BadParameter(str(error)) from error
-    counts = compare_workbook(c, store_names(path), Path(out))
+    counts = compare_workbook(c, Path(out))
     for row in count_table(c):
         typer.echo("".join(f"{v!s:>10}" for v in row))
     for case, outcome_a, outcome_b, detail_a, detail_b in c.cases:
         typer.echo(f"case {case}: v{a} {outcome_a}, v{b} {outcome_b}")
         for v, detail in ((a, detail_a), (b, detail_b)):
             typer.echo(f"  v{v}: {detail}")
+    _echo_unfound(c.unfound)
     typer.echo(f"wrote {out}: " + ", ".join(f"{n} {name}" for name, n in counts.items()))
 
 

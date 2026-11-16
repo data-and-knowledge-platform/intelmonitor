@@ -20,7 +20,11 @@ is found as `Inference` finds a recorded call, by the pair's cache key under tha
 (`Labels`), and a trial rates each input once.
 
 Tried on the baseline (data/intelmonitor-baseline-89-entities-2026-11-16.db), whose developments
-never change, so two versions differ only by prompt."""
+never change, so two versions differ only by prompt. The baseline is frozen: the commands open it
+without migrations (`open_store`), and it carries the seed its runs were rated with
+(`seed_as_rated`), which every prompt rebuilt on it is filled from, so a later seed edit does not
+move a pair off its version 1 record. A pair version 1 rated by a call whose record is still not
+found is listed by the trial and the comparison (`unfound`), never dropped silently."""
 
 import asyncio
 import json
@@ -32,7 +36,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from claude_agent_sdk import EffortLevel
-from pydantic import ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from intelmonitor.config import get_settings
 from intelmonitor.eval.cases import PRIORITY_CASES, Outcome, check_priority, priority_pairs
@@ -40,6 +44,7 @@ from intelmonitor.pipeline.developments import (
     PRIORITY_DECLINED,
     Development,
     PriorityRating,
+    called_subjects,
     load_findings,
     priority_prompt,
     rate_subject,
@@ -53,7 +58,9 @@ from intelmonitor.pipeline.params import (
     priority_system,
 )
 from intelmonitor.pipeline.prompts import THINK_FIRST, register_version, schema_text
-from intelmonitor.pipeline.subjects import monitored_subjects, singapore_phrase
+from intelmonitor.pipeline.subjects import PrioritySubject, priority_subjects_of
+from intelmonitor.seed import SubjectsSeed, SubjectType
+from intelmonitor.store.db import get_meta, set_meta
 
 # The sample: this many pairs at each level under version 1, drawn with a fixed seed, the
 # hand-set priority cases' pairs first.
@@ -130,6 +137,44 @@ class Label:
     reason: str
 
 
+# The meta key of the seed a frozen store's runs were rated with (`freeze_seed`). The baseline's
+# was written once on 16 Nov 2026 from api/seed/subjects.yaml at 2693b13, whose names, kinds and
+# homes are those of the 11 Nov rebuild: every pair version 1 rated by a call finds its record.
+SEED_KEY = "seed_as_rated"
+
+
+class SeedAsRated(BaseModel):
+    """The seed as a store's runs rated with it: each topic's and entity's name, type and
+    Singapore phrase, and where that seed came from."""
+
+    source: str  # e.g. "api/seed/subjects.yaml at <commit>"
+    subjects: list[PrioritySubject]
+
+
+def freeze_seed(conn: sqlite3.Connection, seed: SubjectsSeed, source: str) -> int:
+    """Writes into the store, once, the seed its runs were rated with, as `priority_subjects_of`
+    derives it. The derived names and phrases are stored rather than the seed file, so neither a
+    later seed edit nor later code that reads the seed changes a prompt rebuilt on the store.
+    Raises ValueError when the store already holds one. The subjects written; commits."""
+    if get_meta(conn, SEED_KEY) is not None:
+        raise ValueError("the store already holds its seed as rated, which is never replaced")
+    subjects = list(priority_subjects_of(seed).values())
+    set_meta(conn, SEED_KEY, SeedAsRated(source=source, subjects=subjects).model_dump_json())
+    return len(subjects)
+
+
+def seed_as_rated(conn: sqlite3.Connection) -> dict[str, PrioritySubject]:
+    """The store's seed as rated, by subject id; raises LookupError when it holds none, rather
+    than fall back to the working tree's seed, which may have changed since the store's runs."""
+    if (value := get_meta(conn, SEED_KEY)) is None:
+        raise LookupError(
+            f"the store holds no seed as rated (meta key {SEED_KEY}), so the prompts its runs "
+            "rated with cannot be rebuilt; the working tree's seed is not used in its place. "
+            "Write the seed of the store's runs into it once with trial.freeze_seed"
+        )
+    return {s.id: s for s in SeedAsRated.model_validate_json(value).subjects}
+
+
 def complete_runs(conn: sqlite3.Connection) -> list[str]:
     """The complete runs' ids (their dates), oldest first."""
     query = "SELECT id FROM runs WHERE status = 'complete' ORDER BY id"
@@ -166,12 +211,13 @@ def run_pairs(conn: sqlite3.Connection, run_id: str) -> list[Pair]:
 
 class Inputs:
     """The priority call's input of any pair of the store, rebuilt as its run gave it: the
-    development's findings in that run, as the latest complete run loads them."""
+    development's findings in that run, as the latest complete run loads them, and the subject
+    from the store's seed as rated. Raises LookupError when the store holds no seed as rated."""
 
     def __init__(self, conn: sqlite3.Connection) -> None:
+        self.subjects = seed_as_rated(conn)
         latest = date.fromisoformat(complete_runs(conn)[-1])
         self.findings = {f.id: f for f in load_findings(conn, latest)}
-        self.subjects = monitored_subjects()
         self._sources: dict[tuple[str, str], list[str]] = {}
         for r in conn.execute("SELECT run_id, development_id, finding_id FROM development_sources"):
             self._sources.setdefault((r["run_id"], r["development_id"]), []).append(r["finding_id"])
@@ -228,9 +274,9 @@ class Labels:
         subject_id, prompt = self.inputs.of(p)
         if (system := self._systems.get(subject_id)) is None:
             if (subject := self.inputs.subjects.get(subject_id)) is None:
-                return None  # left the seed, so no call of this code can be found
+                return None  # not in the seed as rated, so no call can be found
             system = self._systems[subject_id] = priority_system(
-                subject.name, singapore_phrase(subject_id), self.version["template"]
+                subject.name, subject.singapore, self.version["template"]
             )
         key = cache_key(self.version["model"], system, prompt, self._schema, self.version["effort"])
         return self._by_key.get(key)
@@ -246,15 +292,39 @@ def case_pairs(conn: sqlite3.Connection) -> list[Pair]:
     ]
 
 
+def trial_runs(conn: sqlite3.Connection, weeks: str) -> list[str]:
+    """The runs a trial draws from: every complete run ("all", "sample"), or the one dated."""
+    runs = complete_runs(conn)
+    if weeks in ("all", "sample"):
+        return runs
+    date.fromisoformat(weeks)  # raises on anything else
+    if weeks not in runs:
+        raise LookupError(f"no complete run as of {weeks}")
+    return [weeks]
+
+
+def unfound(conn: sqlite3.Connection, base: Labels, runs: list[str]) -> list[Pair]:
+    """The runs' pairs that version 1 (`base`) rated by a call, as `rate` chose them from each
+    development's stored subjects and the seed as rated, whose record is not found under their
+    cache key. A trial cannot try them and a comparison has no level for them, so the commands
+    list them."""
+    types: dict[str, SubjectType] = {i: s.type for i, s in base.inputs.subjects.items()}
+    out: list[Pair] = []
+    for run in runs:
+        subjects: dict[str, list[str]] = {}
+        for p in run_pairs(conn, run):
+            subjects.setdefault(p.development_id, []).append(p.subject_id)
+        for dev, sids in subjects.items():
+            for sid in called_subjects(base.inputs.development(run, dev), sids, types):
+                if base.get(p := Pair(run, dev, sid)) is None:
+                    out.append(p)
+    return out
+
+
 def trial_pairs(conn: sqlite3.Connection, weeks: str, base: Labels) -> list[Pair]:
     """The pairs a trial rates, one per input, its first run's: version 1's pairs (those `base`
     labels) of every week ("all"), of one run ("<date>"), or the sample ("sample")."""
-    runs = complete_runs(conn)
-    if weeks not in ("all", "sample"):
-        date.fromisoformat(weeks)  # raises on anything else
-        if weeks not in runs:
-            raise LookupError(f"no complete run as of {weeks}")
-        runs = [weeks]
+    runs = trial_runs(conn, weeks)
     unique: dict[tuple[str, str], tuple[Pair, Label]] = {}
     for run in runs:
         for p in run_pairs(conn, run):
@@ -328,6 +398,7 @@ class TrialResult:
     cost_usd: float  # measured: the cost the new records store
     refused: int
     failed: list[str]  # pairs left unrated after every attempt failed, with the last error
+    unfound: list[Pair]  # pairs of the runs tried that version 1 rated, with no record found
     levels: Counter[str]  # pairs at each level under the version tried
     recorded: VersionCalls  # the version's calls over every trial of it
 
@@ -337,7 +408,9 @@ async def trial_priority(inf: Inference, weeks: str, candidate: Candidate) -> Tr
     whose every attempt fails is left unrated and listed, so one pair does not stop the trial."""
     conn = inf.conn
     inputs = Inputs(conn)
-    pairs = trial_pairs(conn, weeks, Labels(conn, version_row(conn, "priority", 1), inputs))
+    base = Labels(conn, version_row(conn, "priority", 1), inputs)
+    pairs = trial_pairs(conn, weeks, base)
+    missing = unfound(conn, base, trial_runs(conn, weeks))
     before = conn.execute("SELECT coalesce(max(id), 0) FROM inference_records").fetchone()[0]
     schema = schema_text(candidate.schema.model_json_schema())
     # Registered before the first call so that the version keeps the candidate's note.
@@ -388,6 +461,7 @@ async def trial_priority(inf: Inference, weeks: str, candidate: Candidate) -> Tr
         cost_usd=cost,
         refused=sum(r.reason == PRIORITY_DECLINED for r in ratings),
         failed=failed,
+        unfound=missing,
         levels=Counter(r.priority for r in ratings),
         recorded=version_calls(conn, expected),
     )
@@ -407,6 +481,8 @@ class Comparison:
     counts: dict[tuple[int, int], int]  # pairs by (level under a, level under b), each input once
     moved: dict[str, list[Moved]]  # by run, the pairs whose level moved
     cases: list[tuple[str, Outcome, Outcome, str, str]]  # id, under a, under b, details a and b
+    unfound: list[Pair]  # pairs version 1 rated, with no record found
+    names: dict[str, str]  # subject names, from the seed as rated
 
 
 def compare(conn: sqlite3.Connection, stage: str, a: int, b: int) -> Comparison:
@@ -416,6 +492,7 @@ def compare(conn: sqlite3.Connection, stage: str, a: int, b: int) -> Comparison:
     va, vb = version_row(conn, stage, a), version_row(conn, stage, b)
     inputs = Inputs(conn)
     la, lb = Labels(conn, va, inputs), Labels(conn, vb, inputs)
+    base = la if a == 1 else lb if b == 1 else Labels(conn, version_row(conn, stage, 1), inputs)
     counts: Counter[tuple[int, int]] = Counter()
     seen: set[tuple[str, str]] = set()
     moved: dict[str, list[Moved]] = {}
@@ -442,7 +519,9 @@ def compare(conn: sqlite3.Connection, stage: str, a: int, b: int) -> Comparison:
         ra = check_priority(conn, latest, case, level_in(la))
         rb = check_priority(conn, latest, case, level_in(lb))
         cases.append((case.id, ra.outcome, rb.outcome, ra.detail, rb.detail))
-    return Comparison(va, vb, dict(counts), moved, cases)
+    missing = unfound(conn, base, complete_runs(conn))
+    names = {i: s.name for i, s in inputs.subjects.items()}
+    return Comparison(va, vb, dict(counts), moved, cases, missing, names)
 
 
 def count_table(c: Comparison) -> list[list[str | int]]:

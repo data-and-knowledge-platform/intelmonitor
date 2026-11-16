@@ -18,7 +18,7 @@ import atexit
 import json
 import sqlite3
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import date
 from functools import lru_cache
@@ -48,12 +48,12 @@ from intelmonitor.pipeline.params import (
     priority_system,
 )
 from intelmonitor.pipeline.subjects import (
-    Subject,
+    PrioritySubject,
     monitored_subjects,
+    priority_subjects,
     resolve_groups,
-    singapore_phrase,
 )
-from intelmonitor.seed import load_detectors
+from intelmonitor.seed import SubjectType, load_detectors
 from intelmonitor.store import search
 
 # Primary sources first: a measured value ranks after official text and before news reporting it.
@@ -401,7 +401,7 @@ def priority_prompt(dev: Development) -> str:
 async def rate_subject(
     inf: Inference,
     dev: Development,
-    subject: Subject,
+    subject: PrioritySubject,
     *,
     template: str = PRIORITY_PROMPT,
     schema: type[PriorityRating] = PriorityRating,
@@ -410,19 +410,32 @@ async def rate_subject(
     """One Sonnet call: the development's priority for one subject, by slide 7's prompt with the
     subject's name and Singapore phrase; its prompt version is of the unfilled PRIORITY_PROMPT. A
     refusal leaves the subject at Low with PRIORITY_DECLINED as its reason, so one declined pair
-    does not fail the run. `im trial` passes a candidate's template, schema and effort instead."""
+    does not fail the run. `im trial` passes a candidate's template, schema and effort instead,
+    and the subject as its store's frozen seed gives it."""
     try:
         return await inf.claude(
             "priority",
             f"dev:{dev.id}:{len(dev.findings)}:{subject.id}",
             priority_prompt(dev),
             schema,
-            priority_system(subject.name, singapore_phrase(subject.id), template),
+            priority_system(subject.name, subject.singapore, template),
             effort=effort,
             template=template,
         )
     except ClaudeRefused:
         return PriorityRating(priority="Low", reason=PRIORITY_DECLINED)
+
+
+def called_subjects(
+    dev: Development, subject_ids: Iterable[str], types: Mapping[str, SubjectType]
+) -> list[str]:
+    """The development's subjects that `rate` asks Claude about: none when it is made only of
+    detections, whose rule sets the level; else its entities, or its topics when it has none."""
+    if dev.findings and all(f.rule_level is not None for f in dev.findings):
+        return []
+    known = [sid for sid in subject_ids if sid in types]
+    entities = [sid for sid in known if types[sid] == "entity"]
+    return entities or [sid for sid in known if types[sid] == "topic"]
 
 
 async def rate(inf: Inference, dev: Development) -> None:
@@ -438,10 +451,11 @@ async def rate(inf: Inference, dev: Development) -> None:
             s.rule = rule.rule_id
         return
     names = monitored_subjects()
+    rated = called_subjects(dev, dev.subjects, {i: s.type for i, s in names.items()})
     entities = [sid for sid in dev.subjects if names[sid].type == "entity"]
     topics = [sid for sid in dev.subjects if names[sid].type == "topic"]
-    rated = entities or topics
-    ratings = await asyncio.gather(*(rate_subject(inf, dev, names[sid]) for sid in rated))
+    subjects = priority_subjects()
+    ratings = await asyncio.gather(*(rate_subject(inf, dev, subjects[sid]) for sid in rated))
     for sid, r in zip(rated, ratings, strict=True):
         dev.subjects[sid].set_priority(PRIORITY_LABELS.index(r.priority), r.reason)
 

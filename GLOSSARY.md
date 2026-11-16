@@ -70,4 +70,5 @@ _Avoid_: Prompt revision, prompt id (for the number)
 
 **Baseline**:
 The frozen copy of the store taken on 16 Nov 2026, before any seed or prompt change (six runs, 89 entities), on which every priority version is tried so that two versions differ only by prompt.
+It carries the seed its runs were rated with (each subject's name and Singapore phrase), which every prompt rebuilt on it is filled from, and it is opened without migrations.
 _Avoid_: Snapshot, backup (for this copy)

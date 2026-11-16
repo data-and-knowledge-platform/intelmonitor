@@ -2,7 +2,8 @@
 (ticket 24). It opens the store read-only, so it runs no migration and writes nothing there, and
 it calls no model. `im export version` writes one prompt version's workbook the same way
 (`version_workbook`, `link_ratings_workbook`), and `im prompts compare` writes two versions'
-side by side (`compare_workbook`).
+side by side (`compare_workbook`); both name and sort subjects by the store's seed as rated
+(trial.py), not the working tree's.
 
 The labels workbook's sheets:
 Direct, Indirect and Dropped cover the latest complete run only. A run reads every document from
@@ -31,13 +32,14 @@ from openpyxl.utils import get_column_letter
 from intelmonitor.ingest.models import corpus_start
 from intelmonitor.pipeline.developments import COLLECTION_RANK, load_findings
 from intelmonitor.pipeline.params import PRIORITY_LABELS
-from intelmonitor.pipeline.subjects import all_subjects
+from intelmonitor.pipeline.subjects import PrioritySubject, all_subjects, priority_subjects
 from intelmonitor.relationships import (
     Relationship,
     load_ratings,
     load_relationships,
     rateable,
 )
+from intelmonitor.store.db import PROMPT_VERSION_TABLES, open_store
 from intelmonitor.trial import (
     Comparison,
     Inputs,
@@ -58,15 +60,6 @@ class Sheet:
     name: str
     columns: list[tuple[str, int]]  # header and column width in characters
     rows: list[list[Cell]]
-
-
-def connect_readonly(path: Path) -> sqlite3.Connection:
-    """Open the store read-only: no schema or migration runs, and any write raises."""
-    if not path.exists():
-        raise FileNotFoundError(f"no store at {path}")
-    conn = sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
 def _names(conn: sqlite3.Connection) -> dict[str, str]:
@@ -125,15 +118,16 @@ LEVEL_COLUMN = 6
 def direct_rows(
     conn: sqlite3.Connection,
     names: dict[str, str],
+    subjects: Mapping[str, PrioritySubject],
     run: str | None,
     only: set[str] | None = None,
     given: Mapping[tuple[str, str], Label] | None = None,
 ) -> list[list[Cell]]:
     """One row per development of the run (those in `only`, when given) and entity it is about,
-    or per topic when it names no entity, with the stored level and reason. With `given`, a
-    prompt version's labels of the run's pairs by development and subject, the level and reason
-    are the version's, and a pair it did not rate has no row."""
-    subjects = all_subjects()
+    or per topic when it names no entity, with the stored level and reason; `subjects` says
+    which ids are topics. With `given`, a prompt version's labels of the run's pairs by
+    development and subject, the level and reason are the version's, and a pair it did not rate
+    has no row."""
     devs = conn.execute(
         "SELECT run_id, id, coalesce(headline, title) AS headline, category, first_published, "
         "last_published FROM developments WHERE run_id = ? ORDER BY id",
@@ -157,7 +151,7 @@ def direct_rows(
     rows: list[list[Cell]] = []
     for d in devs:
         key = d["id"]
-        # Development subjects are entities and topics; one that left the seed counts as an entity.
+        # Development subjects are entities and topics; one not in `subjects` counts as an entity.
         topics = [
             s
             for s in tagged[key]
@@ -204,7 +198,8 @@ def direct_rows(
 
 
 def direct_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
-    return Sheet("Direct", DIRECT_COLUMNS, direct_rows(conn, names, _latest_run(conn)))
+    rows = direct_rows(conn, names, priority_subjects(), _latest_run(conn))
+    return Sheet("Direct", DIRECT_COLUMNS, rows)
 
 
 def indirect_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
@@ -379,7 +374,7 @@ def write_workbook(sheets: list[Sheet], out: Path) -> None:
 
 def export_labels(store: Path, out: Path) -> dict[str, int]:
     """Write the workbook from the store at `store` to `out`; the row count of each sheet."""
-    conn = connect_readonly(store)
+    conn = open_store(store)
     try:
         names = _names(conn)
         sheets = [
@@ -398,11 +393,11 @@ def _about(rows: list[tuple[str, Cell]]) -> Sheet:
     return Sheet("About", [("Field", 18), ("Value", 120)], [[k, v] for k, v in rows])
 
 
-def dataset_entities(conn: sqlite3.Connection) -> int:
+def dataset_entities(conn: sqlite3.Connection, subjects: Mapping[str, PrioritySubject]) -> int:
     """The entities a store's runs monitored: those tagged in a document from the corpus start
-    on, which screening tags with every seed subject it finds. An entity the seed no longer has
-    is not counted, since only the seed says which ids are entities."""
-    entities = {i for i, s in all_subjects().items() if s.type == "entity"}
+    on, which screening tags with every seed subject it finds, counted as entities by the seed
+    the runs used (`subjects`)."""
+    entities = {i for i, s in subjects.items() if s.type == "entity"}
     start = corpus_start(conn)
     tagged = conn.execute(
         "SELECT DISTINCT t.subject_id FROM document_subjects t "
@@ -423,10 +418,11 @@ def version_workbook(store: Path, stage: str, number: int, out: Path) -> dict[st
     the rows a trial of that week would replay from the cache. The row count of each sheet."""
     if stage != "priority":
         raise LookupError(f"no workbook for {stage} versions yet")
-    conn = connect_readonly(store)
+    conn = open_store(store, PROMPT_VERSION_TABLES)
     try:
         version = version_row(conn, stage, number)
-        names = _names(conn)
+        inputs = Inputs(conn)
+        names = {i: s.name for i, s in inputs.subjects.items()}
         used = {
             r["run_id"]
             for r in conn.execute(
@@ -434,7 +430,7 @@ def version_workbook(store: Path, stage: str, number: int, out: Path) -> dict[st
                 (stage, version["id"]),
             )
         }
-        given = Labels(conn, version, Inputs(conn))
+        given = Labels(conn, version, inputs)
         weeks: list[Sheet] = []
         for run in complete_runs(conn):
             only = changed_developments(conn, run)
@@ -445,11 +441,11 @@ def version_workbook(store: Path, stage: str, number: int, out: Path) -> dict[st
                     for p in run_pairs(conn, run)
                     if (label := given.get(p)) is not None
                 }
-            rows = direct_rows(conn, names, run, only, run_given)
+            rows = direct_rows(conn, names, inputs.subjects, run, only, run_given)
             if rows:
                 weeks.append(Sheet(run, DIRECT_COLUMNS, rows))
         runs = complete_runs(conn)
-        entities = dataset_entities(conn)
+        entities = dataset_entities(conn, inputs.subjects)
     finally:
         conn.close()
     about = _about(
@@ -521,7 +517,7 @@ def link_ratings_workbook(out: Path) -> dict[str, int]:
     return {sheet.name: len(rows)}
 
 
-def compare_workbook(c: Comparison, names: dict[str, str], out: Path) -> dict[str, int]:
+def compare_workbook(c: Comparison, out: Path) -> dict[str, int]:
     """Two versions compared: the count table of level under a against level under b, then a
     sheet per run with the pairs whose level moved, both levels and both reasons."""
     a, b = f"v{c.a['number']}", f"v{c.b['number']}"
@@ -541,7 +537,7 @@ def compare_workbook(c: Comparison, names: dict[str, str], out: Path) -> dict[st
             [
                 [
                     m.pair.development_id,
-                    names.get(m.pair.subject_id, m.pair.subject_id),
+                    c.names.get(m.pair.subject_id, m.pair.subject_id),
                     PRIORITY_LABELS[m.a.level],
                     m.a.reason,
                     PRIORITY_LABELS[m.b.level],
@@ -555,12 +551,3 @@ def compare_workbook(c: Comparison, names: dict[str, str], out: Path) -> dict[st
     sheets = [counts, *weeks]
     write_workbook(sheets, out)
     return {s.name: len(s.rows) for s in sheets}
-
-
-def store_names(store: Path) -> dict[str, str]:
-    """Display names for the ids a store's labels name."""
-    conn = connect_readonly(store)
-    try:
-        return _names(conn)
-    finally:
-        conn.close()

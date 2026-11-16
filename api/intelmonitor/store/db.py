@@ -1,6 +1,8 @@
 """SQLite store at data/intelmonitor.db. Each phase adds its tables to SCHEMA."""
 
 import sqlite3
+from collections.abc import Iterable
+from functools import cache
 from pathlib import Path
 
 from intelmonitor.config import DATA_DIR
@@ -735,6 +737,62 @@ def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     _priority_version_1(conn)
     if indexed is None:
         search.rebuild(conn)  # the search tables are new: index what is already stored
+    return conn
+
+
+class StoreLacks(LookupError):
+    """A store opened as it is lacks a table or column the command needs."""
+
+
+@cache
+def _schema_columns() -> dict[str, frozenset[str]]:
+    """Every table's columns as SCHEMA and ADDED_COLUMNS give them, from an empty store."""
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript(SCHEMA)
+    _add_columns(conn)
+    tables = conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+    columns = {t["name"]: frozenset(_columns(conn, t["name"])) for t in tables}
+    conn.close()
+    return columns
+
+
+def _columns(conn: sqlite3.Connection, table: str) -> list[str]:
+    return [r["name"] for r in conn.execute("SELECT name FROM pragma_table_info(?)", (table,))]
+
+
+# The tables the prompt version commands (`im trial`, `im prompts`, `im export version`) read and
+# write; a store from before prompt versions lacks them.
+PROMPT_VERSION_TABLES = ("inference_records", "prompt_versions", "run_prompts")
+
+
+def open_store(
+    path: Path, tables: Iterable[str] = (), *, write: bool = False
+) -> sqlite3.Connection:
+    """Open an existing store as it is, read-only unless `write`. Unlike connect(), it runs no
+    schema or migration, so a frozen store such as the baseline keeps its schema whatever
+    migrations the code gains; the commands that take --store open it this way. Each of `tables`
+    must have every column the code's schema gives it: raises StoreLacks naming what is missing,
+    before anything reads or writes, and FileNotFoundError when there is no store at `path`."""
+    if not path.is_file():
+        raise FileNotFoundError(f"no store at {path}")
+    mode = "rw" if write else "ro"  # rw never creates a file
+    conn = sqlite3.connect(f"{path.resolve().as_uri()}?mode={mode}", uri=True, timeout=30)
+    conn.row_factory = sqlite3.Row
+    expected = _schema_columns()
+    lacks: list[str] = []
+    for table in tables:
+        if not (present := set(_columns(conn, table))):
+            lacks.append(f"the table {table}")
+        elif missing := sorted(expected[table] - present):
+            lacks.append(f"{table}'s columns {', '.join(missing)}")
+    if lacks:
+        conn.close()
+        raise StoreLacks(
+            f"the store at {path} lacks {'; '.join(lacks)}, which this command needs. It is "
+            "opened without migrations, so that a frozen store keeps its schema: run the command "
+            "on a store that has them, or migrate a copy with connect()"
+        )
     return conn
 
 
