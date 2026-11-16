@@ -37,6 +37,14 @@ _AMBIGUOUS = {
     "m365",
     "hk",
     "circle",
+    "property",
+    "apple",
+    "meta",
+    "sec",
+    "eu",
+    "bis",
+    "boe",
+    "lse",
 }
 
 
