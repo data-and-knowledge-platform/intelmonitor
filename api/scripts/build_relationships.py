@@ -870,7 +870,10 @@ def read(name: str) -> object:
     return yaml.safe_load((COLLECTED / name).read_text())
 
 
-def main() -> None:
+def build_collected(skip: str | None = None) -> tuple[Build, list[LinkRow]]:
+    """Every collected file built into links, but the links-*.yaml file named `skip`, and the
+    rows of NEW_TYPES_FILE read. scripts/collect_links.py skips NEW_TYPES_FILE to know which links
+    the other files hold."""
     exposures = ExposuresFile.model_validate(read("bank-exposures.yaml"))
     new_rows: list[LinkRow] = []
     tech = TechFile.model_validate(read("tech-dependencies.yaml"))
@@ -880,7 +883,7 @@ def main() -> None:
     build_tech(build, tech)
     build_exposures(build, exposures)
     for path in sorted(COLLECTED.glob("links-*.yaml")):
-        if (doc := read(path.name)) is None:  # an empty file
+        if path.name == skip or (doc := read(path.name)) is None:  # skipped, or an empty file
             continue
         team = TeamLinksFile.model_validate(doc)
         if path.name == NEW_TYPES_FILE:
@@ -897,6 +900,11 @@ def main() -> None:
             TechFile(relationships=team.service_links, incidents=[], new_entities=[]),
             team.collected,
         )
+    return build, new_rows
+
+
+def main() -> None:
+    build, new_rows = build_collected()
     build_sectors(build)
     rels, unrated, orphans = with_ratings(with_reasons(build))
     report(build, rels)

@@ -20,13 +20,17 @@ as incomplete, keeps no rows and is collected again on the next run.
 
 A finished entity's result is kept in data/link-collection/<entity>.json with the prompt version
 that made it (and the whole conversation under transcripts/); a later run makes no call for an
-entity whose result has the current version. Each run then filters every kept result again and
-writes the rows that pass to --out. Code keeps a row only if both ends are seed entities, the type
-is one of the 21, the link is not already in relationships.yaml, and the quote is found in the
-page the request fetched from the row's source URL (each side's text normalised: markdown links
-and footnote markers out, quotes, dashes and spaces unified, case ignored). Dropped rows are listed
-with the reason. Kept rows are written with evidence `reported`, the prompt version and the date
-collected; the file lists every version its rows name in `prompts`, as transmission.yaml does.
+entity whose result has the current version. An entity whose result has an older version is
+collected again, its old result moved to superseded/ first, so that a turn which ends incomplete
+leaves it no rows. Each run then filters every kept result again and writes the rows that pass to
+--out. Code keeps a row only if both ends are seed entities, the type is one of the 21, the link is
+not already stored, and the quote is found in the page the request fetched from the row's source
+URL (each side's text normalised: markdown links and footnote markers out, quotes, dashes and
+spaces unified, case ignored). Dropped rows are listed with the reason. Stored means built from a
+collected file other than links-new-types.yaml (build_relationships.build_collected), so a run
+after a build keeps the rows the file itself put into relationships.yaml. Kept rows are written
+with evidence `reported`, the prompt version and the date collected; the file lists every version
+its rows name in `prompts`, as transmission.yaml does.
 
 The prompt, its schema, the model and the effort make a prompt version, whose id is made as
 pipeline/prompts.py makes a stage's.
@@ -34,7 +38,7 @@ pipeline/prompts.py makes a stage's.
 Each entity's usage is recorded and printed: searches, page fetches, resumes, input tokens
 (uncached, cache writes, cache reads), output tokens and the measured cost, web search fee
 included. The running cost is printed after every resume. Recall is reported per entity: of its
-links in relationships.yaml of the 21 types, how many the candidates found again on both ends and
+stored links of the 21 types, how many the candidates found again on both ends and
 type, with matches on the ends alone beside them, counted before the "already stored" filter.
 
 Usage (from api/):
@@ -58,6 +62,7 @@ from datetime import date
 from pathlib import Path
 from typing import Literal
 
+import build_relationships as building
 import yaml
 from anthropic.types.beta import BetaMessage, BetaMessageParam
 from pydantic import BaseModel, ConfigDict, Field
@@ -69,10 +74,9 @@ from intelmonitor.pipeline.prompts import THINK_FIRST, schema_text, version_id
 from intelmonitor.relationships import (
     LINK_TYPES,
     REL_TYPES,
-    RELATIONSHIPS_PATH,
     SYMMETRIC,
     PromptVersion,
-    RelationshipsFile,
+    Relationship,
 )
 from intelmonitor.seed import Entity, load_subjects
 
@@ -140,7 +144,9 @@ _NAMES = {e.id: e.name for e in SEED.entities}
 
 # The deck of 16 Nov 2026: page 5's opening and identification rules 1 to 8 word for word, the
 # types from LINK_TYPES (pages 1 to 4). The deck has no separate materiality sentence; the rule
-# below quotes the types' own "Material ..." meanings and ticket 03's example (Q4). The framing
+# below quotes the types' own "Material ..." meanings and ticket 03's example (Q4). The paragraph
+# on payment systems and market infrastructures is ticket 02's P2, which the stored links follow
+# (a system processes_transactions_for its participant). The framing
 # around them (one entity against the list, the web as the evidence, the quote and what finished
 # means) is ours. No JSON shape: the answer's fields are described in its schema (ticket 09).
 COLLECTION_PROMPT = f"""\
@@ -156,6 +162,12 @@ Each relationship reads from its first entity to its second as its type's name s
 {" and ".join(SYMMETRIC)} have no direction.
 {types_text()}
 belongs_to_sector is taken from the entity list's groups: do not look for it.
+A firm's participation in, membership of or settlement through an entity whose kind is payment \
+system or market infrastructure is stored as that system processes_transactions_for the firm \
+(FAST processes_transactions_for Bank A), not as participates_in or member_of. participates_in \
+is for schemes, programmes and initiatives, and member_of for associations and networks that are \
+not payment systems or market infrastructures. A company whose securities trade on an exchange \
+is listed_on it.
 
 MATERIALITY
 A relationship must be material as its type's meaning says: "Material lending or credit \
@@ -202,8 +214,9 @@ ENTITIES
 # Stored with the version when it is first used; edit it with the prompt.
 PROMPT_NOTE = (
     "The deck's identification rules 1 to 8 (16 Nov 2026, page 5), the 22 types with their "
-    "meanings, the materiality rule, the seed's 142 entities and what finished means, with "
-    "THINK_FIRST; web search and web fetch, effort high."
+    "meanings, the materiality rule, ticket 02's P2 for payment systems and market "
+    "infrastructures, the seed's 142 entities and what finished means, with THINK_FIRST; web "
+    "search and web fetch, effort high."
 )
 
 
@@ -528,12 +541,10 @@ def judge(r: Result, entities: set[str], stored: set[str]) -> list[Verdict]:
     return out
 
 
-def recall(entity: str, r: Result, rels: RelationshipsFile) -> list[str]:
+def recall(entity: str, r: Result, stored: list[Relationship]) -> list[str]:
     """Lines on how many of the entity's stored links of the 21 types the candidates found again:
     on both ends and type, and on the ends alone (another type)."""
-    mine = [
-        x for x in rels.relationships if entity in (x.from_, x.to) and x.type in COLLECTED_TYPES
-    ]
+    mine = [x for x in stored if entity in (x.from_, x.to) and x.type in COLLECTED_TYPES]
     found_ids = {c.link_id() for c in r.candidates}
     found_pairs: dict[frozenset[str], set[str]] = {}
     for c in r.candidates:
@@ -558,9 +569,11 @@ def recall(entity: str, r: Result, rels: RelationshipsFile) -> list[str]:
 
 
 def report(
-    outcomes: list[Outcome], results: dict[str, Result], verdicts: dict[str, list[Verdict]]
+    outcomes: list[Outcome],
+    results: dict[str, Result],
+    verdicts: dict[str, list[Verdict]],
+    stored: list[Relationship],
 ) -> None:
-    rels = RelationshipsFile.model_validate(yaml.safe_load(RELATIONSHIPS_PATH.read_text()))
     ran = {o.entity: o for o in outcomes}
     for entity, r in results.items():
         o = ran.get(entity)
@@ -594,7 +607,7 @@ def report(
         for x in r.coverage:
             what = f"{x.rows} rows" if x.rows else "none found"
             print(f"    {x.type:32}{what:>12}; queries: {' | '.join(x.queries) or '-'}")
-        for line in recall(entity, r, rels):
+        for line in recall(entity, r, stored):
             print(line)
     incomplete = [o for o in outcomes if o.result is None]
     print(f"\n{len(incomplete)} incomplete entities")
@@ -641,7 +654,7 @@ HEADER = """\
 #   schema, model and effort, as api/intelmonitor/pipeline/prompts.py makes them), date, note,
 #   model, effort and its template's text.
 # relationships[]: the rows code kept: both ends seed entities, one of the 21 collected types, not
-#   already in relationships.yaml, the quote found in the page the request fetched. evidence is
+#   built from another collected file, the quote found in the page the request fetched. evidence is
 #   reported; prompt_version names the version that found the row; collected is when.
 """
 
@@ -729,15 +742,17 @@ async def main() -> int:
         f"{len(wanted)} entities: {len(wanted) - len(todo)} finished with prompt version "
         f"{VERSION}, no call; {len(todo)} to collect"
     )
+    for i in todo:
+        if (old := have.get(i)) is not None:  # an older version's result gives way
+            moved = RESULTS / "superseded" / f"{i}-{old.prompt_version}.json"
+            moved.parent.mkdir(exist_ok=True)
+            (RESULTS / f"{i}.json").rename(moved)
     sem = asyncio.Semaphore(args.concurrency)
     outcomes = list(await asyncio.gather(*(collect(by_id[i], args.stop_at_usd, sem) for i in todo)))
     results = {i: r for i, r in load_results().items() if i in wanted}
-    stored = {
-        x.id
-        for x in RelationshipsFile.model_validate(
-            yaml.safe_load(RELATIONSHIPS_PATH.read_text())
-        ).relationships
-    }
+    # Not relationships.yaml, which holds the rows of links-new-types.yaml once they are built
+    others = list(building.build_collected(skip=building.NEW_TYPES_FILE)[0].rels.values())
+    stored = {x.id for x in others}
     entities = set(by_id)
     verdicts = {i: judge(r, entities, stored) for i, r in results.items()}
     every = load_results()  # the file holds every finished entity's kept rows, not only these
@@ -745,7 +760,7 @@ async def main() -> int:
     write_out(args.out, kept)
     text = io.StringIO()
     with redirect_stdout(text):
-        report(outcomes, results, verdicts)
+        report(outcomes, results, verdicts, others)
         print(f"\nwrote {len(kept)} kept rows to {args.out}")
     print(text.getvalue(), end="")
     if args.report:
