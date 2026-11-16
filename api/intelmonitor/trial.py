@@ -308,7 +308,9 @@ def unfound(conn: sqlite3.Connection, base: Labels, runs: list[str]) -> list[Pai
     """The runs' pairs that version 1 (`base`) rated by a call, as `rate` chose them from each
     development's stored subjects and the seed as rated, whose record is not found under their
     cache key. A trial cannot try them and a comparison has no level for them, so the commands
-    list them."""
+    list them. A stored subject the seed no longer has is listed too. The store keeps no subject
+    type, so it is counted as an entity: on a development Claude rated, it is listed itself, and
+    the development's topics, which may have copied its level, are not."""
     types: dict[str, SubjectType] = {i: s.type for i, s in base.inputs.subjects.items()}
     out: list[Pair] = []
     for run in runs:
@@ -316,9 +318,11 @@ def unfound(conn: sqlite3.Connection, base: Labels, runs: list[str]) -> list[Pai
         for p in run_pairs(conn, run):
             subjects.setdefault(p.development_id, []).append(p.subject_id)
         for dev, sids in subjects.items():
-            for sid in called_subjects(base.inputs.development(run, dev), sids, types):
-                if base.get(p := Pair(run, dev, sid)) is None:
-                    out.append(p)
+            gone: dict[str, SubjectType] = {sid: "entity" for sid in sids if sid not in types}
+            called = called_subjects(base.inputs.development(run, dev), sids, {**types, **gone})
+            for sid in called:
+                if sid in gone or base.get(Pair(run, dev, sid)) is None:
+                    out.append(Pair(run, dev, sid))
     return out
 
 
