@@ -63,3 +63,11 @@ _Avoid_: Primary impact
 **Indirect impact**:
 The level an adverse development passes through one link to an entity it is not about, read from a fixed table of the direct level and the link's strength in that direction: Medium or Low, never High.
 _Avoid_: Knock-on effect, contagion, second-order impact
+
+**Prompt version**:
+One stage's prompt as the model received it, that is its template, output schema, model and effort, numbered from 1 per stage in the order first used; every stored label names the version that made it.
+_Avoid_: Prompt revision, prompt id (for the number)
+
+**Baseline**:
+The frozen copy of the store taken on 16 Nov 2026, before any seed or prompt change (six runs, 89 entities), on which every priority version is tried so that two versions differ only by prompt.
+_Avoid_: Snapshot, backup (for this copy)
