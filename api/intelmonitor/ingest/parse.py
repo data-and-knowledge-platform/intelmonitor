@@ -18,10 +18,11 @@ def html_to_text(html: str, url: str) -> str:
     return trafilatura.extract(html, url=url, include_comments=False, include_tables=True) or ""
 
 
-def pdf_to_text(content: bytes) -> str:
+def pdf_to_text(content: bytes, max_pages: int | None = _PDF_MAX_PAGES) -> str:
+    """The text of a PDF's first `max_pages` pages (None: every page)."""
     pages: list[str] = []
     with pymupdf.open(stream=content, filetype="pdf") as pdf:
-        for i in range(min(len(pdf), _PDF_MAX_PAGES)):
+        for i in range(len(pdf) if max_pages is None else min(len(pdf), max_pages)):
             # get_text("text") returns a str; pymupdf's stubs type it as a union of all modes.
             pages.append(str(pdf[i].get_text("text")))  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
     return "\n".join(pages).strip()
