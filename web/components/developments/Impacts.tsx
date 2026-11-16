@@ -166,7 +166,7 @@ export function reasonFrom({ subject, link: l }: Pick<Impact, "subject" | "link"
   return l.to_id === subject.id && l.reason !== l.detail ? `${l.from_name} ${l.reason}` : l.reason;
 }
 
-/** Whether the entity reached is the link's `from` end, so the link reads from it ("DBS uses Singtel"). */
+/** Whether the entity reached is the link's `from` end, so the link reads from it ("DBS lends in Hong Kong"). */
 const outward = (i: Impact) => i.link.from_id === i.subject.id;
 // Links from a provider, a payment system or a distributor to the entity it serves.
 const USED = new Set<Link["type"]>([
@@ -191,7 +191,7 @@ export function claims(impacts: Impact[]): string[] {
     const first = g[0].link;
     // A provider serves the entity it reaches ("DBS uses Singtel"), read from the entity's end.
     if (!outward(g[0]) && USED.has(first.type)) return `${who} ${many ? (g.length === 2 ? "both use" : "all use") : "uses"} ${end}`;
-    // Read from the far end ("Singtel, used by DBS"), only the plain wording fits.
+    // Any other link reads from the far end ("Temasek holds a stake in DBS", reaching DBS): only the plain wording fits.
     switch (outward(g[0]) ? first.type : null) {
       case "exposed_to": {
         // Reserves, revenue and the like: the label's head says how ("holds reserves in").

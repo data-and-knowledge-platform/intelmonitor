@@ -2469,7 +2469,7 @@
           "route": {
             "type": "string",
             "title": "Route",
-            "description": "The link in plain words from the entity reached: \"via its Hong Kong loans, 12.2% of total\", \"depended on by DBS for telecoms\""
+            "description": "The link in plain words from the entity reached: \"via its Hong Kong loans, 12.2% of total\", \"gets its connectivity from Singtel\""
           },
           "region": {
             "anyOf": [
@@ -3188,7 +3188,7 @@
           "label": {
             "type": "string",
             "title": "Label",
-            "description": "A few words from the centre: \"holds 100%\", \"24.4% of loans\", \"depended on by\""
+            "description": "A few words from the centre: \"holds 100%\", \"24.4% of loans\", \"gets its connectivity from\""
           }
         },
         "type": "object",
@@ -3415,7 +3415,7 @@
           "label": {
             "type": "string",
             "title": "Label",
-            "description": "The type in plain words: \"depends on, for cloud services\""
+            "description": "The type in plain words: \"provides cloud services to\""
           },
           "from_id": {
             "type": "string",
@@ -3599,7 +3599,7 @@
               }
             ],
             "title": "From To",
-            "description": "How strongly a material adverse event at `from` reaches `to`; null for a link that is not rated (belongs_to_sector)"
+            "description": "How strongly a material adverse event at `from` reaches `to`; null only for a link with no rating, which relationships.yaml never holds"
           },
           "to_from": {
             "anyOf": [
@@ -4652,7 +4652,7 @@
           "route": {
             "type": "string",
             "title": "Route",
-            "description": "The link in plain words from the entity reached: \"via its Hong Kong loans, 12.2% of total\", \"depended on by DBS for telecoms\""
+            "description": "The link in plain words from the entity reached: \"via its Hong Kong loans, 12.2% of total\", \"gets its connectivity from Singtel\""
           },
           "region": {
             "anyOf": [

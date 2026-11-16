@@ -365,7 +365,7 @@ class RelationshipLink(BaseModel):
 
     id: str
     type: RelType
-    label: str = Field(description='The type in plain words: "depends on, for cloud services"')
+    label: str = Field(description='The type in plain words: "provides cloud services to"')
     from_id: str
     from_name: str
     to_id: str
@@ -392,8 +392,8 @@ class RelationshipLink(BaseModel):
         '2026"'
     )
     from_to: Strength | None = Field(
-        description="How strongly a material adverse event at `from` reaches `to`; null for a "
-        "link that is not rated (belongs_to_sector)"
+        description="How strongly a material adverse event at `from` reaches `to`; null only "
+        "for a link with no rating, which relationships.yaml never holds"
     )
     to_from: Strength | None = Field(description="The same, from `to` to `from`")
     figures: list[RelationshipFigure]
@@ -414,7 +414,7 @@ class IndirectImpact(BaseModel):
     source: SubjectRef = Field(description="The entity the development is about")
     route: str = Field(
         description='The link in plain words from the entity reached: "via its Hong Kong loans, '
-        '12.2% of total", "depended on by DBS for telecoms"'
+        '12.2% of total", "gets its connectivity from Singtel"'
     )
     region: str | None = Field(
         description="The region's name when the link's figure covers a whole region that "
@@ -661,7 +661,8 @@ class RelatedLink(BaseModel):
         description="The centre is the link's from end: DBS holds a stake in DBS India"
     )
     label: str = Field(
-        description='A few words from the centre: "holds 100%", "24.4% of loans", "depended on by"'
+        description='A few words from the centre: "holds 100%", "24.4% of loans", '
+        '"gets its connectivity from"'
     )
 
 

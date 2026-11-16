@@ -1129,7 +1129,7 @@ export interface components {
             source: components["schemas"]["SubjectRef"];
             /**
              * Route
-             * @description The link in plain words from the entity reached: "via its Hong Kong loans, 12.2% of total", "depended on by DBS for telecoms"
+             * @description The link in plain words from the entity reached: "via its Hong Kong loans, 12.2% of total", "gets its connectivity from Singtel"
              */
             route: string;
             /**
@@ -1460,7 +1460,7 @@ export interface components {
             outbound: boolean;
             /**
              * Label
-             * @description A few words from the centre: "holds 100%", "24.4% of loans", "depended on by"
+             * @description A few words from the centre: "holds 100%", "24.4% of loans", "gets its connectivity from"
              */
             label: string;
         };
@@ -1551,7 +1551,7 @@ export interface components {
             type: "holds_stake_in" | "lends_to" | "invests_in" | "funds" | "insures" | "provides_technology_to" | "provides_connectivity_to" | "provides_business_service_to" | "processes_transactions_for" | "shares_or_processes_data_with" | "distributes_products_for" | "provides_customer_benefits_with" | "jointly_offers_product_with" | "material_customer_of" | "material_supplier_to" | "regulated_by" | "operates_in" | "exposed_to" | "member_of" | "participates_in" | "listed_on" | "belongs_to_sector";
             /**
              * Label
-             * @description The type in plain words: "depends on, for cloud services"
+             * @description The type in plain words: "provides cloud services to"
              */
             label: string;
             /** From Id */
@@ -1613,7 +1613,7 @@ export interface components {
             reason: string;
             /**
              * From To
-             * @description How strongly a material adverse event at `from` reaches `to`; null for a link that is not rated (belongs_to_sector)
+             * @description How strongly a material adverse event at `from` reaches `to`; null only for a link with no rating, which relationships.yaml never holds
              */
             from_to: ("Strong" | "Moderate" | "Weak" | "Non-propagating") | null;
             /**
@@ -2059,7 +2059,7 @@ export interface components {
             source: components["schemas"]["SubjectRef"];
             /**
              * Route
-             * @description The link in plain words from the entity reached: "via its Hong Kong loans, 12.2% of total", "depended on by DBS for telecoms"
+             * @description The link in plain words from the entity reached: "via its Hong Kong loans, 12.2% of total", "gets its connectivity from Singtel"
              */
             route: string;
             /**
