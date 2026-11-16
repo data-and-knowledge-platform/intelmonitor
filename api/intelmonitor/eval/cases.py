@@ -7,12 +7,17 @@ extraction prompt, are in adverse_cases.py.
 Checked against a store's latest complete run, read only and with no model calls, the app's store
 by default: `uv run python -m intelmonitor.eval cases [store path]`. The run must have been
 computed with roles. Writes cases.json in the eval directory. `im prompts compare` checks the
-priority cases against two prompt versions' labels instead of the stored ones."""
+priority cases against two prompt versions' labels instead of the stored ones.
+
+A priority case is n/a, neither pass nor FAIL, on a run that holds nothing it checks: the 20 and
+23 September documents above predate the corpus start (1 October 2026), so no run of a store built
+from it holds them."""
 
 import json
 import sqlite3
 from collections.abc import Callable
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -93,10 +98,14 @@ PRIORITY_CASES = [
 ]
 
 
+# n/a: the run holds no development and subject the case checks, or none of them is rated.
+Outcome = Literal["pass", "FAIL", "n/a"]
+
+
 class CaseResult(BaseModel):
     id: str
     run_id: str
-    ok: bool
+    outcome: Outcome
     findings: list[str] = Field(description="The matching findings, with their roles")
     detail: str
     reason: str
@@ -154,7 +163,7 @@ def check_adverse(conn: sqlite3.Connection, run_id: str, case: AdverseCase) -> C
     return CaseResult(
         id=case.id,
         run_id=run_id,
-        ok=not adverse,
+        outcome="FAIL" if adverse else "pass",
         findings=[_described(r) for r in found],
         detail="; ".join(adverse) or ("not adverse" if found else "no matching finding"),
         reason=case.reason,
@@ -182,29 +191,41 @@ def check_priority(
     level_of: Callable[[str, str], int | None] | None = None,
 ) -> CaseResult:
     """The case on the run's stored levels, or on `level_of(development_id, subject_id)`: a prompt
-    version's level for the pair, None where it gave none, which is left unchecked."""
+    version's level for the pair, None where it gave none, which is left unchecked. FAIL when no
+    finding matches, since the case itself is then broken; n/a when the matching findings are in
+    no development of the run, or no pair of the case's subjects is checked."""
     found = _matching(conn, case.document_ids, case.match)
     allowed = max(i for i, label in enumerate(PRIORITY_LABELS) if label == case.highest)
     levels: list[str] = []
     over: list[str] = []
     checked = 0
-    for dev in dict.fromkeys(d for r in found if (d := _development(conn, run_id, r["id"]))):
+    devs = dict.fromkeys(d for r in found if (d := _development(conn, run_id, r["id"])))
+    for dev in devs:
         for sid, s in _subjects(conn, run_id, dev).items():
             level = int(s["priority_level"]) if level_of is None else level_of(dev, sid)
             if level is None:
                 levels.append(f"{dev} {sid}: not rated ({s['role']})")
                 continue
-            checked += 1
             label = PRIORITY_LABELS[level]
             levels.append(f"{dev} {sid}: {label} ({s['role']})")
-            if (not case.subject_ids or sid in case.subject_ids) and level > allowed:
-                over.append(f"{dev} is {label} for {sid}")
+            if not case.subject_ids or sid in case.subject_ids:
+                checked += 1
+                if level > allowed:
+                    over.append(f"{dev} is {label} for {sid}")
+    # A case with nothing to check must not pass.
+    outcome: Outcome = "FAIL" if over or not found else "pass" if checked else "n/a"
+    if not found:
+        detail = "no matching finding"
+    elif not devs:
+        detail = f"its findings are in no development of run {run_id}"
+    else:
+        detail = "; ".join(over or levels) or "no subjects"
     return CaseResult(
         id=case.id,
         run_id=run_id,
-        ok=checked > 0 and not over,  # a case with nothing to check must not pass
+        outcome=outcome,
         findings=[_described(r) for r in found],
-        detail="; ".join(over or levels) or ("no subjects" if found else "no matching finding"),
+        detail=detail,
         reason=case.reason,
     )
 
@@ -245,5 +266,5 @@ def run(path: Path = DB_PATH) -> None:
         "| Case | Result | Detail |",
         "|---|---|---|",
     ]
-    lines += [f"| {r.id} | {'pass' if r.ok else 'FAIL'} | {r.detail} |" for r in results]
+    lines += [f"| {r.id} | {r.outcome} | {r.detail} |" for r in results]
     print("\n".join(lines))

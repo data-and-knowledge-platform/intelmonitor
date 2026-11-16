@@ -66,7 +66,19 @@ def _claude_limit() -> asyncio.Semaphore:
     return limit
 
 
-def _hash(payload: object) -> str:
+def cache_key(
+    model: str, system: str, prompt: str, schema: dict[str, object], effort: str | None
+) -> str:
+    """The input_hash a Claude call's record is found by. Only a set effort joins the key, so
+    calls without one keep their recorded replies. `im trial` finds a version's labels by it."""
+    payload: dict[str, object] = {
+        "model": model,
+        "system": system,
+        "prompt": prompt,
+        "schema": schema,
+    }
+    if effort is not None:
+        payload["effort"] = effort
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
@@ -134,16 +146,7 @@ class Inference:
         effort: EffortLevel | None,
         template: str,
     ) -> T:
-        payload: dict[str, object] = {
-            "model": model,
-            "system": system,
-            "prompt": prompt,
-            "schema": schema.model_json_schema(),
-        }
-        # Only a set effort joins the key, so calls without one keep their recorded replies.
-        if effort is not None:
-            payload["effort"] = effort
-        key = _hash(payload)
+        key = cache_key(model, system, prompt, schema.model_json_schema(), effort)
         version = self._version(
             stage, template, schema_text(schema.model_json_schema()), model, effort
         )

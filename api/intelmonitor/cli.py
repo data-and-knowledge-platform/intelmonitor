@@ -424,10 +424,8 @@ def prompts_compare(
     counts = compare_workbook(c, store_names(path), Path(out))
     for row in count_table(c):
         typer.echo("".join(f"{v!s:>10}" for v in row))
-    for case, ok_a, ok_b, detail_a, detail_b in c.cases:
-        typer.echo(
-            f"case {case}: v{a} {'pass' if ok_a else 'FAIL'}, v{b} {'pass' if ok_b else 'FAIL'}"
-        )
+    for case, outcome_a, outcome_b, detail_a, detail_b in c.cases:
+        typer.echo(f"case {case}: v{a} {outcome_a}, v{b} {outcome_b}")
         for v, detail in ((a, detail_a), (b, detail_b)):
             typer.echo(f"  v{v}: {detail}")
     typer.echo(f"wrote {out}: " + ", ".join(f"{n} {name}" for name, n in counts.items()))

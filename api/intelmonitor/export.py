@@ -40,12 +40,13 @@ from intelmonitor.relationships import (
 )
 from intelmonitor.trial import (
     Comparison,
+    Inputs,
     Label,
+    Labels,
     changed_developments,
     complete_runs,
     count_table,
-    input_ref,
-    labels,
+    run_pairs,
     version_row,
 )
 
@@ -126,12 +127,12 @@ def direct_rows(
     names: dict[str, str],
     run: str | None,
     only: set[str] | None = None,
-    given: Mapping[str, Label] | None = None,
+    given: Mapping[tuple[str, str], Label] | None = None,
 ) -> list[list[Cell]]:
     """One row per development of the run (those in `only`, when given) and entity it is about,
     or per topic when it names no entity, with the stored level and reason. With `given`, a
-    prompt version's labels by input_ref, the level and reason are the version's, and a pair it
-    did not rate has no row."""
+    prompt version's labels of the run's pairs by development and subject, the level and reason
+    are the version's, and a pair it did not rate has no row."""
     subjects = all_subjects()
     devs = conn.execute(
         "SELECT run_id, id, coalesce(headline, title) AS headline, category, first_published, "
@@ -177,8 +178,7 @@ def direct_rows(
         for s in entities or topics:
             label = Label(s["priority_level"], s["priority_reason"])
             if given is not None:
-                # A development's findings are its sources' rows, one per finding.
-                found = given.get(input_ref(key, len(docs), s["subject_id"]))
+                found = given.get((key, s["subject_id"]))
                 if found is None:
                     continue
                 label = found
@@ -402,8 +402,10 @@ def version_workbook(store: Path, stage: str, number: int, out: Path) -> dict[st
     """One priority version's workbook from the store at `store`, written to `out`: About,
     Summary, then a sheet per run with the pairs of a development and an entity (a topic, when
     it names none) new or updated in that run. A run that used the version shows its stored
-    labels; any other run shows the version's recorded labels of the pairs it rated, and has no
-    sheet when it rated none. The row count of each sheet."""
+    labels; any other run shows the version's recorded labels of the pairs whose input it rated,
+    and has no sheet when it rated none. A run shares an input with another where a development's
+    findings did not change between them, so a trial of one week can also fill rows of another:
+    the rows a trial of that week would replay from the cache. The row count of each sheet."""
     if stage != "priority":
         raise LookupError(f"no workbook for {stage} versions yet")
     conn = connect_readonly(store)
@@ -417,11 +419,18 @@ def version_workbook(store: Path, stage: str, number: int, out: Path) -> dict[st
                 (stage, version["id"]),
             )
         }
-        given = labels(conn, version["id"])
+        given = Labels(conn, version, Inputs(conn))
         weeks: list[Sheet] = []
         for run in complete_runs(conn):
             only = changed_developments(conn, run)
-            rows = direct_rows(conn, names, run, only, None if run in used else given)
+            run_given = None
+            if run not in used:
+                run_given = {
+                    (p.development_id, p.subject_id): label
+                    for p in run_pairs(conn, run)
+                    if (label := given.get(p)) is not None
+                }
+            rows = direct_rows(conn, names, run, only, run_given)
             if rows:
                 weeks.append(Sheet(run, DIRECT_COLUMNS, rows))
         runs = complete_runs(conn)

@@ -77,10 +77,11 @@ SINGAPORE_SYSTEM = "Singapore's financial system"
 PRIORITY_EFFORT: Literal["medium"] = "medium"
 
 
-def priority_system(entity: str, singapore: str) -> str:
-    """PRIORITY_PROMPT for one subject. Where the phrase is Singapore's financial system itself,
-    "the phrase or (for) Singapore's financial system" names it once."""
-    text = PRIORITY_PROMPT.format(entity=entity, singapore=singapore)
+def priority_system(entity: str, singapore: str, template: str = PRIORITY_PROMPT) -> str:
+    """PRIORITY_PROMPT, or another priority version's template, for one subject. Where the phrase
+    is Singapore's financial system itself, "the phrase or (for) Singapore's financial system"
+    names it once."""
+    text = template.format(entity=entity, singapore=singapore)
     if singapore == SINGAPORE_SYSTEM:
         for joiner in (" or for ", " or "):
             text = text.replace(f"{SINGAPORE_SYSTEM}{joiner}{SINGAPORE_SYSTEM}", SINGAPORE_SYSTEM)
