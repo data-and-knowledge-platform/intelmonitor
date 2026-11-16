@@ -14,7 +14,7 @@ Under 1024 px the popup fills the screen less 16 px and the columns stack in one
 
 ## Sub-features
 
-- `dp-open`: every development link (feed rows, top developments, Upcoming dates, Could affect, linked institutions, ⌘K results, the Data tab's indicator rows and note cites, the graph) opens the popup over the current page with that page's scope.
+- `dp-open`: every development link (feed rows, top developments, Upcoming dates, Could affect, ⌘K results, the Data tab's indicator rows and note cites) opens the popup over the current page with that page's scope.
 - `dp-close`: the close button, Esc and a backdrop click go back to the history entry underneath (same URL and scroll); browser Back does the same and Forward reopens it; on a fresh load of a popup URL, closing drops the parameters and stays on the page.
 - `dp-focus`: the title has focus on open, Tab and Shift+Tab wrap inside the popup, and focus returns to the opener on close (the search field for a ⌘K result).
 - `dp-priority`: the priority shown is for the subjects in view, not the highest over every subject.
@@ -27,8 +27,8 @@ Under 1024 px the popup fills the screen less 16 px and the columns stack in one
 ## How to get to it (user POV)
 
 - A top development's headline on the Entities or Topics list, over the list with the row's priority (see [list-pages](list-pages.md)).
-- A feed row on a page's Developments tab or its Overview's top 5 (see [developments](developments.md)); on the Overview also the summary band's `Next:` date and a Related card list row (the brief itself links no developments); on the Related tab a `Could affect` title and a linked institution's week line (see [entity-and-topic-pages](entity-and-topic-pages.md)).
-- The Data tab's `View the development` rows and note cites, a graph development node, ⌘K development and document results.
+- A feed row on a page's Developments tab or its Overview's top 5 (see [developments](developments.md)); on the Overview also the summary band's `Next:` date and a Related card list row (the brief itself links no developments); on the Related tab a `Could affect` title (see [entity-and-topic-pages](entity-and-topic-pages.md)).
+- The Data tab's `View the development` rows and note cites, ⌘K development and document results.
 
 ## Driving it with verify
 

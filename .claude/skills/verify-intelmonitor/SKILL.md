@@ -1,6 +1,6 @@
 ---
 name: verify-intelmonitor
-description: "Drive the running IntelMonitor web app (Vite and TanStack Router pages over the FastAPI store) the way an analyst does, and keep proof. Use to verify any UI or API change, reproduce a reported bug, check a feature still works, or take screenshots and recordings of the Entities and Topics list pages, entity and topic pages and their tabs, the Personal and function views with their watchlists and Recently viewed, development feeds and the development popup, the Data tab and graph views."
+description: "Drive the running IntelMonitor web app (Vite and TanStack Router pages over the FastAPI store) the way an analyst does, and keep proof. Use to verify any UI or API change, reproduce a reported bug, check a feature still works, or take screenshots and recordings of the Entities and Topics list pages, entity and topic pages and their tabs, the Personal and function views with their watchlists and Recently viewed, development feeds and the development popup, the Data tab and the Overview's Related graph."
 ---
 
 # Verify IntelMonitor

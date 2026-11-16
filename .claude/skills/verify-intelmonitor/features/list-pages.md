@@ -20,7 +20,7 @@ Light mode only; at 1024 px nothing scrolls sideways.
 - `period`: `group "Period"`: `This week` (from the previous run's date, the default and kept out of the URL), `Last 4 weeks` (`period=4w`), `Last 3 months` (`period=3m`); no counts.
 - `facet-counts`: each facet counts the rows that match every other filter.
 - `empty` and `error`: `No matches` when the filters leave nothing; `This list could not be loaded.` when the API fails.
-- `group-links`: a group's name in search, a graph group node and an old group URL open `/entities?group=<id>`.
+- `group-links`: a group's name in search and an old group URL open `/entities?group=<id>`.
 
 ## How to get to it (user POV)
 

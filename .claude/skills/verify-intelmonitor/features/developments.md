@@ -3,7 +3,7 @@
 A scope's developments in the latest run as a feed: High and adverse first, then other High, then Medium adverse, then other Medium, then the rest, newest first within each group.
 Priority and adverse are for the subjects in view, so a development adverse to OCBC only ranks as adverse on OCBC's page.
 A source gate (`api/intelmonitor/pipeline/corroboration.py`) decides which developments are shown: 2 or more distinct news outlets (counted by parent domain, so `markets.ft.com` and `ft.com` are one), or 1 reputable outlet (`REPUTABLE_DOMAINS` in `ingest/sources/search.py`), or any official, research or data source (the entity's own site counts as official).
-The rest are unconfirmed and left out of every list, count and total by default: feeds, facet and period counts, `See all <n>`, the Related tab and its impacts, the graph, search, and the briefs written from the next run on.
+The rest are unconfirmed and left out of every list, count and total by default: feeds, facet and period counts, `See all <n>`, the Related tab and its impacts, search, and the briefs written from the next run on.
 Feeds show only on entity and topic pages: a page's Developments tab (`/entities/<id>/developments` or `/topics/<id>/developments`, section `Developments about <name>`) shows one subject's feed, and its Overview the top 5 rows without headings.
 The list pages show only each row's top development ([list-pages](list-pages.md)).
 Rows sit in one list under a column header, `Priority`, `Finding`, `Date` (hidden from the accessibility tree and below 640 px), in that order; each row's priority badge is in the Priority column.
