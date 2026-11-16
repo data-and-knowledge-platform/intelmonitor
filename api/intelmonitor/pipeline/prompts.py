@@ -10,12 +10,19 @@ before it is filled per entity); every other stage's system prompt is its templa
 records it writes with it, and notes each run's use of it in `run_prompts`, which is what says
 which version a run's labels came from when the run replays every call from the cache. Prompt
 text stays in code, and git has its history; the store links each label to its version, and
-`im prompts`, `im trial` and `im export version` show it."""
+`im prompts`, `im trial` and `im export version` show it. A candidate version that `im trial`
+tries registers with a note of its own."""
 
 import hashlib
 import json
 import sqlite3
 from datetime import UTC, datetime
+
+# The line the guide "Prompting Claude Sonnet 5.5" gives for the end of a system prompt whose
+# reply is structured output: it has the model work the problem out in its thinking, which at low
+# and medium effort it often skips (ticket 09 of link-types-and-inferred-impact). A prompt that
+# uses it ends with it.
+THINK_FIRST = "Think the problem through before you answer."
 
 # One line per stage on what its prompt is, edited in the same commit as the prompt. A version
 # stores the stage's note when it is first used.
@@ -58,10 +65,12 @@ def register_version(
     effort: str | None,
     number: int | None = None,
     first_used: str | None = None,
+    note: str | None = None,
 ) -> str:
     """The version's id, registered first if the store does not hold it: numbered one past the
-    stage's last, with the stage's note, first used now. The migration that registers version 1
-    passes its `number` and `first_used`. Commits."""
+    stage's last, with `note` or else the stage's PROMPT_NOTES line, first used now. The migration
+    that registers version 1 passes its `number` and `first_used`; `im trial` passes a candidate's
+    note. Commits."""
     vid = version_id(stage, template, schema, model, effort)
     conn.execute(
         "INSERT OR IGNORE INTO prompt_versions "
@@ -76,7 +85,7 @@ def register_version(
             schema,
             model,
             effort,
-            PROMPT_NOTES.get(stage, ""),
+            PROMPT_NOTES.get(stage, "") if note is None else note,
             first_used or datetime.now(UTC).isoformat(),
             stage,
         ),

@@ -25,6 +25,7 @@ from functools import lru_cache
 from typing import Literal
 
 import numpy as np
+from claude_agent_sdk import EffortLevel
 from fastembed import TextEmbedding
 from numpy.typing import NDArray
 from pydantic import BaseModel, TypeAdapter
@@ -397,20 +398,28 @@ def priority_prompt(dev: Development) -> str:
     return f"Finding: {dev.lead.statement}\n\nSources:\n{sources}"
 
 
-async def rate_subject(inf: Inference, dev: Development, subject: Subject) -> PriorityRating:
+async def rate_subject(
+    inf: Inference,
+    dev: Development,
+    subject: Subject,
+    *,
+    template: str = PRIORITY_PROMPT,
+    schema: type[PriorityRating] = PriorityRating,
+    effort: EffortLevel = PRIORITY_EFFORT,
+) -> PriorityRating:
     """One Sonnet call: the development's priority for one subject, by slide 7's prompt with the
     subject's name and Singapore phrase; its prompt version is of the unfilled PRIORITY_PROMPT. A
     refusal leaves the subject at Low with PRIORITY_DECLINED as its reason, so one declined pair
-    does not fail the run."""
+    does not fail the run. `im trial` passes a candidate's template, schema and effort instead."""
     try:
         return await inf.claude(
             "priority",
             f"dev:{dev.id}:{len(dev.findings)}:{subject.id}",
             priority_prompt(dev),
-            PriorityRating,
-            priority_system(subject.name, singapore_phrase(subject.id)),
-            effort=PRIORITY_EFFORT,
-            template=PRIORITY_PROMPT,
+            schema,
+            priority_system(subject.name, singapore_phrase(subject.id), template),
+            effort=effort,
+            template=template,
         )
     except ClaudeRefused:
         return PriorityRating(priority="Low", reason=PRIORITY_DECLINED)

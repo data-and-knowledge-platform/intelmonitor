@@ -7,8 +7,11 @@ A pair is a development and a subject in a run whose development was new or upda
 version 1 rated by a call: entities, or the topics of a development that names no entity, and
 never a pair a detector's rule set alone. A trial rebuilds each pair's input from the store, as
 the run gave it to version 1 (`priority_prompt`), and rates it with the current code's priority
-prompt through `Inference` with no run: calls are recorded with their prompt version, a version
-already tried replays from the cache, and no `development_subjects` row is written.
+prompt, or with a candidate's (`CANDIDATES`), through `Inference` with no run: calls are recorded
+with their prompt version, a version already tried replays from the cache, and no
+`development_subjects` row is written. A candidate is a template, schema and effort given to the
+trial, so trying one never edits PRIORITY_PROMPT, PriorityRating or PRIORITY_EFFORT, and the live
+prompt stays at the version the stored runs were rated with.
 
 A pair's input is its subject and the development's prompt in its run (`Inputs`); two pairs share
 one when a call on one would replay the other's. The input_ref of a call does not identify it: a
@@ -28,6 +31,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 
+from claude_agent_sdk import EffortLevel
+from pydantic import ConfigDict, Field
+
+from intelmonitor.config import get_settings
 from intelmonitor.eval.cases import PRIORITY_CASES, Outcome, check_priority, priority_pairs
 from intelmonitor.pipeline.developments import (
     PRIORITY_DECLINED,
@@ -38,13 +45,76 @@ from intelmonitor.pipeline.developments import (
     rate_subject,
 )
 from intelmonitor.pipeline.inference import Inference, cache_key
-from intelmonitor.pipeline.params import PRIORITY_LABELS, priority_system
+from intelmonitor.pipeline.params import (
+    PRIORITY_EFFORT,
+    PRIORITY_LABELS,
+    PRIORITY_PROMPT,
+    Priority,
+    priority_system,
+)
+from intelmonitor.pipeline.prompts import THINK_FIRST, register_version, schema_text
 from intelmonitor.pipeline.subjects import monitored_subjects, singapore_phrase
 
 # The sample: this many pairs at each level under version 1, drawn with a fixed seed, the
 # hand-set priority cases' pairs first.
 SAMPLE_PER_LEVEL = 100
 SAMPLE_SEED = 20261116
+
+
+@dataclass(frozen=True)
+class Candidate:
+    """A priority prompt a trial rates with in place of the live one."""
+
+    template: str
+    schema: type[PriorityRating]
+    effort: EffortLevel
+    note: str | None  # stored with the version when first used; None takes PROMPT_NOTES'
+
+
+# PriorityRating with each field's meaning in its description, where the live prompt's "## Output"
+# section gave it. Titled as PriorityRating, so its schema differs only by the descriptions. (No
+# docstring: pydantic would send it to the model as the schema's description.)
+class DescribedPriorityRating(PriorityRating):
+    model_config = ConfigDict(title="PriorityRating")
+    priority: Priority = Field(
+        description="The finding's priority for the subject, by the priority levels and rules."
+    )
+    reason: str = Field(
+        description="One sentence explaining the priority, citing the Singapore link if High."
+    )
+
+
+def _without_output(template: str) -> str:
+    """The template without its "## Output" section ("Respond with JSON only" and the JSON
+    shape), which structured outputs make redundant."""
+    head, found, _ = template.partition("\n\n## Output\n")
+    if not found:
+        raise ValueError("the priority template has no Output section to remove")
+    return head
+
+
+_TIDY = _without_output(PRIORITY_PROMPT)
+_TIDY_NOTE = "Slide 7 prompt without its JSON lines, field meanings in the schema"
+# The sweep of ticket 09: the tidied prompt at medium and high effort, each with and without
+# THINK_FIRST as its last line. The levels and rules are the live prompt's, unchanged. "live" is
+# the current PRIORITY_PROMPT, PriorityRating and PRIORITY_EFFORT.
+CANDIDATES: dict[str, Candidate] = {
+    "live": Candidate(PRIORITY_PROMPT, PriorityRating, PRIORITY_EFFORT, None),
+    "medium": Candidate(_TIDY, DescribedPriorityRating, "medium", f"{_TIDY_NOTE}; medium effort."),
+    "medium-think": Candidate(
+        f"{_TIDY}\n\n{THINK_FIRST}",
+        DescribedPriorityRating,
+        "medium",
+        f"{_TIDY_NOTE}; medium effort; ends with THINK_FIRST.",
+    ),
+    "high": Candidate(_TIDY, DescribedPriorityRating, "high", f"{_TIDY_NOTE}; high effort."),
+    "high-think": Candidate(
+        f"{_TIDY}\n\n{THINK_FIRST}",
+        DescribedPriorityRating,
+        "high",
+        f"{_TIDY_NOTE}; high effort; ends with THINK_FIRST.",
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -206,6 +276,49 @@ def trial_pairs(conn: sqlite3.Connection, weeks: str, base: Labels) -> list[Pair
 
 
 @dataclass
+class VersionCalls:
+    """What a version's recorded calls cost and returned, every trial of it included (measured:
+    the tokens and cost the API reported, priced by pipeline/claude.py)."""
+
+    answered: int  # calls with an output
+    cut_off: int  # calls stopped before the output was complete (max_tokens)
+    errors: int  # other failed calls
+    refused: Counter[str]  # refused calls by stop_details category ("none" when it names none)
+    mean_output_tokens: float  # of the answered calls, thinking included
+    cost_usd: float  # of every recorded call
+
+    @property
+    def calls(self) -> int:
+        return self.answered + self.cut_off + self.errors + self.refused.total()
+
+    @property
+    def cost_per_call(self) -> float:
+        return self.cost_usd / self.calls if self.calls else 0.0
+
+
+def version_calls(conn: sqlite3.Connection, version: str) -> VersionCalls:
+    """The version's recorded calls, counted."""
+    rows = conn.execute(
+        "SELECT status, error, refusal_category, output_tokens, cost_usd FROM inference_records "
+        "WHERE prompt_version = ?",
+        (version,),
+    ).fetchall()
+    answered = [r for r in rows if r["status"] == "ok"]
+    failed = [r for r in rows if r["status"] == "error"]
+    cut_off = sum((r["error"] or "").startswith("ClaudeCutOff") for r in failed)
+    return VersionCalls(
+        answered=len(answered),
+        cut_off=cut_off,
+        errors=len(failed) - cut_off,
+        refused=Counter(r["refusal_category"] or "none" for r in rows if r["status"] == "refused"),
+        mean_output_tokens=(
+            sum(r["output_tokens"] or 0 for r in answered) / len(answered) if answered else 0.0
+        ),
+        cost_usd=sum(r["cost_usd"] or 0.0 for r in rows),
+    )
+
+
+@dataclass
 class TrialResult:
     version: str
     number: int
@@ -214,38 +327,69 @@ class TrialResult:
     cache_hits: int
     cost_usd: float  # measured: the cost the new records store
     refused: int
+    failed: list[str]  # pairs left unrated after every attempt failed, with the last error
     levels: Counter[str]  # pairs at each level under the version tried
+    recorded: VersionCalls  # the version's calls over every trial of it
 
 
-async def trial_priority(inf: Inference, weeks: str) -> TrialResult:
-    """Rates the trial's pairs with the current priority prompt; `inf` has no run."""
+async def trial_priority(inf: Inference, weeks: str, candidate: Candidate) -> TrialResult:
+    """Rates the trial's pairs with the candidate's priority prompt; `inf` has no run. A pair
+    whose every attempt fails is left unrated and listed, so one pair does not stop the trial."""
     conn = inf.conn
     inputs = Inputs(conn)
     pairs = trial_pairs(conn, weeks, Labels(conn, version_row(conn, "priority", 1), inputs))
     before = conn.execute("SELECT coalesce(max(id), 0) FROM inference_records").fetchone()[0]
+    schema = schema_text(candidate.schema.model_json_schema())
+    # Registered before the first call so that the version keeps the candidate's note.
+    expected = register_version(
+        conn,
+        "priority",
+        candidate.template,
+        schema,
+        get_settings().anthropic_model,
+        candidate.effort,
+        note=candidate.note,
+    )
 
     async def one(p: Pair) -> PriorityRating:
         dev = inputs.development(p.run_id, p.development_id)
-        return await rate_subject(inf, dev, inputs.subjects[p.subject_id])
+        return await rate_subject(
+            inf,
+            dev,
+            inputs.subjects[p.subject_id],
+            template=candidate.template,
+            schema=candidate.schema,
+            effort=candidate.effort,
+        )
 
-    ratings = await asyncio.gather(*(one(p) for p in pairs))
-    if len(inf.versions) != 1:
-        raise RuntimeError(f"the trial used {len(inf.versions)} priority versions: {inf.versions}")
-    (version,) = inf.versions
+    results = await asyncio.gather(*(one(p) for p in pairs), return_exceptions=True)
+    ratings: list[PriorityRating] = []
+    failed: list[str] = []
+    for p, r in zip(pairs, results, strict=True):
+        if isinstance(r, PriorityRating):
+            ratings.append(r)
+        elif isinstance(r, Exception):
+            failed.append(f"{p.run_id} {p.development_id} {p.subject_id}: {r}")
+        else:
+            raise r
+    if inf.versions - {expected}:
+        raise RuntimeError(f"the trial used versions {inf.versions}, not {expected}")
     cost = conn.execute(
         "SELECT coalesce(sum(cost_usd), 0) FROM inference_records WHERE id > ?", (before,)
     ).fetchone()[0]
     return TrialResult(
-        version=version,
+        version=expected,
         number=conn.execute(
-            "SELECT number FROM prompt_versions WHERE id = ?", (version,)
+            "SELECT number FROM prompt_versions WHERE id = ?", (expected,)
         ).fetchone()[0],
         pairs=len(pairs),
         calls=inf.calls,
         cache_hits=inf.cache_hits,
         cost_usd=cost,
         refused=sum(r.reason == PRIORITY_DECLINED for r in ratings),
+        failed=failed,
         levels=Counter(r.priority for r in ratings),
+        recorded=version_calls(conn, expected),
     )
 
 

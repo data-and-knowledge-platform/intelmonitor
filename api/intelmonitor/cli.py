@@ -14,7 +14,7 @@ check_app = typer.Typer(no_args_is_help=True, help="Checks the walkthrough runs 
 app.add_typer(check_app, name="check")
 export_app = typer.Typer(no_args_is_help=True, help="Export what the runs stored, for the team.")
 app.add_typer(export_app, name="export")
-trial_app = typer.Typer(no_args_is_help=True, help="Try the current prompt on a store's pairs.")
+trial_app = typer.Typer(no_args_is_help=True, help="Try a prompt on a store's pairs.")
 app.add_typer(trial_app, name="trial")
 prompts_app = typer.Typer(help="Prompt versions: list, show and compare.")
 app.add_typer(prompts_app, name="prompts")
@@ -332,26 +332,49 @@ def trial_priority(
     weeks: Annotated[
         str, typer.Option("--weeks", help="sample (300 pairs), a run date, or all")
     ] = "sample",
+    candidate: Annotated[
+        str,
+        typer.Option(
+            "--candidate",
+            help="live (the current priority prompt) or a candidate of trial.py: medium, "
+            "medium-think, high, high-think",
+        ),
+    ] = "live",
 ) -> None:
-    """Rate the store's pairs that priority version 1 rated with the current priority prompt,
-    from the same input. Calls are recorded with their prompt version, so a version already
-    tried replays from the cache; no development_subjects row is written."""
+    """Rate the store's pairs that priority version 1 rated with the current priority prompt, or
+    a candidate's template, schema and effort, from the same input. Calls are recorded with their
+    prompt version, so a version already tried replays from the cache; no development_subjects
+    row is written."""
     from contextlib import closing
 
     from intelmonitor.pipeline.inference import Inference
     from intelmonitor.store.db import connect
+    from intelmonitor.trial import CANDIDATES
     from intelmonitor.trial import trial_priority as trial
 
+    if candidate not in CANDIDATES:
+        raise typer.BadParameter(f"no candidate {candidate}; one of {', '.join(CANDIDATES)}")
     with closing(connect(_store(store))) as conn:
         try:
-            r = asyncio.run(trial(Inference(conn, None), weeks))
+            r = asyncio.run(trial(Inference(conn, None), weeks, CANDIDATES[candidate]))
         except (LookupError, ValueError) as error:
             raise typer.BadParameter(str(error)) from error
     typer.echo(
         f"priority version {r.number} ({r.version}) on {r.pairs} pairs: {r.calls} calls, "
-        f"{r.cache_hits} from the cache, ${r.cost_usd:.4f} (measured), {r.refused} refused; "
+        f"{r.cache_hits} from the cache, ${r.cost_usd:.4f} (measured), {r.refused} refused, "
+        f"{len(r.failed)} failed; "
         + ", ".join(f"{r.levels[label]} {label}" for label in ("High", "Medium", "Low"))
     )
+    v = r.recorded
+    refused = ", ".join(f"{n} {category}" for category, n in v.refused.items()) or "none"
+    typer.echo(
+        f"version {r.number}'s recorded calls: {v.calls} ({v.answered} answered, {v.cut_off} cut "
+        f"off, {v.errors} other errors, refused: {refused}); mean output tokens "
+        f"{v.mean_output_tokens:.0f}; ${v.cost_usd:.4f} in all, ${v.cost_per_call:.5f} a call "
+        "(measured)"
+    )
+    for failure in r.failed:
+        typer.echo(f"failed: {failure}")
 
 
 @prompts_app.callback(invoke_without_command=True)
