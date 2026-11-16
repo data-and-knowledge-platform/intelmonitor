@@ -8,8 +8,8 @@ cannot move them.
 Every way the table logic could fail, and the cases that catch it:
 - a cell of the table is wrong, or a High direct item gives High: `cell-*`, one per direct level,
   strength and INDIRECT_FROM_LOW setting;
-- a link is read in the wrong direction: Singtel's event reaches DBS through "DBS depends on
-  Singtel" at `to_from`, DBS's event reaches Singtel at `from_to` (`direction-*`);
+- a link is read in the wrong direction: Singtel's event reaches DBS through "DBS is a major
+  customer of Singtel" at `to_from`, DBS's event reaches Singtel at `from_to` (`direction-*`);
 - several links between the same pair: the strongest wins, then the larger share (a link with no
   share loses to one with a share), then the id (`several-links-*`);
 - several tagged sources reach the same entity: the highest level wins, then the stronger link
@@ -125,12 +125,12 @@ def calm(level: int) -> Tagged:
     return Tagged(level=level, adverse=False)
 
 
-DBS_SINGTEL = "dbs:depends_on:singtel"
+DBS_SINGTEL = "dbs:material_customer_of:singtel"
 
 
 def cells() -> list[Case]:
-    """One case per cell: Singtel's adverse event at each level reaches DBS through "DBS depends on
-    Singtel" rated at each strength from Singtel's end, under both settings."""
+    """One case per cell: Singtel's adverse event at each level reaches DBS through "DBS is a major
+    customer of Singtel" rated at each strength from Singtel's end, under both settings."""
     found: list[Case] = []
     for from_low in (False, True):
         for direct, row in TABLE.items():
@@ -146,7 +146,7 @@ def cells() -> list[Case]:
                     Case(
                         id=f"cell-{PRIORITY_LABELS[direct].lower()}-{strength.lower()}"
                         + ("-from-low" if from_low else ""),
-                        links=[link("dbs", "depends_on", "singtel", "Weak", strength)],
+                        links=[link("dbs", "material_customer_of", "singtel", "Weak", strength)],
                         tagged={"singtel": adverse(direct)},
                         expected=expected,
                         from_low=from_low,
@@ -161,21 +161,21 @@ CASES: list[Case] = [
     *cells(),
     Case(
         id="direction-to-from",
-        links=[link("dbs", "depends_on", "singtel", "Weak", "Strong")],
+        links=[link("dbs", "material_customer_of", "singtel", "Weak", "Strong")],
         tagged={"singtel": adverse(HIGH)},
         expected={"dbs": Expect("Medium", "singtel", DBS_SINGTEL, "Strong")},
-        reason="Singtel's event reaches DBS through DBS's dependency, read at to_from",
+        reason="Singtel's event reaches DBS through DBS's custom, read at to_from",
     ),
     Case(
         id="direction-from-to",
-        links=[link("dbs", "depends_on", "singtel", "Weak", "Strong")],
+        links=[link("dbs", "material_customer_of", "singtel", "Weak", "Strong")],
         tagged={"dbs": adverse(HIGH)},
         expected={"singtel": Expect("Low", "dbs", DBS_SINGTEL, "Weak")},
         reason="DBS's event reaches Singtel at from_to, Weak, so High gives Low",
     ),
     Case(
         id="direction-from-to-medium",
-        links=[link("dbs", "depends_on", "singtel", "Weak", "Strong")],
+        links=[link("dbs", "material_customer_of", "singtel", "Weak", "Strong")],
         tagged={"dbs": adverse(MEDIUM)},
         expected={},
         reason="from_to is Weak, and Medium by Weak gives nothing; to_from's Strong is not read",
@@ -183,31 +183,34 @@ CASES: list[Case] = [
     Case(
         id="several-links-strongest",
         links=[
-            link("dbs", "depends_on", "singtel", "Weak", "Weak"),
-            link("dbs", "partner_of", "singtel", "Weak", "Moderate"),
+            link("dbs", "material_customer_of", "singtel", "Weak", "Weak"),
+            link("dbs", "provides_customer_benefits_with", "singtel", "Weak", "Moderate"),
         ],
         tagged={"singtel": adverse(HIGH)},
-        expected={"dbs": Expect("Medium", "singtel", "dbs:partner_of:singtel", "Moderate")},
+        expected={
+            "dbs": Expect(
+                "Medium", "singtel", "dbs:provides_customer_benefits_with:singtel", "Moderate"
+            )
+        },
         reason="The Moderate link beats the Weak one, which would give only Low",
     ),
     Case(
         id="several-links-larger-share",
         links=[
-            link("dbs", "depends_on", "hong-kong", "Weak", "Strong"),
+            link("dbs", "material_customer_of", "hong-kong", "Weak", "Strong"),
             link("dbs", "exposed_to", "hong-kong", "Weak", "Strong", weight=0.05),
             link("dbs", "holds_stake_in", "hong-kong", "Weak", "Strong", weight=0.122),
             link("dbs", "operates_in", "hong-kong", "Weak", "Strong"),
         ],
         tagged={"hong-kong": adverse(HIGH)},
         expected={"dbs": Expect("Medium", "hong-kong", "dbs:holds_stake_in:hong-kong", "Strong")},
-        reason="Equal strength: the 12.2% share beats 5% and the links with no share, whose "
-        "ids come first",
+        reason="Equal strength: the 12.2% share beats 5% and the links with no share",
     ),
     Case(
         id="several-links-id",
         links=[
-            link("dbs", "partner_of", "singtel", "Weak", "Moderate"),
-            link("dbs", "depends_on", "singtel", "Weak", "Moderate"),
+            link("dbs", "provides_customer_benefits_with", "singtel", "Weak", "Moderate"),
+            link("dbs", "material_customer_of", "singtel", "Weak", "Moderate"),
         ],
         tagged={"singtel": adverse(HIGH)},
         expected={"dbs": Expect("Medium", "singtel", DBS_SINGTEL, "Moderate")},
@@ -216,7 +219,7 @@ CASES: list[Case] = [
     Case(
         id="several-sources-highest-level",
         links=[
-            link("dbs", "depends_on", "singtel", "Weak", "Weak"),
+            link("dbs", "material_customer_of", "singtel", "Weak", "Weak"),
             link("dbs", "exposed_to", "hong-kong", "Weak", "Strong", weight=0.122),
         ],
         tagged={"singtel": adverse(HIGH), "hong-kong": adverse(MEDIUM)},
@@ -226,7 +229,7 @@ CASES: list[Case] = [
     Case(
         id="several-sources-level-before-strength",
         links=[
-            link("dbs", "depends_on", "singtel", "Weak", "Moderate"),
+            link("dbs", "material_customer_of", "singtel", "Weak", "Moderate"),
             link("dbs", "exposed_to", "hong-kong", "Weak", "Strong", weight=0.122),
         ],
         tagged={"singtel": adverse(HIGH), "hong-kong": adverse(LOW)},
@@ -238,7 +241,7 @@ CASES: list[Case] = [
     Case(
         id="several-sources-stronger-link",
         links=[
-            link("dbs", "depends_on", "singtel", "Weak", "Moderate"),
+            link("dbs", "material_customer_of", "singtel", "Weak", "Moderate"),
             link("dbs", "exposed_to", "hong-kong", "Weak", "Strong", weight=0.122),
         ],
         tagged={"singtel": adverse(HIGH), "hong-kong": adverse(MEDIUM)},
@@ -248,16 +251,18 @@ CASES: list[Case] = [
     Case(
         id="tagged-no-row",
         links=[
-            link("dbs", "depends_on", "singtel", "Strong", "Strong"),
-            link("ocbc", "depends_on", "singtel", "Weak", "Strong"),
+            link("dbs", "material_customer_of", "singtel", "Strong", "Strong"),
+            link("ocbc", "material_customer_of", "singtel", "Weak", "Strong"),
         ],
         tagged={"singtel": adverse(HIGH), "dbs": adverse(HIGH)},
-        expected={"ocbc": Expect("Medium", "singtel", "ocbc:depends_on:singtel", "Strong")},
+        expected={
+            "ocbc": Expect("Medium", "singtel", "ocbc:material_customer_of:singtel", "Strong")
+        },
         reason="DBS and Singtel are both tagged, so neither gets a row from the other",
     ),
     Case(
         id="not-adverse-high",
-        links=[link("dbs", "depends_on", "singtel", "Strong", "Strong")],
+        links=[link("dbs", "material_customer_of", "singtel", "Strong", "Strong")],
         tagged={"singtel": calm(HIGH)},
         expected={},
         reason="A High development not adverse for Singtel passes nothing",
@@ -265,16 +270,16 @@ CASES: list[Case] = [
     Case(
         id="not-adverse-per-entity",
         links=[
-            link("uob", "depends_on", "singtel", "Weak", "Strong"),
+            link("uob", "material_customer_of", "singtel", "Weak", "Strong"),
             link("ocbc", "holds_stake_in", "great-eastern", "Strong", "Weak", weight=0.88),
         ],
         tagged={"singtel": adverse(MEDIUM), "ocbc": calm(HIGH)},
-        expected={"uob": Expect("Medium", "singtel", "uob:depends_on:singtel", "Strong")},
+        expected={"uob": Expect("Medium", "singtel", "uob:material_customer_of:singtel", "Strong")},
         reason="Adverse for Singtel only: its neighbour gets a row, OCBC's does not",
     ),
     Case(
         id="low-switch-moderate",
-        links=[link("dbs", "depends_on", "singtel", "Weak", "Moderate")],
+        links=[link("dbs", "material_customer_of", "singtel", "Weak", "Moderate")],
         tagged={"singtel": adverse(LOW)},
         expected={},
         from_low=True,
@@ -283,8 +288,8 @@ CASES: list[Case] = [
     Case(
         id="two-hops-entity",
         links=[
-            link("dbs", "depends_on", "singtel", "Weak", "Strong"),
-            link("ocbc", "depends_on", "dbs", "Weak", "Strong"),
+            link("dbs", "material_customer_of", "singtel", "Weak", "Strong"),
+            link("ocbc", "material_customer_of", "dbs", "Weak", "Strong"),
         ],
         tagged={"singtel": adverse(HIGH)},
         expected={"dbs": Expect("Medium", "singtel", DBS_SINGTEL, "Strong")},
@@ -344,7 +349,7 @@ CASES: list[Case] = [
     ),
     Case(
         id="topic-passes-nothing",
-        links=[link("dbs", "depends_on", "singtel", "Strong", "Strong")],
+        links=[link("dbs", "material_customer_of", "singtel", "Strong", "Strong")],
         tagged={"banking-lending": adverse(HIGH)},
         expected={},
         reason="A topic has no links",
@@ -420,8 +425,8 @@ def check_store() -> list[str]:
     """store_impacts on a run with two developments: it reads each tag's level and adverse flag
     from development_subjects, stores the default setting's rows and counts both settings."""
     links = [
-        link("dbs", "depends_on", "singtel", "Weak", "Strong"),
-        link("uob", "depends_on", "singtel", "Weak", "Weak"),
+        link("dbs", "material_customer_of", "singtel", "Weak", "Strong"),
+        link("uob", "material_customer_of", "singtel", "Weak", "Weak"),
         link("ocbc", "exposed_to", "greater-china", "Weak", "Moderate", weight=0.2),
     ]
     conn = _store(links)
@@ -451,7 +456,7 @@ def check_store() -> list[str]:
     }
     want = {
         ("dev-a", "dbs", "singtel", DBS_SINGTEL, None, "Strong", MEDIUM),
-        ("dev-a", "uob", "singtel", "uob:depends_on:singtel", None, "Weak", LOW),
+        ("dev-a", "uob", "singtel", "uob:material_customer_of:singtel", None, "Weak", LOW),
     }
     problems: list[str] = []
     if stored != want:

@@ -714,10 +714,10 @@ relationships:
     source_title: "EDBI, Portfolio"
     quote: "wefox was founded in 2015 by Julian Teicke, Fabian Wesemann, and Dario Fazlic. wefox is a full-stack digital insurance company driven by a single purpose: to make people safe and prevent risk by reinventing insurance at scale through technology. wefox is the parent company of wefox Insurance, which is the in-house regulated insurance carrier."
 
-depends_on_participates:
-  - from: circle
-    to: blackrock
-    type: depends_on
+service_links:
+  - from: blackrock
+    to: circle
+    type: provides_business_service_to
     detail: "About 88% of USDC reserves sit in the Circle Reserve Fund, a government money market fund managed by BlackRock; Circle treats BlackRock as its preferred reserve manager."
     service: reserve_management
     evidence: public

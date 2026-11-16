@@ -9,6 +9,10 @@ The sections after "Measured, October rebuild" keep the estimate and its method 
 
 Noted 16 Nov 2026: trials of link strength judged per development cost $17.56 (measured); the work is not merged, and its code and cost record are on the branch `park/per-development-strength`.
 
+Noted 17 Nov 2026: the theme stage no longer runs.
+It labelled each development with a theme for the graph view, which was removed on 16 Nov 2026 (spec step 3b of link-types-and-inferred-impact).
+Its rows below are what it cost while it ran ($0.64 of the October rebuild, measured), and a weekly run now costs that much less.
+
 ## Totals
 
 | | Documents | Claude Haiku 5.5 | Claude Sonnet 5.5 | Total | Basis |
@@ -109,6 +113,7 @@ A rerun pays only for links that are new or whose input changed.
 | route | Goes: Haiku decides relevance and subjects itself (call shapes below). |
 | priority_check, high check | Goes: priority is one Sonnet call per development and entity, with no check. |
 | impact | Indirect impact is a fixed table of the direct level by the link's strength (spec step 3a); it was $0.82 a week and $4.09 for the five-week seed. |
+| theme | Goes with the graph view, whose themes it labelled (16 Nov 2026); it cost $0.64 over the six runs of the October rebuild. |
 | custom_match, custom_draft, custom_answer | Custom questions are removed. |
 | answer | Standing questions are removed. |
 | materiality | Old name of priority; nothing calls it. |
@@ -118,7 +123,7 @@ A rerun pays only for links that are new or whose input changed.
 
 - screen and extract are paid once per document: `Inference` records each call by its input hash, and later runs replay it.
 - same_event is paid once per candidate pair.
-- theme and headline are paid for each new development, and priority for each new development and entity, and again when a development gains findings, because its input changes.
+- headline is paid for each new development, and priority for each new development and entity, and again when a development gains findings, because its input changes.
 - brief and note are paid on every run, whatever arrived.
 
 ## Method
@@ -163,7 +168,7 @@ A rerun pays only for links that are new or whose input changed.
   Prompts under 512 tokens do not cache, so note and route saved nothing.
 - Haiku screen depends on it: its fixed part (instructions, relevance criterion, 117 subjects, categories, jurisdictions, stages) goes in the system prompt, byte for byte the same on every call.
   Cached, a document costs $0.00037; uncached, $0.0016.
-- same_event and theme prompts are below 512 tokens, so caching does not apply.
+- same_event prompts are below 512 tokens, so caching does not apply.
 - extract puts its fixed instructions after the document in the user prompt, so about 2k tokens a call are never cached.
   Moving them into the system prompt would save about $1 a week; this is optional.
 - The Batches API would halve the bill for an unattended weekly run, at the cost of polling and waits of minutes to hours per stage; not proposed now.
@@ -200,9 +205,7 @@ Haiku 5.5 has no server-side refusal fallback, so a Haiku refusal is retried onc
 
 ### theme
 
-- One call per development, on its title, as now.
-- Output: `theme`, one of the six graph themes.
-- No uncertain band.
+- Removed on 16 Nov 2026 with the graph view, whose themes it labelled.
 
 ### custom_match and materiality
 

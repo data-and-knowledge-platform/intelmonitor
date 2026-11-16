@@ -45,7 +45,7 @@ from pydantic import BaseModel, Field
 from intelmonitor.pipeline.corroboration import Corroboration, corroborations
 from intelmonitor.pipeline.detectors import Detection, live_events
 from intelmonitor.pipeline.diff import DevelopmentChange, development_changes, previous_run
-from intelmonitor.pipeline.impact import link_words, route_text
+from intelmonitor.pipeline.impact import inbound_words, link_words, route_text
 from intelmonitor.pipeline.indicators import compute_indicators
 from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
 from intelmonitor.pipeline.key_data import key_data, mapped_series, series_sentence
@@ -62,6 +62,7 @@ from intelmonitor.relationships import (
     Relationship,
     RelType,
     links_from,
+    links_into,
     load_nodes,
 )
 from intelmonitor.seed import load_series
@@ -80,14 +81,20 @@ BRIEF_MAX_UPCOMING = 12
 # it at Medium or above, with their last source in the BRIEF_EARLIER_DAYS before the window.
 BRIEF_EARLIER_DAYS = 90
 BRIEF_MAX_EARLIER = 3
-# The subject's main stored links: these types in this order, the strongest of each first.
+# The subject's main stored links: these types in this order, the strongest of each first. Each is
+# read from the subject's end: the BRIEF_INBOUND types run into it from its providers and the
+# systems that process its payments, the others from it.
 BRIEF_LINK_TYPES: tuple[RelType, ...] = (
     "exposed_to",
-    "depends_on",
-    "participates_in",
+    "provides_technology_to",
+    "provides_connectivity_to",
+    "provides_business_service_to",
+    "distributes_products_for",
+    "processes_transactions_for",
     "holds_stake_in",
     "operates_in",
 )
+BRIEF_INBOUND: tuple[RelType, ...] = BRIEF_LINK_TYPES[1:6]
 BRIEF_LINKS_PER_TYPE = 2
 BRIEF_MAX_LINKS = 6
 MAX_CONCERNS = 2
@@ -376,9 +383,17 @@ def key_data_lines(
 
 def main_links(conn: sqlite3.Connection, subject: Subject) -> list[str]:
     """The subject's main stored relationships in plain words ("DBS has 44.4% of its loans in
-    Singapore"): up to BRIEF_LINKS_PER_TYPE of each of BRIEF_LINK_TYPES, the largest share first,
-    then the best evidenced, BRIEF_MAX_LINKS in all."""
-    links = links_from(conn, subject.id, BRIEF_LINK_TYPES)
+    Singapore", "DBS gets its cloud services from AWS"): up to BRIEF_LINKS_PER_TYPE of each of
+    BRIEF_LINK_TYPES, the largest share first, then the best evidenced, BRIEF_MAX_LINKS in all."""
+    outward: tuple[RelType, ...] = tuple(t for t in BRIEF_LINK_TYPES if t not in BRIEF_INBOUND)
+    links = [
+        (r, f"{subject.name} {link_words(r, to)}")
+        for r, to in links_from(conn, subject.id, outward)
+    ]
+    links += [
+        (r, f"{subject.name} {inbound_words(r, source)}")
+        for r, source in links_into(conn, subject.id, BRIEF_INBOUND)
+    ]
     links.sort(
         key=lambda x: (
             BRIEF_LINK_TYPES.index(x[0].type),
@@ -389,10 +404,10 @@ def main_links(conn: sqlite3.Connection, subject: Subject) -> list[str]:
     )
     taken: dict[str, int] = {}
     out: list[str] = []
-    for r, to in links:
+    for r, words in links:
         if taken.get(r.type, 0) < BRIEF_LINKS_PER_TYPE and len(out) < BRIEF_MAX_LINKS:
             taken[r.type] = taken.get(r.type, 0) + 1
-            out.append(f"{subject.name} {link_words(r, to)}")
+            out.append(words)
     return out
 
 

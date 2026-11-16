@@ -8,8 +8,8 @@
 # Links already in entity-links.yaml (ocbc holds_stake_in great-eastern, great-eastern operates_in
 # malaysia, great-eastern and income-insurance regulated_by mas, great-eastern regulated_by bnm) and
 # tech-dependencies.yaml (great-eastern on oracle-cloud, singlife on aws) are not repeated.
-# Bancassurance ties are depends_on rows with service distribution (insurer depends on the bank's
-# distribution). Table quotes join the heading or row cells with " | " (cell text verbatim).
+# Bancassurance ties are distributes_products_for rows with service distribution, from the bank to
+# the insurer whose products it sells (depends_on rows until 17 Nov 2026). Table quotes join the heading or row cells with " | " (cell text verbatim).
 # Licence and membership rows date from the day the register was read.
 collected: 2026-10-26
 
@@ -324,6 +324,7 @@ relationships:
   - from: allianz
     to: income-insurance
     type: partner_of
+    outside_types: true
     share: null
     detail: "Deal counterparty: Allianz offered in July 2024 to buy at least 51% of Income Insurance and withdrew the offer on 16 December 2024 after the Government said the deal should not proceed as structured."
     evidence: public
@@ -541,6 +542,7 @@ relationships:
   - from: allianz
     to: hsbc
     type: partner_of
+    outside_types: true
     share: null
     detail: "Deal counterparty: HSBC agreed in July 2026 to sell HSBC Life (Singapore) to Allianz Asia Holdings for S$2.7bn (completion expected 1H 2027), with a 15-year exclusive HSBC Bank (Singapore) bancassurance agreement on completion."
     evidence: public
@@ -549,10 +551,10 @@ relationships:
     source_title: "HSBC Holdings, Voluntary announcement: HSBC to sell its life and health insurance business in Singapore to Allianz (HKEX, 24 Jul 2026)"
     quote: "HSBC Holdings announces that its indirect wholly-owned subsidiary, HSBC Insurance (Asia- Pacific) Holdings Limited (the “Seller”), has today entered into a share purchase agreement with Allianz Asia Holdings Pte. Ltd. (the “Purchaser”) for the sale of 100% of the issued share capital of HSBC Life (Singapore) Pte. Ltd. (“HSBC Life SG”) for a consideration of S$2.7billion (US$2.1 billion) (together, the “Disposal”)."
 
-depends_on_participates:
-  - from: great-eastern
-    to: ocbc
-    type: depends_on
+service_links:
+  - from: ocbc
+    to: great-eastern
+    type: distributes_products_for
     detail: "Great Eastern sells through an exclusive bancassurance partnership with OCBC Bank, in place since 1992."
     service: distribution
     evidence: public
@@ -561,9 +563,9 @@ depends_on_participates:
     published: null
     quote: "Great Eastern became the first insurer to establish a bancassurance network in Singapore in an exclusive partnership with OCBC Bank in 1992."
     as_of: 2026-10-26
-  - from: prudential-singapore
-    to: uob
-    type: depends_on
+  - from: uob
+    to: prudential-singapore
+    type: distributes_products_for
     detail: "Prudential's regional bancassurance alliance with UOB, which includes Singapore, was renewed in 2019 to run until 2034."
     service: distribution
     evidence: public
@@ -571,9 +573,9 @@ depends_on_participates:
     source_title: "Prudential plc and UOB renew and expand their regional strategic bancassurance alliance"
     published: 2019-01-10
     quote: "The new agreement extends the original alliance which commenced in 2010 to 2034 and increases the geographical scope to include a fifth market, Vietnam, alongside our existing footprint across Singapore, Malaysia, Thailand and Indonesia."
-  - from: prudential-singapore
-    to: standard-chartered
-    type: depends_on
+  - from: standard-chartered
+    to: prudential-singapore
+    type: distributes_products_for
     detail: "Standard Chartered is a major Prudential bancassurance partner, with growth in Hong Kong and Singapore (group-level partnership)."
     service: distribution
     evidence: public
@@ -581,9 +583,9 @@ depends_on_participates:
     source_title: "Prudential plc Half Year 2026 Results (Form 6-K, 27 Aug 2026)"
     published: 2026-08-27
     quote: "our partnership with Standard Chartered Bank (SCB) continued to deliver robust growth, supported by favourable momentum in Hong Kong and Singapore and United Overseas Bank (UOB), our other major strategic partner, continued to contribute to our overall performance."
-  - from: aia-singapore
-    to: citibank
-    type: depends_on
+  - from: citibank
+    to: aia-singapore
+    type: distributes_products_for
     detail: "Citibank is AIA Singapore's main bancassurance partner, part of AIA's exclusive regional partnership with Citi signed in 2013."
     service: distribution
     evidence: public
@@ -591,9 +593,9 @@ depends_on_participates:
     source_title: "AIA Group Limited, Interim Results for the six months ended 30 June 2026 (HKEX announcement)"
     published: 2026-08-20
     quote: "Partnership distribution also maintained strong momentum, particularly through Citibank."
-  - from: manulife-singapore
-    to: dbs
-    type: depends_on
+  - from: dbs
+    to: manulife-singapore
+    type: distributes_products_for
     detail: "Manulife is DBS's exclusive life bancassurance partner in Singapore, Hong Kong, China and Indonesia under a 15-year agreement from 2016."
     service: distribution
     evidence: public

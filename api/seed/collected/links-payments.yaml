@@ -478,11 +478,11 @@ relationships:
     source_title: "MAS Financial Institutions Directory: 2C2P Pte. Ltd."
     quote: "2C2P Pte. Ltd. | Incorporated in Singapore | Major Payment Institution"
 
-depends_on_participates:
+service_links:
   # ------------------------------------------------------------ BCS-operated systems
-  - from: usd-cheque-clearing
-    to: bcs
-    type: depends_on
+  - from: bcs
+    to: usd-cheque-clearing
+    type: processes_transactions_for
     detail: "BCS is the MAS-designated operator of the US Dollar Cheque Clearing System."
     service: payments
     evidence: public
@@ -491,9 +491,9 @@ depends_on_participates:
     published: null
     as_of: 2026-10-26
     quote: "Designated Payment System Operator | US Dollar Cheque Clearing System"
-  - from: sgd-cheque-clearing
-    to: bcs
-    type: depends_on
+  - from: bcs
+    to: sgd-cheque-clearing
+    type: processes_transactions_for
     detail: "BCS is the MAS-designated operator of the Singapore Dollar Cheque Clearing System."
     service: payments
     evidence: public
@@ -504,9 +504,9 @@ depends_on_participates:
     quote: "Designated Payment System Operator | Singapore Dollar Cheque Clearing System"
 
   # ------------------------------------------------------------ CLS settlement members
-  - from: dbs
-    to: cls-bank
-    type: participates_in
+  - from: cls-bank
+    to: dbs
+    type: processes_transactions_for
     detail: "DBS is a CLS settlement member, settling FX trades (including SGD) directly in CLS."
     service: market_infrastructure
     evidence: public
@@ -515,9 +515,9 @@ depends_on_participates:
     published: null
     as_of: 2026-10-26
     quote: "Settlement member list | DBS Bank | Singapore"
-  - from: ocbc
-    to: cls-bank
-    type: participates_in
+  - from: cls-bank
+    to: ocbc
+    type: processes_transactions_for
     detail: "OCBC is a CLS settlement member, settling FX trades (including SGD) directly in CLS."
     service: market_infrastructure
     evidence: public
@@ -526,9 +526,9 @@ depends_on_participates:
     published: null
     as_of: 2026-10-26
     quote: "Settlement member list | Oversea-Chinese Banking Corporation | Singapore"
-  - from: citigroup
-    to: cls-bank
-    type: participates_in
+  - from: cls-bank
+    to: citigroup
+    type: processes_transactions_for
     detail: "Citibank (New York) is a CLS settlement member."
     service: market_infrastructure
     evidence: public
@@ -537,9 +537,9 @@ depends_on_participates:
     published: null
     as_of: 2026-10-26
     quote: "Settlement member list | Citibank | New York, US"
-  - from: hsbc
-    to: cls-bank
-    type: participates_in
+  - from: cls-bank
+    to: hsbc
+    type: processes_transactions_for
     detail: "HSBC is a CLS settlement member."
     service: market_infrastructure
     evidence: public
@@ -548,9 +548,9 @@ depends_on_participates:
     published: null
     as_of: 2026-10-26
     quote: "Settlement member list | HSBC | London, England"
-  - from: jpmorgan
-    to: cls-bank
-    type: participates_in
+  - from: cls-bank
+    to: jpmorgan
+    type: processes_transactions_for
     detail: "JPMorgan Chase is a CLS settlement member."
     service: market_infrastructure
     evidence: public
@@ -559,9 +559,9 @@ depends_on_participates:
     published: null
     as_of: 2026-10-26
     quote: "Settlement member list | JPMorgan Chase | New York, US"
-  - from: standard-chartered
-    to: cls-bank
-    type: participates_in
+  - from: cls-bank
+    to: standard-chartered
+    type: processes_transactions_for
     detail: "Standard Chartered is a CLS settlement member."
     service: market_infrastructure
     evidence: public
@@ -572,9 +572,9 @@ depends_on_participates:
     quote: "Settlement member list | Standard Chartered | London, UK"
 
   # ------------------------------------------------------------ Card schemes
-  - from: nium
-    to: visa
-    type: participates_in
+  - from: visa
+    to: nium
+    type: processes_transactions_for
     detail: "Nium is a principal card issuer on Visa (group-level membership)."
     service: payments
     evidence: reported
@@ -582,9 +582,9 @@ depends_on_participates:
     source_title: "Nium Stablecoin Card Issuance Platform (Nilson Report, Apr 2026)"
     published: 2026-04-01
     quote: "Nium is also a principal issuer of Visa, Mastercard, Discover and UATP payment cards."
-  - from: nium
-    to: mastercard
-    type: participates_in
+  - from: mastercard
+    to: nium
+    type: processes_transactions_for
     detail: "Nium is a principal card issuer on Mastercard (group-level membership)."
     service: payments
     evidence: reported
@@ -592,9 +592,9 @@ depends_on_participates:
     source_title: "Nium Stablecoin Card Issuance Platform (Nilson Report, Apr 2026)"
     published: 2026-04-01
     quote: "Nium is also a principal issuer of Visa, Mastercard, Discover and UATP payment cards."
-  - from: airwallex
-    to: visa
-    type: participates_in
+  - from: visa
+    to: airwallex
+    type: processes_transactions_for
     detail: "Airwallex is a Visa principal member and issues multi-currency Visa cards (group-level membership)."
     service: payments
     evidence: public
@@ -605,9 +605,9 @@ depends_on_participates:
     quote: "Airwallex is a principal member of Visa, allowing cardholders to transact securely in 170+ currencies worldwide."
 
   # ------------------------------------------------------------ Cloud
-  - from: grab
-    to: aws
-    type: depends_on
+  - from: aws
+    to: grab
+    type: provides_technology_to
     detail: "Grab chose AWS as its preferred cloud provider in December 2024; AWS runs Grab's compute, storage, networking and databases (group-level)."
     service: cloud
     evidence: public
@@ -615,9 +615,9 @@ depends_on_participates:
     source_title: "Superapp Grab Selects AWS as its Preferred Cloud Provider (Amazon press release, 4 Dec 2024)"
     published: 2024-12-04
     quote: "AWS powers Grab’s critical compute, storage, networking, and database functions."
-  - from: stripe
-    to: aws
-    type: depends_on
+  - from: aws
+    to: stripe
+    type: provides_technology_to
     detail: "Stripe's core compute infrastructure runs on AWS, extended under a January 2023 agreement (group-level)."
     service: cloud
     evidence: public

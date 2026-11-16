@@ -26,8 +26,17 @@ export function edgeLabel(l: Link): string {
       // The label ends with the share: "lends to, 12.2% of loans", "holds reserves in, 84.9% of reserves".
       if (l.weight !== null) return l.label.split(", ").at(-1) ?? "";
       return l.label.startsWith("lends") ? "lends there" : l.label.split(",")[0];
-    case "depends_on":
-      return l.label.includes(", for ") ? l.label.split(", for ")[1] : "supplier";
+    case "provides_technology_to":
+    case "provides_business_service_to":
+      // What is provided, from "provides cloud services to": the word reads either way along the edge.
+      return l.label.replace(/^provides (.+) to$/, "$1");
+    case "provides_connectivity_to":
+      return "connectivity";
+    case "processes_transactions_for":
+      // "payments" or "transactions", from "processes payments for".
+      return l.label.replace(/^processes (.+) for$/, "$1");
+    case "distributes_products_for":
+      return "distribution";
     case "participates_in":
       return "takes part";
     case "holds_stake_in":

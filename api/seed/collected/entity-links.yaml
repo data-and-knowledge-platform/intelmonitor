@@ -11,13 +11,16 @@
 # Sections
 #   relationships: directed edges.
 #     from, to     entity ids (existing subject ids or ids declared in new_entities)
-#     type         holds_stake_in | operates_in | member_of | partner_of | listed_on
-#                  | regulated_by (renamed on 2026-11-11 from owns, subsidiary_of and
-#                  shareholder_of, and supervised_by; ticket 17)
+#     type         holds_stake_in | operates_in | member_of | listed_on | regulated_by
+#                  | jointly_offers_product_with (renamed on 2026-11-11 from owns,
+#                  subsidiary_of and shareholder_of, and supervised_by; ticket 17), or
+#                  partner_of, which is not one of the team's 22 types: such a row carries
+#                  outside_types: true and is not built (17 Nov 2026)
 #                  A stake is recorded once, holder -> held, as `holds_stake_in`.
 #                  `partner_of` also covers deal counterparties (e.g. a bank that
 #                  bought another bank's business); `detail` says which. The build
-#                  stores one link per pair, ids in alphabetical order.
+#                  stores a jointly_offers_product_with link once per pair, ids in
+#                  alphabetical order.
 #     share        ownership or voting fraction (0..1) when the source gives one, else null
 #     controlling  true on a holds_stake_in row with no share where the holder controls the
 #                  held (a former owns or subsidiary_of row); left out otherwise
@@ -140,6 +143,7 @@ relationships:
   - from: dbs
     to: citibank
     type: partner_of
+    outside_types: true
     share: null
     detail: "DBS bought Citigroup's consumer banking business in Taiwan, which now sits in DBS Bank (Taiwan)."
     evidence: public
@@ -444,6 +448,7 @@ relationships:
   - from: uob
     to: citibank
     type: partner_of
+    outside_types: true
     share: null
     detail: "UOB bought Citigroup's consumer banking businesses in Malaysia, Thailand, Vietnam and Indonesia in 2022-2023 and folded them into its local subsidiaries."
     evidence: public
@@ -576,6 +581,7 @@ relationships:
   - from: sel-holdings
     to: mas
     type: partner_of
+    outside_types: true
     share: null
     detail: "SEL Holdings holds its SGX shares for the Financial Sector Development Fund, which MAS controls and administers."
     evidence: public
@@ -638,6 +644,7 @@ relationships:
   - from: sgx
     to: hkex
     type: partner_of
+    outside_types: true
     share: null
     detail: "SGX and HKEX signed a 2013 cooperation MOU on renminbi products, connectivity, regulation and technology; no newer formal agreement was found."
     evidence: public

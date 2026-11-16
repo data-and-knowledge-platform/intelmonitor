@@ -168,6 +168,14 @@ export function reasonFrom({ subject, link: l }: Pick<Impact, "subject" | "link"
 
 /** Whether the entity reached is the link's `from` end, so the link reads from it ("DBS uses Singtel"). */
 const outward = (i: Impact) => i.link.from_id === i.subject.id;
+// Links from a provider, a payment system or a distributor to the entity it serves.
+const USED = new Set<Link["type"]>([
+  "provides_technology_to",
+  "provides_connectivity_to",
+  "provides_business_service_to",
+  "processes_transactions_for",
+  "distributes_products_for",
+]);
 
 /** One sentence per route type and far end: "DBS, OCBC and UOB each lend over 40% of their loans in Singapore". */
 export function claims(impacts: Impact[]): string[] {
@@ -181,6 +189,8 @@ export function claims(impacts: Impact[]): string[] {
     const many = g.length > 1;
     const end = farEnd(g[0]).name;
     const first = g[0].link;
+    // A provider serves the entity it reaches ("DBS uses Singtel"), read from the entity's end.
+    if (!outward(g[0]) && USED.has(first.type)) return `${who} ${many ? (g.length === 2 ? "both use" : "all use") : "uses"} ${end}`;
     // Read from the far end ("Singtel, used by DBS"), only the plain wording fits.
     switch (outward(g[0]) ? first.type : null) {
       case "exposed_to": {
@@ -192,8 +202,6 @@ export function claims(impacts: Impact[]): string[] {
         if (!many) return `${who} lends ${(low * 100).toFixed(1).replace(/\.0$/, "")}% of its loans in ${end}`;
         return low >= 0.1 ? `${who} each lend over ${Math.floor(low * 10) * 10}% of their loans in ${end}` : `${who} each lend part of their loans in ${end}`;
       }
-      case "depends_on":
-        return `${who} ${many ? (g.length === 2 ? "both use" : "all use") : "uses"} ${end}`;
       case "participates_in":
         return `${who} ${many ? (g.length === 2 ? "both take" : "all take") : "takes"} part in ${end}`;
       default:

@@ -12,7 +12,8 @@ the stronger link, the larger share, the link id, the source id.
 
 The rows go to development_impacts, apart from development_subjects, so an indirect impact is
 never shown as news about the entity itself. The wording helpers below write links in plain
-words for the graph, the briefs, the Linked section and the API.
+words for the Overview's Related graph, the briefs, the routes the API serves and the build's
+reasons.
 """
 
 import sqlite3
@@ -32,31 +33,44 @@ from intelmonitor.relationships import (
 )
 
 SERVICE_WORDS: dict[Service, str] = {
-    "banking": "banking",
+    "banking": "banking services",
     "blockchain": "blockchain infrastructure",
     "cloud": "cloud services",
-    "core_banking": "core banking",
-    "custody": "custody",
+    "core_banking": "core banking systems",
+    "custody": "custody services",
     "data_centre": "data centre services",
     "distribution": "distribution",
     "market_infrastructure": "market infrastructure",
     "payments": "payments",
-    "print_mail": "print and mail",
+    "print_mail": "print and mail services",
     "reserve_management": "reserve management",
     "security": "security services",
     "telco": "telecoms",
 }
 
-# A link type in plain words, as the graph labels it: "DBS depends on AWS".
+# A link type in plain words from its `from` end, before the name at its `to` end: "Singtel
+# provides connectivity to DBS". exposed_to reads from its measure instead (EXPOSURE_WORDS).
 LINK_WORDS: dict[RelType, str] = {
     "holds_stake_in": "holds a stake in",
+    "lends_to": "lends to",
+    "invests_in": "invests in",
+    "funds": "funds",
+    "insures": "insures",
+    "provides_technology_to": "provides technology to",
+    "provides_connectivity_to": "provides connectivity to",
+    "provides_business_service_to": "provides business services to",
+    "processes_transactions_for": "processes transactions for",
+    "shares_or_processes_data_with": "shares data with",
+    "distributes_products_for": "distributes products for",
+    "provides_customer_benefits_with": "offers customer benefits with",
+    "jointly_offers_product_with": "jointly offers a product with",
+    "material_customer_of": "is a major customer of",
+    "material_supplier_to": "is a major supplier to",
     "regulated_by": "is regulated by",
     "operates_in": "operates in",
     "exposed_to": "lends to",
-    "depends_on": "depends on",
     "member_of": "is a member of",
     "participates_in": "takes part in",
-    "partner_of": "is a partner of",
     "listed_on": "is listed on",
     "belongs_to_sector": "belongs to",
 }
@@ -142,62 +156,85 @@ def _share(weight: float) -> str:
     return f"{weight * 100:.1f}".removesuffix(".0") + "%"
 
 
+# A link type in plain words from its `to` end, before the name at its `from` end: "DBS gets its
+# connectivity from Singtel". A SYMMETRIC type reads the same from either end.
+INBOUND_WORDS: dict[RelType, str] = {
+    "holds_stake_in": "held by",
+    "lends_to": "borrows from",
+    "invests_in": "gets investment from",
+    "funds": "gets funding from",
+    "insures": "gets insurance from",
+    "provides_technology_to": "gets its technology from",
+    "provides_connectivity_to": "gets its connectivity from",
+    "provides_business_service_to": "gets its business services from",
+    "processes_transactions_for": "gets its transaction processing from",
+    "shares_or_processes_data_with": "gets data from",
+    "distributes_products_for": "sells through",
+    "provides_customer_benefits_with": "offers customer benefits with",
+    "jointly_offers_product_with": "jointly offers a product with",
+    "material_customer_of": "earns much of its revenue from",
+    "material_supplier_to": "gets key supplies from",
+    "regulated_by": "regulates",
+    "operates_in": "hosts",
+    "exposed_to": "lent to by",
+    "member_of": "includes",
+    "participates_in": "is joined by",
+    "listed_on": "lists",
+    "belongs_to_sector": "includes",
+}
+
+
+def type_words(r: Relationship) -> tuple[str, str]:
+    """The link's type in plain words from its `from` end and from its `to` end, where its
+    service names what is provided: ("provides cloud services to", "gets its cloud services
+    from"), ("processes payments for", "gets its payment processing from"); else LINK_WORDS and
+    INBOUND_WORDS."""
+    if r.service and r.type in ("provides_technology_to", "provides_business_service_to"):
+        what = SERVICE_WORDS[r.service]
+        return f"provides {what} to", f"gets its {what} from"
+    if r.service == "payments" and r.type == "processes_transactions_for":
+        return "processes payments for", "gets its payment processing from"
+    return LINK_WORDS[r.type], INBOUND_WORDS[r.type]
+
+
 def link_words(r: Relationship, to: Node) -> str:
-    """One link in plain words, without its subject: "depends on AWS for cloud services",
-    "has 12.2% of its loans in Hong Kong", "holds 84.9% of its stablecoin reserves in the Circle
-    Reserve Fund", "holds 28.3% of DBS", "owns Citibank" for a controlling stake with no share."""
+    """One link in plain words, without its subject: "provides connectivity to DBS", "provides
+    cloud services to DBS", "has 12.2% of its loans in Hong Kong", "holds 84.9% of its stablecoin
+    reserves in the Circle Reserve Fund", "holds 28.3% of DBS", "owns Citibank" for a controlling
+    stake with no share."""
     if r.type == "exposed_to":
         w = _exposure_words(r)
         share = f"{_share(r.weight)} of its {w.basis}" if r.weight is not None else w.basis
         return f"{w.verb} {share} {w.prep} {_place(to)}"
-    phrase = f"{LINK_WORDS[r.type]} {to.name}"
+    phrase = f"{type_words(r)[0]} {to.name}"
     if r.type == "holds_stake_in" and r.weight is not None:
         phrase = f"holds {_share(r.weight)} of {to.name}"
     elif owns(r):
         phrase = f"owns {to.name}"
-    if r.type == "depends_on" and r.service:
-        phrase += f" for {SERVICE_WORDS[r.service]}"
     if r.chart_reading:
         phrase += " (read from a chart)"
     return phrase
 
 
 def relationship_label(r: Relationship) -> str:
-    """A stored link in plain words without its ends, as the graph labels it: "lends to, 12.2%
-    of loans", "earns revenue from, 24% of revenue", "depends on, for cloud services", "holds a
-    stake in, 100%"."""
+    """A stored link in plain words without its ends, as the API serves it: "lends to, 12.2% of
+    loans", "earns revenue from, 24% of revenue", "provides cloud services to", "holds a stake
+    in, 100%"."""
     if r.type == "exposed_to":
         w = _exposure_words(r)
         if r.weight is None:
             return f"{w.head}, share not disclosed"
         return f"{w.head}, {_share(r.weight)} of {w.short}"
-    label = LINK_WORDS[r.type]
+    label = type_words(r)[0]
     if r.type == "holds_stake_in" and r.weight is not None:
         label += f", {_share(r.weight)}"
-    if r.type == "depends_on" and r.service:
-        label += f", for {SERVICE_WORDS[r.service]}"
     return label
-
-
-# A link type read from its `to` end, as the Related graph labels it: "AWS, depended on by DBS".
-INBOUND_WORDS: dict[RelType, str] = {
-    "holds_stake_in": "held by",
-    "regulated_by": "regulates",
-    "operates_in": "hosts",
-    "exposed_to": "lent to by",
-    "depends_on": "depended on by",
-    "member_of": "includes",
-    "participates_in": "used by",
-    "partner_of": "partner of",
-    "listed_on": "lists",
-    "belongs_to_sector": "includes",
-}
 
 
 def short_label(r: Relationship, outbound: bool) -> str:
     """A stored link in a few words from one end, for the Related graph: from its `from` end
-    when `outbound` ("holds 100%", "24.4% of loans", "depends on"), else from its `to` end
-    ("100% held by", "3.1% of its loans", "depended on by")."""
+    when `outbound` ("holds 100%", "24.4% of loans", "provides connectivity to"), else from its
+    `to` end ("100% held by", "3.1% of its loans", "gets its connectivity from")."""
     share = _share(r.weight) if r.weight is not None else None
     if r.type == "exposed_to":
         w = _exposure_words(r)
@@ -206,35 +243,33 @@ def short_label(r: Relationship, outbound: bool) -> str:
         return w.head if outbound else w.inbound
     if r.type == "holds_stake_in" and share:
         return f"holds {share}" if outbound else f"{share} held by"
+    words = type_words(r)
     if not outbound:
-        return INBOUND_WORDS[r.type]
-    return LINK_WORDS[r.type].removeprefix("is ").removeprefix("a ")
+        return words[1]
+    return words[0].removeprefix("is ").removeprefix("a ")
 
 
-def _inbound(r: Relationship, source: Node) -> str:
-    """A link read from its `to` end, naming its `from` end: "depended on by DBS for telecoms",
-    "28.3% held by Temasek", "lent to by DBS, 12.2% of its loans"."""
+def inbound_words(r: Relationship, source: Node) -> str:
+    """A link read from its `to` end, naming its `from` end: "gets its connectivity from
+    Singtel", "28.3% held by Temasek", "lent to by DBS, 12.2% of its loans"."""
     if r.type == "exposed_to":
         w = _exposure_words(r)
         text = f"{w.inbound} {source.name}"
         return text + (f", {_share(r.weight)} of its {w.short}" if r.weight is not None else "")
     if r.type == "holds_stake_in" and r.weight is not None:
         return f"{_share(r.weight)} held by {source.name}"
-    text = f"{INBOUND_WORDS[r.type]} {source.name}"
-    if r.type == "depends_on" and r.service:
-        text += f" for {SERVICE_WORDS[r.service]}"
-    return text
+    return f"{type_words(r)[1]} {source.name}"
 
 
 def route_text(r: Relationship, source: str, reached: str, nodes: dict[str, Node]) -> str:
     """The one link by which news about `source` reaches `reached`, in plain words without
     `reached`, for an indirect impact. From the link's `from` end: "via its Hong Kong loans,
-    12.2% of total", "depends on Singtel for telecoms"; from its `to` end: "depended on by DBS
-    for telecoms"; into a region that covers the source: "via its Greater China loans, 13.5% of
+    12.2% of total", "provides connectivity to DBS"; from its `to` end: "gets its connectivity
+    from Singtel"; into a region that covers the source: "via its Greater China loans, 13.5% of
     total, a figure for the whole region including Taiwan". `nodes` holds both ends and the
     source (relationships.load_nodes)."""
     if reached == r.to:
-        return _inbound(r, nodes[r.from_])
+        return inbound_words(r, nodes[r.from_])
     to = nodes[r.to]
     loans = r.measure is None or r.measure in LOAN_MEASURES
     if r.type == "exposed_to" and r.weight is not None and loans:

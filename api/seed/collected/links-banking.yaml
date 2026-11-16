@@ -137,6 +137,7 @@ relationships:
   - from: hsbc
     to: allianz
     type: partner_of
+    outside_types: true
     share: null
     detail: "Deal counterparty: HSBC agreed in July 2026 to sell HSBC Life (Singapore) to Allianz for S$2.7bn (completion expected 1H 2027), followed by a 15-year exclusive bancassurance deal under which HSBC Bank (Singapore) distributes its products."
     evidence: public
@@ -427,10 +428,10 @@ relationships:
     source_title: "FINMA Annual Report 2025, Supervisory activity by sector"
     quote: "In 2025, the ongoing supervision of UBS was again dominated by the integration of the former Credit Suisse (CS)."
 
-depends_on_participates:
-  - from: citibank
-    to: usd-cheque-clearing
-    type: participates_in
+service_links:
+  - from: usd-cheque-clearing
+    to: citibank
+    type: processes_transactions_for
     detail: "Citibank N.A. Singapore is MAS's designated settlement institution for the US Dollar Cheque Clearing System."
     service: payments
     evidence: public
@@ -439,9 +440,9 @@ depends_on_participates:
     published: null
     as_of: 2026-10-26
     quote: "Designated Payment System Settlement Institution Designated payment system settlement institutions settle transactions processed by payment systems designated under the Payment Services Act. US Dollar Cheque Clearing System"
-  - from: bank-of-china
-    to: sgx
-    type: participates_in
+  - from: sgx
+    to: bank-of-china
+    type: processes_transactions_for
     detail: "Bank of China Singapore became SGX's pioneer RMB futures market maker and first Chinese settlement bank in September 2014."
     service: market_infrastructure
     evidence: public

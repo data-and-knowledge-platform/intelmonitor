@@ -20,7 +20,17 @@ type RelType = Schema<"RelationshipLink">["type"];
 const GROUPS: { title: string; types: RelType[] }[] = [
   { title: "Exposure", types: ["exposed_to"] },
   { title: "Ownership and structure", types: ["holds_stake_in", "operates_in", "member_of"] },
-  { title: "Dependency", types: ["depends_on", "participates_in"] },
+  {
+    title: "Dependency",
+    types: [
+      "provides_technology_to",
+      "provides_connectivity_to",
+      "provides_business_service_to",
+      "processes_transactions_for",
+      "distributes_products_for",
+      "participates_in",
+    ],
+  },
 ];
 const GROUPED = new Set(GROUPS.flatMap((g) => g.types));
 

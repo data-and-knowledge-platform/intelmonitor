@@ -49,7 +49,8 @@ How much a development matters to one of its subjects, judged only from what its
 _Avoid_: Risk rating, materiality, severity
 
 **Link**:
-A stored relationship between two entities, of one of ten types such as holds_stake_in or depends_on, with its source and a one-line reason.
+A stored relationship between two entities, of one of the team's 22 types in three groups: ownership and financial (such as holds_stake_in), operational and commercial (such as provides_technology_to) and structural and institutional (such as regulated_by), with its source and a one-line reason.
+A pair of entities can hold several links of different types.
 A unit of an entity, such as HSBC Singapore, is read as the entity itself, and a link into a region covers its member countries.
 The one exception is belongs_to_sector, which links an entity to its group.
 _Avoid_: Edge (outside the Related graph), connection

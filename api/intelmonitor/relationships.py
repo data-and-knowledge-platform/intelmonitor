@@ -3,11 +3,14 @@
 api/seed/relationships.yaml (built by scripts/build_relationships.py) holds every relationship;
 each joins two entities of api/seed/subjects.yaml, or an entity and a seed group.
 sync_relationships() copies it into the store at the start of a pipeline run; reaches() reads it
-back for the impact step, links_from() for the briefs, and links_of() for the Related graph.
+back for the impact step, links_from() and links_into() for the briefs, and links_of() for the
+Related graph.
 
-A link reads from its `from` to its `to` (DBS exposed_to Hong Kong, FAST depends_on BCS, NETS
-holds_stake_in BCS). partner_of is stored once per pair, ids in alphabetical order. A link into
-an entity of kind region (South and Southeast Asia) covers the region's member countries.
+A link is of one of the team's 22 types in three groups (LINK_TYPES), and a pair of entities may
+hold several links of different types. A link reads from its `from` to its `to` (DBS exposed_to
+Hong Kong, BCS processes_transactions_for FAST, NETS holds_stake_in BCS). The SYMMETRIC types are
+stored once per pair, ids in alphabetical order. A link into an entity of kind region (South and
+Southeast Asia) covers the region's member countries.
 belongs_to_sector links an entity to a seed group (its parent category), so seed group ids are
 valid link ends; it carries no impact and the Related graph leaves it out.
 
@@ -17,6 +20,7 @@ build. Pipeline runs read the ratings and call no model for them.
 """
 
 import sqlite3
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Literal
@@ -30,20 +34,165 @@ from intelmonitor.seed import EntityKind, load_subjects
 RELATIONSHIPS_PATH = SEED_DIR / "relationships.yaml"
 TRANSMISSION_PATH = SEED_DIR / "collected" / "transmission.yaml"
 
-# The team's 10 one-way types (deck of 10 Nov 2026, slide 4; ticket 17).
+# The team's 22 types (deck of 16 Nov 2026, pages 1 to 4), in the deck's order; LINK_TYPES gives
+# each its group, meaning and example.
 RelType = Literal[
     "holds_stake_in",
+    "lends_to",
+    "invests_in",
+    "funds",
+    "insures",
+    "provides_technology_to",
+    "provides_connectivity_to",
+    "provides_business_service_to",
+    "processes_transactions_for",
+    "shares_or_processes_data_with",
+    "distributes_products_for",
+    "provides_customer_benefits_with",
+    "jointly_offers_product_with",
+    "material_customer_of",
+    "material_supplier_to",
     "regulated_by",
     "operates_in",
     "exposed_to",
-    "depends_on",
     "member_of",
     "participates_in",
-    "partner_of",
     "listed_on",
     "belongs_to_sector",
 ]
 REL_TYPES: tuple[RelType, ...] = RelType.__args__
+LinkGroup = Literal[
+    "Ownership and financial", "Operational and commercial", "Structural and institutional"
+]
+
+
+@dataclass(frozen=True)
+class LinkType:
+    """A link type as the deck defines it: its group, its meaning and the deck's example."""
+
+    group: LinkGroup
+    meaning: str
+    example: str
+
+
+# The deck's table, word for word, which the prompts read. A link reads from `from` to `to`:
+# provider to customer (provides_*, processes_transactions_for, material_supplier_to), customer to
+# provider (material_customer_of), lender, investor, funder or insurer to the other party,
+# distributor to product owner, holder of the data to the entity it goes to.
+LINK_TYPES: dict[RelType, LinkType] = {
+    "holds_stake_in": LinkType(
+        "Ownership and financial", "Equity ownership", "Temasek holds a material stake in DBS."
+    ),
+    "lends_to": LinkType(
+        "Ownership and financial",
+        "Material lending or credit exposure",
+        "Bank A provides significant loans to Property Developer B.",
+    ),
+    "invests_in": LinkType(
+        "Ownership and financial",
+        "Material investment other than lending",
+        "Fund A holds bonds issued by Company B.",
+    ),
+    "funds": LinkType(
+        "Ownership and financial",
+        "Material funding or liquidity provision",
+        "Parent A provides significant funding to Subsidiary B.",
+    ),
+    "insures": LinkType(
+        "Ownership and financial",
+        "Material insurance coverage",
+        "Insurer A provides business-interruption insurance to Company B.",
+    ),
+    "provides_technology_to": LinkType(
+        "Operational and commercial",
+        "Cloud, software or technology infrastructure",
+        "AWS provides production cloud services to Bank A.",
+    ),
+    "provides_connectivity_to": LinkType(
+        "Operational and commercial",
+        "Telecom or network connectivity",
+        "Singtel provides enterprise connectivity to DBS.",
+    ),
+    "provides_business_service_to": LinkType(
+        "Operational and commercial",
+        "Material outsourced or professional service not covered elsewhere",
+        "An engineering provider performs material aircraft-engine maintenance for an airline.",
+    ),
+    "processes_transactions_for": LinkType(
+        "Operational and commercial",
+        "Payment, clearing or transaction processing",
+        "Processor A processes card transactions for Bank B.",
+    ),
+    "shares_or_processes_data_with": LinkType(
+        "Operational and commercial",
+        "Receives, shares or processes relevant data",
+        "MoneySmart collects and transmits bank-product application data.",
+    ),
+    "distributes_products_for": LinkType(
+        "Operational and commercial",
+        "Distributes, compares or refers customers to another entity's products",
+        "MoneySmart refers customers to Bank A's cards.",
+    ),
+    "provides_customer_benefits_with": LinkType(
+        "Operational and commercial",
+        "Joint customer benefits, loyalty or redemption arrangements",
+        "Bank cardholders earn or redeem KrisFlyer miles with SIA.",
+    ),
+    "jointly_offers_product_with": LinkType(
+        "Operational and commercial",
+        "Entities jointly operate, brand or provide a product",
+        "A bank and fintech jointly offer a digital-payment product.",
+    ),
+    "material_customer_of": LinkType(
+        "Operational and commercial",
+        "Customer is materially important to the provider",
+        "Company A represents a significant share of Vendor B's revenue.",
+    ),
+    "material_supplier_to": LinkType(
+        "Operational and commercial",
+        "Material supply of goods, equipment or non-technology inputs",
+        "An engine manufacturer supplies the engine model used across a material share of an "
+        "airline's fleet.",
+    ),
+    "regulated_by": LinkType(
+        "Structural and institutional",
+        "Licensed, supervised or regulated by",
+        "Bank A is regulated by MAS.",
+    ),
+    "operates_in": LinkType(
+        "Structural and institutional",
+        "Material operations in a jurisdiction",
+        "Bank A has significant operations in India.",
+    ),
+    "exposed_to": LinkType(
+        "Structural and institutional",
+        "Material economic, country or market exposure",
+        "Bank A has significant credit exposure to China.",
+    ),
+    "member_of": LinkType(
+        "Structural and institutional",
+        "Formal membership of an organisation or network",
+        "Bank A is a member of ABS.",
+    ),
+    "participates_in": LinkType(
+        "Structural and institutional",
+        "Participation in a scheme, programme or initiative",
+        "Bank A participates in Project Guardian.",
+    ),
+    "listed_on": LinkType(
+        "Structural and institutional",
+        "Securities listed on an exchange",
+        "Company A is listed on SGX.",
+    ),
+    "belongs_to_sector": LinkType(
+        "Structural and institutional",
+        "Membership of a monitored aggregate sector",
+        "DBS belongs to the Singapore Banking Sector.",
+    ),
+}
+assert tuple(LINK_TYPES) == REL_TYPES, "LINK_TYPES must list the 22 types in RelType's order"
+# Types with no direction: stored once per pair, ids in alphabetical order.
+SYMMETRIC: tuple[RelType, ...] = ("provides_customer_benefits_with", "jointly_offers_product_with")
 Evidence = Literal["public", "reported", "assumed"]
 EVIDENCE_GRADES: tuple[Evidence, ...] = Evidence.__args__  # strongest first
 # The headline figure of an exposure; further figures add NPLs and ratios. A bank's exposure is
@@ -346,6 +495,23 @@ def links_from(
         return []
     nodes = load_nodes({r.to for r in rels})
     return [(r, nodes[r.to]) for r in rels]
+
+
+def links_into(
+    conn: sqlite3.Connection, subject_id: str, types: tuple[RelType, ...]
+) -> list[tuple[Relationship, Node]]:
+    """The links of the given types that end at the subject, each with the node it comes from,
+    by id."""
+    marks = ",".join("?" * len(types))
+    rows = conn.execute(
+        f"SELECT data FROM relationships WHERE to_id = ? AND type IN ({marks}) ORDER BY id",
+        (subject_id, *types),
+    ).fetchall()
+    rels = [Relationship.model_validate_json(r["data"]) for r in rows]
+    if not rels:
+        return []
+    nodes = load_nodes({r.from_ for r in rels})
+    return [(r, nodes[r.from_]) for r in rels]
 
 
 def links_of(conn: sqlite3.Connection, subject_id: str) -> list[tuple[Relationship, Node]]:

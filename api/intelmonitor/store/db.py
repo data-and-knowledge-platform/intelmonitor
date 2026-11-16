@@ -203,7 +203,7 @@ CREATE INDEX IF NOT EXISTS run_changes_run ON run_changes (run_id, kind);
 CREATE TABLE IF NOT EXISTS inference_records (
     id INTEGER PRIMARY KEY,
     run_id TEXT,                       -- the run that made the call
-    stage TEXT NOT NULL,               -- screen, extract, same_event, priority, theme, ...
+    stage TEXT NOT NULL,               -- screen, extract, same_event, priority, headline, ...
     engine TEXT NOT NULL,              -- claude; jev in older stores
     model TEXT NOT NULL,               -- requested model
     model_version TEXT,                -- model reported by the response
@@ -712,20 +712,28 @@ def _drop_graph(conn: sqlite3.Connection) -> None:
 def _drop_endpoints(conn: sqlite3.Connection) -> None:
     """Stores synced before every link joined two entities (16 Nov 2026, spec step 3b of
     link-types-and-inferred-impact) hold relationship_endpoints and links to endpoints. The table
-    goes, and the store's links are replaced with relationships.yaml, as a run's sync would, so no
-    stored link ends at an id the seed lacks. Raises, changing nothing, if the file does not fit
-    the seed."""
+    goes, with every stored link that has an end the seed lacks (an entity, or a seed group for
+    belongs_to_sector), so no stored link ends at an endpoint. It reads only the seed, never
+    relationships.yaml, so a file the code cannot load yet (links not rated, say) never stops the
+    store from opening; the next run's sync replaces the links with the file's."""
     exists = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'relationship_endpoints'"
     if conn.execute(exists).fetchone() is None:
         return
-    from intelmonitor.relationships import insert_relationships, load_relationships
+    from intelmonitor.seed import load_subjects
 
-    data = load_relationships()
+    seed = load_subjects()
+    entities = [e.id for e in seed.entities]
+    groups = [g.id for g in seed.groups]
     conn.execute("BEGIN IMMEDIATE")  # another connection may be migrating too
     if conn.execute(exists).fetchone() is None:
         conn.rollback()
         return
-    insert_relationships(conn, data)
+    marks = ",".join("?" * len(entities))
+    conn.execute(
+        f"DELETE FROM relationships WHERE from_id NOT IN ({marks}) OR (to_id NOT IN ({marks}) "  # noqa: S608
+        f"AND NOT (type = 'belongs_to_sector' AND to_id IN ({','.join('?' * len(groups))})))",
+        (*entities, *entities, *groups),
+    )
     conn.execute("DROP TABLE relationship_endpoints")
     conn.commit()
 

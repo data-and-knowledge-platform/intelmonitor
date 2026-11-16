@@ -8,7 +8,7 @@
 # Sources: SEC filings (10-K, proxy statements, Exhibit 21), the MAS Financial Institutions Directory, the
 # FINMA list of authorised banks, MAS and company press releases, and press where no primary source was
 # reachable (marked reported). Quotes are verbatim with whitespace normalised; table cells joined with " | ".
-# Schema: see entity-links.yaml (relationships) and tech-dependencies.yaml (depends_on_participates).
+# Schema: see entity-links.yaml (relationships) and tech-dependencies.yaml (service_links).
 # Licences are regulated_by edges from the licensed entity; the subject holds a stake in that entity (share
 # null when no stake is published), so impact paths reach MAS in two hops (circle holds_stake_in
 # circle-singapore, ...).
@@ -60,6 +60,7 @@ relationships:
   - from: circle
     to: standard-chartered
     type: partner_of
+    outside_types: true
     share: null
     detail: "Standard Chartered is one of four banks advising Circle on the design of the Circle Payments Network (launched April 2025)."
     evidence: public
@@ -131,7 +132,7 @@ relationships:
     quote: "BlackRock, Inc. (2) | 14,618,089 | 6.6 | — | — | 1.4"
   - from: coinbase
     to: jpmorgan
-    type: partner_of
+    type: jointly_offers_product_with
     share: null
     detail: "July 2025 strategic partnership: Chase bank-to-wallet link through JPMorgan's API, Chase card funding and Ultimate Rewards transfers to Coinbase."
     evidence: public
@@ -246,7 +247,7 @@ relationships:
     quote: "Issued by a New York trust supervised by NYDFS, and transparently backed."
   - from: ripple
     to: dbs
-    type: partner_of
+    type: jointly_offers_product_with
     share: null
     detail: "September 2025 partnership with DBS and Franklin Templeton: DBS Digital Exchange to let clients buy Franklin's tokenised money market fund sgBENJI with RLUSD."
     evidence: public
@@ -452,10 +453,10 @@ relationships:
     source_title: "MAS Financial Institutions Directory: WorldFirst (Singapore) Merchant Services Pte. Ltd."
     quote: "WORLDFIRST (SINGAPORE) MERCHANT SERVICES PTE. LTD. | Major Payment Institution | Account Issuance Service | Domestic Money Transfer Service | Cross-border Money Transfer Service | E-money Issuance Service"
 
-depends_on_participates:
-  - from: circle
-    to: blackrock
-    type: depends_on
+service_links:
+  - from: blackrock
+    to: circle
+    type: provides_business_service_to
     detail: "Most USDC reserves sit in the Circle Reserve Fund, a government money market fund managed by BlackRock."
     service: reserve_management
     evidence: public
@@ -463,9 +464,9 @@ depends_on_participates:
     source_title: "Circle Internet Group, Inc. Form 10-K for the year ended December 31, 2025"
     published: 2026-03-09
     quote: "approximately 88% of USDC reserves in the Circle Reserve Fund, a government money market fund pursuant to Rule 2a-7 under the 1940 Act managed by BlackRock"
-  - from: circle
-    to: coinbase
-    type: depends_on
+  - from: coinbase
+    to: circle
+    type: distributes_products_for
     detail: "Coinbase distributes USDC to its customers under the Collaboration Agreement; Circle pays Coinbase mainly out of USDC reserve income."
     service: distribution
     evidence: public
@@ -473,9 +474,9 @@ depends_on_participates:
     source_title: "Circle Internet Group, Inc. Form 10-K for the year ended December 31, 2025"
     published: 2026-03-09
     quote: "Under the Collaboration Agreement, Coinbase supports usage of our stablecoins by its customers across its key products (including on- and off-ramps), and we make payments to Coinbase tied principally to net reserve income from USDC."
-  - from: coinbase
-    to: circle
-    type: depends_on
+  - from: circle
+    to: coinbase
+    type: processes_transactions_for
     detail: "Circle provides Coinbase with USDC creation and redemption services."
     service: payments
     evidence: public
@@ -483,9 +484,9 @@ depends_on_participates:
     source_title: "Coinbase Global, Inc. Form 10-K for the year ended December 31, 2025"
     published: 2026-02-12
     quote: "For example, Circle provides us with creation and redemption services for USDC, including the operational capabilities required for our USDC customer-facing services."
-  - from: blackrock
-    to: coinbase
-    type: depends_on
+  - from: coinbase
+    to: blackrock
+    type: provides_business_service_to
     detail: "Coinbase Custody Trust Company is the bitcoin custodian of BlackRock's iShares Bitcoin Trust."
     service: custody
     evidence: public
@@ -493,9 +494,9 @@ depends_on_participates:
     source_title: "iShares Bitcoin Trust ETF Form 10-Q for the quarter ended June 30, 2026"
     published: 2026-08-06
     quote: "Coinbase Custody Trust Company, LLC (the “Bitcoin Custodian”) is responsible for safekeeping the bitcoin owned by the Trust."
-  - from: coinbase
-    to: aws
-    type: depends_on
+  - from: aws
+    to: coinbase
+    type: provides_technology_to
     detail: "Coinbase International Exchange runs on AWS."
     service: cloud
     evidence: public
@@ -504,9 +505,9 @@ depends_on_participates:
     published: null
     as_of: 2026-10-26
     quote: "The Coinbase International Exchange was built on AWS from the ground up, using Cloud Native principles, powered by AWS managed services such as Amazon Aurora"
-  - from: coinbase-singapore
-    to: standard-chartered-singapore
-    type: depends_on
+  - from: standard-chartered-singapore
+    to: coinbase-singapore
+    type: provides_business_service_to
     detail: "Coinbase Singapore's free SGD bank transfers are facilitated by Standard Chartered (launched March 2023)."
     service: banking
     evidence: reported
@@ -514,9 +515,9 @@ depends_on_participates:
     source_title: "Coinbase opens local bank transfers for Singapore users at no cost (Kitco, from CoinDesk)"
     published: 2023-03-14
     quote: "Transfers, in Singapore dollars, are facilitated by a traditional bank, Standard Chartered , and carry no fee, the company said in a statement."
-  - from: foris-asia
-    to: visa
-    type: participates_in
+  - from: visa
+    to: foris-asia
+    type: processes_transactions_for
     detail: "Foris Asia issues the Crypto.com Visa Card in Singapore."
     service: payments
     evidence: public
@@ -525,9 +526,9 @@ depends_on_participates:
     published: null
     as_of: 2026-10-26
     quote: "The Crypto.com Visa Card is issued and distributed by Foris Asia Pte. Ltd."
-  - from: circle
-    to: bloom
-    type: participates_in
+  - from: bloom
+    to: circle
+    type: processes_transactions_for
     detail: "Initial BLOOM member working on distribution and clearing of settlement assets."
     service: market_infrastructure
     evidence: public
@@ -535,9 +536,9 @@ depends_on_participates:
     source_title: "MAS Launches BLOOM Initiative to Extend Settlement Capabilities"
     published: 2025-10-16
     quote: "Members working on this include Circle, DBS, OCBC, Partior, Stripe and UOB."
-  - from: coinbase
-    to: bloom
-    type: participates_in
+  - from: bloom
+    to: coinbase
+    type: processes_transactions_for
     detail: "Initial BLOOM member working on agentic payments."
     service: market_infrastructure
     evidence: public
@@ -545,9 +546,9 @@ depends_on_participates:
     source_title: "MAS Launches BLOOM Initiative to Extend Settlement Capabilities"
     published: 2025-10-16
     quote: "Members working on this include Coinbase and DBS."
-  - from: ant-international
-    to: bloom
-    type: participates_in
+  - from: bloom
+    to: ant-international
+    type: processes_transactions_for
     detail: "Initial BLOOM member working on cross-border wholesale settlement compliance."
     service: market_infrastructure
     evidence: public

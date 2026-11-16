@@ -1,12 +1,13 @@
 """Build api/seed/relationships.yaml from the collected relationship files.
 
 Reads api/seed/collected/bank-exposures.yaml, tech-dependencies.yaml, entity-links.yaml and every
-links-*.yaml (one per sector: structural links, dependencies and participations), puts
-every link in one schema, folds each unit of an entity into its parent (collected/folds.yaml),
-keeps a link only when both ends are entities of api/seed/subjects.yaml, derives each entity's
-belongs_to_sector links from the seed's groups, writes each link's one-line reason, merges each
-link's strengths from api/seed/collected/transmission.yaml, and prints a build report that lists
-every collected row not built, with its reason. The collected rows stay in their files. The
+links-*.yaml (one per sector: structural links and service links), puts every link of the team's
+22 types in one schema (a partner_of row, outside the types, is listed and not built), folds each
+unit of an entity into its parent (collected/folds.yaml), keeps a link only when both ends are
+entities of api/seed/subjects.yaml, derives each entity's belongs_to_sector links from the seed's
+groups, writes each link's one-line reason, merges each link's strengths from
+api/seed/collected/transmission.yaml, and prints a build report that lists every collected row not
+built, with its reason. The collected rows stay in their files. The
 output is deterministic: a second run produces no diff. Rerun after any edit to the collected files
 or to the subject seed, then run scripts/rate_relationships.py and build again: a link whose input
 changed keeps its old rating until it is rated again. The report lists unrated links and stale
@@ -22,14 +23,16 @@ from typing import Literal
 
 import rate_relationships as rating
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from intelmonitor.config import SEED_DIR
 from intelmonitor.pipeline.impact import link_words
 from intelmonitor.relationships import (
+    LINK_TYPES,
     LOAN_MEASURES,
     REL_TYPES,
     RELATIONSHIPS_PATH,
+    SYMMETRIC,
     TRANSMISSION_PATH,
     Dimension,
     Evidence,
@@ -121,10 +124,29 @@ class NewEntity(Row):
     country: str | None = None
 
 
+# The types whose rows carry a service: the provider (a vendor, a payment system or market
+# infrastructure, a distributor) to the entity it serves.
+SERVICE_TYPES: tuple[RelType, ...] = (
+    "provides_technology_to",
+    "provides_connectivity_to",
+    "provides_business_service_to",
+    "processes_transactions_for",
+    "distributes_products_for",
+)
+
+
 class TechRow(Row):
     from_: str = Field(alias="from")
     to: str
-    type: Literal["depends_on", "participates_in", "holds_stake_in", "operates_in"]
+    type: Literal[
+        "provides_technology_to",
+        "provides_connectivity_to",
+        "provides_business_service_to",
+        "processes_transactions_for",
+        "distributes_products_for",
+        "holds_stake_in",
+        "operates_in",
+    ]
     # holds_stake_in with no published share where the holder controls the held (a former owns or
     # subsidiary_of row): the reason says "controlling owner".
     controlling: bool = False
@@ -151,10 +173,14 @@ class LinkRow(Row):
         "holds_stake_in",
         "operates_in",
         "member_of",
-        "partner_of",
         "listed_on",
         "regulated_by",
+        "jointly_offers_product_with",
+        "partner_of",
     ]
+    # partner_of is not one of the 22 types: its rows are marked so, kept in the files and not
+    # built (ticket 02 of link-types-and-inferred-impact, P3)
+    outside_types: bool = False
     share: float | None
     controlling: bool = False  # as on TechRow
     detail: str
@@ -163,6 +189,14 @@ class LinkRow(Row):
     source_url: str
     source_title: str
     quote: str
+
+    @model_validator(mode="after")
+    def _outside(self) -> "LinkRow":
+        assert (self.type == "partner_of") == self.outside_types, (
+            f"{self.from_} {self.type} {self.to}: partner_of rows, and only they, are "
+            "outside_types: true"
+        )
+        return self
 
 
 class GroupRow(Row):
@@ -182,12 +216,12 @@ class LinksFile(Row):
 
 
 class TeamLinksFile(Row):
-    """A links-*.yaml file: structural links, dependencies and participations for one sector's
-    entities, checked against their sources on `collected`."""
+    """A links-*.yaml file: structural links and service links for one sector's entities, checked
+    against their sources on `collected`."""
 
     collected: date
     relationships: list[LinkRow]
-    depends_on_participates: list[TechRow]
+    service_links: list[TechRow]
     groups: list[GroupRow]
     new_entities: list[NewEntity]
 
@@ -200,8 +234,9 @@ def rel_id(src: str, type_: RelType, dst: str) -> str:
 
 
 def ends(src: str, type_: RelType, dst: str) -> tuple[str, str]:
-    """A link's (from, to): partner_of has no direction, so its ids go in alphabetical order."""
-    return (min(src, dst), max(src, dst)) if type_ == "partner_of" else (src, dst)
+    """A link's (from, to): a SYMMETRIC type has no direction, so its ids go in alphabetical
+    order."""
+    return (min(src, dst), max(src, dst)) if type_ in SYMMETRIC else (src, dst)
 
 
 class Fold(Row):
@@ -248,7 +283,8 @@ class Build:
         self.rels: dict[str, Relationship] = {}
         self.dropped: list[tuple[str, str]] = []  # (row, reason)
         self.merged: list[str] = []  # ids that took a second row from the same source
-        self.partner_rows = 0  # collected partner_of rows read
+        self.partner_rows: list[str] = []  # collected partner_of rows, outside the 22 types
+        self.joint_rows = 0  # collected jointly_offers_product_with rows read
 
     def drop(self, row: str, reason: str) -> None:
         self.dropped.append((row, reason))
@@ -458,7 +494,7 @@ def build_tech(build: Build, data: TechFile, confirmed: date = LAST_CONFIRMED) -
                 quote=r.quote,
                 detail=r.detail,
                 reason="",  # written by with_reasons()
-                service=r.service if r.type in ("depends_on", "participates_in") else None,
+                service=r.service if r.type in SERVICE_TYPES else None,
                 controlling=r.controlling,
             )
         )
@@ -486,8 +522,13 @@ REPORTED_MEMBERS = {("nexus-global-payments", "bank-indonesia")}
 def build_links(build: Build, data: LinksFile, confirmed: date = LAST_CONFIRMED) -> None:
     titles = {r.source_url: r.source_title for r in reversed(data.relationships)}
     for r in data.relationships:
+        if r.type == "partner_of":
+            row = f"{r.from_} {r.type} {r.to}"
+            build.partner_rows.append(row)
+            build.drop(row, "outside the 22 types (outside_types: true)")
+            continue
         src, dst = ends(RENAME.get(r.from_, r.from_), r.type, RENAME.get(r.to, r.to))
-        build.partner_rows += r.type == "partner_of"
+        build.joint_rows += r.type == "jointly_offers_product_with"
         build.add(
             Relationship(
                 id=rel_id(src, r.type, dst),
@@ -571,18 +612,27 @@ def unsourced(rels: list[Relationship]) -> list[str]:
     ]
 
 
-# Types where the two directions are different facts, so a pair may hold both: Circle depends on
-# Coinbase for distribution, Coinbase on Circle for USDC issuance and redemption.
-MUTUAL: tuple[RelType, ...] = ("depends_on",)
+# Directed types where the two directions are different facts, so a pair may hold both: two firms
+# may each provide a service to the other, or hold a stake in each other.
+MUTUAL: tuple[RelType, ...] = tuple(
+    t
+    for t in REL_TYPES
+    if LINK_TYPES[t].group != "Structural and institutional" and t not in SYMMETRIC
+)
 
 
 def both_ways(rels: list[Relationship], mutual: bool = False) -> list[str]:
     """Links whose pair is also stored the other way with the same type: of a MUTUAL type when
-    `mutual`, else of any other type (must be none)."""
+    `mutual`, else of any other type (must be none; a SYMMETRIC type is stored once per pair)."""
     ids = {r.id for r in rels}
     return sorted(
         r.id for r in rels if rel_id(r.to, r.type, r.from_) in ids and (r.type in MUTUAL) == mutual
     )
+
+
+def symmetric_out_of_order(rels: list[Relationship]) -> list[str]:
+    """SYMMETRIC links whose ids are not in alphabetical order (must be none)."""
+    return sorted(r.id for r in rels if r.type in SYMMETRIC and r.from_ > r.to)
 
 
 def reason(r: Relationship, to: Node) -> str:
@@ -645,11 +695,22 @@ HEADER = """\
 # Generated by api/scripts/build_relationships.py from api/seed/collected/. Do not edit by hand:
 # edit the collected files or the script, then rerun it from api/.
 #
-# relationships[]: one per (from, type, to); id is "from:type:to".
-#   type          holds_stake_in | regulated_by | operates_in | exposed_to | depends_on
-#                 | member_of | participates_in | partner_of | listed_on | belongs_to_sector
-#                 holds_stake_in runs holder to held; partner_of is stored once per pair, ids in
-#                 alphabetical order; belongs_to_sector links an entity to a seed group (an
+# relationships[]: one per (from, type, to); id is "from:type:to". A pair may hold several links
+#                 of different types.
+#   type          one of the team's 22 types (deck of 16 Nov 2026), in three groups:
+#                 ownership and financial: holds_stake_in | lends_to | invests_in | funds
+#                 | insures; operational and commercial: provides_technology_to
+#                 | provides_connectivity_to | provides_business_service_to
+#                 | processes_transactions_for | shares_or_processes_data_with
+#                 | distributes_products_for | provides_customer_benefits_with
+#                 | jointly_offers_product_with | material_customer_of | material_supplier_to;
+#                 structural and institutional: regulated_by | operates_in | exposed_to
+#                 | member_of | participates_in | listed_on | belongs_to_sector.
+#                 holds_stake_in runs holder to held, a service type provider to the entity it
+#                 serves (a payment system to its participant), distributes_products_for
+#                 distributor to product owner; provides_customer_benefits_with and
+#                 jointly_offers_product_with are stored once per pair, ids in alphabetical
+#                 order; belongs_to_sector links an entity to a seed group (an
 #                 entity in one of the first 8 groups to that group, its parent category, any
 #                 other entity to each of its groups) and is derived from api/seed/subjects.yaml,
 #                 with no source
@@ -672,8 +733,10 @@ HEADER = """\
 #                 "is the controlling owner of ..." for a controlling stake with no share, else
 #                 detail
 #   controlling   holds_stake_in with no published share where the holder controls the held
-#   service       depends_on and participates_in: cloud, data_centre, payments, custody,
-#                 blockchain, distribution and the like
+#   service       provides_technology_to, provides_connectivity_to,
+#                 provides_business_service_to, processes_transactions_for and
+#                 distributes_products_for: cloud, data_centre, payments, custody, distribution
+#                 and the like
 #   figures[]     exposed_to only: further figures for the same entity and target (loans by
 #                 currency, Pillar 3 RWA, NPLs; other reserve, revenue or counterparty figures),
 #                 each with its own source and quote
@@ -711,10 +774,10 @@ def report(build: Build, rels: list[Relationship]) -> None:
         f"\n{len(rels)} relationships: {len(rels) - sectors} between two entities, of which "
         f"{len(folded)} folded from a unit's row; {sectors} belongs_to_sector"
     )
-    print(f"  {'type':16}{'all':>5}" + "".join(f"{g:>10}" for g in grades))
+    print(f"  {'type':32}{'all':>5}" + "".join(f"{g:>10}" for g in grades))
     for t in REL_TYPES:
         row = [counts[(t, g)] for g in grades]
-        print(f"  {t:16}{sum(row):>5}" + "".join(f"{n:>10}" for n in row))
+        print(f"  {t:32}{sum(row):>5}" + "".join(f"{n:>10}" for n in row))
     exposures = [r for r in rels if r.type == "exposed_to"]
     measures = Counter(r.measure for r in exposures)
     firms = sum(n for m, n in measures.items() if m not in LOAN_MEASURES)
@@ -726,11 +789,14 @@ def report(build: Build, rels: list[Relationship]) -> None:
         f"chart readings: {sum(r.chart_reading for r in exposures)} headline, "
         f"{sum(f.chart_reading for r in exposures for f in r.figures)} further"
     )
-    partners = sum(r.type == "partner_of" for r in rels)
     print(
-        f"  partner_of: {build.partner_rows} collected rows, {partners} links "
-        "(one per pair, ids in alphabetical order)"
+        f"  partner_of: {len(build.partner_rows)} collected rows outside the 22 types, not built: "
+        + ", ".join(build.partner_rows)
     )
+    for t in SYMMETRIC:
+        n = sum(r.type == t for r in rels)
+        rows = build.joint_rows if t == "jointly_offers_product_with" else "no"
+        print(f"  {t}: {rows} collected rows, {n} links (one per pair, ids in alphabetical order)")
     sectors = [r for r in rels if r.type == "belongs_to_sector"]
     top = {m for g in build.seed.groups[:TOP_50_GROUPS] for m in g.members}
     expected = {
@@ -748,7 +814,9 @@ def report(build: Build, rels: list[Relationship]) -> None:
     )
     print(
         f"  pairs stored both ways with one type: {', '.join(both_ways(rels)) or 'none'}; "
-        f"mutual {'/'.join(MUTUAL)}, kept: {', '.join(both_ways(rels, mutual=True)) or 'none'}"
+        f"of a type whose two directions are different facts, kept: "
+        f"{', '.join(both_ways(rels, mutual=True)) or 'none'}; symmetric links out of "
+        f"alphabetical order: {', '.join(symmetric_out_of_order(rels)) or 'none'}"
     )
     print(f"\nmerged a second row from the same source into: {', '.join(build.merged)}")
     print(f"\n{len(build.dropped)} collected rows not built")
@@ -784,7 +852,7 @@ def main() -> None:
         )
         build_tech(
             build,
-            TechFile(relationships=team.depends_on_participates, incidents=[], new_entities=[]),
+            TechFile(relationships=team.service_links, incidents=[], new_entities=[]),
             team.collected,
         )
     build_sectors(build)
@@ -816,6 +884,7 @@ def main() -> None:
         print("  run scripts/rate_relationships.py to rate them again, then build again")
     problems = [f"no source: {i}" for i in unsourced(rels)]
     problems += [f"stored both ways: {i}" for i in both_ways(rels)]
+    problems += [f"symmetric link out of order: {i}" for i in symmetric_out_of_order(rels)]
     if problems:
         print("\n".join(problems), "\nnot written", sep="\n")
         sys.exit(1)

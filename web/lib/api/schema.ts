@@ -1452,7 +1452,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "holds_stake_in" | "regulated_by" | "operates_in" | "exposed_to" | "depends_on" | "member_of" | "participates_in" | "partner_of" | "listed_on" | "belongs_to_sector";
+            type: "holds_stake_in" | "lends_to" | "invests_in" | "funds" | "insures" | "provides_technology_to" | "provides_connectivity_to" | "provides_business_service_to" | "processes_transactions_for" | "shares_or_processes_data_with" | "distributes_products_for" | "provides_customer_benefits_with" | "jointly_offers_product_with" | "material_customer_of" | "material_supplier_to" | "regulated_by" | "operates_in" | "exposed_to" | "member_of" | "participates_in" | "listed_on" | "belongs_to_sector";
             /**
              * Outbound
              * @description The centre is the link's from end: DBS holds a stake in DBS India
@@ -1548,7 +1548,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "holds_stake_in" | "regulated_by" | "operates_in" | "exposed_to" | "depends_on" | "member_of" | "participates_in" | "partner_of" | "listed_on" | "belongs_to_sector";
+            type: "holds_stake_in" | "lends_to" | "invests_in" | "funds" | "insures" | "provides_technology_to" | "provides_connectivity_to" | "provides_business_service_to" | "processes_transactions_for" | "shares_or_processes_data_with" | "distributes_products_for" | "provides_customer_benefits_with" | "jointly_offers_product_with" | "material_customer_of" | "material_supplier_to" | "regulated_by" | "operates_in" | "exposed_to" | "member_of" | "participates_in" | "listed_on" | "belongs_to_sector";
             /**
              * Label
              * @description The type in plain words: "depends on, for cloud services"
