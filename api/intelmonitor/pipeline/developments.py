@@ -42,6 +42,7 @@ from intelmonitor.pipeline.params import (
     NEEDS_ATTENTION_LEVEL,
     PRIORITY_EFFORT,
     PRIORITY_LABELS,
+    PRIORITY_PROMPT,
     Priority,
     priority_system,
 )
@@ -398,8 +399,9 @@ def priority_prompt(dev: Development) -> str:
 
 async def rate_subject(inf: Inference, dev: Development, subject: Subject) -> PriorityRating:
     """One Sonnet call: the development's priority for one subject, by slide 7's prompt with the
-    subject's name and Singapore phrase. A refusal leaves the subject at Low with
-    PRIORITY_DECLINED as its reason, so one declined pair does not fail the run."""
+    subject's name and Singapore phrase; its prompt version is of the unfilled PRIORITY_PROMPT. A
+    refusal leaves the subject at Low with PRIORITY_DECLINED as its reason, so one declined pair
+    does not fail the run."""
     try:
         return await inf.claude(
             "priority",
@@ -408,6 +410,7 @@ async def rate_subject(inf: Inference, dev: Development, subject: Subject) -> Pr
             PriorityRating,
             priority_system(subject.name, singapore_phrase(subject.id)),
             effort=PRIORITY_EFFORT,
+            template=PRIORITY_PROMPT,
         )
     except ClaudeRefused:
         return PriorityRating(priority="Low", reason=PRIORITY_DECLINED)

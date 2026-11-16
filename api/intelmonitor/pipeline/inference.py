@@ -1,6 +1,7 @@
 """Every model call goes through `Inference`, which writes an InferenceRecord per call and serves
 repeat calls (same stage and identical input) from those records, so an interrupted run resumes
-without redoing finished work."""
+without redoing finished work. Each call and cache hit registers its prompt version
+(pipeline/prompts.py) and its run's use of it."""
 
 import asyncio
 import hashlib
@@ -21,6 +22,7 @@ from intelmonitor.pipeline.params import (
     HAIKU_MODEL,
     REFUSAL_FALLBACK_MODEL,
 )
+from intelmonitor.pipeline.prompts import note_run, register_version, schema_text
 
 _CLAUDE_ATTEMPTS = 3
 _CLAUDE_BACKOFF_SECONDS = 20.0
@@ -71,7 +73,7 @@ def _hash(payload: object) -> str:
 class Inference:
     """Model calls for one run. Concurrency is capped across all callers on the loop.
     With `recorded_only`, a call with no record raises UnrecordedCall instead of reaching a model,
-    as in `im check past-run`."""
+    as in `im check past-run`. A run_id of None (`im trial`) records calls with no run."""
 
     def __init__(
         self, conn: sqlite3.Connection, run_id: str | None, *, recorded_only: bool = False
@@ -81,6 +83,8 @@ class Inference:
         self.recorded_only = recorded_only
         self.calls = 0
         self.cache_hits = 0
+        self._versions: dict[tuple[str, str, str, str, str | None], str] = {}
+        self._noted: set[tuple[str, str]] = set()  # (stage, version) noted for the run
 
     async def claude[T: BaseModel](
         self,
@@ -91,18 +95,24 @@ class Inference:
         system: str,
         model: str | None = None,
         effort: EffortLevel | None = None,
+        template: str | None = None,
     ) -> T:
         """One structured Claude turn on `model` (default settings.anthropic_model), at `effort`
         (default the model's own), retried on failure; every attempt is recorded. A Haiku refusal
-        is asked once more on REFUSAL_FALLBACK_MODEL, recorded as its own call."""
+        is asked once more on REFUSAL_FALLBACK_MODEL, recorded as its own call. `template` is what
+        `system` was filled from, when it was (the priority call's PRIORITY_PROMPT); the prompt
+        version is of the template, or of `system` without one. It is not part of the cache key."""
         model = model or get_settings().anthropic_model
+        template = system if template is None else template
         try:
-            return await self._claude(stage, input_ref, prompt, schema, system, model, effort)
+            return await self._claude(
+                stage, input_ref, prompt, schema, system, model, effort, template
+            )
         except ClaudeRefused:
             if model != HAIKU_MODEL:
                 raise
         return await self._claude(
-            stage, input_ref, prompt, schema, system, REFUSAL_FALLBACK_MODEL, effort
+            stage, input_ref, prompt, schema, system, REFUSAL_FALLBACK_MODEL, effort, template
         )
 
     async def _claude[T: BaseModel](
@@ -114,6 +124,7 @@ class Inference:
         system: str,
         model: str,
         effort: EffortLevel | None,
+        template: str,
     ) -> T:
         payload: dict[str, object] = {
             "model": model,
@@ -125,6 +136,9 @@ class Inference:
         if effort is not None:
             payload["effort"] = effort
         key = _hash(payload)
+        version = self._version(
+            stage, template, schema_text(schema.model_json_schema()), model, effort
+        )
         if (cached := self._cached(stage, key)) is not None:
             return schema.model_validate_json(cached)
         if self._cached(stage, key, status="refused") is not None:
@@ -147,6 +161,7 @@ class Inference:
                         input_ref,
                         key,
                         started,
+                        prompt_version=version,
                         input_tokens=cut.input_tokens if cut else None,
                         output_tokens=cut.output_tokens if cut else None,
                         cost_usd=cut.cost_usd if cut else None,
@@ -166,6 +181,7 @@ class Inference:
                     input_ref,
                     key,
                     started,
+                    prompt_version=version,
                     output=reply.output.model_dump_json(),
                     model_version=reply.model_version,
                     input_tokens=reply.input_tokens,
@@ -174,6 +190,24 @@ class Inference:
                 )
                 return reply.output
         raise AssertionError("unreachable")
+
+    @property
+    def versions(self) -> set[str]:
+        """The prompt versions this Inference's calls and cache hits used."""
+        return set(self._versions.values())
+
+    def _version(
+        self, stage: str, template: str, schema: str, model: str, effort: str | None
+    ) -> str:
+        """The call's prompt version, registered in the store on its first use, and the run's use
+        of it noted once."""
+        parts = (stage, template, schema, model, effort)
+        if (vid := self._versions.get(parts)) is None:
+            vid = self._versions[parts] = register_version(self.conn, *parts)
+        if self.run_id is not None and (stage, vid) not in self._noted:
+            note_run(self.conn, self.run_id, stage, vid)
+            self._noted.add((stage, vid))
+        return vid
 
     def _require_record(self, stage: str, input_ref: str) -> None:
         if self.recorded_only:
@@ -199,6 +233,7 @@ class Inference:
         key: str,
         started: float,
         *,
+        prompt_version: str | None = None,
         output: str | None = None,
         model_version: str | None = None,
         confidence: float | None = None,
@@ -211,9 +246,9 @@ class Inference:
         self.calls += 1
         self.conn.execute(
             "INSERT INTO inference_records (run_id, stage, engine, model, model_version, "
-            "input_ref, input_hash, output, confidence, input_tokens, output_tokens, cost_usd, "
-            "duration_ms, status, error, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "input_ref, input_hash, prompt_version, output, confidence, input_tokens, "
+            "output_tokens, cost_usd, duration_ms, status, error, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 self.run_id,
                 stage,
@@ -222,6 +257,7 @@ class Inference:
                 model_version,
                 input_ref,
                 key,
+                prompt_version,
                 output,
                 confidence,
                 input_tokens,

@@ -231,6 +231,7 @@ CREATE TABLE IF NOT EXISTS inference_records (
     model_version TEXT,                -- model reported by the response
     input_ref TEXT NOT NULL,           -- e.g. doc:<id>, pair:<a>|<b>, subject:<id>
     input_hash TEXT NOT NULL,          -- sha256 of the full input; a cache hit skips the call
+    prompt_version TEXT,               -- prompt_versions id; null for calls made before versions
     output TEXT,                       -- JSON
     confidence REAL,
     input_tokens INTEGER,
@@ -242,6 +243,30 @@ CREATE TABLE IF NOT EXISTS inference_records (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS inference_records_cache ON inference_records (stage, input_hash, status);
+
+-- Prompt versions (pipeline/prompts.py): a stage's template, schema, model and effort, registered
+-- by the first call or cache hit that uses them, numbered from 1 per stage.
+CREATE TABLE IF NOT EXISTS prompt_versions (
+    id TEXT PRIMARY KEY,               -- sha256 of stage, template, schema, model, effort; 12 hex
+    stage TEXT NOT NULL,
+    number INTEGER NOT NULL,           -- 1, 2, ... per stage, in order of first use
+    template TEXT NOT NULL,            -- the system prompt, or the template it is filled from
+    schema TEXT NOT NULL,              -- the output schema's JSON
+    model TEXT NOT NULL,
+    effort TEXT,                       -- null: the model's own
+    note TEXT NOT NULL,                -- the stage's PROMPT_NOTES line when first used
+    first_used TEXT NOT NULL,
+    UNIQUE (stage, number)
+);
+
+-- The versions each run's labels came from, per stage. A run that replays every call from the
+-- cache writes no inference record, so this is what says which prompt made its labels.
+CREATE TABLE IF NOT EXISTS run_prompts (
+    run_id TEXT NOT NULL,
+    stage TEXT NOT NULL,
+    version TEXT NOT NULL,             -- prompt_versions id
+    PRIMARY KEY (run_id, stage, version)
+);
 
 -- Structured data (docs/archive/structured-data-plan.md, store/series.py). The catalogue tables
 -- mirror api/seed/series.yaml and are rewritten on every series fetch; observations keep the
@@ -437,6 +462,8 @@ ADDED_COLUMNS = [
     # Dropped findings and the priority reason (pipeline/developments.py).
     ("findings", "price_move", "INTEGER NOT NULL DEFAULT 0"),
     ("development_subjects", "priority_reason", "TEXT NOT NULL DEFAULT ''"),
+    # The prompt version of each call (pipeline/prompts.py).
+    ("inference_records", "prompt_version", "TEXT"),
 ]
 
 
@@ -574,6 +601,63 @@ def _impacts_by_table(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
 
 
+# Priority version 1: the built priority prompt (PRIORITY_PROMPT, PriorityRating, Sonnet 5.5 at
+# PRIORITY_EFFORT) that made every Claude priority call of the 11 Nov 2026 rebuild of the six runs,
+# 4 Oct to 8 Nov. Its id is pinned: the migration registers it only while the code's priority
+# prompt still has this id, so a store opened after the prompt changes is not stamped wrongly.
+PRIORITY_V1 = "b54f28dab077"
+PRIORITY_V1_MODEL = "claude-sonnet-5-5"
+# The rebuild's window (UTC): its first run started at 21:32 on 10 Nov, its last finished at 01:53.
+REBUILD_FROM, REBUILD_TO = "2026-11-10T21:30", "2026-11-11T02:00"
+_REBUILD_PRIORITY = (
+    "FROM inference_records WHERE stage = 'priority' AND engine = 'claude' AND model = ? "
+    "AND created_at BETWEEN ? AND ?"
+)
+
+
+def _priority_version_1(conn: sqlite3.Connection) -> None:
+    """Stores holding the 11 Nov rebuild's priority calls, made before prompt versions: the built
+    priority prompt is registered as priority version 1, the rebuild's Claude priority records
+    are stamped with it, and each run that made them uses it, in one transaction. Git shows
+    PRIORITY_PROMPT, PRIORITY_EFFORT and PriorityRating unchanged from their first commit, and
+    replaying the rebuild's inputs with the code hits every record's cache key. A store that
+    holds any priority version is done: it was migrated, or its priority calls came later."""
+    if conn.execute("SELECT 1 FROM prompt_versions WHERE stage = 'priority'").fetchone():
+        return
+    window = (PRIORITY_V1_MODEL, REBUILD_FROM, REBUILD_TO)
+    first = conn.execute(f"SELECT min(created_at) {_REBUILD_PRIORITY}", window).fetchone()[0]  # noqa: S608
+    if first is None:
+        return
+    from intelmonitor.pipeline.developments import PriorityRating
+    from intelmonitor.pipeline.params import PRIORITY_EFFORT, PRIORITY_PROMPT
+    from intelmonitor.pipeline.prompts import register_version, schema_text, version_id
+
+    parts = (
+        "priority",
+        PRIORITY_PROMPT,
+        schema_text(PriorityRating.model_json_schema()),
+        PRIORITY_V1_MODEL,
+        PRIORITY_EFFORT,
+    )
+    if version_id(*parts) != PRIORITY_V1:
+        return  # the prompt has changed since: the code no longer holds version 1
+    conn.execute("BEGIN IMMEDIATE")  # another connection may be migrating too
+    if conn.execute("SELECT 1 FROM prompt_versions WHERE stage = 'priority'").fetchone():
+        conn.rollback()
+        return
+    conn.execute(
+        f"UPDATE inference_records SET prompt_version = ? "  # noqa: S608
+        f"WHERE id IN (SELECT id {_REBUILD_PRIORITY})",
+        (PRIORITY_V1, *window),
+    )
+    conn.execute(
+        f"INSERT OR IGNORE INTO run_prompts (run_id, stage, version) "  # noqa: S608
+        f"SELECT DISTINCT run_id, 'priority', ? {_REBUILD_PRIORITY} AND run_id IS NOT NULL",
+        (PRIORITY_V1, *window),
+    )
+    register_version(conn, *parts, number=1, first_used=first)  # commits the transaction
+
+
 # Tables and meta keys of the features removed on 4 Nov 2026 (docs/removed-features-2026-11-04.md):
 # dashboards, profiles, visits, follows, reviews and notes, analyst feedback, custom questions,
 # triage, the alert reads triage replaced, and the standing questions' answers and facts.
@@ -641,6 +725,11 @@ def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     _drop_social(conn)
     _drop_removed_features(conn)
     _impacts_by_table(conn)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS inference_records_version "
+        "ON inference_records (prompt_version, input_ref)"
+    )
+    _priority_version_1(conn)
     if indexed is None:
         search.rebuild(conn)  # the search tables are new: index what is already stored
     return conn

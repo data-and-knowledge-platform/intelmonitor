@@ -79,6 +79,7 @@ class NoModelCalls(Inference):
         system: str,
         model: str | None = None,
         effort: EffortLevel | None = None,
+        template: str | None = None,
     ) -> T:
         raise ModelCallError(f"the check made a Claude call: {stage} {input_ref}")
 

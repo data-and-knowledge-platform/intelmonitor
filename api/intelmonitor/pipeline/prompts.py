@@ -1,0 +1,94 @@
+"""Prompt versions: which prompt made each stored label.
+
+A version is a stage's prompt template, output schema, model and effort. Its id is the first 12
+hex characters of the SHA-256 of those and the stage, so nobody bumps a number: change any of them
+and the next call registers a new version, numbered up from 1 per stage. The template is what the
+call site passes as `template` to `Inference.claude` (the priority call passes PRIORITY_PROMPT
+before it is filled per entity); every other stage's system prompt is its template.
+
+`Inference` registers the version of every call and cache hit in `prompt_versions`, stamps the
+records it writes with it, and notes each run's use of it in `run_prompts`, which is what says
+which version a run's labels came from when the run replays every call from the cache. Prompt
+text stays in code, and git has its history; the store links each label to its version, and
+`im prompts`, `im trial` and `im export version` show it."""
+
+import hashlib
+import json
+import sqlite3
+from datetime import UTC, datetime
+
+# One line per stage on what its prompt is, edited in the same commit as the prompt. A version
+# stores the stage's note when it is first used.
+PROMPT_NOTES: dict[str, str] = {
+    "screen": "Haiku screen: relevance, category, stage, subject tags and jurisdictions.",
+    "extract": "Findings with quotes, dates and each subject's role, adverse flag and tone.",
+    "same_event": "Haiku: whether two findings report the same event.",
+    "priority": "The team's direct High, Medium, Low prompt (deck of 10 Nov 2026, slide 7), as "
+    "built for the 11 Nov rebuild.",
+    "headline": "A development's display headline and key points.",
+    "note": "A subject's note on why its series moved in the week.",
+    "brief": "A subject's brief: state, concerns and direction.",
+    "theme": "Haiku: the theme a development belongs to, for the graph.",
+}
+
+
+def schema_text(schema: dict[str, object]) -> str:
+    """An output schema as stored and hashed: its JSON with sorted keys."""
+    return json.dumps(schema, sort_keys=True)
+
+
+def version_id(stage: str, template: str, schema: str, model: str, effort: str | None) -> str:
+    """The first 12 hex characters of the SHA-256 of the five parts of a version."""
+    parts = {
+        "stage": stage,
+        "template": template,
+        "schema": schema,
+        "model": model,
+        "effort": effort,
+    }
+    return hashlib.sha256(json.dumps(parts, sort_keys=True).encode()).hexdigest()[:12]
+
+
+def register_version(
+    conn: sqlite3.Connection,
+    stage: str,
+    template: str,
+    schema: str,
+    model: str,
+    effort: str | None,
+    number: int | None = None,
+    first_used: str | None = None,
+) -> str:
+    """The version's id, registered first if the store does not hold it: numbered one past the
+    stage's last, with the stage's note, first used now. The migration that registers version 1
+    passes its `number` and `first_used`. Commits."""
+    vid = version_id(stage, template, schema, model, effort)
+    conn.execute(
+        "INSERT OR IGNORE INTO prompt_versions "
+        "(id, stage, number, template, schema, model, effort, note, first_used) "
+        "SELECT ?, ?, coalesce(?, coalesce(max(number), 0) + 1), ?, ?, ?, ?, ?, ? "
+        "FROM prompt_versions WHERE stage = ?",
+        (
+            vid,
+            stage,
+            number,
+            template,
+            schema,
+            model,
+            effort,
+            PROMPT_NOTES.get(stage, ""),
+            first_used or datetime.now(UTC).isoformat(),
+            stage,
+        ),
+    )
+    conn.commit()
+    return vid
+
+
+def note_run(conn: sqlite3.Connection, run_id: str, stage: str, version: str) -> None:
+    """Records that the run's labels of the stage came from the version. Commits."""
+    conn.execute(
+        "INSERT OR IGNORE INTO run_prompts (run_id, stage, version) VALUES (?, ?, ?)",
+        (run_id, stage, version),
+    )
+    conn.commit()
