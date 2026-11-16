@@ -398,6 +398,21 @@ def _about(rows: list[tuple[str, Cell]]) -> Sheet:
     return Sheet("About", [("Field", 18), ("Value", 120)], [[k, v] for k, v in rows])
 
 
+def dataset_entities(conn: sqlite3.Connection) -> int:
+    """The entities a store's runs monitored: those tagged in a document from the corpus start
+    on, which screening tags with every seed subject it finds. An entity the seed no longer has
+    is not counted, since only the seed says which ids are entities."""
+    entities = {i for i, s in all_subjects().items() if s.type == "entity"}
+    start = corpus_start(conn)
+    tagged = conn.execute(
+        "SELECT DISTINCT t.subject_id FROM document_subjects t "
+        "JOIN source_documents d ON d.id = t.document_id "
+        "WHERE substr(d.published_at, 1, 10) >= ?",
+        ((start.isoformat() if start else ""),),
+    )
+    return sum(r["subject_id"] in entities for r in tagged)
+
+
 def version_workbook(store: Path, stage: str, number: int, out: Path) -> dict[str, int]:
     """One priority version's workbook from the store at `store`, written to `out`: About,
     Summary, then a sheet per run with the pairs of a development and an entity (a topic, when
@@ -434,9 +449,9 @@ def version_workbook(store: Path, stage: str, number: int, out: Path) -> dict[st
             if rows:
                 weeks.append(Sheet(run, DIRECT_COLUMNS, rows))
         runs = complete_runs(conn)
+        entities = dataset_entities(conn)
     finally:
         conn.close()
-    entities = sum(s.type == "entity" for s in all_subjects().values())
     about = _about(
         [
             ("Stage", stage),
@@ -447,7 +462,7 @@ def version_workbook(store: Path, stage: str, number: int, out: Path) -> dict[st
             ("Effort", version["effort"] or "the model's own"),
             ("First used", version["first_used"][:10]),
             ("Dataset", store.stem.removeprefix("intelmonitor-")),
-            ("Entities", f"{entities}, in the seed when this file was written"),
+            ("Entities", f"{entities}, tagged in the documents of the runs"),
             ("Runs", f"{runs[0]} to {runs[-1]}" if runs else "none"),
             ("Written", date.today()),
             ("Prompt", version["template"]),
