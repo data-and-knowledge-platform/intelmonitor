@@ -5,9 +5,10 @@
 #   type          holds_stake_in | regulated_by | operates_in | exposed_to | depends_on
 #                 | member_of | participates_in | partner_of | listed_on | belongs_to_sector
 #                 holds_stake_in runs holder to held; partner_of is stored once per pair, ids in
-#                 alphabetical order; belongs_to_sector links an entity to a seed group (a top-50
-#                 entity to its parent category, any other entity to each of its groups) and is
-#                 derived from api/seed/subjects.yaml, with no source
+#                 alphabetical order; belongs_to_sector links an entity to a seed group (an
+#                 entity in one of the first 8 groups to that group, its parent category, any
+#                 other entity to each of its groups) and is derived from api/seed/subjects.yaml,
+#                 with no source
 #   weight        exposed_to: the headline figure's share of its total: a bank's gross customer
 #                 loans (null when the headline is loans by currency or Pillar 3 RWA), an
 #                 issuer's reserves or reserve fund, a firm's revenue, costs, token supply or
@@ -2391,7 +2392,7 @@ relationships:
   source_title: OCBC Annual Report 2025, Note 33.1 List of Principal Subsidiaries
   quote: Bank of Singapore Limited | Singapore | 100 | 100
   detail: OCBC owns 100% of Bank of Singapore, its private bank.
-  reason: holds 100% of Bank of Singapore Limited, 31 Dec 2025
+  reason: holds 100% of Bank of Singapore, 31 Dec 2025
   transmission:
     from_to:
       strength: Strong
@@ -22393,6 +22394,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Airwallex is in the Fintech group of the subject seed.
   reason: Airwallex is in the Fintech group of the subject seed.
+- id: alipay:belongs_to_sector:payment-systems
+  from: alipay
+  to: payment-systems
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Alipay is in the Payment systems group of the subject seed.
+  reason: Alipay is in the Payment systems group of the subject seed.
 - id: allianz:belongs_to_sector:insurance
   from: allianz
   to: insurance
@@ -22401,6 +22410,22 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Allianz is in the Insurance group of the subject seed.
   reason: Allianz is in the Insurance group of the subject seed.
+- id: amd:belongs_to_sector:tech-providers
+  from: amd
+  to: tech-providers
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: AMD is in the Technology providers group of the subject seed.
+  reason: AMD is in the Technology providers group of the subject seed.
+- id: anext-bank:belongs_to_sector:banking
+  from: anext-bank
+  to: banking
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: ANEXT Bank is in the Banking group of the subject seed.
+  reason: ANEXT Bank is in the Banking group of the subject seed.
 - id: ant-international:belongs_to_sector:technology
   from: ant-international
   to: technology
@@ -22409,6 +22434,30 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Ant International is in the Technology group of the subject seed.
   reason: Ant International is in the Technology group of the subject seed.
+- id: anthropic:belongs_to_sector:tech-providers
+  from: anthropic
+  to: tech-providers
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Anthropic is in the Technology providers group of the subject seed.
+  reason: Anthropic is in the Technology providers group of the subject seed.
+- id: apple:belongs_to_sector:tech-providers
+  from: apple
+  to: tech-providers
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Apple is in the Technology providers group of the subject seed.
+  reason: Apple is in the Technology providers group of the subject seed.
+- id: asean:belongs_to_sector:international-bodies
+  from: asean
+  to: international-bodies
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: ASEAN is in the International bodies group of the subject seed.
+  reason: ASEAN is in the International bodies group of the subject seed.
 - id: australia:belongs_to_sector:other-countries
   from: australia
   to: other-countries
@@ -22433,6 +22482,30 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Bank of China is in the Banking group of the subject seed.
   reason: Bank of China is in the Banking group of the subject seed.
+- id: bank-of-england:belongs_to_sector:central-banks
+  from: bank-of-england
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Bank of England is in the Central banks and regulators group of the subject seed.
+  reason: Bank of England is in the Central banks and regulators group of the subject seed.
+- id: bank-of-japan:belongs_to_sector:central-banks
+  from: bank-of-japan
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Bank of Japan is in the Central banks and regulators group of the subject seed.
+  reason: Bank of Japan is in the Central banks and regulators group of the subject seed.
+- id: bank-of-singapore:belongs_to_sector:banking
+  from: bank-of-singapore
+  to: banking
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Bank of Singapore is in the Banking group of the subject seed.
+  reason: Bank of Singapore is in the Banking group of the subject seed.
 - id: bank-of-thailand:belongs_to_sector:central-banks
   from: bank-of-thailand
   to: central-banks
@@ -22441,6 +22514,22 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Bank of Thailand is in the Central banks and regulators group of the subject seed.
   reason: Bank of Thailand is in the Central banks and regulators group of the subject seed.
+- id: barclays:belongs_to_sector:banking
+  from: barclays
+  to: banking
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Barclays is in the Banking group of the subject seed.
+  reason: Barclays is in the Banking group of the subject seed.
+- id: bcbs:belongs_to_sector:central-banks
+  from: bcbs
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: BCBS is in the Central banks and regulators group of the subject seed.
+  reason: BCBS is in the Central banks and regulators group of the subject seed.
 - id: bcs:belongs_to_sector:financial-markets
   from: bcs
   to: financial-markets
@@ -22449,6 +22538,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: BCS is in the Financial markets group of the subject seed.
   reason: BCS is in the Financial markets group of the subject seed.
+- id: bis:belongs_to_sector:central-banks
+  from: bis
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: BIS is in the Central banks and regulators group of the subject seed.
+  reason: BIS is in the Central banks and regulators group of the subject seed.
 - id: blackrock:belongs_to_sector:asset-managers
   from: blackrock
   to: asset-managers
@@ -22465,6 +22562,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: BNM is in the Central banks and regulators group of the subject seed.
   reason: BNM is in the Central banks and regulators group of the subject seed.
+- id: bnp-paribas:belongs_to_sector:banking
+  from: bnp-paribas
+  to: banking
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: BNP Paribas is in the Banking group of the subject seed.
+  reason: BNP Paribas is in the Banking group of the subject seed.
 - id: building-construction:belongs_to_sector:sectors
   from: building-construction
   to: sectors
@@ -22481,6 +22586,22 @@ relationships:
   last_confirmed: 2026-11-11
   detail: CDP is in the Financial markets group of the subject seed.
   reason: CDP is in the Financial markets group of the subject seed.
+- id: china-construction-bank:belongs_to_sector:banking
+  from: china-construction-bank
+  to: banking
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: China Construction Bank is in the Banking group of the subject seed.
+  reason: China Construction Bank is in the Banking group of the subject seed.
+- id: chocolate-finance:belongs_to_sector:fintech
+  from: chocolate-finance
+  to: fintech
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Chocolate Finance is in the Fintech group of the subject seed.
+  reason: Chocolate Finance is in the Fintech group of the subject seed.
 - id: circle:belongs_to_sector:digital-asset-firms
   from: circle
   to: digital-asset-firms
@@ -22513,6 +22634,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Coinbase is in the Digital asset firms group of the subject seed.
   reason: Coinbase is in the Digital asset firms group of the subject seed.
+- id: credit-suisse:belongs_to_sector:banking
+  from: credit-suisse
+  to: banking
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Credit Suisse is in the Banking group of the subject seed.
+  reason: Credit Suisse is in the Banking group of the subject seed.
 - id: crowdstrike:belongs_to_sector:tech-providers
   from: crowdstrike
   to: tech-providers
@@ -22537,6 +22666,30 @@ relationships:
   last_confirmed: 2026-11-11
   detail: DBS is in the Banking group of the subject seed.
   reason: DBS is in the Banking group of the subject seed.
+- id: dubai:belongs_to_sector:other-countries
+  from: dubai
+  to: other-countries
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Dubai is in the Other countries and territories group of the subject seed.
+  reason: Dubai is in the Other countries and territories group of the subject seed.
+- id: ecb:belongs_to_sector:central-banks
+  from: ecb
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: ECB is in the Central banks and regulators group of the subject seed.
+  reason: ECB is in the Central banks and regulators group of the subject seed.
+- id: edb:belongs_to_sector:agencies
+  from: edb
+  to: agencies
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: EDB is in the Government agencies group of the subject seed.
+  reason: EDB is in the Government agencies group of the subject seed.
 - id: edbi:belongs_to_sector:investment
   from: edbi
   to: investment
@@ -22545,6 +22698,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: EDBI is in the Investment group of the subject seed.
   reason: EDBI is in the Investment group of the subject seed.
+- id: eiopa:belongs_to_sector:central-banks
+  from: eiopa
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: EIOPA is in the Central banks and regulators group of the subject seed.
+  reason: EIOPA is in the Central banks and regulators group of the subject seed.
 - id: equinix:belongs_to_sector:tech-providers
   from: equinix
   to: tech-providers
@@ -22553,6 +22714,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Equinix is in the Technology providers group of the subject seed.
   reason: Equinix is in the Technology providers group of the subject seed.
+- id: eu:belongs_to_sector:international-bodies
+  from: eu
+  to: international-bodies
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: EU is in the International bodies group of the subject seed.
+  reason: EU is in the International bodies group of the subject seed.
 - id: fast:belongs_to_sector:payment-systems
   from: fast
   to: payment-systems
@@ -22561,6 +22730,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: FAST is in the Payment systems group of the subject seed.
   reason: FAST is in the Payment systems group of the subject seed.
+- id: fatf:belongs_to_sector:central-banks
+  from: fatf
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: FATF is in the Central banks and regulators group of the subject seed.
+  reason: FATF is in the Central banks and regulators group of the subject seed.
 - id: federal-reserve:belongs_to_sector:central-banks
   from: federal-reserve
   to: central-banks
@@ -22569,6 +22746,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Federal Reserve is in the Central banks and regulators group of the subject seed.
   reason: Federal Reserve is in the Central banks and regulators group of the subject seed.
+- id: fsb:belongs_to_sector:central-banks
+  from: fsb
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: FSB is in the Central banks and regulators group of the subject seed.
+  reason: FSB is in the Central banks and regulators group of the subject seed.
 - id: fullerton-fund-management:belongs_to_sector:asset-managers
   from: fullerton-fund-management
   to: asset-managers
@@ -22665,6 +22850,30 @@ relationships:
   last_confirmed: 2026-11-11
   detail: HSBC is in the Banking group of the subject seed.
   reason: HSBC is in the Banking group of the subject seed.
+- id: icbc:belongs_to_sector:banking
+  from: icbc
+  to: banking
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: ICBC is in the Banking group of the subject seed.
+  reason: ICBC is in the Banking group of the subject seed.
+- id: imda:belongs_to_sector:agencies
+  from: imda
+  to: agencies
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: IMDA is in the Government agencies group of the subject seed.
+  reason: IMDA is in the Government agencies group of the subject seed.
+- id: imf:belongs_to_sector:central-banks
+  from: imf
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: IMF is in the Central banks and regulators group of the subject seed.
+  reason: IMF is in the Central banks and regulators group of the subject seed.
 - id: income-insurance:belongs_to_sector:insurance
   from: income-insurance
   to: insurance
@@ -22689,6 +22898,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Indonesia is in the SEA countries group of the subject seed.
   reason: Indonesia is in the SEA countries group of the subject seed.
+- id: japan:belongs_to_sector:other-countries
+  from: japan
+  to: other-countries
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Japan is in the Other countries and territories group of the subject seed.
+  reason: Japan is in the Other countries and territories group of the subject seed.
 - id: jpmorgan:belongs_to_sector:banking
   from: jpmorgan
   to: banking
@@ -22705,6 +22922,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Lion Global Investors is in the Asset management group of the subject seed.
   reason: Lion Global Investors is in the Asset management group of the subject seed.
+- id: lse:belongs_to_sector:exchanges
+  from: lse
+  to: exchanges
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: London Stock Exchange is in the Exchanges group of the subject seed.
+  reason: London Stock Exchange is in the Exchanges group of the subject seed.
 - id: mainland-china:belongs_to_sector:other-countries
   from: mainland-china
   to: other-countries
@@ -22729,6 +22954,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Manulife Singapore is in the Insurance group of the subject seed.
   reason: Manulife Singapore is in the Insurance group of the subject seed.
+- id: maribank:belongs_to_sector:banking
+  from: maribank
+  to: banking
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: MariBank is in the Banking group of the subject seed.
+  reason: MariBank is in the Banking group of the subject seed.
 - id: mas:belongs_to_sector:central-banks
   from: mas
   to: central-banks
@@ -22761,6 +22994,22 @@ relationships:
   last_confirmed: 2026-11-11
   detail: MEPS+ is in the Payment systems group of the subject seed.
   reason: MEPS+ is in the Payment systems group of the subject seed.
+- id: meta:belongs_to_sector:tech-providers
+  from: meta
+  to: tech-providers
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Meta is in the Technology providers group of the subject seed.
+  reason: Meta is in the Technology providers group of the subject seed.
+- id: metacomp:belongs_to_sector:digital-assets
+  from: metacomp
+  to: digital-assets
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: MetaComp is in the Digital assets group of the subject seed.
+  reason: MetaComp is in the Digital assets group of the subject seed.
 - id: microsoft:belongs_to_sector:technology
   from: microsoft
   to: technology
@@ -22785,6 +23034,38 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Microsoft Azure is in the Technology providers group of the subject seed.
   reason: Microsoft Azure is in the Technology providers group of the subject seed.
+- id: middle-east:belongs_to_sector:other-countries
+  from: middle-east
+  to: other-countries
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Middle East is in the Other countries and territories group of the subject seed.
+  reason: Middle East is in the Other countries and territories group of the subject seed.
+- id: moneysmart:belongs_to_sector:fintech
+  from: moneysmart
+  to: fintech
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: MoneySmart is in the Fintech group of the subject seed.
+  reason: MoneySmart is in the Fintech group of the subject seed.
+- id: mti:belongs_to_sector:agencies
+  from: mti
+  to: agencies
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: MTI is in the Government agencies group of the subject seed.
+  reason: MTI is in the Government agencies group of the subject seed.
+- id: nasdaq:belongs_to_sector:exchanges
+  from: nasdaq
+  to: exchanges
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Nasdaq is in the Exchanges group of the subject seed.
+  reason: Nasdaq is in the Exchanges group of the subject seed.
 - id: nets:belongs_to_sector:financial-markets
   from: nets
   to: financial-markets
@@ -22801,6 +23082,22 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Nium is in the Fintech group of the subject seed.
   reason: Nium is in the Fintech group of the subject seed.
+- id: nvidia:belongs_to_sector:tech-providers
+  from: nvidia
+  to: tech-providers
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: NVIDIA is in the Technology providers group of the subject seed.
+  reason: NVIDIA is in the Technology providers group of the subject seed.
+- id: nyse:belongs_to_sector:exchanges
+  from: nyse
+  to: exchanges
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: NYSE is in the Exchanges group of the subject seed.
+  reason: NYSE is in the Exchanges group of the subject seed.
 - id: ocbc:belongs_to_sector:banking
   from: ocbc
   to: banking
@@ -22825,6 +23122,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: OKX is in the Digital assets group of the subject seed.
   reason: OKX is in the Digital assets group of the subject seed.
+- id: openai:belongs_to_sector:tech-providers
+  from: openai
+  to: tech-providers
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: OpenAI is in the Technology providers group of the subject seed.
+  reason: OpenAI is in the Technology providers group of the subject seed.
 - id: oracle-cloud:belongs_to_sector:tech-providers
   from: oracle-cloud
   to: tech-providers
@@ -22841,6 +23146,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: PayNow is in the Payment systems group of the subject seed.
   reason: PayNow is in the Payment systems group of the subject seed.
+- id: paypal:belongs_to_sector:payment-systems
+  from: paypal
+  to: payment-systems
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: PayPal is in the Payment systems group of the subject seed.
+  reason: PayPal is in the Payment systems group of the subject seed.
 - id: pimco:belongs_to_sector:asset-managers
   from: pimco
   to: asset-managers
@@ -22849,6 +23162,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: PIMCO is in the Asset management group of the subject seed.
   reason: PIMCO is in the Asset management group of the subject seed.
+- id: pra:belongs_to_sector:central-banks
+  from: pra
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: UK PRA is in the Central banks and regulators group of the subject seed.
+  reason: UK PRA is in the Central banks and regulators group of the subject seed.
 - id: prudential-singapore:belongs_to_sector:insurance
   from: prudential-singapore
   to: insurance
@@ -22857,6 +23178,22 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Prudential Singapore is in the Insurance group of the subject seed.
   reason: Prudential Singapore is in the Insurance group of the subject seed.
+- id: rba:belongs_to_sector:central-banks
+  from: rba
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: RBA is in the Central banks and regulators group of the subject seed.
+  reason: RBA is in the Central banks and regulators group of the subject seed.
+- id: revolut:belongs_to_sector:fintech
+  from: revolut
+  to: fintech
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Revolut is in the Fintech group of the subject seed.
+  reason: Revolut is in the Fintech group of the subject seed.
 - id: ripple:belongs_to_sector:digital-asset-firms
   from: ripple
   to: digital-asset-firms
@@ -22929,6 +23266,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Standard Chartered is in the Banking group of the subject seed.
   reason: Standard Chartered is in the Banking group of the subject seed.
+- id: state-bank-of-india:belongs_to_sector:banking
+  from: state-bank-of-india
+  to: banking
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: State Bank of India is in the Banking group of the subject seed.
+  reason: State Bank of India is in the Banking group of the subject seed.
 - id: straitsx:belongs_to_sector:digital-assets
   from: straitsx
   to: digital-assets
@@ -22977,6 +23322,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Temasek is in the Investment group of the subject seed.
   reason: Temasek is in the Investment group of the subject seed.
+- id: tencent:belongs_to_sector:tech-providers
+  from: tencent
+  to: tech-providers
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: Tencent is in the Technology providers group of the subject seed.
+  reason: Tencent is in the Technology providers group of the subject seed.
 - id: thailand:belongs_to_sector:sea-countries
   from: thailand
   to: sea-countries
@@ -23017,6 +23370,14 @@ relationships:
   last_confirmed: 2026-11-11
   detail: UBS is in the Banking group of the subject seed.
   reason: UBS is in the Banking group of the subject seed.
+- id: uk-fca:belongs_to_sector:central-banks
+  from: uk-fca
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: UK FCA is in the Central banks and regulators group of the subject seed.
+  reason: UK FCA is in the Central banks and regulators group of the subject seed.
 - id: united-kingdom:belongs_to_sector:other-countries
   from: united-kingdom
   to: other-countries
@@ -23041,6 +23402,22 @@ relationships:
   last_confirmed: 2026-11-11
   detail: UOB is in the Banking group of the subject seed.
   reason: UOB is in the Banking group of the subject seed.
+- id: us-cftc:belongs_to_sector:central-banks
+  from: us-cftc
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: US CFTC is in the Central banks and regulators group of the subject seed.
+  reason: US CFTC is in the Central banks and regulators group of the subject seed.
+- id: us-sec:belongs_to_sector:central-banks
+  from: us-sec
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: US SEC is in the Central banks and regulators group of the subject seed.
+  reason: US SEC is in the Central banks and regulators group of the subject seed.
 - id: vanguard:belongs_to_sector:asset-managers
   from: vanguard
   to: asset-managers
@@ -23081,6 +23458,30 @@ relationships:
   last_confirmed: 2026-11-11
   detail: Wise is in the Fintech group of the subject seed.
   reason: Wise is in the Fintech group of the subject seed.
+- id: world-bank:belongs_to_sector:central-banks
+  from: world-bank
+  to: central-banks
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: World Bank is in the Central banks and regulators group of the subject seed.
+  reason: World Bank is in the Central banks and regulators group of the subject seed.
+- id: wto:belongs_to_sector:international-bodies
+  from: wto
+  to: international-bodies
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: WTO is in the International bodies group of the subject seed.
+  reason: WTO is in the International bodies group of the subject seed.
+- id: youtrip:belongs_to_sector:fintech
+  from: youtrip
+  to: fintech
+  type: belongs_to_sector
+  evidence: public
+  last_confirmed: 2026-11-11
+  detail: YouTrip is in the Fintech group of the subject seed.
+  reason: YouTrip is in the Fintech group of the subject seed.
 endpoints:
 - id: abs
   name: The Association of Banks in Singapore
@@ -23112,9 +23513,6 @@ endpoints:
 - id: amazon
   name: Amazon.com
   kind: tech_provider
-- id: anext-bank
-  name: ANEXT Bank
-  kind: bank
 - id: ant-group
   name: Ant Group
   kind: payment_institution
@@ -23147,9 +23545,6 @@ endpoints:
   kind: bank
 - id: bank-of-ningbo
   name: Bank of Ningbo Co., Ltd.
-  kind: bank
-- id: bank-of-singapore
-  name: Bank of Singapore Limited
   kind: bank
 - id: bank-of-taiwan-singapore
   name: Bank of Taiwan Singapore
@@ -23270,9 +23665,6 @@ endpoints:
   kind: bank
 - id: dubai-vara
   name: Virtual Assets Regulatory Authority (Dubai)
-  kind: regulator
-- id: edb
-  name: Singapore Economic Development Board
   kind: regulator
 - id: egiro
   name: eGIRO
@@ -23407,9 +23799,6 @@ endpoints:
 - id: liquid-group
   name: Liquid Group
   kind: tech_provider
-- id: lse
-  name: London Stock Exchange
-  kind: market_infrastructure
 - id: luxembourg
   name: Luxembourg
   kind: country
@@ -23422,9 +23811,6 @@ endpoints:
 - id: manulife-financial
   name: Manulife Financial Corporation
   kind: insurer
-- id: maribank
-  name: MariBank
-  kind: bank
 - id: mas-abs-act
   name: MAS-ABS AI-Driven Cyber and Technology Risk Taskforce (ACT)
   kind: group
@@ -23453,9 +23839,6 @@ endpoints:
 - id: mufg-singapore
   name: MUFG Bank Singapore
   kind: bank
-- id: nasdaq
-  name: Nasdaq
-  kind: tech_provider
 - id: natixis-singapore
   name: Natixis Singapore
   kind: bank
@@ -23481,9 +23864,6 @@ endpoints:
 - id: nydfs
   name: New York State Department of Financial Services
   kind: regulator
-- id: nyse
-  name: New York Stock Exchange
-  kind: market_infrastructure
 - id: oaknorth
   name: OakNorth Bank
   kind: bank
@@ -23523,9 +23903,6 @@ endpoints:
 - id: pnb
   name: Permodalan Nasional Berhad
   kind: investor
-- id: pra
-  name: Prudential Regulation Authority
-  kind: regulator
 - id: professionals-individuals
   name: Professionals and private individuals
   kind: sector
@@ -23565,9 +23942,6 @@ endpoints:
   - mainland-china
   - taiwan
   - macau
-- id: revolut
-  name: Revolut
-  kind: payment_institution
 - id: rhb-singapore
   name: RHB Bank Singapore
   kind: bank
@@ -23686,9 +24060,6 @@ endpoints:
 - id: temenos
   name: Temenos
   kind: tech_provider
-- id: tencent
-  name: Tencent
-  kind: tech_provider
 - id: thunes
   name: Thunes
   kind: payment_institution
@@ -23710,9 +24081,6 @@ endpoints:
 - id: uco-bank-singapore
   name: UCO Bank Singapore
   kind: bank
-- id: uk-fca
-  name: Financial Conduct Authority
-  kind: regulator
 - id: uob-china
   name: United Overseas Bank (China) Limited
   kind: bank

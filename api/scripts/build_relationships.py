@@ -54,7 +54,8 @@ OUT = RELATIONSHIPS_PATH
 LAST_CONFIRMED = date(2026, 10, 7)
 # belongs_to_sector links come from the seed's groups, last reviewed on this date (ticket 17, Q4).
 SECTORS_CONFIRMED = date(2026, 11, 11)
-# The seed's first groups hold the MAS top 50 entities, one parent category each.
+# The seed's first groups are the MAS top 50's parent categories; an entity sits in at most one of
+# them (banking and fintech also hold banks and fintechs added later).
 TOP_50_GROUPS = 8
 
 # Ids the collected files spell differently from the subject seed.
@@ -88,7 +89,6 @@ EXTRA_ENDPOINTS: dict[str, tuple[str, EndpointKind]] = {
     "gxs-bank": ("GXS Bank", "bank"),
     "income-insurance": ("Income Insurance", "insurer"),
     "maybank": ("Maybank", "bank"),
-    "nasdaq": ("Nasdaq", "tech_provider"),
     "temenos": ("Temenos", "tech_provider"),
     "trust-bank": ("Trust Bank", "bank"),
     "egiro": ("eGIRO", "payment_system"),
@@ -524,14 +524,14 @@ def build_links(build: Build, data: LinksFile, confirmed: date = LAST_CONFIRMED)
 
 
 def build_sectors(build: Build) -> None:
-    """belongs_to_sector, derived from the seed's groups: a top-50 entity to its parent category
-    (the one of the first TOP_50_GROUPS groups it sits in), any other entity to each of its
+    """belongs_to_sector, derived from the seed's groups: an entity in one of the first
+    TOP_50_GROUPS groups to that group (its parent category), any other entity to each of its
     groups. Nothing is collected for it, so it has no source."""
     top = build.seed.groups[:TOP_50_GROUPS]
     parent: dict[str, str] = {}
     for g in top:
         for m in g.members:
-            assert m not in parent, f"{m} sits in two top-50 groups"
+            assert m not in parent, f"{m} sits in two of the first {TOP_50_GROUPS} groups"
             parent[m] = g.id
     names = build.subjects
     for e in build.seed.entities:
@@ -657,9 +657,10 @@ HEADER = """\
 #   type          holds_stake_in | regulated_by | operates_in | exposed_to | depends_on
 #                 | member_of | participates_in | partner_of | listed_on | belongs_to_sector
 #                 holds_stake_in runs holder to held; partner_of is stored once per pair, ids in
-#                 alphabetical order; belongs_to_sector links an entity to a seed group (a top-50
-#                 entity to its parent category, any other entity to each of its groups) and is
-#                 derived from api/seed/subjects.yaml, with no source
+#                 alphabetical order; belongs_to_sector links an entity to a seed group (an
+#                 entity in one of the first 8 groups to that group, its parent category, any
+#                 other entity to each of its groups) and is derived from api/seed/subjects.yaml,
+#                 with no source
 #   weight        exposed_to: the headline figure's share of its total: a bank's gross customer
 #                 loans (null when the headline is loans by currency or Pillar 3 RWA), an
 #                 issuer's reserves or reserve fund, a firm's revenue, costs, token supply or
@@ -745,7 +746,7 @@ def report(build: Build, rels: list[Relationship], endpoints: list[Endpoint]) ->
     found = {(r.from_, r.to) for r in sectors}
     print(
         f"  belongs_to_sector: {len(sectors)} links, {len(expected)} expected memberships "
-        f"({len(top)} top-50 entities to their parent category, "
+        f"({len(top)} entities of the first {TOP_50_GROUPS} groups to their parent category, "
         f"{len(expected) - len(top)} memberships of the other {len(build.subjects) - len(top)}); "
         f"missing {sorted(expected - found) or 'none'}, extra {sorted(found - expected) or 'none'}"
     )
