@@ -30,7 +30,7 @@
     "/subjects": {
       "get": {
         "summary": "List Subjects",
-        "description": "The catalogue: every topic, group and entity, with a topic's function.",
+        "description": "The catalogue: every topic, group and displayed entity, with a topic's function.",
         "operationId": "list_subjects",
         "responses": {
           "200": {
@@ -135,6 +135,7 @@
     "/subjects/{subject_id}": {
       "get": {
         "summary": "Get Subject",
+        "description": "A topic, group or displayed entity; 404 for a hidden entity, which has no page.",
         "operationId": "get_subject",
         "parameters": [
           {
@@ -174,7 +175,7 @@
     "/subjects/{subject_id}/page": {
       "get": {
         "summary": "Get Monitor Page",
-        "description": "An entity or topic page: the subject, the run, its upcoming dates, whether it has a Data\ntab, its brief and the developments that reach it indirectly.",
+        "description": "An entity or topic page: the subject, the run, its upcoming dates, whether it has a Data\ntab, its brief and the developments that reach it indirectly. 404 for a hidden entity.",
         "operationId": "get_monitor_page",
         "parameters": [
           {
@@ -2701,7 +2702,9 @@
                   "payment_institution",
                   "stablecoin_issuer",
                   "digital_asset_firm",
+                  "international_body",
                   "country",
+                  "region",
                   "sector"
                 ]
               },
@@ -3116,7 +3119,9 @@
                   "payment_institution",
                   "stablecoin_issuer",
                   "digital_asset_firm",
+                  "international_body",
                   "country",
+                  "region",
                   "sector"
                 ]
               },
@@ -3267,7 +3272,9 @@
                   "payment_institution",
                   "stablecoin_issuer",
                   "digital_asset_firm",
+                  "international_body",
                   "country",
+                  "region",
                   "sector"
                 ]
               },
@@ -3345,6 +3352,11 @@
             "title": "Icon",
             "description": "Topic glyph from the web icon library"
           },
+          "displayed": {
+            "type": "boolean",
+            "title": "Displayed",
+            "description": "False for a hidden entity, which has no page: its name shows as text"
+          },
           "groups": {
             "items": {
               "$ref": "#/components/schemas/SubjectRef"
@@ -3403,6 +3415,7 @@
           "name",
           "type",
           "kind",
+          "displayed",
           "groups",
           "function",
           "counts",
@@ -3841,7 +3854,9 @@
                   "payment_institution",
                   "stablecoin_issuer",
                   "digital_asset_firm",
+                  "international_body",
                   "country",
+                  "region",
                   "sector"
                 ]
               },
@@ -5032,7 +5047,9 @@
                   "payment_institution",
                   "stablecoin_issuer",
                   "digital_asset_firm",
+                  "international_body",
                   "country",
+                  "region",
                   "sector"
                 ]
               },
@@ -5068,6 +5085,11 @@
             "title": "Subject",
             "description": "A tracked subject; otherwise a relationship endpoint"
           },
+          "displayed": {
+            "type": "boolean",
+            "title": "Displayed",
+            "description": "A tracked subject with a page; false for a hidden entity"
+          },
           "a_links": {
             "items": {
               "$ref": "#/components/schemas/RelationshipLink"
@@ -5089,6 +5111,7 @@
           "name",
           "kind",
           "subject",
+          "displayed",
           "a_links",
           "b_links"
         ],
@@ -5221,7 +5244,9 @@
                   "payment_institution",
                   "stablecoin_issuer",
                   "digital_asset_firm",
+                  "international_body",
                   "country",
+                  "region",
                   "sector"
                 ]
               },
@@ -5299,6 +5324,11 @@
             "title": "Icon",
             "description": "Topic glyph from the web icon library"
           },
+          "displayed": {
+            "type": "boolean",
+            "title": "Displayed",
+            "description": "False for a hidden entity, which has no page: its name shows as text"
+          },
           "aliases": {
             "items": {
               "type": "string"
@@ -5346,6 +5376,7 @@
           "name",
           "type",
           "kind",
+          "displayed",
           "aliases",
           "members",
           "function",
@@ -5705,7 +5736,9 @@
                   "payment_institution",
                   "stablecoin_issuer",
                   "digital_asset_firm",
+                  "international_body",
                   "country",
+                  "region",
                   "sector"
                 ]
               },
@@ -5782,6 +5815,11 @@
             ],
             "title": "Icon",
             "description": "Topic glyph from the web icon library"
+          },
+          "displayed": {
+            "type": "boolean",
+            "title": "Displayed",
+            "description": "False for a hidden entity, which has no page: its name shows as text"
           }
         },
         "type": "object",
@@ -5789,7 +5827,8 @@
           "id",
           "name",
           "type",
-          "kind"
+          "kind",
+          "displayed"
         ],
         "title": "SubjectRef"
       },
@@ -5830,7 +5869,9 @@
                   "payment_institution",
                   "stablecoin_issuer",
                   "digital_asset_firm",
+                  "international_body",
                   "country",
+                  "region",
                   "sector"
                 ]
               },
@@ -5908,6 +5949,11 @@
             "title": "Icon",
             "description": "Topic glyph from the web icon library"
           },
+          "displayed": {
+            "type": "boolean",
+            "title": "Displayed",
+            "description": "False for a hidden entity, which has no page: its name shows as text"
+          },
           "aliases": {
             "items": {
               "type": "string"
@@ -5941,6 +5987,7 @@
           "name",
           "type",
           "kind",
+          "displayed",
           "aliases",
           "members",
           "function"

@@ -16,7 +16,7 @@ export const STEPS = [
   "Remove from the Personal watchlist: each entry's x, MAS included; the emptied watchlist stays empty and / opens the Entities list",
   "Function views: the switcher's five presets, fixed and locked; / opens the preset's first entity; Add to watchlist changes only Personal; a reload keeps the view",
   "Two tabs: an add, a removal and a view change in one tab show in the other without a reload",
-  "Stored state edge cases: old, group and bad values are ignored and the retired key goes; with storage blocked, Add to watchlist works and one notice says so",
+  "Stored state edge cases: old, group, hidden and bad values are ignored and the retired key goes; with storage blocked, Add to watchlist works and one notice says so",
   "⌘K search opens an entity and a development",
   "At 1024 px nothing scrolls sideways and names and feed titles show in full",
   "? and the sidebar's Help link open Help with the labels; Data sources opens from its link",

@@ -32,7 +32,7 @@ Series carry no Watch or Stable status, and no focus areas appear on the tab.
 Preconditions:
 
 - `pnpm -C web verify doctor` is ok.
-- Check a subject has series with `verify api /subjects/<id>/trend` (`series` not empty). On 8 Nov: `ocbc` and `dbs` (1 series each), `mas` (2 series, a `Series` button group), `singapore` (16 series, a `Series` select). `aws` has none.
+- Check a subject has series with `verify api /subjects/<id>/trend` (`series` not empty). On 8 Nov: `ocbc` and `dbs` (1 series each), `mas` (2 series, a `Series` button group), `sgx` (14 series, a `Series` select; counted 16 Nov). `aws` has none. Hidden entities such as `singapore` have no page, so no Data tab.
 - Read only: nothing here writes to the store.
 
 - **Open from the tab.** `pnpm -C web verify open page ocbc`, `ab snapshot -i`, click `link "Data"`. The URL ends `/entities/ocbc/data`; `link "Data"` is `aria-current="page"`.
@@ -42,7 +42,7 @@ Preconditions:
 - **Earlier week.** Click `button "1 Nov"` in `group "Week"`. The meta reads `Week to 1 Nov` and the headline changes to that week's note.
 - **Before collection.** Click `button "Before 1 Oct"`. The meta reads `Before 1 Oct`, the lead `No news before 1 Oct`, the Facts meta `Computed`, and `ab get count .tr-mk` is 0.
 - **Cite opens the development.** Click `link "1"` in the note. The URL gains `development=<id>&scope=subject%3Aocbc` and the popup's title is the cited title. Esc returns to the Data tab at the same scroll.
-- **Many series.** `verify open data singapore`: `combobox "Series"`; selecting another series changes the chart label.
+- **Many series.** `verify open data sgx`: `combobox "Series"`; selecting another series changes the chart label.
 
 ## Gotchas
 

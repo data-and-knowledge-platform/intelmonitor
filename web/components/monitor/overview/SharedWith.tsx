@@ -142,7 +142,7 @@ export function SharedWith({ subject }: { subject: Subject }) {
 
 /** One shared thing: each side's link, the thing between them, and the sources under it. */
 function Rung({ endpoint: e, a, b, head }: { endpoint: Endpoint; a: string; b: string; head: string | null }) {
-  const ref = { id: e.id, name: e.name, type: "entity" as const, kind: null };
+  const ref = { id: e.id, name: e.name, type: "entity" as const, kind: null, displayed: e.displayed };
   return (
     <>
       {head && <h3 className="sw-head">{head}</h3>}

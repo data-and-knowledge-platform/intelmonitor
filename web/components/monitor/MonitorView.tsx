@@ -158,7 +158,9 @@ const KIND_LABEL: Record<NonNullable<Subject["kind"]>, string> = {
   payment_institution: "Payments and fintech",
   stablecoin_issuer: "Stablecoin issuer",
   digital_asset_firm: "Digital asset firm",
+  international_body: "International body",
   country: "Country or territory",
+  region: "Region",
   sector: "Sector",
 };
 

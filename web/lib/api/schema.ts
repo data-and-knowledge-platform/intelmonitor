@@ -30,7 +30,7 @@ export interface paths {
         };
         /**
          * List Subjects
-         * @description The catalogue: every topic, group and entity, with a topic's function.
+         * @description The catalogue: every topic, group and displayed entity, with a topic's function.
          */
         get: operations["list_subjects"];
         put?: never;
@@ -90,7 +90,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Subject */
+        /**
+         * Get Subject
+         * @description A topic, group or displayed entity; 404 for a hidden entity, which has no page.
+         */
         get: operations["get_subject"];
         put?: never;
         post?: never;
@@ -110,7 +113,7 @@ export interface paths {
         /**
          * Get Monitor Page
          * @description An entity or topic page: the subject, the run, its upcoming dates, whether it has a Data
-         *     tab, its brief and the developments that reach it indirectly.
+         *     tab, its brief and the developments that reach it indirectly. 404 for a hidden entity.
          */
         get: operations["get_monitor_page"];
         put?: never;
@@ -1177,7 +1180,7 @@ export interface components {
             /** Label */
             label: string;
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group") | null;
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "international_body" | "country" | "region" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group") | null;
             /** Hop */
             hop: number;
             /**
@@ -1346,7 +1349,7 @@ export interface components {
             /** Name */
             name: string;
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "international_body" | "country" | "region" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
             /** @description None when the institution is not tracked */
             subject: components["schemas"]["SubjectRef"] | null;
             /**
@@ -1399,7 +1402,7 @@ export interface components {
              */
             type: "topic" | "group" | "entity";
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | null;
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "international_body" | "country" | "region" | "sector") | null;
             /**
              * Logo
              * @description Entity icon path in the web app, if one exists
@@ -1415,6 +1418,11 @@ export interface components {
              * @description Topic glyph from the web icon library
              */
             icon?: ("activity" | "arrow-left-right" | "ban" | "banknote" | "blocks" | "brain-circuit" | "briefcase" | "building-2" | "chart-pie" | "clipboard-check" | "credit-card" | "fuel" | "gauge" | "gavel" | "gem" | "globe" | "handshake" | "landmark" | "leaf" | "life-buoy" | "network" | "percent" | "piggy-bank" | "scale" | "scroll-text" | "server" | "shield" | "siren" | "trending-up" | "umbrella") | null;
+            /**
+             * Displayed
+             * @description False for a hidden entity, which has no page: its name shows as text
+             */
+            displayed: boolean;
             /**
              * Groups
              * @description An entity's groups in seed order, the first one shown; empty for topics
@@ -1669,7 +1677,7 @@ export interface components {
             /** Name */
             name: string;
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "international_body" | "country" | "region" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
             /** @description None when the node is not tracked */
             subject: components["schemas"]["SubjectRef"] | null;
             /**
@@ -2164,12 +2172,17 @@ export interface components {
             /** Name */
             name: string;
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "international_body" | "country" | "region" | "sector") | ("bank" | "insurer" | "broker" | "investor" | "person" | "association" | "central_bank" | "regulator" | "market_infrastructure" | "payment_system" | "payment_institution" | "tech_provider" | "stablecoin_issuer" | "digital_asset_firm" | "blockchain" | "country" | "region" | "sector" | "group");
             /**
              * Subject
              * @description A tracked subject; otherwise a relationship endpoint
              */
             subject: boolean;
+            /**
+             * Displayed
+             * @description A tracked subject with a page; false for a hidden entity
+             */
+            displayed: boolean;
             /** A Links */
             a_links: components["schemas"]["RelationshipLink"][];
             /** B Links */
@@ -2222,7 +2235,7 @@ export interface components {
              */
             type: "topic" | "group" | "entity";
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | null;
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "international_body" | "country" | "region" | "sector") | null;
             /**
              * Logo
              * @description Entity icon path in the web app, if one exists
@@ -2238,6 +2251,11 @@ export interface components {
              * @description Topic glyph from the web icon library
              */
             icon?: ("activity" | "arrow-left-right" | "ban" | "banknote" | "blocks" | "brain-circuit" | "briefcase" | "building-2" | "chart-pie" | "clipboard-check" | "credit-card" | "fuel" | "gauge" | "gavel" | "gem" | "globe" | "handshake" | "landmark" | "leaf" | "life-buoy" | "network" | "percent" | "piggy-bank" | "scale" | "scroll-text" | "server" | "shield" | "siren" | "trending-up" | "umbrella") | null;
+            /**
+             * Displayed
+             * @description False for a hidden entity, which has no page: its name shows as text
+             */
+            displayed: boolean;
             /** Aliases */
             aliases: string[];
             /**
@@ -2408,7 +2426,7 @@ export interface components {
              */
             type: "topic" | "group" | "entity";
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | null;
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "international_body" | "country" | "region" | "sector") | null;
             /**
              * Logo
              * @description Entity icon path in the web app, if one exists
@@ -2424,6 +2442,11 @@ export interface components {
              * @description Topic glyph from the web icon library
              */
             icon?: ("activity" | "arrow-left-right" | "ban" | "banknote" | "blocks" | "brain-circuit" | "briefcase" | "building-2" | "chart-pie" | "clipboard-check" | "credit-card" | "fuel" | "gauge" | "gavel" | "gem" | "globe" | "handshake" | "landmark" | "leaf" | "life-buoy" | "network" | "percent" | "piggy-bank" | "scale" | "scroll-text" | "server" | "shield" | "siren" | "trending-up" | "umbrella") | null;
+            /**
+             * Displayed
+             * @description False for a hidden entity, which has no page: its name shows as text
+             */
+            displayed: boolean;
         };
         /** SubjectSummary */
         SubjectSummary: {
@@ -2437,7 +2460,7 @@ export interface components {
              */
             type: "topic" | "group" | "entity";
             /** Kind */
-            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "country" | "sector") | null;
+            kind: ("bank" | "central_bank" | "regulator" | "agency" | "market_infrastructure" | "payment_system" | "tech_provider" | "asset_manager" | "investor" | "insurer" | "payment_institution" | "stablecoin_issuer" | "digital_asset_firm" | "international_body" | "country" | "region" | "sector") | null;
             /**
              * Logo
              * @description Entity icon path in the web app, if one exists
@@ -2453,6 +2476,11 @@ export interface components {
              * @description Topic glyph from the web icon library
              */
             icon?: ("activity" | "arrow-left-right" | "ban" | "banknote" | "blocks" | "brain-circuit" | "briefcase" | "building-2" | "chart-pie" | "clipboard-check" | "credit-card" | "fuel" | "gauge" | "gavel" | "gem" | "globe" | "handshake" | "landmark" | "leaf" | "life-buoy" | "network" | "percent" | "piggy-bank" | "scale" | "scroll-text" | "server" | "shield" | "siren" | "trending-up" | "umbrella") | null;
+            /**
+             * Displayed
+             * @description False for a hidden entity, which has no page: its name shows as text
+             */
+            displayed: boolean;
             /** Aliases */
             aliases: string[];
             /**

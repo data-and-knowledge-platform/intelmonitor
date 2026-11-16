@@ -2,8 +2,8 @@
 // wayfind/topics-watchlists-views/issues/12-tests-and-docs.md. One serial test: steps 1 to 10 and
 // 13 to 15 share the test's browser context, so the browser state (`localStorage["im.state.v1"]`)
 // carries from step to step; steps 11 and 12 open contexts of their own, each recorded on video.
-// It reads the API to decide what to click and what to expect; only seed facts (89 entities, 30
-// topics, the five functions and their presets) are fixed. The web app only reads the API: every
+// It reads the API to decide what to click and what to expect; only seed facts (57 displayed
+// entities, 30 topics, the five functions and their presets) are fixed. The web app only reads the API: every
 // API request any context makes goes to requests.json, and the run fails on any that is not a GET
 // or that reaches a removed endpoint, so it needs no store backup. It ends with the scripted
 // pipeline checks and check_endpoints.py; run it with the INTELMONITOR_DATA_DIR the API serves.
@@ -73,7 +73,7 @@ const API_DIR = path.join(ROOT, "api");
 const VIEWPORT = { width: 1440, height: 900 };
 const STATE_KEY = "im.state.v1";
 // Seed facts the walkthrough may fix.
-const ENTITY_COUNT = 89;
+const ENTITY_COUNT = 57; // displayed entities; hidden ones have no list row
 const TOPIC_COUNT = 30;
 const PRIORITIES = ["High", "Medium", "Low"] as const;
 const NOTICE = "This browser blocks storage, so watchlist changes last only until this tab closes.";
@@ -630,7 +630,9 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       await expect(popup.getByRole("heading", { name: "Connections" })).toBeVisible();
       const rows = popup.locator(".imp");
       await expect(rows).toHaveCount(d.impacts.length);
-      await expect(rows.locator(".imp-h a")).toHaveText(d.impacts.map((i) => i.subject.name));
+      // A hidden entity reached has no page, so its name is text and only displayed ones link.
+      await expect(rows.locator(".imp-h a")).toHaveText(d.impacts.filter((i) => i.subject.displayed).map((i) => i.subject.name));
+      for (const [n, i] of d.impacts.entries()) await expect(rows.nth(n).locator(".imp-h")).toContainText(i.subject.name);
       await expect(rows.locator(".imp-route")).toHaveText(d.impacts.map((i) => i.route));
       await expect(rows.locator(".imp-dir")).toHaveText(d.impacts.map((i) => i.level));
       // 80% of the screen, within its bounds.
@@ -656,7 +658,7 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
     });
 
     await step(STEPS[7], async () => {
-      const visits = ["uob", "hsbc", "singapore", "cyber-resilience", "aml-sanctions", "monetary-policy", "dbs"].map(subject);
+      const visits = ["uob", "hsbc", "hkma", "cyber-resilience", "aml-sanctions", "monetary-policy", "dbs"].map(subject);
       for (const s of visits) {
         await page.goto(pagePath(s));
         await expect(page.getByRole("heading", { level: 1, name: s.name })).toBeVisible();
@@ -754,11 +756,12 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
     });
 
     await step(STEPS[11], async () => {
-      // A store written by older code: a topic and a group id, a bad `recent`, an unknown view and
-      // the retired sidebar key, set once before the app loads.
+      // A store written by older code: a topic, a group and a now hidden entity's id, a bad `recent`,
+      // an unknown view and the retired sidebar key, set once before the app loads.
       const group = subjects.find((s) => s.type === "group" && s.members.includes("dbs"));
       if (!group) throw new Error("DBS is in no group");
       expect(byId.has("cyber-threats"), "cyber-threats left the seed").toBe(false);
+      expect(byId.has("singtel"), "Singtel is hidden").toBe(false);
       const seeded = await openContext("stored-state");
       await seeded.addInitScript(
         ({ key, value }) => {
@@ -768,7 +771,7 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
           localStorage.setItem("im.sidebar.closed", JSON.stringify(["entities"]));
           localStorage.setItem(key, value);
         },
-        { key: STATE_KEY, value: JSON.stringify({ watchlist: ["cyber-threats", group.id, "dbs"], recent: 42, view: "no-such-view" }) },
+        { key: STATE_KEY, value: JSON.stringify({ watchlist: ["cyber-threats", group.id, "singtel", "dbs"], recent: 42, view: "no-such-view" }) },
       );
       const s = await seeded.newPage();
       at = { shot: s, state: s };

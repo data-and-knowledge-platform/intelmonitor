@@ -2,7 +2,8 @@
 // reach it, as a graph around it (components/graph/RelatedCanvas.tsx) beside a list of those
 // developments grouped by node, as the graph view's In view list sits beside its canvas. The window
 // is 7 days (the brief's week), 30 or 90. Clicking a node scrolls the list to its group and marks
-// it; hovering or focusing a group highlights its node. "See all links" leads to the Related tab
+// it; hovering or focusing a group highlights its node. A group's name links to its subject's
+// page, unless it is an endpoint or a hidden entity, which have none. "See all links" leads to the Related tab
 // when the subject has one. The page shows the card only for a subject with stored links
 // (MonitorView.tsx).
 import { Link } from "@tanstack/react-router";
@@ -149,7 +150,7 @@ function DevelopmentList({
           onBlur={() => onHover(null)}
         >
           <h3>
-            {n.subject ? (
+            {n.subject?.displayed ? (
               <Link {...subjectLink(n.subject)} className="tlink">
                 {n.name}
               </Link>
