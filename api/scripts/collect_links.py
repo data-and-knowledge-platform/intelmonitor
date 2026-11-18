@@ -18,20 +18,25 @@ all; an API error is retried the same way. An entity that ends otherwise (a refu
 an API error on every attempt, the rejections used up, or its cost passing --stop-at-usd) is listed
 as incomplete, keeps no rows and is collected again on the next run.
 
-A finished entity's result is kept in data/link-collection/<prompt version>/<entity>.json (and the
-whole conversation under transcripts/); a later run makes no call for an entity that has a result
-under the current version. Results under another version are left where they are and not read: the
+A finished entity's result is kept in data/link-collection/<prompt version>/<entity>.json (the
+whole conversation under transcripts/, and the text of each page a row cites under pages/, by
+content hash); a later run makes no call for an entity that has a result under the current
+version. Results under another version are left where they are and not read: the
 entity is collected again, a turn that ends incomplete leaves it no rows, and putting an old prompt
 back finds its results again. The version is made from the prompt's template, which holds a
 placeholder where the list of entities goes, so a change to the seed's entities does not make every
 result stale; the filters below run on every write, so a row to an entity that has left the seed is
 dropped then. Each run filters every kept result again and writes the rows that pass to --out. Code
 keeps a row only if both ends are seed entities, the type is one of the 21, the link is not already
-stored, and the quote is found in the page the request fetched from the row's source URL (each
-side's text normalised: markdown links and footnote markers out, quotes, dashes and spaces unified,
-case ignored). Dropped rows are listed with the reason. Stored means built from a collected file
-other than links-new-types.yaml (build_relationships.build_collected), so a run after a build keeps
-the rows the file itself put into relationships.yaml. Kept rows are written with evidence
+stored, the quote is found in the page the request fetched from the row's source URL (each
+side's text normalised: markdown links, footnote markers and invisible characters out, quotes,
+dashes and spaces unified, case ignored), the quote names at least one of the two entities and the
+page names both (`names`). Dropped rows are listed with the reason. Stored means built from a
+collected file other than links-new-types.yaml (build_relationships.build_collected), so a run
+after a build keeps the rows the file itself put into relationships.yaml. The file holds one row
+per link: of the kept rows that hold one link, across every result, the row with the newest
+source date is kept, then the row from the result of the link's `from` entity, then of its `to`
+entity (`one_per_link`); the others are dropped as a repeat. Kept rows are written with evidence
 `reported`, the prompt version and the date collected; the file lists every version its rows name
 in `prompts`, as transmission.yaml does.
 
@@ -56,12 +61,14 @@ import argparse
 import asyncio
 import base64
 import csv
+import hashlib
 import io
 import json
 import re
 import time
 from contextlib import redirect_stdout
 from datetime import date
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
@@ -90,6 +97,7 @@ ATTEMPTS = 3
 CONCURRENCY = 4
 OUT = SEED_DIR / "collected" / "links-new-types.yaml"
 RESULTS = DATA_DIR / "link-collection"
+PAGES = RESULTS / "pages"  # the text of each page a row cites, by content hash
 
 # Every type but belongs_to_sector, which the build derives from the seed's groups.
 CollectedType = Literal[
@@ -316,22 +324,70 @@ _CHARS = str.maketrans(
         "‑": "-",
         " ": " ",
         "…": "...",
+        # Invisible characters, which some pages put inside names ("United Overseas ​Bank")
+        "​": None,
+        "‌": None,
+        "‍": None,
+        "⁠": None,
+        "﻿": None,
+        "­": None,
     }
 )
 
 
 def normal(text: str) -> str:
-    """Text with markdown links reduced to their words, footnote markers and markup out, quotes,
-    dashes and spaces unified, in lower case."""
+    """Text with markdown links reduced to their words, footnote markers, markup and invisible
+    characters out, quotes, dashes and spaces unified, in lower case."""
     for _ in range(2):  # "[[12]](url)" takes two passes
         text = _MD_LINK.sub(r"\1", text)
     text = _MARKUP.sub(" ", _FOOTNOTE.sub(" ", text.translate(_CHARS)))
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
+def _and(text: str) -> str:
+    """Normalised text with "&" read as "and", for matching names."""
+    return re.sub(r"\s+", " ", text.replace("&", " and "))
+
+
+_LEGAL_FORM = re.compile(
+    r"(?:\s+(?:corporation|corp|company|co|limited|ltd|inc|plc|pte|private|bhd|berhad|ag|sa|se|"
+    r"tbk|llc|\(pte\)|\(private\)|\(singapore\)))+\.?$"
+)
+
+
+def _name_pattern(e: Entity) -> re.Pattern[str]:
+    """The entity's name and aliases as whole words in normalised text (see `names`), each also
+    without a trailing legal form when two words or more are left ("Oversea-Chinese Banking
+    Corporation" also matches "Oversea-Chinese Banking Corp")."""
+    forms = {_and(normal(n)) for n in [e.name, *e.aliases]}
+    cores = {c for f in forms if len((c := _LEGAL_FORM.sub("", f)).split()) >= 2}
+    words = sorted((forms | cores) - {""}, key=len, reverse=True)
+    return re.compile(r"(?<!\w)(?:" + "|".join(map(re.escape, words)) + r")(?!\w)")
+
+
+_NAME_PATTERNS = {e.id: _name_pattern(e) for e in SEED.entities}
+
+
+def names(entity: str, text: str) -> bool:
+    """Whether normalised `text` names the entity: its name or an alias as whole words, case
+    ignored, after the quote check's normalising, "&" read as "and".
+
+    It wrongly keeps a row when a name is also a common word or a short acronym, since case is
+    ignored (Circle, Grab, Wise, Visa, Apple, Meta, FAST, Fed, BOT, US as "us", SEC, HK, a
+    sector's "construction" or "mortgages"); when a country is named only inside another entity's
+    name (China in Bank of China, Singapore in Monetary Authority of Singapore); when the entity is
+    named but is not a party to what the quote shows; and on long pages such as annual reports,
+    which name nearly every entity. It wrongly drops a row when the quote refers to an entity by a
+    pronoun, "the Bank" or "the Group", or by a name that is not among its aliases (Amazon for
+    AWS, a subsidiary, product or ticker, a demonym such as Chinese); when it names a region's
+    member country, or a country's city, instead of the region or country; and when markup the
+    normalising leaves in (an HTML entity, say) breaks a name."""
+    return _NAME_PATTERNS[entity].search(_and(text)) is not None
+
+
 def fetched_pages(responses: list[BetaMessage]) -> dict[str, str]:
-    """The normalised text of every page the turn fetched, by canonical URL; a PDF's text is read
-    from every page."""
+    """The text of every page the turn fetched, by canonical URL; a PDF's text is read from every
+    page."""
     pages: dict[str, str] = {}
     for r in responses:
         for b in r.content:
@@ -345,16 +401,34 @@ def fetched_pages(responses: list[BetaMessage]) -> dict[str, str]:
                     text = pdf_to_text(base64.b64decode(source.data), max_pages=None)
                 except (RuntimeError, ValueError):
                     continue
-            pages[canonical_url(b.content.url)] = normal(text)
+            pages[canonical_url(b.content.url)] = text
     return pages
+
+
+def save_page(text: str) -> str:
+    """Keep a fetched page's text under PAGES, named by its content hash, which is returned."""
+    h = hashlib.sha256(text.encode()).hexdigest()[:16]
+    path = PAGES / f"{h}.txt"
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+    return h
+
+
+@lru_cache(maxsize=64)
+def page_text(h: str) -> tuple[str, str]:
+    """A kept page's text and its normalised text, by content hash."""
+    text = (PAGES / f"{h}.txt").read_text()
+    return text, normal(text)
 
 
 QuoteCheck = Literal["found", "page not fetched", "not in page"]
 
 
 class Candidate(BaseModel):
-    """A row the model returned, with its type and the quote check made against the turn's
-    fetched pages."""
+    """A row the model returned, with its type, the quote check made against the turn's fetched
+    pages, and the content hash of the page fetched from its source URL (kept under PAGES; None
+    when the turn fetched no such page)."""
 
     from_: str = Field(alias="from")
     to: str
@@ -365,6 +439,7 @@ class Candidate(BaseModel):
     quote: str
     as_of: date | None
     quote_check: QuoteCheck
+    page: str | None = None
 
     model_config = ConfigDict(validate_by_name=True, serialize_by_alias=True)
 
@@ -405,19 +480,22 @@ class Outcome(BaseModel):
     wall_seconds: float
 
 
-def check(c: Collection, pages: dict[str, str]) -> list[Candidate]:
+def candidates(c: Collection, pages: dict[str, str]) -> list[Candidate]:
+    """The answer's rows, each with its quote checked against the page fetched from its source
+    URL; every such page is kept under PAGES."""
     out: list[Candidate] = []
     for x in c.entries:
         for f in x.relationships:
-            page = pages.get(canonical_url(f.source_url))
+            text = pages.get(canonical_url(f.source_url))
+            h = None if text is None else save_page(text)
             q: QuoteCheck = (
                 "page not fetched"
-                if page is None
+                if h is None
                 else "found"
-                if normal(f.quote) and normal(f.quote) in page
+                if normal(f.quote) and normal(f.quote) in page_text(h)[1]
                 else "not in page"
             )
-            out.append(Candidate(**f.model_dump(by_alias=True), type=x.type, quote_check=q))
+            out.append(Candidate(**f.model_dump(by_alias=True), type=x.type, quote_check=q, page=h))
     return out
 
 
@@ -508,7 +586,7 @@ async def collect(e: Entity, stop_at: float | None, sem: asyncio.Semaphore) -> O
                         turn.output.entries, key=lambda x: COLLECTED_TYPES.index(x.type)
                     )
                 ],
-                candidates=check(turn.output, fetched_pages(responses)),
+                candidates=candidates(turn.output, fetched_pages(responses)),
             )
             path = RESULTS / VERSION / f"{e.id}.json"
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -530,26 +608,59 @@ def load_results() -> dict[str, Result]:
 Verdict = tuple[Candidate, str | None]  # a candidate and why it is dropped, None when kept
 
 
+def dropped_by_code(c: Candidate, entities: set[str], stored: set[str]) -> str | None:
+    """Why code drops the candidate, the first reason that applies; None when it passes."""
+    outside = [x for x in (c.from_, c.to) if x not in entities]
+    if outside:
+        return f"an end is not a seed entity: {', '.join(outside)}"
+    if c.type not in COLLECTED_TYPES:
+        return "type is not one of the 21 collected types"
+    if c.link_id() in stored:
+        return "already stored"
+    if c.quote_check == "page not fetched":
+        return "source page not fetched in the request"
+    if c.quote_check == "not in page":
+        return "quote not found in the fetched page"
+    quote = normal(c.quote)
+    if not (names(c.from_, quote) or names(c.to, quote)):
+        return "quote names neither entity"
+    assert c.page, f"{c.link_id()}: a found quote's page is not kept under {PAGES}"
+    page = page_text(c.page)[1]
+    if not (names(c.from_, page) and names(c.to, page)):
+        return "fetched page does not name both entities"
+    return None
+
+
 def judge(r: Result, entities: set[str], stored: set[str]) -> list[Verdict]:
     """Each candidate with the reason code drops it, or None when it is kept."""
-    out: list[Verdict] = []
-    for c in r.candidates:
-        outside = [x for x in (c.from_, c.to) if x not in entities]
-        reason = (
-            f"an end is not a seed entity: {', '.join(outside)}"
-            if outside
-            else "type is not one of the 21 collected types"
-            if c.type not in COLLECTED_TYPES
-            else "already stored"
-            if c.link_id() in stored
-            else "source page not fetched in the request"
-            if c.quote_check == "page not fetched"
-            else "quote not found in the fetched page"
-            if c.quote_check == "not in page"
-            else None
-        )
-        out.append((c, reason))
-    return out
+    return [(c, dropped_by_code(c, entities, stored)) for c in r.candidates]
+
+
+REPEAT = "repeat of a link kept from another row"
+
+
+def one_per_link(verdicts: dict[str, list[Verdict]]) -> dict[str, list[Verdict]]:
+    """Every result's verdicts, by entity, with one kept row per link id across them all: the row
+    with the newest source date (a row with none counts as oldest), then a row from the result of
+    the link's `from` entity, then of its `to` entity, then the first by entity id and row order.
+    The other kept rows of the link are dropped as a REPEAT."""
+    best: dict[str, tuple[tuple[int, int, str, int], str, int]] = {}
+    for entity, vs in verdicts.items():
+        for i, (c, why) in enumerate(vs):
+            if why is not None:
+                continue
+            side = 0 if entity == c.from_ else 1 if entity == c.to else 2
+            key = (-(c.as_of or date.min).toordinal(), side, entity, i)
+            if (b := best.get(c.link_id())) is None or key < b[0]:
+                best[c.link_id()] = (key, entity, i)
+    winners = {(entity, i) for _, entity, i in best.values()}
+    return {
+        entity: [
+            (c, REPEAT if why is None and (entity, i) not in winners else why)
+            for i, (c, why) in enumerate(vs)
+        ]
+        for entity, vs in verdicts.items()
+    }
 
 
 def recall(entity: str, r: Result, stored: list[Relationship]) -> list[str]:
@@ -664,9 +775,10 @@ HEADER = """\
 #   order versions were first used: id (the first 12 hex characters of the SHA-256 of the stage,
 #   template, schema, model and effort, as api/intelmonitor/pipeline/prompts.py makes them), date,
 #   note, model, effort and its template's text (the seed's entities go where {entities} stands).
-# relationships[]: the rows code kept: both ends seed entities, one of the 21 collected types, not
-#   built from another collected file, the quote found in the page the request fetched. evidence is
-#   reported; prompt_version names the version that found the row; collected is when.
+# relationships[]: the rows code kept, one per link: both ends seed entities, one of the 21
+#   collected types, not built from another collected file, the quote found in the page the request
+#   fetched, naming one of the two entities, the page naming both. evidence is reported;
+#   prompt_version names the version that found the row; collected is when.
 """
 
 
@@ -759,9 +871,9 @@ async def main() -> int:
     others = list(building.build_collected(skip=building.NEW_TYPES_FILE)[0].rels.values())
     stored = {x.id for x in others}
     entities = set(by_id)
-    verdicts = {i: judge(r, entities, stored) for i, r in results.items()}
     every = load_results()  # the file holds every finished entity's kept rows, not only these
-    kept = [(r, c) for r in every.values() for c, why in judge(r, entities, stored) if why is None]
+    verdicts = one_per_link({i: judge(r, entities, stored) for i, r in every.items()})
+    kept = [(every[i], c) for i, vs in verdicts.items() for c, why in vs if why is None]
     write_out(args.out, kept)
     text = io.StringIO()
     with redirect_stdout(text):
@@ -770,7 +882,7 @@ async def main() -> int:
     print(text.getvalue(), end="")
     if args.report:
         args.report.mkdir(parents=True, exist_ok=True)
-        rows = [(i, c, why) for i, vs in verdicts.items() for c, why in vs]
+        rows = [(i, c, why) for i in results for c, why in verdicts[i]]
         write_rows(args.report / "kept-rows.csv", [x for x in rows if x[2] is None], False)
         write_rows(args.report / "dropped-rows.csv", [x for x in rows if x[2] is not None], True)
         (args.report / "report.txt").write_text(text.getvalue())

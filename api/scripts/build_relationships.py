@@ -847,23 +847,26 @@ NEW_TYPES_FILE = "links-new-types.yaml"
 
 
 def report_new(build: Build, rels: list[Relationship], rows: list[LinkRow]) -> None:
-    """Per type, the rows of NEW_TYPES_FILE read and how many of their links are in the build
+    """Per type, the links the rows of NEW_TYPES_FILE hold and how many of them are in the build
     (under their own id, or folded into a parent's link that kept them)."""
     if not rows:
         return
     ids = {r.id for r in rels} | set(build.folded.values())
-    read_n: Counter[str] = Counter()
-    built_n: Counter[str] = Counter()
-    for r in rows:
-        if r.type == "partner_of":
-            continue
-        src, dst = ends(RENAME.get(r.from_, r.from_), r.type, RENAME.get(r.to, r.to))
-        read_n[r.type] += 1
-        built_n[r.type] += rel_id(src, r.type, dst) in ids
-    print(f"\n{NEW_TYPES_FILE}: {len(rows)} rows read, {sum(built_n.values())} in the build")
+    links = {
+        (r.type, rel_id(src, r.type, dst))
+        for r in rows
+        if r.type != "partner_of"
+        for src, dst in [ends(RENAME.get(r.from_, r.from_), r.type, RENAME.get(r.to, r.to))]
+    }
+    read_n = Counter(t for t, _ in links)
+    built_n = Counter(t for t, i in links if i in ids)
+    print(
+        f"\n{NEW_TYPES_FILE}: {len(rows)} rows read, holding {len(links)} links, "
+        f"{sum(built_n.values())} of them in the build"
+    )
     for t in REL_TYPES:
         if read_n[t]:
-            print(f"  {t:32}{read_n[t]:>5} read{built_n[t]:>5} in the build")
+            print(f"  {t:32}{read_n[t]:>5} links{built_n[t]:>5} in the build")
 
 
 def read(name: str) -> object:
