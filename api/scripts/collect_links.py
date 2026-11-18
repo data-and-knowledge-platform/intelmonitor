@@ -44,7 +44,8 @@ passage shows the relationship, by six tests in order (evidence, parties, type, 
 material, current), naming the first that fails. Only a supported row is kept. Each verdict is
 stored under data/link-collection/checks/<check version>/, keyed by the row's content, so a later
 run makes no call for a row already checked; a refused or failed check stores nothing, and the row
-is left out, listed as unchecked and asked again on the next run.
+is left out, listed as unchecked and asked again on the next run. So is a row whose quote cannot be
+placed in its page's text (`passage`), with no call.
 
 The file holds one row per link: of the supported rows that hold one link, across every result,
 the row with the newest source date is kept, then the row from the result of the link's `from`
@@ -651,39 +652,56 @@ def load_results() -> dict[str, Result]:
 # counts, the date), about 1,500 tokens in all, while an annual report's million characters stay
 # out.
 WINDOW = 3000
+SNAP = 200  # a cut moves to whitespace only within this many characters (CJK text has little)
 
 
-def passage(text: str, quote: str) -> str:
-    """The page text around the quote, WINDOW characters either side, cut at spaces, "[...]"
-    where it is cut. The quote is found in the normalised text line by line and placed back in
-    the page's own text; the page's middle stands in when it is not found that way (a markdown
-    link across a line break, say)."""
+def _segments(text: str, sep: str) -> list[tuple[int, str]]:
+    """The pieces of text between matches of sep, each with its start in the text."""
+    out: list[tuple[int, str]] = []
+    at = 0
+    for m in re.finditer(sep, text):
+        out.append((at, text[at : m.start()]))
+        at = m.end()
+    return [*out, (at, text[at:])]
+
+
+def passage(text: str, quote: str) -> str | None:
+    """The page text around the quote, WINDOW characters either side, cut at whitespace near
+    each edge, "[...]" where it is cut; None when the quote cannot be placed in it. The quote is
+    found in the normalised text line by line, then paragraph by paragraph (a markdown link
+    across a line break), and placed back in the page's own text; a window that does not hold the
+    quote once normalised is not returned."""
     q = normal(quote)
-    starts: list[int] = []  # each line's start in the page's text
-    offsets: list[int] = []  # and in the normalised lines joined by spaces
-    norms: list[str] = []
-    at = pos = 0
-    for line in text.splitlines(keepends=True):
-        if n := normal(line):
-            starts.append(at)
-            offsets.append(pos)
-            norms.append(n)
-            pos += len(n) + 1
-        at += len(line)
-    k = " ".join(norms).find(q) if q else -1
-    if k < 0:
-        centre, span = len(text) // 2, len(quote)
-    else:
+    if not q:
+        return None
+    for sep in (r"\n", r"\n\s*\n"):
+        starts: list[int] = []  # each piece's start in the page's text
+        sizes: list[int] = []  # its length there
+        offsets: list[int] = []  # its start in the normalised pieces joined by spaces
+        norms: list[str] = []
+        pos = 0
+        for at, piece in _segments(text, sep):
+            if n := normal(piece):
+                starts.append(at)
+                sizes.append(len(piece))
+                offsets.append(pos)
+                norms.append(n)
+                pos += len(n) + 1
+        k = " ".join(norms).find(q)
+        if k < 0:
+            continue
         i = bisect_right(offsets, k) - 1
-        line_len = len(text[starts[i] :].split("\n", 1)[0]) or 1
-        centre = starts[i] + (k - offsets[i]) * line_len // max(len(norms[i]), 1)
+        centre = starts[i] + (k - offsets[i]) * sizes[i] // len(norms[i])
         span = len(quote) * 2  # room for the markup the normalising took out
-    lo, hi = max(0, centre - WINDOW), min(len(text), centre + span + WINDOW)
-    if lo > 0:
-        lo = text.find(" ", lo) + 1 or lo
-    if hi < len(text):
-        hi = text.rfind(" ", lo, hi) if " " in text[lo:hi] else hi
-    return ("[...] " if lo > 0 else "") + text[lo:hi].strip() + (" [...]" if hi < len(text) else "")
+        lo, hi = max(0, centre - WINDOW), min(len(text), centre + span + WINDOW)
+        if lo > 0 and (m := re.search(r"\s", text[lo : lo + SNAP])):
+            lo += m.end()
+        if hi < len(text) and (m := re.search(r"\s\S*$", text[max(lo, hi - SNAP) : hi])):
+            hi = max(lo, hi - SNAP) + m.start()
+        window = text[lo:hi].strip()
+        if q in normal(window):
+            return ("[...] " if lo > 0 else "") + window + (" [...]" if hi < len(text) else "")
+    return None
 
 
 CHECK_STAGE = "link_check"
@@ -693,9 +711,9 @@ CHECK_CONCURRENCY = 8
 # The check: one tool-free call per row that passes the code filters. Rules 1, 3, 4, 6 and 7 are
 # the deck's (16 Nov 2026, page 5) word for word, the types are LINK_TYPES (pages 1 to 4), and the
 # materiality rule and the P2 paragraph are the collection prompt's. The frame (one row against
-# its passage), rule 8 read for one row, the six tests, the loan book, the programme's owner and
-# what a quote must show are ours. No JSON shape: the fields are described in the schema
-# (ticket 09).
+# its passage), rule 8 read for one row, the six tests, the loan book, the programme's owner, the
+# joint owners of a company and what a quote must show are ours. No JSON shape: the fields are
+# described in the schema (ticket 09).
 CHECK_PROMPT = f"""\
 You are checking one relationship between Entity A and Entity B that was found on the web, \
 against a passage of the page it was found on. The message gives the two entities, the \
@@ -731,6 +749,9 @@ A bank's loan book by sector or country is exposed_to toward the sector or count
 lends_to is for a loan or facility to a named borrower that is itself one of the two entities.
 participates_in is used only when the scheme, programme or initiative is itself the second \
 entity; a programme's owner, operator or sponsor does not stand in for it.
+Two entities that own a company together, such as a joint venture or a digital bank, each \
+holds_stake_in that company; setting it up, backing it or running it together, and its products, \
+are not a product the two jointly offer.
 
 MATERIALITY
 A relationship must be material as its type's meaning says: "Material lending or credit \
@@ -750,7 +771,8 @@ relationship.
 - parties: the relationship is between these two entities, not between one of them and a third \
 party. A unit of an entity, such as its branch in a country or a subsidiary that carries its \
 name, counts as the entity; a vehicle, consortium or joint venture it belongs to, a company the \
-two own together, or the customers of either do not.
+two own together, or the customers of either do not, and two owners of one company are not \
+parties to a relationship with each other through it.
 - type: the type is the most specific allowed type for what the passage shows, and not a \
 neighbouring one, under the meanings and the paragraphs above.
 - direction: the relationship reads from its first entity to its second as the type's name \
@@ -760,17 +782,22 @@ least one of the two entities.
 - current: the relationship stands as of the date the row was collected, as far as the page \
 shows. A one-off event that is over, such as a single transaction or an event held, fails. An \
 arrangement that runs over time, such as a service, a facility, a stake, a product the two offer \
-or operations in a country, is taken to stand unless the page shows that it ended or was \
-replaced, or the latest date on the page (published or updated) is more than five years before \
-the row was collected.
+or operations in a country, fails when the page shows that it ended or was replaced, or that \
+its stated term ran out before the row was collected. Otherwise it passes when the page gives a \
+term that runs to the collection date or past it (a 15-year agreement signed in 2015), or another \
+sign that the arrangement continues, such as an agreement described as long-term or multi-year, \
+a subsidiary or branch network in the country, or a stake with no sale reported; present tense \
+on an old page is not by itself such a sign. Only when the page gives neither a term nor such a \
+sign does its date decide: the arrangement passes unless the latest date on the page (published \
+or updated) is more than five years before the row was collected.
 
 {THINK_FIRST}"""
 CHECK_NOTE = (
     "One row against the passage around its quote: the deck's rules 1, 3, 4, 6 and 7 (16 Nov "
-    "2026, page 5), the 22 types with their meanings, P2, the loan book and programme's owner "
-    "rules, the materiality rule, and six tests (evidence, parties, type, direction, material, "
-    "current, with a five-year horizon for an ongoing arrangement), with THINK_FIRST; no tools, "
-    "effort high."
+    "2026, page 5), the 22 types with their meanings, P2, the loan book, programme's owner "
+    "and joint owners rules, the materiality rule, and six tests (evidence, parties, type, "
+    "direction, material, current, with a five-year horizon only for an ongoing arrangement "
+    "whose page gives no term or sign that it continues), with THINK_FIRST; no tools, effort high."
 )
 
 CheckTest = Literal["evidence", "parties", "type", "direction", "material", "current"]
@@ -808,8 +835,9 @@ class Checked(BaseModel):
     checked: date
 
 
-def check_message(c: Candidate, collected: date) -> str:
-    """The check's user message: the row, its two entities, its type and the passage."""
+def check_message(c: Candidate, collected: date, around: str) -> str:
+    """The check's user message: the row, its two entities, its type and the passage around its
+    quote."""
     a, b = _ENTITIES[c.from_], _ENTITIES[c.to]
     lt = _TYPES[c.type]
     reads = (
@@ -817,7 +845,6 @@ def check_message(c: Candidate, collected: date) -> str:
         if c.type in SYMMETRIC
         else f"It reads from the first entity to the second: {a.name} {c.type} {b.name}."
     )
-    assert c.page
     return "\n".join(
         [
             f"First entity (Entity A): {entity_line(a, _NAMES)[2:]}",
@@ -834,7 +861,7 @@ def check_message(c: Candidate, collected: date) -> str:
             "",
             'Passage of the page around the quote ("[...]" marks where it is cut):',
             "<passage>",
-            passage(page_text(c.page)[0], c.quote),
+            around,
             "</passage>",
         ]
     )
@@ -858,17 +885,22 @@ class CheckSpend:
 async def check_row(
     c: Candidate, collected: date, sem: asyncio.Semaphore, spend: CheckSpend
 ) -> Checked | str:
-    """The row's stored verdict, or a new one from the check, stored; when the check refuses or
-    fails ATTEMPTS times, why, and nothing is stored, so the row is asked again next run."""
+    """The row's stored verdict, or a new one from the check, stored; when the quote cannot be
+    placed in its page (no call), or the check refuses or fails ATTEMPTS times, why, and nothing
+    is stored, so the row is asked again next run."""
     path = CHECKS / CHECK_VERSION / f"{row_key(c, collected)}.json"
     if path.exists():
         return Checked.model_validate_json(path.read_text())
+    assert c.page
+    around = passage(page_text(c.page)[0], c.quote)
+    if around is None:
+        return "quote not placed in its page, no call"
     error = ""
     async with sem:
         for _ in range(ATTEMPTS):
             try:
                 reply = await ask_claude(
-                    check_message(c, collected), CheckAnswer, CHECK_PROMPT, MODEL, EFFORT
+                    check_message(c, collected, around), CheckAnswer, CHECK_PROMPT, MODEL, EFFORT
                 )
             except ClaudeRefusal as x:
                 spend.calls += 1
