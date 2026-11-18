@@ -31,19 +31,24 @@ dropped then. Each run filters every kept result again and writes the rows that 
 keeps a row only if both ends are seed entities, the type is one of the 21, the link is not already
 stored, the quote is found in the page the request fetched from the row's source URL (each
 side's text normalised: markdown links, footnote markers and invisible characters out, quotes,
-dashes and spaces unified, case ignored), the quote names at least one of the two entities and the
-page names both (`names`). Stored means built from a collected file other than
+dashes and spaces unified, case ignored), the quote names at least one of the two entities, the
+quote holds words beyond the two entities' names (`states_more_than_names`: not a name, a heading or
+a code alone), the page's text is stored (a result kept before rows named their page has none) and
+the page names both (`names`). Stored means built from a collected file other than
 links-new-types.yaml (build_relationships.build_collected), so a run after a build keeps the rows
 the file itself put into relationships.yaml.
 
 Each row that passes those filters then goes to the check (CHECK_PROMPT): one tool-free call
 through pipeline/claude.py `ask_claude`, so it follows settings.claude_via_api, on Claude Sonnet
 5.5 at effort high with adaptive thinking. It reads the row, its two entities and type, and the
-passage of the page around the quote (WINDOW characters either side), and answers whether the
-passage shows the relationship, by six tests in order (evidence, parties, type, direction,
-material, current), naming the first that fails. Only a supported row is kept. Each verdict is
-stored under data/link-collection/checks/<check version>/, keyed by the row's content, so a later
-run makes no call for a row already checked; a refused or failed check stores nothing, and the row
+passage of the page around the quote (WINDOW characters either side, centred on the quote's first
+occurrence after the page's front matter), with the front matter's title and publication lines,
+and answers whether the passage shows the relationship, by six tests in order (evidence, parties,
+type, direction, material, current), naming the first that fails. Only a supported row is kept.
+Each verdict is stored under data/link-collection/checks/<check version>/, keyed by a hash of the
+exact message sent, so a later run makes no call for a message already answered, and any change to
+what the check reads (the row, the seed's lines for its entities, the passage, the message's
+template) asks again; a refused or failed check stores nothing, and the row
 is left out, listed as unchecked and asked again on the next run. So is a row whose quote cannot be
 placed in its page's text (`passage`), with no call.
 
@@ -62,8 +67,10 @@ Each entity's usage is recorded and printed: searches, page fetches, resumes, in
 included. The running cost is printed after every resume. Recall is reported per entity: of its
 stored links of the 21 types, how many the candidates found again on both ends and
 type, with matches on the ends alone beside them, counted before the "already stored" filter.
-The check is reported per entity (rows checked, supported, not supported by test, unchecked) and
-its calls and measured cost for the run.
+The check is reported per entity (rows checked, supported, not supported by test, unchecked, and
+its calls and measured cost in this run). It runs over every finished result, not only those of
+--entities, since --out holds every finished entity's kept rows; the report's last line names the
+entities whose rows were checked and the calls and cost spent on entities it does not list.
 
 Usage (from api/):
   uv run python scripts/collect_links.py [--entities dbs,singtel] [--stop-at-usd 15]
@@ -85,9 +92,9 @@ import io
 import json
 import re
 import time
-from bisect import bisect_right
+from bisect import bisect_left, bisect_right
 from contextlib import redirect_stdout
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
@@ -188,10 +195,11 @@ _TYPES: dict[str, LinkType] = {t: lt for t, lt in LINK_TYPES.items()}
 # types from LINK_TYPES (pages 1 to 4). The deck has no separate materiality sentence; the rule
 # below quotes the types' own "Material ..." meanings and ticket 03's example (Q4). The paragraph
 # on payment systems and market infrastructures is ticket 02's P2, which the stored links follow
-# (a system processes_transactions_for its participant). The two paragraphs after it, on a loan
-# book (exposed_to, as the stored links have it) and on participates_in (only toward a programme
-# that is itself an entity), and the EVIDENCE section's rule that the quote names Entity A or B,
-# are ours (18 Nov 2026, from the trial's hand reading). The framing around them (one entity
+# (a system processes_transactions_for its participant). The three paragraphs after it, on a loan
+# book (exposed_to, as the stored links have it), on participates_in (only toward a programme
+# that is itself an entity) and on two owners of one company (each holds_stake_in it, not a joint
+# product), and the EVIDENCE section's rule that the quote names Entity A or B, are ours (18 Nov
+# 2026, from the trial's hand reading). The framing around them (one entity
 # against the list, the web as the evidence, the quote and what finished means) is ours. No JSON
 # shape: the answer's fields are described in its schema (ticket 09).
 COLLECTION_TEMPLATE = f"""\
@@ -218,6 +226,8 @@ the stored links have it; lends_to is for a loan or facility to a named borrower
 on the ENTITIES list.
 participates_in is used only when the scheme, programme or initiative is itself on the ENTITIES \
 list; a programme's owner, operator or sponsor does not stand in for it.
+Two owners of one company each hold a stake in it (each holds_stake_in the company); owning, \
+setting up or backing the same company is not jointly_offers_product_with between the owners.
 
 MATERIALITY
 A relationship must be material as its type's meaning says: "Material lending or credit \
@@ -272,7 +282,9 @@ PROMPT_NOTE = (
     "The deck's identification rules 1 to 8 (16 Nov 2026, page 5), the 22 types with their "
     "meanings, the materiality rule, ticket 02's P2 for payment systems and market "
     "infrastructures, our rules that a loan book is exposed_to, that participates_in ends only "
-    "at a programme on the list and that the quote names Entity A or B, the seed's entities and "
+    "at a programme on the list, that two owners of one company each hold a stake in it and do "
+    "not jointly offer a product through it, and that the quote names Entity A or B, the seed's "
+    "entities and "
     "what finished means, with THINK_FIRST; web search and web fetch, effort high."
 )
 
@@ -391,9 +403,11 @@ def _and(text: str) -> str:
     return re.sub(r"\s+", " ", text.replace("&", " and "))
 
 
+_LEGAL_WORDS = (
+    "corporation corp company co limited ltd inc plc pte private bhd berhad ag sa se tbk llc"
+).split()
 _LEGAL_FORM = re.compile(
-    r"(?:\s+(?:corporation|corp|company|co|limited|ltd|inc|plc|pte|private|bhd|berhad|ag|sa|se|"
-    r"tbk|llc|\(pte\)|\(private\)|\(singapore\)))+\.?$"
+    rf"(?:\s+(?:{'|'.join(_LEGAL_WORDS)}|\(pte\)|\(private\)|\(singapore\)))+\.?$"
 )
 
 
@@ -425,6 +439,59 @@ def names(entity: str, text: str) -> bool:
     member country, or a country's city, instead of the region or country; and when markup the
     normalising leaves in (an HTML entity, say) breaks a name."""
     return _NAME_PATTERNS[entity].search(_and(text)) is not None
+
+
+# What is left of a quote once the two entities' names are out, for `states_more_than_names`.
+_URL = re.compile(r"\(?https?://\S*")  # the target of a markdown link the quote cut in two
+_FIGURE = re.compile(r"\d[\d,.]*%?")
+_CJK = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]+")  # kana, Han
+_CJK_LEGAL_FORM = re.compile(r"股份有限公司|有限責任公司|有限责任公司|有限公司|株式会社")
+# A code as the page writes it: capitals and digits, 8 to 20 of them (a BIC, an ISIN, an LEI)
+_CODE = re.compile(r"(?<!\w)[A-Z0-9]{8,20}(?!\w)")
+_CODE_WORDS = set("code codes bic swift isin cusip sedol lei ticker symbol iban routing id".split())
+_FUNCTION_WORDS = set(
+    "a an the of for to in on at by with from and or as is are was were be been being has have "
+    "had it its this that these those which who our we us their they".split()
+)
+MIN_WORDS = 3
+
+
+def states_more_than_names(quote: str, a: str, b: str) -> bool:
+    """Whether the quote holds enough besides the names of entities a and b to state a
+    relationship: a name, a heading or a code alone does not ("## DBS Bank", "Licensed Bank", "DBS
+    BANK (HONG KONG) LIMITED (星展銀行(香港)有限公司)", "The Swift/BIC code for DBS Bank is
+    DBSSSGSGXXX."), though the check's evidence test says so too and the check kept such rows.
+
+    Every name and alias of a and b, punctuation, link targets and legal-form words ("Limited",
+    "有限公司") are taken out of the normalised quote. A figure (28%, 61,416) counts as one word,
+    since in a table row it is what the name is given; a run of Chinese or Japanese characters
+    counts as one word per four characters, rounded up. The quote passes with at least MIN_WORDS
+    words, of which at least one is not a function word ("the", "of", "is"), a code or a word that
+    names a code ("BIC", "ISIN"). MIN_WORDS is from the trial's 235 rows and controls: at 3 the
+    filter drops the four quotes above and "Barclays Capital Inc. | | | 2,109,545" (one word and a
+    figure), and no other row; at 2 it keeps "Licensed Bank" and the Hong Kong name line; at 4 it
+    also drops "Vanguard Portfolio Management, LLC | 2.29%", a holder's row the check supported.
+
+    It wrongly drops a real row whose quote says little beyond the names: "Temasek owns DBS" has
+    one word left ("Temasek holds 28% of DBS" passes on its figure); a table row whose holder's name
+    is all alias ("BlackRock, Inc. | 3.26%" has a figure alone), or a loan book row when its
+    region or sector is named in full by an alias ("Rest of Greater China 61,416 58,429" passes
+    on its three figures, a row with one figure does not); a quote in a language without spaces
+    other than Chinese or Japanese (Thai), which comes out as one word; a Chinese quote under nine
+    characters; and a quote in capitals, whose words of eight letters or more read as codes. It
+    wrongly keeps a name the seed does not list as an alias, whose words count ("Vanguard
+    Portfolio Management, LLC | 2.29%" passes on two name words and a figure), and a heading of
+    three words or more."""
+    codes = {m.lower() for m in _CODE.findall(quote)}
+    text = _URL.sub(" ", _and(normal(quote)))
+    for e in (a, b):
+        text = _NAME_PATTERNS[e].sub(" ", text)
+    figures = len(_FIGURE.findall(text))
+    text = _CJK_LEGAL_FORM.sub(" ", _FIGURE.sub(" ", text))
+    words = [w for w in re.sub(r"[\W\d_]+", " ", text).split() if w not in _LEGAL_WORDS]
+    count = figures + sum(-(-len(w) // 4) if _CJK.fullmatch(w) else 1 for w in words)
+    plain = _FUNCTION_WORDS | _CODE_WORDS | codes
+    return count >= MIN_WORDS and (figures > 0 or any(w not in plain for w in words))
 
 
 def fetched_pages(responses: list[BetaMessage]) -> dict[str, str]:
@@ -470,7 +537,7 @@ QuoteCheck = Literal["found", "page not fetched", "not in page"]
 class Candidate(BaseModel):
     """A row the model returned, with its type, the quote check made against the turn's fetched
     pages, and the content hash of the page fetched from its source URL (kept under PAGES; None
-    when the turn fetched no such page)."""
+    when the turn fetched no such page, or the result was kept before rows named their page)."""
 
     from_: str = Field(alias="from")
     to: str
@@ -665,15 +732,39 @@ def _segments(text: str, sep: str) -> list[tuple[int, str]]:
     return [*out, (at, text[at:])]
 
 
+def body_start(text: str) -> int:
+    """Where a page's body starts: after the front matter the fetch puts at its top (its title,
+    dates and meta tags between two "---" lines); 0 when it has none."""
+    if not text.startswith("---\n"):
+        return 0
+    end = text.find("\n---\n", 3)
+    return 0 if end < 0 else end + 5
+
+
+# The front matter's title and publication date lines, which the check reads whatever part of
+# the page its passage is cut from. A modified or updated time is left out: it says when the page
+# was edited, not that what it reports continues.
+_HEAD_KEY = re.compile(r"title|(?!.*last).*(?:publish|pub-date).*")
+
+
+def page_head(text: str) -> list[str]:
+    """The front matter's title and publication date lines, in the page's order."""
+    lines = text[: body_start(text)].splitlines()
+    return [x for x in lines if ": " in x and _HEAD_KEY.fullmatch(x.split(": ", 1)[0].lower())]
+
+
 def passage(text: str, quote: str) -> str | None:
     """The page text around the quote, WINDOW characters either side, cut at whitespace near
     each edge, "[...]" where it is cut; None when the quote cannot be placed in it. The quote is
     found in the normalised text line by line, then paragraph by paragraph (a markdown link
     across a line break), and placed back in the page's own text; a window that does not hold the
-    quote once normalised is not returned."""
+    quote once normalised is not returned. The window is centred on the quote's first occurrence
+    after the front matter (`body_start`), or on its first in the front matter (a meta
+    description, say) when the body does not hold it."""
     q = normal(quote)
     if not q:
         return None
+    body = body_start(text)
     for sep in (r"\n", r"\n\s*\n"):
         starts: list[int] = []  # each piece's start in the page's text
         sizes: list[int] = []  # its length there
@@ -687,9 +778,13 @@ def passage(text: str, quote: str) -> str | None:
                 offsets.append(pos)
                 norms.append(n)
                 pos += len(n) + 1
-        k = " ".join(norms).find(q)
+        joined = " ".join(norms)
+        k = joined.find(q)
         if k < 0:
             continue
+        b = bisect_left(starts, body)  # the first piece of the body
+        if b < len(starts) and k < offsets[b] and (later := joined.find(q, offsets[b])) >= 0:
+            k = later
         i = bisect_right(offsets, k) - 1
         centre = starts[i] + (k - offsets[i]) * sizes[i] // len(norms[i])
         span = len(quote) * 2  # room for the markup the normalising took out
@@ -705,10 +800,10 @@ def passage(text: str, quote: str) -> str | None:
 
 
 CHECK_STAGE = "link_check"
-CHECKS = RESULTS / "checks"  # each verdict, under the check's version, by the row's content
+CHECKS = RESULTS / "checks"  # each verdict, under the check's version, by its message's hash
 CHECK_CONCURRENCY = 8
 
-# The check: one tool-free call per row that passes the code filters. Rules 1, 3, 4, 6 and 7 are
+# The check: one tool-free call per row that passes the code filters. Rules 1, 2, 3, 4, 6 and 7 are
 # the deck's (16 Nov 2026, page 5) word for word, the types are LINK_TYPES (pages 1 to 4), and the
 # materiality rule and the P2 paragraph are the collection prompt's. The frame (one row against
 # its passage), rule 8 read for one row, the six tests, the loan book, the programme's owner, the
@@ -718,11 +813,14 @@ CHECK_PROMPT = f"""\
 You are checking one relationship between Entity A and Entity B that was found on the web, \
 against a passage of the page it was found on. The message gives the two entities, the \
 relationship's type, its reason, the page's title, URL and date, the quote it was found with, \
-and the passage of the page around that quote.
+the title and publication date lines from the top of the page, and the passage of the page \
+around that quote.
 
 The relationship was identified under these rules:
 1. Return every distinct relationship between the entities that is supported by the provided \
 evidence.
+2. A pair of entities may have several relationships. Do not combine them into one generic \
+relationship.
 3. Use only the 22 allowed relationship types.
 4. Store the relationship in its canonical direction. Do not create inverse types such as \
 owned_by, borrower_of or serviced_by.
@@ -773,8 +871,11 @@ party. A unit of an entity, such as its branch in a country or a subsidiary that
 name, counts as the entity; a vehicle, consortium or joint venture it belongs to, a company the \
 two own together, or the customers of either do not, and two owners of one company are not \
 parties to a relationship with each other through it.
-- type: the type is the most specific allowed type for what the passage shows, and not a \
-neighbouring one, under the meanings and the paragraphs above.
+- type: the passage shows this type's meaning for this pair, under the meanings and the \
+paragraphs above. Another type also fitting the pair is not a reason to fail: under rule 2 the \
+pair may have that relationship as well as this one. A type whose meaning the passage does not \
+show fails, such as a company the two own together filed as a product they jointly offer, or the \
+acquisition of a unit filed as invests_in.
 - direction: the relationship reads from its first entity to its second as the type's name \
 says. A type without direction passes.
 - material: the relationship is material as the type's meaning says, to the business of at \
@@ -788,16 +889,19 @@ term that runs to the collection date or past it (a 15-year agreement signed in 
 sign that the arrangement continues, such as an agreement described as long-term or multi-year, \
 a subsidiary or branch network in the country, or a stake with no sale reported; present tense \
 on an old page is not by itself such a sign. Only when the page gives neither a term nor such a \
-sign does its date decide: the arrangement passes unless the latest date on the page (published \
-or updated) is more than five years before the row was collected.
+sign does its date decide: the arrangement passes unless the date the page was published, or the \
+date of the fact it reports, is more than five years before the row was collected. A modified or \
+updated time on the page is not that date and is not evidence that the arrangement continues.
 
 {THINK_FIRST}"""
 CHECK_NOTE = (
-    "One row against the passage around its quote: the deck's rules 1, 3, 4, 6 and 7 (16 Nov "
-    "2026, page 5), the 22 types with their meanings, P2, the loan book, programme's owner "
-    "and joint owners rules, the materiality rule, and six tests (evidence, parties, type, "
-    "direction, material, current, with a five-year horizon only for an ongoing arrangement "
-    "whose page gives no term or sign that it continues), with THINK_FIRST; no tools, effort high."
+    "One row against the passage around its quote and the page's title and publication lines: "
+    "the deck's rules 1, 2, 3, 4, 6 and 7 (16 Nov 2026, page 5), the 22 types with their "
+    "meanings, P2, the loan book, programme's owner and joint owners rules, the materiality "
+    "rule, and six tests (evidence, parties, type, which another type fitting the pair does not "
+    "fail, direction, material, current, with a five-year horizon from the publication or fact "
+    "date, not a modified time, only for an ongoing arrangement whose page gives no term or sign "
+    "that it continues), with THINK_FIRST; no tools, effort high."
 )
 
 CheckTest = Literal["evidence", "parties", "type", "direction", "material", "current"]
@@ -820,8 +924,8 @@ CHECK_VERSION = version_id(
 
 
 class Checked(BaseModel):
-    """A stored verdict: the check's answer for one row's content under one check version, with
-    the call's measured cost."""
+    """A stored verdict: the check's answer to one message under one check version, with the
+    call's measured cost."""
 
     version: str
     link: str
@@ -835,9 +939,16 @@ class Checked(BaseModel):
     checked: date
 
 
-def check_message(c: Candidate, collected: date, around: str) -> str:
-    """The check's user message: the row, its two entities, its type and the passage around its
-    quote."""
+def check_message(c: Candidate, collected: date) -> str | None:
+    """The check's user message: the row, its two entities, its type, the page's title and
+    publication lines (`page_head`) and the passage around its quote; None when the quote cannot
+    be placed in the page's text (`passage`). The row must have its page text stored, as every
+    row that passes `dropped_by_code` has."""
+    assert c.page
+    text = page_text(c.page)[0]
+    around = passage(text, c.quote)
+    if around is None:
+        return None
     a, b = _ENTITIES[c.from_], _ENTITIES[c.to]
     lt = _TYPES[c.type]
     reads = (
@@ -859,6 +970,9 @@ def check_message(c: Candidate, collected: date, around: str) -> str:
             f"Row collected on: {collected}",
             f"Quote: {c.quote}",
             "",
+            "Title and publication lines from the top of the page:",
+            *(page_head(text) or ["none"]),
+            "",
             'Passage of the page around the quote ("[...]" marks where it is cut):',
             "<passage>",
             around,
@@ -867,53 +981,51 @@ def check_message(c: Candidate, collected: date, around: str) -> str:
     )
 
 
-def row_key(c: Candidate, collected: date) -> str:
-    """A row's content, as the check reads it, hashed: a verdict is stored under it."""
-    parts = [c.from_, c.type, c.to, c.detail, c.source_url, c.source_title, c.quote]
-    parts += [str(c.as_of), c.page or "", str(collected)]
-    return hashlib.sha256(json.dumps(parts).encode()).hexdigest()[:16]
+def verdict_path(message: str) -> Path:
+    """Where the verdict on a message is stored: under the check version (the system prompt, the
+    schema, the model and the effort), named by a hash of the message, so a verdict is reused only
+    when the check would read exactly the same."""
+    return CHECKS / CHECK_VERSION / f"{hashlib.sha256(message.encode()).hexdigest()[:16]}.json"
 
 
 @dataclass
 class CheckSpend:
-    """The check's calls in this run (failed attempts included) and their measured cost."""
+    """The check's calls in this run (failed attempts included) and their measured cost, by the
+    entity whose result holds the row."""
 
-    calls: int = 0
-    cost_usd: float = 0.0
+    calls: dict[str, int] = field(default_factory=lambda: {})
+    cost_usd: dict[str, float] = field(default_factory=lambda: {})
+
+    def add(self, entity: str, cost: float | None) -> None:
+        self.calls[entity] = self.calls.get(entity, 0) + 1
+        self.cost_usd[entity] = self.cost_usd.get(entity, 0.0) + (cost or 0.0)
 
 
 async def check_row(
-    c: Candidate, collected: date, sem: asyncio.Semaphore, spend: CheckSpend
+    c: Candidate, message: str | None, entity: str, sem: asyncio.Semaphore, spend: CheckSpend
 ) -> Checked | str:
-    """The row's stored verdict, or a new one from the check, stored; when the quote cannot be
-    placed in its page (no call), or the check refuses or fails ATTEMPTS times, why, and nothing
-    is stored, so the row is asked again next run."""
-    path = CHECKS / CHECK_VERSION / f"{row_key(c, collected)}.json"
+    """The stored verdict on the row's message, or a new one from the check, stored, its spend
+    put to `entity`; when the quote could not be placed in its page (no message, no call), or the
+    check refuses or fails ATTEMPTS times, why, and nothing is stored, so the row is asked again
+    next run."""
+    if message is None:
+        return "quote not placed in its page, no call"
+    path = verdict_path(message)
     if path.exists():
         return Checked.model_validate_json(path.read_text())
-    assert c.page
-    around = passage(page_text(c.page)[0], c.quote)
-    if around is None:
-        return "quote not placed in its page, no call"
     error = ""
     async with sem:
         for _ in range(ATTEMPTS):
             try:
-                reply = await ask_claude(
-                    check_message(c, collected, around), CheckAnswer, CHECK_PROMPT, MODEL, EFFORT
-                )
+                reply = await ask_claude(message, CheckAnswer, CHECK_PROMPT, MODEL, EFFORT)
             except ClaudeRefusal as x:
-                spend.calls += 1
-                spend.cost_usd += x.cost_usd or 0.0
+                spend.add(entity, x.cost_usd)
                 return f"refused ({x.category or 'no category'})"
             except Exception as x:  # an API error, a cut-off or an answer that is not the schema
-                spend.calls += 1
-                if isinstance(x, ClaudeBilled):
-                    spend.cost_usd += x.cost_usd or 0.0
+                spend.add(entity, x.cost_usd if isinstance(x, ClaudeBilled) else None)
                 error = f"{type(x).__name__}: {x}"
                 continue
-            spend.calls += 1
-            spend.cost_usd += reply.cost_usd or 0.0
+            spend.add(entity, reply.cost_usd)
             out = reply.output
             verdict = Checked(
                 version=CHECK_VERSION,
@@ -959,7 +1071,10 @@ def dropped_by_code(c: Candidate, entities: set[str], stored: set[str]) -> str |
     quote = normal(c.quote)
     if not (names(c.from_, quote) or names(c.to, quote)):
         return "quote names neither entity"
-    assert c.page, f"{c.link_id()}: a found quote's page is not kept under {PAGES}"
+    if not states_more_than_names(c.quote, c.from_, c.to):
+        return "quote is a name, a heading or a code alone"
+    if c.page is None or not (PAGES / f"{c.page}.txt").exists():
+        return "page text not stored"
     page = page_text(c.page)[1]
     if not (names(c.from_, page) and names(c.to, page)):
         return "fetched page does not name both entities"
@@ -981,14 +1096,20 @@ async def check_all(
     """Check every row that passes the code filters, a stored verdict making no call, and drop
     the rows the check does not support, with the test they failed, and those it could not
     check."""
-    todo = [(results[i].finished, v) for i, vs in verdicts.items() for v in vs if v.drop is None]
-    have = sum((CHECKS / CHECK_VERSION / f"{row_key(v.c, d)}.json").exists() for d, v in todo)
+    todo = [
+        (i, v, check_message(v.c, results[i].finished))
+        for i, vs in verdicts.items()
+        for v in vs
+        if v.drop is None
+    ]
+    have = sum(m is not None and verdict_path(m).exists() for _, _, m in todo)
     print(
-        f"check version {CHECK_VERSION}: {len(todo)} rows to check, {have} checked before (no call)"
+        f"check version {CHECK_VERSION}: {len(todo)} rows to check, of "
+        f"{len({i for i, _, _ in todo})} entities, {have} checked before (no call)"
     )
     sem = asyncio.Semaphore(CHECK_CONCURRENCY)
-    answers = await asyncio.gather(*(check_row(v.c, d, sem, spend) for d, v in todo))
-    for (_, v), a in zip(todo, answers, strict=True):
+    answers = await asyncio.gather(*(check_row(v.c, m, i, sem, spend) for i, v, m in todo))
+    for (_, v, _), a in zip(todo, answers, strict=True):
         if isinstance(a, str):
             v.drop = f"{UNCHECKED}: {a}"
         else:
@@ -1099,7 +1220,8 @@ def report(
             f"  check: {len(checked)} checked, {sum(x.supported for x in checked)} supported, "
             f"{len(checked) - sum(x.supported for x in checked)} not supported"
             + "".join(f"; {n} failing {t}" for t, n in sorted(failed.items()))
-            + f"; {reasons.get(UNCHECKED, 0)} unchecked"
+            + f"; {reasons.get(UNCHECKED, 0)} unchecked; {spend.calls.get(entity, 0)} calls "
+            f"this run, ${spend.cost_usd.get(entity, 0.0):.4f} measured"
         )
         for v in vs:
             if v.drop and v.drop.startswith(UNCHECKED):
@@ -1119,11 +1241,23 @@ def report(
         )
     spent = sum(o.usage["cost_usd"] for o in outcomes)
     print(f"spent this run: ${spent:.4f} measured, in {len(outcomes)} entities called")
-    per = f", ${spend.cost_usd / spend.calls:.4f} a call" if spend.calls else ""
+    calls, cost = sum(spend.calls.values()), sum(spend.cost_usd.values())
+    per = f", ${cost / calls:.4f} a call" if calls else ""
     print(
-        f"check version {CHECK_VERSION}: {spend.calls} calls this run (failed attempts included), "
-        f"${spend.cost_usd:.4f} measured{per}"
+        f"check version {CHECK_VERSION}: the rows of every finished result were checked, not only "
+        f"those listed above, since the output holds every finished entity's kept rows: "
+        f"{len(verdicts)} entities ({', '.join(verdicts) or 'none'}); {calls} calls this run "
+        f"(failed attempts included), ${cost:.4f} measured{per}"
     )
+    others = [i for i in verdicts if i not in results and spend.calls.get(i)]
+    if others:
+        print(
+            f"  of which for entities not listed above: "
+            f"{sum(spend.calls[i] for i in others)} calls, "
+            f"${sum(spend.cost_usd[i] for i in others):.4f} ("
+            + ", ".join(f"{i} {spend.calls[i]} calls ${spend.cost_usd[i]:.4f}" for i in others)
+            + ")"
+        )
 
 
 ROW_FIELDS = ["entity", "from", "type", "to", "detail", "source_url", "source_title", "quote"]
@@ -1180,9 +1314,10 @@ HEADER = """\
 #   link_check), with its text.
 # relationships[]: the rows kept, one per link: both ends seed entities, one of the 21 collected
 #   types, not built from another collected file, the quote found in the page the request fetched,
-#   naming one of the two entities, the page naming both, and the check finding the relationship
-#   supported by the passage around the quote. evidence is reported; prompt_version names the
-#   version that found the row, check_version the one that checked it; collected is when.
+#   naming one of the two entities and more than names, the page naming both, and the check
+#   finding the relationship supported by the passage around the quote. evidence is reported;
+#   prompt_version names the version that found the row, check_version the one that checked it;
+#   collected is when.
 """
 
 
