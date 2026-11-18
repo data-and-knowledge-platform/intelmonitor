@@ -15,8 +15,9 @@ types (every type but belongs_to_sector, which comes from the seed's groups): th
 none with the search queries tried. An answer that leaves a type out, or gives a type neither rows
 nor queries, is rejected and the model is asked again in the same conversation, ATTEMPTS answers in
 all; an API error is retried the same way. An entity that ends otherwise (a refusal, max_tokens,
-an API error on every attempt, the rejections used up, or its cost passing --stop-at-usd) is listed
-as incomplete, keeps no rows and is collected again on the next run.
+an API error on every attempt, the rejections used up, or its cost found past --stop-at-usd when
+the server pauses the turn) is listed as incomplete, keeps no rows and is collected again on the
+next run.
 
 A finished entity's result is kept in data/link-collection/<prompt version>/<entity>.json (the
 whole conversation under transcripts/, and the text of each page a row cites under pages/, by
@@ -66,10 +67,12 @@ its calls and measured cost for the run.
 Usage (from api/):
   uv run python scripts/collect_links.py [--entities dbs,singtel] [--stop-at-usd 15]
       [--out <file>.yaml] [--report <dir>] [--concurrency N]
---entities limits the run to those ids (default: every entity); --stop-at-usd stops resending an
-entity's turn once its measured cost passes the figure; --out writes the kept rows elsewhere (a
-trial keeps them out of the build); --report writes kept-rows.csv, dropped-rows.csv (both with the
-check's verdict, failed test and reason) and report.txt.
+--entities limits the run to those ids (default: every entity); --stop-at-usd stops an entity's
+turn when the server pauses it with its measured cost past the figure. It is checked only at a
+pause, and four of the five trial turns never paused, so it does not bound one entity's cost.
+--out writes the kept rows elsewhere (a trial keeps them out of the build); --report writes
+kept-rows.csv, dropped-rows.csv (both with the check's verdict, failed test and reason) and
+report.txt.
 """
 
 import argparse
@@ -177,17 +180,19 @@ def types_text() -> str:
 SEED = load_subjects()
 _NAMES = {e.id: e.name for e in SEED.entities}
 _ENTITIES = {e.id: e for e in SEED.entities}
-_TYPES: dict[str, LinkType] = {
-    t: lt for t, lt in LINK_TYPES.items()
-}  # LINK_TYPES, by a candidate's type
+# LINK_TYPES, looked up by a candidate's type
+_TYPES: dict[str, LinkType] = {t: lt for t, lt in LINK_TYPES.items()}
 
 # The deck of 16 Nov 2026: page 5's opening and identification rules 1 to 8 word for word, the
 # types from LINK_TYPES (pages 1 to 4). The deck has no separate materiality sentence; the rule
 # below quotes the types' own "Material ..." meanings and ticket 03's example (Q4). The paragraph
 # on payment systems and market infrastructures is ticket 02's P2, which the stored links follow
-# (a system processes_transactions_for its participant). The framing
-# around them (one entity against the list, the web as the evidence, the quote and what finished
-# means) is ours. No JSON shape: the answer's fields are described in its schema (ticket 09).
+# (a system processes_transactions_for its participant). The two paragraphs after it, on a loan
+# book (exposed_to, as the stored links have it) and on participates_in (only toward a programme
+# that is itself an entity), and the EVIDENCE section's rule that the quote names Entity A or B,
+# are ours (18 Nov 2026, from the trial's hand reading). The framing around them (one entity
+# against the list, the web as the evidence, the quote and what finished means) is ours. No JSON
+# shape: the answer's fields are described in its schema (ticket 09).
 COLLECTION_TEMPLATE = f"""\
 You are identifying evidenced relationships between Entity A and Entity B.
 A pair of entities may have multiple relationship types. Return each distinct relationship \
@@ -207,6 +212,11 @@ system or market infrastructure is stored as that system processes_transactions_
 is for schemes, programmes and initiatives, and member_of for associations and networks that are \
 not payment systems or market infrastructures. A company whose securities trade on an exchange \
 is listed_on it.
+A bank's loan book by sector or country is exposed_to toward the sector or country entity, as \
+the stored links have it; lends_to is for a loan or facility to a named borrower that is itself \
+on the ENTITIES list.
+participates_in is used only when the scheme, programme or initiative is itself on the ENTITIES \
+list; a programme's owner, operator or sponsor does not stand in for it.
 
 MATERIALITY
 A relationship must be material as its type's meaning says: "Material lending or credit \
@@ -238,7 +248,9 @@ EVIDENCE
 Open every page you rely on with web fetch. Each relationship names that page's URL and title, \
 the date it was published (or the date of the fact it reports), and a quote: one passage copied \
 word for word from the fetched page that shows the relationship, with no ellipsis, no joined \
-pieces and no paraphrase. Each quote is checked against the page.
+pieces and no paraphrase. The quote must name Entity A or Entity B, and the page must name both; \
+a heading, a code or a name alone is not a quote that shows a relationship. Each quote is checked \
+against the page.
 
 WHEN YOU ARE FINISHED
 You are finished when you have searched for every one of the 21 types other than \
@@ -258,8 +270,9 @@ COLLECTION_PROMPT = COLLECTION_TEMPLATE.replace(
 PROMPT_NOTE = (
     "The deck's identification rules 1 to 8 (16 Nov 2026, page 5), the 22 types with their "
     "meanings, the materiality rule, ticket 02's P2 for payment systems and market "
-    "infrastructures, the seed's entities and what finished means, with THINK_FIRST; web "
-    "search and web fetch, effort high."
+    "infrastructures, our rules that a loan book is exposed_to, that participates_in ends only "
+    "at a programme on the list and that the quote names Entity A or B, the seed's entities and "
+    "what finished means, with THINK_FIRST; web search and web fetch, effort high."
 )
 
 
@@ -1214,7 +1227,12 @@ def write_out(path: Path, kept: list[tuple[Result, Candidate]]) -> None:
 async def main() -> int:
     parser = argparse.ArgumentParser(description="Collect links of the 21 types from the web.")
     parser.add_argument("--entities", help="comma-separated entity ids (default: every entity)")
-    parser.add_argument("--stop-at-usd", type=float, help="stop an entity whose cost passes this")
+    parser.add_argument(
+        "--stop-at-usd",
+        type=float,
+        help="stop an entity's turn at a server pause once its cost has passed this; checked only "
+        "at a pause, so it does not bound one entity's cost",
+    )
     parser.add_argument("--out", type=Path, default=OUT, help="where to write the kept rows")
     parser.add_argument("--report", type=Path, help="directory for the rows and the report")
     parser.add_argument("--concurrency", type=int, default=CONCURRENCY)
