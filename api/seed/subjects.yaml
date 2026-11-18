@@ -1262,7 +1262,7 @@ entities:
     name: Greater China excluding Hong Kong
     kind: region
     displayed: false
-    aliases: []
+    aliases: [Rest of Greater China]
     domains: []
     members: [mainland-china, taiwan]
   - id: world-bank
