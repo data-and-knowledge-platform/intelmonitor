@@ -185,8 +185,10 @@ class LinkRow(Row):
     source_title: str
     quote: str
     # A row of links-new-types.yaml: the id of the link collection prompt version that found it
-    # (the file's `prompts`) and the date it was collected, which stands for the file's date.
+    # (the file's `prompts`), of the link check version that kept it (the file's `checks`), and
+    # the date it was collected, which stands for the file's date.
     prompt_version: str | None = None
+    check_version: str | None = None
     collected: date | None = None
 
     @model_validator(mode="after")
@@ -220,10 +222,12 @@ class LinksFile(Row):
 class TeamLinksFile(Row):
     """A links-*.yaml file: structural links and service links for one sector's entities, checked
     against their sources on `collected`. links-new-types.yaml also lists the versions of the link
-    collection prompt its rows name (`prompts`, as transmission.yaml lists the rating prompt's)."""
+    collection prompt its rows name (`prompts`, as transmission.yaml lists the rating prompt's)
+    and of the link check that kept them (`checks`)."""
 
     collected: date
     prompts: list[PromptVersion] = []
+    checks: list[PromptVersion] = []
     relationships: list[LinkRow]
     service_links: list[TechRow]
     groups: list[GroupRow]
