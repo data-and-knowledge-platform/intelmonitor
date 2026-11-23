@@ -1,12 +1,13 @@
 /* The Overview's Related card (components/monitor/RelatedTree.tsx), after the team's draft: a grey
    stage with the window, the entity chips and the legend, then the tree. One line per link, its
-   colour and weight its strength toward the subject on one blue scale, kept apart from the
-   priority colours of the news cards beside it. */
+   colour and weight its strength toward the subject on the team's warm scale (red, amber, grey).
+   The chips and the subject keep a navy of their own. */
 .rt {
-  --s-strong: oklch(0.36 0.15 260);
-  --s-moderate: oklch(0.56 0.14 250);
-  --s-weak: oklch(0.72 0.075 245);
-  --s-none: oklch(0.8 0.008 260);
+  --s-strong: oklch(0.5 0.17 28);
+  --s-moderate: oklch(0.68 0.14 70);
+  --s-weak: oklch(0.7 0.02 260);
+  --s-none: oklch(0.85 0.006 260);
+  --rt-navy: oklch(0.3 0.09 262);
   --rt-stage: oklch(0.935 0.006 260);
 }
 .rt-lede {
@@ -41,8 +42,8 @@
   cursor: pointer;
 }
 .rt-chip[aria-pressed="true"] {
-  border-color: var(--s-strong);
-  background: var(--s-strong);
+  border-color: var(--rt-navy);
+  background: var(--rt-navy);
   color: var(--surface);
 }
 .rt-legend {
@@ -120,7 +121,7 @@
   display: grid;
   place-items: center;
   padding: 0 var(--s-2);
-  border: 2px solid var(--s-strong);
+  border: 2px solid var(--rt-navy);
   border-radius: var(--r-widget);
   background: var(--new-bg);
   font-size: var(--fs-lead);
