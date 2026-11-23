@@ -241,6 +241,29 @@ def headlines(
 
 
 @app.command()
+def impacts(
+    as_of: Annotated[str | None, typer.Option("--as-of", help="Run date, YYYY-MM-DD")] = None,
+    all_: Annotated[bool, typer.Option("--all", help="Every complete run, oldest first")] = False,
+) -> None:
+    """(Re)compute the inferred impacts of complete runs from their stored rows and the links,
+    with no model call and no other stage, and mark each run recomputed. Briefs keep the impacts
+    they were written from until `im summarize`."""
+    from intelmonitor.pipeline.run import recompute_impacts
+    from intelmonitor.store.db import connect
+
+    if all_ == (as_of is not None):
+        raise typer.BadParameter("pass either --as-of <date> or --all")
+    conn = connect()
+    complete = [
+        r["id"]
+        for r in conn.execute("SELECT id FROM runs WHERE status = 'complete' ORDER BY as_of")
+    ]
+    if as_of is not None and as_of not in complete:
+        raise typer.BadParameter(f"no complete run as of {as_of}")
+    recompute_impacts(conn, complete if all_ else [str(as_of)], typer.echo)
+
+
+@app.command()
 def summarize(
     as_of: Annotated[str | None, typer.Option("--as-of", help="Run date, YYYY-MM-DD")] = None,
     all_: Annotated[bool, typer.Option("--all", help="Every complete run, oldest first")] = False,

@@ -1,7 +1,8 @@
 """`im run`: compute a pipeline run as of a date, from the documents published from the corpus
 start (meta `corpus_start`) to that date. Documents stored from before the corpus start stay in
 the store but outside every run. `im weekly` ingests and computes each complete week in turn, and
-`im clear-runs` deletes every run before a rebuild.
+`im clear-runs` deletes every run before a rebuild. `im impacts` rewrites only the inferred
+impacts of stored runs.
 
 Every model call is cached in inference_records by its input, and every derived table is rebuilt
 from those calls, so rerunning after a failure resumes where it stopped.
@@ -74,9 +75,11 @@ async def compute_run(
     *,
     conn: sqlite3.Connection | None = None,
     recorded_only: bool = False,
+    write_briefs: bool = True,
 ) -> None:
     """Computes the run in the app's store, or in `conn`. With `recorded_only`, every model call
-    must replay a recorded one (`Inference`)."""
+    must replay a recorded one (`Inference`). Without `write_briefs`, the run's stored briefs are
+    kept as they are (`im check past-run`, on a run whose briefs predate `im impacts`)."""
     conn = conn or connect()
     run_id = as_of.isoformat()
     # The relationship store first: it commits any open transaction, so before the run's writes.
@@ -160,10 +163,15 @@ async def compute_run(
         if base_id:
             step(f"{store_changes(conn, run_id, base_id, changes)} changes vs {base_id}")
         conn.execute("UPDATE runs SET previous_run_id = ? WHERE id = ?", (base_id, run_id))
-        briefs, unbriefed, briefs_refused = await write_summaries(
-            inf, conn, run_id, as_of, base_id, changes
-        )
-        step(f"{briefs} briefs, {unbriefed} still breaking their rules, {briefs_refused} refused")
+        if write_briefs:
+            briefs, unbriefed, briefs_refused = await write_summaries(
+                inf, conn, run_id, as_of, base_id, changes
+            )
+            step(
+                f"{briefs} briefs, {unbriefed} still breaking their rules, {briefs_refused} refused"
+            )
+        else:
+            step("briefs kept as stored")
     except Exception as error:
         message = f"{type(error).__name__}: {error}"
         runlog.fail(conn, execution_id, message)
@@ -268,6 +276,23 @@ def impact_lines(conn: sqlite3.Connection, run_id: str, impact: ImpactStats) -> 
             seen.add(d)
             lines.append(f"  {words} {row(d, r)}")
     return lines
+
+
+def recompute_impacts(
+    conn: sqlite3.Connection, run_ids: list[str], log: Callable[[str], None] = print
+) -> None:
+    """`im impacts`: rewrites the inferred impacts of complete runs from their stored
+    development_subjects (levels, adverse flags, activated types) and the relationship store,
+    synced from relationships.yaml first as a run does, and sets each run's impacts_recomputed
+    mark. No other stage runs and no model is called: the briefs keep the impacts they were
+    written from until `im summarize`. Prints what the run's impact step prints."""
+    synced = sync_relationships(conn)
+    log(f"relationships: {len(synced.relationships)} links")
+    at = datetime.now(UTC).isoformat()
+    for run_id in run_ids:
+        impact = store_impacts(conn, run_id, recomputed_at=at)
+        for line in [impact_step(impact), *impact_lines(conn, run_id, impact)]:
+            log(f"[{run_id}] {line}")
 
 
 def _topic_only_lines(conn: sqlite3.Connection, run_id: str) -> list[str]:
