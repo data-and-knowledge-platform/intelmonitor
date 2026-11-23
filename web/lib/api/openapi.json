@@ -3728,15 +3728,16 @@
             "type": "string",
             "enum": [
               "cli",
+              "scheduled",
               "manual"
             ],
             "title": "Trigger",
-            "description": "cli: `im run` or `im weekly`. manual: Run now, since removed"
+            "description": "cli: `im run` or `im weekly` by hand. scheduled: the weekly runner. manual: Run now, since removed"
           },
           "how": {
             "type": "string",
             "title": "How",
-            "description": "\"Command line\", or \"Run now, <display name>\""
+            "description": "\"Command line\", \"Scheduled\", or \"Run now, <display name>\""
           },
           "sources": {
             "type": "integer",

@@ -37,6 +37,14 @@ class Settings(BaseSettings):
     mas_bank_exposure_api_key: str = ""
     mas_sora_key: str = ""
 
+    # The S3-compatible bucket the runner publishes stores to and the site reads from
+    # (store/publish.py). With no bucket set, everything uses the local store.
+    store_bucket: str = ""
+    store_s3_endpoint: str = ""
+    store_s3_region: str = ""
+    store_s3_access_key_id: str = ""
+    store_s3_secret_access_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

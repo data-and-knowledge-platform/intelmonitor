@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Annotated
 import typer
 
 if TYPE_CHECKING:
+    from intelmonitor.store.publish import Bucket
     from intelmonitor.trial import Pair
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
@@ -155,22 +156,58 @@ def run(
         asyncio.run(compute_run(d, lambda line: typer.echo(line)))
 
 
+# The runner's limit on one firing: past it, `im weekly --publish` exits non-zero, publishing
+# nothing more, and Railway emails the account owner.
+RUNNER_TIMEOUT_HOURS = 4
+
+
 @app.command()
 def weekly(
     max_weeks: Annotated[
         int, typer.Option("--max-weeks", min=1, help="Run at most this many weeks, oldest first")
     ] = 4,
+    publish: Annotated[
+        bool,
+        typer.Option(
+            "--publish",
+            help="The runner: start from the published store, log runs as scheduled, publish "
+            "after each week, and stop after 4 hours. Needs STORE_BUCKET and no local store",
+        ),
+    ] = False,
 ) -> None:
     """For each complete week (Monday to Sunday UTC) since the last complete run, or since the
     corpus start, oldest first: ingest that week's window with the Sunday as T0, then compute its
     run, dated the Sunday. Fetches the measured series once first. Exits 0 when no week is due."""
+    import threading
     from datetime import UTC, date, datetime
 
     from intelmonitor.ingest.models import corpus_start, week_window
     from intelmonitor.ingest.run import run_ingest
     from intelmonitor.ingest.series.collect import fetch_series
     from intelmonitor.pipeline.run import compute_run, weekly_dates
-    from intelmonitor.store.db import connect
+    from intelmonitor.store.db import DB_PATH, connect
+    from intelmonitor.store.publish import publish as publish_store
+
+    bucket = _bucket() if publish else None
+    if bucket is not None:
+        if DB_PATH.exists():
+            raise typer.BadParameter(
+                f"--publish starts from the published store, and {DB_PATH} exists: set "
+                "INTELMONITOR_DATA_DIR to an empty directory"
+            )
+        latest = bucket.latest()
+        if latest is None:
+            raise typer.BadParameter(f"nothing published in {bucket.name}: run `im publish` first")
+        bucket.download(latest, DB_PATH)
+        typer.echo(f"pulled {latest.key} (run {latest.run_id})")
+
+        def time_out() -> None:
+            typer.echo(f"stopped after {RUNNER_TIMEOUT_HOURS} hours", err=True)
+            os._exit(1)
+
+        timer = threading.Timer(RUNNER_TIMEOUT_HOURS * 3600, time_out)
+        timer.daemon = True
+        timer.start()
 
     conn = connect()
     weeks = weekly_dates(conn, datetime.now(UTC).date())
@@ -188,9 +225,76 @@ def weekly(
             f"added {sum(result.added.values())} {dict(result.added)}, "
             f"{result.duplicates} duplicates, {len(result.failures)} failures\n"
         )
-        asyncio.run(compute_run(sunday, lambda line: typer.echo(line)))
+        trigger = "scheduled" if bucket else "cli"
+        asyncio.run(compute_run(sunday, lambda line: typer.echo(line), trigger))
+        if bucket is not None:
+            typer.echo(f"published {publish_store(bucket, DB_PATH).key}")
     if left := weeks[len(due) :]:
         typer.echo(f"\n{len(left)} weeks still due, from {left[0]}: run `im weekly` again")
+
+
+def _bucket() -> "Bucket":
+    from intelmonitor.store.publish import Bucket
+
+    bucket = Bucket.from_settings()
+    if bucket is None:
+        raise typer.BadParameter("no bucket: set STORE_BUCKET and the STORE_S3_* variables")
+    return bucket
+
+
+@app.command("publish")
+def publish_cmd(
+    key: Annotated[
+        str | None,
+        typer.Option("--key", help="Repoint latest.json at this published store file instead"),
+    ] = None,
+) -> None:
+    """Upload the store as a new immutable file named by its latest complete run, repoint
+    latest.json at it and keep the 12 newest files; or, with --key, roll back or forward by
+    repointing latest.json at a file already in the bucket."""
+    from intelmonitor.pipeline import runlog
+    from intelmonitor.store.db import DB_PATH, connect
+    from intelmonitor.store.publish import publish
+
+    bucket = _bucket()
+    if key is not None:
+        try:
+            latest = bucket.stored(key)
+        except LookupError as error:
+            raise typer.BadParameter(str(error)) from error
+        bucket.point(latest)
+        typer.echo(f"latest.json now names {key} (run {latest.run_id})")
+        return
+    conn = connect()  # migrated, with its run log as the site shows it
+    runlog.backfill(conn)
+    runlog.migrate(conn)
+    conn.close()
+    try:
+        latest = publish(bucket, DB_PATH)
+    except LookupError as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(f"published {latest.key} (run {latest.run_id}, sha256 {latest.sha256})")
+
+
+@app.command()
+def pull(
+    replace: Annotated[
+        bool, typer.Option("--replace", help="Replace the local store if there is one")
+    ] = False,
+) -> None:
+    """Download the store latest.json names as the local store."""
+    from intelmonitor.store.db import DB_PATH
+
+    bucket = _bucket()
+    if DB_PATH.exists() and not replace:
+        raise typer.BadParameter(f"{DB_PATH} exists: back it up, then pass --replace")
+    latest = bucket.latest()
+    if latest is None:
+        raise typer.BadParameter(f"nothing published in {bucket.name}")
+    for leftover in (DB_PATH.with_name(DB_PATH.name + s) for s in ("-wal", "-shm")):
+        leftover.unlink(missing_ok=True)
+    bucket.download(latest, DB_PATH)
+    typer.echo(f"pulled {latest.key} (run {latest.run_id}) to {DB_PATH}")
 
 
 @app.command("clear-runs")

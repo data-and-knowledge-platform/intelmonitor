@@ -1670,13 +1670,13 @@ export interface components {
             status: "running" | "complete" | "failed";
             /**
              * Trigger
-             * @description cli: `im run` or `im weekly`. manual: Run now, since removed
+             * @description cli: `im run` or `im weekly` by hand. scheduled: the weekly runner. manual: Run now, since removed
              * @enum {string}
              */
-            trigger: "cli" | "manual";
+            trigger: "cli" | "scheduled" | "manual";
             /**
              * How
-             * @description "Command line", or "Run now, <display name>"
+             * @description "Command line", "Scheduled", or "Run now, <display name>"
              */
             how: string;
             /**

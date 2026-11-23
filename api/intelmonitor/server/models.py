@@ -106,10 +106,11 @@ class RunInfo(BaseModel):
     as_of: date
     previous_run_id: str | None
     status: Literal["running", "complete", "failed"]
-    trigger: Literal["cli", "manual"] = Field(
-        description="cli: `im run` or `im weekly`. manual: Run now, since removed"
+    trigger: Literal["cli", "scheduled", "manual"] = Field(
+        description="cli: `im run` or `im weekly` by hand. scheduled: the weekly runner. "
+        "manual: Run now, since removed"
     )
-    how: str = Field(description='"Command line", or "Run now, <display name>"')
+    how: str = Field(description='"Command line", "Scheduled", or "Run now, <display name>"')
     sources: int = Field(description="Distinct ingest sources among its documents")
     documents: int
     developments: int

@@ -1,8 +1,8 @@
 """The run log: one row per pipeline execution, with how it started and what it found.
 
-compute_run writes it; the server reads it for `GET /runs`. There is no scheduler yet: every
-execution is `im run` or `im weekly` on the command line. Rows from Run now, since removed, keep
-their `manual` trigger and `triggered_by`."""
+compute_run writes it; the server reads it for `GET /runs`. An execution is `im run` or `im weekly`
+by hand (`cli`), or the weekly runner (`scheduled`). Rows from Run now, since removed, keep their
+`manual` trigger and `triggered_by`."""
 
 import sqlite3
 from dataclasses import dataclass
@@ -13,8 +13,9 @@ from intelmonitor.pipeline.corroboration import shown_developments
 from intelmonitor.pipeline.diff import DevelopmentChange
 from intelmonitor.store.db import get_meta, set_meta
 
-# cli: `im run` and `im weekly`. Run now (since removed) wrote manual.
-Trigger = Literal["cli"]
+# cli: `im run` and `im weekly` by hand; scheduled: the runner's `im weekly --publish`. Run now
+# (since removed) wrote manual.
+Trigger = Literal["cli", "scheduled"]
 
 
 @dataclass(frozen=True)
@@ -168,12 +169,11 @@ _COUNTS_VS_PREVIOUS_RUN = "run_log_counts_vs_previous_run"
 def migrate(conn: sqlite3.Connection) -> None:
     """Brings run logs written by earlier versions up to date, in place.
 
-    `im run` was logged as "scheduled", though no scheduler exists. And a rerun of an as-of date
-    counted only what changed against the execution it replaced, so reruns said "No new
-    developments". A rerun that changed nothing found what the execution before it found, so it
-    takes that execution's counts. A rerun that did change something cannot be recounted, since
-    only the latest execution's developments are stored; none was logged before this change."""
-    conn.execute("UPDATE run_log SET trigger = 'cli' WHERE trigger = 'scheduled'")
+    A rerun of an as-of date counted only what changed against the execution it replaced, so
+    reruns said "No new developments". A rerun that changed nothing found what the execution
+    before it found, so it takes that execution's counts. A rerun that did change something
+    cannot be recounted, since only the latest execution's developments are stored; none was
+    logged before this change."""
     if get_meta(conn, _COUNTS_VS_PREVIOUS_RUN) is None:
         before: dict[str, tuple[int, int, int, int]] = {}
         for r in conn.execute(
