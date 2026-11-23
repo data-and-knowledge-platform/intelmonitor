@@ -549,9 +549,9 @@ async def select_link_types(
     effort: EffortLevel | None = LINK_TYPES_EFFORT,
 ) -> dict[str, list[RelType]] | None:
     """One Sonnet call: the relationship types the development activates for each of the
-    entities, by LINK_TYPES_PROMPT, each type once. An entity the reply leaves out gets none, and
-    an entity it adds is dropped. None when Claude declines. `im trial link-types` passes a
-    candidate's template, schema and effort instead; the eval's cases pass an effort."""
+    entities, by LINK_TYPES_PROMPT (`entity_types`). None when Claude declines. `im trial
+    link-types` passes a candidate's template, schema and effort instead; the eval's cases pass
+    an effort."""
     try:
         reply = await inf.claude(
             "link_types",
@@ -563,6 +563,14 @@ async def select_link_types(
         )
     except ClaudeRefused:
         return None
+    return entity_types(reply, entities)
+
+
+def entity_types(
+    reply: LinkTypeSelection, entities: Sequence[DirectEntity]
+) -> dict[str, list[RelType]]:
+    """Each entity's types from a link_types reply, each type once; an entity the reply leaves
+    out gets none, and an entity it adds is dropped."""
     picked: dict[str, list[RelType]] = {}
     for answer in reply.entities:
         picked.setdefault(answer.entity, []).extend(answer.types)
