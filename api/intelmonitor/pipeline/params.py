@@ -107,7 +107,10 @@ def _link_types_text() -> str:
 # consequences could travel through. Page 9's selection rule and ten examples and page 10's rule
 # are the deck's words, the second person for page 10's "The LLM"; the types are LINK_TYPES (pages
 # 1 to 4); the framing (the entities given with their levels, a type counting at either end of a
-# link) is ours. No JSON shape: the answer's fields are described in its schema (ticket 09).
+# link, what travelling through a relationship means, when the structural types apply, no broader
+# type beside a specific one, each example listing every type that applies) is ours, added for the
+# cases' rule that a type the example's row does not name must not be picked. No JSON shape: the
+# answer's fields are described in its schema (ticket 09).
 LINK_TYPES_PROMPT = f"""\
 You are a risk analyst at the Monetary Authority of Singapore. You will be given a news finding \
 and the entities it directly affects, each with its direct priority (High or Medium) and the \
@@ -129,8 +132,21 @@ You do not judge every possible indirect entity. Include a relationship type onl
 finding describes consequences that could plausibly travel through that pathway. Do not include \
 a type merely because the relationship exists.
 An entity for which the finding describes no such consequence gets no types.
+A consequence travels through a relationship when the entity at its other end would bear it \
+because of that relationship: a service, payment, data, product or supply it relies on fails, or \
+a loan, investment, stake, policy or joint arrangement it holds loses value. The structural \
+types (regulated_by, operates_in, exposed_to, member_of, participates_in, listed_on, \
+belongs_to_sector) apply only when the finding describes a consequence for the regulator, \
+jurisdiction, market, organisation, scheme, exchange or sector at the other end, or the entity \
+itself is one of these; that the entity is regulated, operates somewhere or is listed is not such \
+a consequence, and nor is a regulator's investigation of it or penalty on it. Work from the \
+consequences the finding states, not from ones you expect to follow from them. A failure of one \
+service is one pathway and takes one type, the most specific that fits it, even where that \
+service could also be described as technology or as a business service.
 
 ## Examples
+Each example lists every type that applies to its finding; a type it does not list does not \
+apply.
 Finding: applicable relationship types
 - Singtel enterprise-connectivity outage: provides_connectivity_to
 - Singtel consumer-advertising fine: holds_stake_in, invests_in (not provides_connectivity_to)

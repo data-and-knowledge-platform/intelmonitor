@@ -33,8 +33,9 @@ PROMPT_NOTES: dict[str, str] = {
     "priority": "The team's direct High, Medium, Low prompt (deck of 10 Nov 2026, slide 7), as "
     "built for the 11 Nov rebuild.",
     "link_types": "The relationship types a development activates for each direct entity at "
-    "Medium or High (deck of 16 Nov 2026, pages 9 and 10), with page 9's examples; ends with "
-    "THINK_FIRST.",
+    "Medium or High (deck of 16 Nov 2026, pages 9 and 10), with page 9's examples as complete "
+    "lists and our rule for when a consequence travels and when structural types apply; ends "
+    "with THINK_FIRST.",
     "headline": "A development's display headline and key points.",
     "note": "A subject's note on why its series moved in the week.",
     "brief": "A subject's brief: state, concerns and direction.",
