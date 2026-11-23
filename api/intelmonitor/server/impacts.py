@@ -1,5 +1,5 @@
-"""Indirect impacts and direct subjects, read from the latest run's development_impacts and the
-relationship store (pipeline/impact.py, relationships.py)."""
+"""Indirect impacts and direct subjects, read from the latest run's development_impacts (each
+entity's best path only) and the relationship store (pipeline/impact.py, relationships.py)."""
 
 import sqlite3
 from datetime import timedelta
@@ -58,22 +58,23 @@ def relationship_link(r: Relationship, names: dict[str, str]) -> RelationshipLin
     )
 
 
-# development_impacts.level as the API names it; the table never gives High.
-INDIRECT_LEVELS: dict[int, IndirectLevel] = {1: "Medium", 0: "Low"}
+# development_impacts.level as the API names it; High only by a Strong link from a High development.
+INDIRECT_LEVELS: dict[int, IndirectLevel] = {2: "High", 1: "Medium", 0: "Low"}
 
 
 def _impacts(q: Queries, where: str, args: tuple[object, ...]) -> list[IndirectImpact]:
-    """The latest run's impacts matching `where` (on development_impacts as `i`), by development,
-    Medium before Low, stronger links first. An impact whose link left the store since the run,
-    or whose entity or source left the seed, is skipped."""
+    """The latest run's impacts matching `where` (on development_impacts as `i`), each entity's
+    best path only, by development, higher levels first, stronger links first. An impact whose
+    link left the store since the run, or whose entity or source left the seed, is skipped."""
     subjects = all_subjects()
     rows = [
         r
         for r in q.conn.execute(
             "SELECT i.development_id, i.subject_id, i.source_id, i.region, i.strength, i.level, "
             "r.data FROM development_impacts i JOIN relationships r ON r.id = i.relationship_id "
-            f"WHERE i.run_id = ? AND {where} ORDER BY i.development_id, i.level DESC, "
-            "CASE i.strength WHEN 'Strong' THEN 0 WHEN 'Moderate' THEN 1 ELSE 2 END, i.subject_id",
+            f"WHERE i.run_id = ? AND i.best = 1 AND {where} ORDER BY i.development_id, "
+            "i.level DESC, CASE i.strength WHEN 'Strong' THEN 0 WHEN 'Moderate' THEN 1 ELSE 2 END, "
+            "i.subject_id",
             (q.run.id, *args),
         ).fetchall()
         if r["subject_id"] in subjects and r["source_id"] in subjects
@@ -100,7 +101,7 @@ def _impacts(q: Queries, where: str, args: tuple[object, ...]) -> list[IndirectI
 
 
 def development_impacts(q: Queries, development_id: str) -> list[IndirectImpact]:
-    """The entities a development reaches indirectly, Medium before Low."""
+    """The entities a development reaches indirectly, higher levels first."""
     return _impacts(q, "i.development_id = ?", (development_id,))
 
 

@@ -206,7 +206,7 @@ def indirect_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
         "LEFT JOIN development_subjects s ON s.run_id = i.run_id "
         "AND s.development_id = i.development_id AND s.subject_id = i.source_id "
         "LEFT JOIN relationships r ON r.id = i.relationship_id "
-        "WHERE i.run_id = ? ORDER BY i.development_id, i.subject_id",
+        "WHERE i.run_id = ? AND i.best = 1 ORDER BY i.development_id, i.subject_id",
         (_latest_run(conn),),
     ).fetchall()
     rows: list[list[Cell]] = []

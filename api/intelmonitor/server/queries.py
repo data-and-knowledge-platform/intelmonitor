@@ -250,7 +250,7 @@ def load_developments(conn: sqlite3.Connection, run: RunRef) -> RunDevelopments:
     names = all_subjects()
     indirect: dict[str, list[str]] = {}
     for r in conn.execute(
-        "SELECT development_id, subject_id FROM development_impacts WHERE run_id = ? "
+        "SELECT development_id, subject_id FROM development_impacts WHERE run_id = ? AND best = 1 "
         "ORDER BY development_id, level DESC, subject_id",
         (run.id,),
     ):
