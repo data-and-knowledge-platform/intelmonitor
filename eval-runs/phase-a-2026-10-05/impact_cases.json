@@ -700,6 +700,13 @@
     "reason": "With INDIRECT_ADVERSE_ONLY off, a High development not adverse for Singtel passes at its level"
   },
   {
+    "id": "adverse-default-blocks",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "As decided (P6, 23 Nov 2026), the stored setting passes only developments adverse for the named entity"
+  },
+  {
     "id": "adverse-on-blocks",
     "ok": true,
     "problems": [],
@@ -851,6 +858,163 @@
     "problems": [],
     "rows": [],
     "reason": "A topic is not asked and has no links"
+  },
+  {
+    "id": "hub-country-operates-in",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Hong Kong's news does not reach DBS through DBS operating in Hong Kong"
+  },
+  {
+    "id": "hub-regulator-regulated-by",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Neither MAS (a central bank) nor the FCA (a regulator) passes its news to a firm it regulates"
+  },
+  {
+    "id": "hub-firm-to-regulator",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "mas",
+        "level": "High",
+        "source": "dbs",
+        "link": "dbs:regulated_by:mas",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "DBS's own news still reaches MAS through regulated_by, read at from_to"
+  },
+  {
+    "id": "hub-firm-to-country",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "hong-kong",
+        "level": "Medium",
+        "source": "dbs",
+        "link": "dbs:operates_in:hong-kong",
+        "strength": "Moderate",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "DBS's own news still reaches Hong Kong through operates_in, read at from_to"
+  },
+  {
+    "id": "hub-foreign-lender",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "hong-kong",
+        "link": "dbs:exposed_to:hong-kong",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "Hong Kong's news reaches DBS, whose home is Singapore, through its Hong Kong loans"
+  },
+  {
+    "id": "hub-home-lender",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "hsbc",
+        "level": "High",
+        "source": "singapore",
+        "link": "hsbc:exposed_to:singapore",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "Singapore's news does not reach DBS, whose home it is, through its Singapore loans; it reaches HSBC, whose home is the United Kingdom"
+  },
+  {
+    "id": "hub-region-member-type",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Hong Kong's news does not reach DBS through DBS operating in Greater China, a region that covers Hong Kong"
+  },
+  {
+    "id": "hub-region-home",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "mainland-china",
+        "link": "dbs:exposed_to:greater-china",
+        "strength": "Strong",
+        "best": true,
+        "region": "greater-china"
+      }
+    ],
+    "reason": "Mainland China's news reaches DBS through its Greater China figure, but not Bank of China, whose home it is"
+  },
+  {
+    "id": "hub-member-from-end",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "asean",
+        "level": "High",
+        "source": "singapore",
+        "link": "singapore:member_of:asean",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "A hub that is itself the member passes along member_of, though ASEAN is a region that covers Singapore"
+  },
+  {
+    "id": "hub-exchange-listed-on",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "sgx",
+        "link": "dbs:listed_on:sgx",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "SGX is market infrastructure, not a hub: its outage still reaches DBS, listed on it"
+  },
+  {
+    "id": "hub-parent-subsidiary",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "great-eastern",
+        "level": "High",
+        "source": "ocbc",
+        "link": "ocbc:holds_stake_in:great-eastern",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "OCBC's own news still reaches Great Eastern through its stake"
   },
   {
     "id": "store",

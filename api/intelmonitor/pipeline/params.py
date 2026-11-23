@@ -4,7 +4,8 @@ from datetime import date
 from typing import Literal
 
 from intelmonitor.pipeline.prompts import THINK_FIRST
-from intelmonitor.relationships import LINK_TYPES, Strength
+from intelmonitor.relationships import LINK_TYPES, RelType, Strength
+from intelmonitor.seed import EntityKind
 
 # Screen and same_event run on Claude Haiku 5.5 with thinking off; a Haiku
 # refusal is retried once on REFUSAL_FALLBACK_MODEL (pipeline/inference.py). The other stages run
@@ -209,8 +210,21 @@ INDIRECT_TABLE: dict[int, dict[Strength, int | None]] = {
 # default (P7); the run prints the row counts under both settings for the pick.
 INDIRECT_FROM_LOW = False
 # Whether a named entity passes only developments adverse for it, the gate of the 10 Nov rules.
-# Off by default (P6): the activated types decide; the run prints the row counts under both.
-INDIRECT_ADVERSE_ONLY = False
+# On: the product owner decided it (P6, 23 Nov 2026); the run prints the row counts under both.
+INDIRECT_ADVERSE_ONLY = True
+# Hubs: the kinds whose news is about a class of entities, not one firm. The product owner decided
+# (23 Nov 2026) that "Could affect" does not carry class-wide country and regulator news: a hub
+# passes nothing down a MEMBER_TYPES link to what operates in it, is regulated by it, is listed on
+# it or is a member of it (itself or through a region that covers it), nor to an entity whose
+# home it is. Its other links pass as any entity's do. Market infrastructures and payment systems
+# are not hubs: an exchange's outage still reaches what is listed on it.
+HUB_KINDS: frozenset[EntityKind] = frozenset(
+    {"country", "region", "regulator", "central_bank", "agency", "international_body"}
+)
+# The link types by which an entity belongs to a hub (decided 23 Nov 2026, with HUB_KINDS).
+MEMBER_TYPES: frozenset[RelType] = frozenset(
+    {"operates_in", "regulated_by", "listed_on", "member_of", "participates_in"}
+)
 
 
 def display_key(

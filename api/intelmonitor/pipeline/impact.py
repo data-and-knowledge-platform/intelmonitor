@@ -8,8 +8,13 @@ level comes from INDIRECT_TABLE (pipeline/params.py): the named entity's direct 
 link's strength in the direction from it. High gives High, Medium, Low for a Strong, Moderate,
 Weak link; Medium gives Medium, Low, nothing; Low passes nothing unless INDIRECT_FROM_LOW; a
 Non-propagating direction passes nothing. An entity whose types were not asked passes nothing.
-With INDIRECT_ADVERSE_ONLY, only entities the development is adverse for pass. Never a second
-hop; a link into a region entity counts for each member country.
+With INDIRECT_ADVERSE_ONLY (on, P6), only entities the development is adverse for pass. A hub
+(HUB_KINDS: a country, region, regulator, central bank, agency or international body) passes
+nothing down a MEMBER_TYPES link to the entity that operates in it, is regulated by it, is listed
+on it or is a member of it, itself or through a region that covers it, nor to an entity whose
+home it is; its other links pass, and a firm's own news still reaches its regulator and country
+(decided 23 Nov 2026). Never a second hop; a link into a region entity counts for each member
+country.
 
 Every path is kept. Paths are never added together; each entity reached has one best path: the
 highest level, then the stronger link, the larger share, the link id, the source id.
@@ -27,10 +32,12 @@ from functools import cache
 from typing import NamedTuple
 
 from intelmonitor.pipeline.params import (
+    HUB_KINDS,
     INDIRECT_ADVERSE_ONLY,
     INDIRECT_FROM_LOW,
     INDIRECT_TABLE,
     MATERIAL_LEVEL,
+    MEMBER_TYPES,
     PRIORITY_LABELS,
 )
 from intelmonitor.relationships import (
@@ -45,7 +52,7 @@ from intelmonitor.relationships import (
     owns,
     reaches,
 )
-from intelmonitor.seed import load_subjects
+from intelmonitor.seed import Entity, load_subjects
 
 SERVICE_WORDS: dict[Service, str] = {
     "banking": "banking services",
@@ -368,6 +375,27 @@ def _names() -> dict[str, str]:
     return {e.id: e.name for e in load_subjects().entities}
 
 
+@cache
+def _entities() -> dict[str, Entity]:
+    return {e.id: e for e in load_subjects().entities}
+
+
+def hub_blocks(reach: Reach) -> bool:
+    """Whether the hub rules (params.HUB_KINDS, decided 23 Nov 2026) stop a link from a named
+    entity: the source is a hub, and either the link is of a MEMBER_TYPES type with the source at
+    its `to` end or covered by the region there, so the source is what the entity reached
+    operates in, is regulated by, is listed on or is a member of; or the entity reached has the
+    source as its home."""
+    entities = _entities()
+    source = entities.get(reach.source)
+    if source is None or source.kind not in HUB_KINDS:
+        return False
+    r = reach.relationship
+    if r.type in MEMBER_TYPES and (r.to == reach.source or reach.region is not None):
+        return True
+    return entities[reach.reached].home == reach.source
+
+
 def _reason(direct: int, reach: Reach, level: int) -> str:
     """A path in words: "High for Singtel by Strong through provides_connectivity_to gives High."
     then the link's rating reason for that direction."""
@@ -390,9 +418,10 @@ def reached(
     entity's best path first and marked best. `tagged` holds every subject named on it, and none
     of them gets a row. A named entity passes a link only when the link's type is among its
     activated types, its direction from that entity is not Non-propagating, the table gives its
-    level and strength a level (a Low level only `from_low`) and, with `adverse_only`, the
-    development is adverse for it. Paths are never added together. `links` keeps each source's
-    links (relationships.reaches) across calls on one store."""
+    level and strength a level (a Low level only `from_low`), with `adverse_only` the
+    development is adverse for it, and the hub rules do not stop it (hub_blocks). Paths are
+    never added together. `links` keeps each source's links (relationships.reaches) across calls
+    on one store."""
     known = {} if links is None else links
     found: dict[str, list[Reached]] = {}
     for source, tag in tagged.items():
@@ -402,6 +431,8 @@ def reached(
             known[source] = reaches(conn, source)
         for reach in known[source]:
             if reach.relationship.type not in tag.types or reach.reached in tagged:
+                continue
+            if hub_blocks(reach):
                 continue
             level = indirect_level(tag.level, reach.strength, from_low=from_low)
             if level is None:
