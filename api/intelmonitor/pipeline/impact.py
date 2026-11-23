@@ -19,6 +19,7 @@ reasons.
 
 import sqlite3
 from dataclasses import dataclass, field
+from typing import NamedTuple
 
 from intelmonitor.pipeline.params import INDIRECT_FROM_LOW, INDIRECT_TABLE
 from intelmonitor.relationships import (
@@ -291,6 +292,14 @@ class Tagged:
 
     level: int
     adverse: bool
+    types: frozenset[RelType] | None
+
+
+class Setting(NamedTuple):
+    """The two switches of the inferred impact rules."""
+
+    adverse_only: bool
+    from_low: bool
 
 
 @dataclass(frozen=True)
@@ -304,6 +313,8 @@ class Reached:
     region: str | None
     strength: Strength
     level: int
+    best: bool = True
+    reason: str = ""
 
 
 STRENGTHS: tuple[Strength, ...] = Strength.__args__  # strongest first
@@ -330,7 +341,11 @@ def _best(r: Reached) -> tuple[int, int, float, str, str]:
 
 
 def reached(
-    conn: sqlite3.Connection, tagged: dict[str, Tagged], *, from_low: bool = INDIRECT_FROM_LOW
+    conn: sqlite3.Connection,
+    tagged: dict[str, Tagged],
+    *,
+    from_low: bool = INDIRECT_FROM_LOW,
+    adverse_only: bool = True,
 ) -> list[Reached]:
     """The entities one development reaches through the table, one row each, by id. `tagged`
     holds every subject tagged on it; only those it is adverse for pass, and none of them gets a
@@ -369,9 +384,14 @@ class ImpactStats:
     )
     # (development id, row) for entities reached only with INDIRECT_FROM_LOW on, by development
     low_only: list[tuple[str, Reached]] = field(default_factory=list[tuple[str, Reached]])
+    paths: dict[Setting, list[tuple[str, Reached]]] = field(
+        default_factory=dict[Setting, list[tuple[str, Reached]]]
+    )
 
 
-def store_impacts(conn: sqlite3.Connection, run_id: str) -> ImpactStats:
+def store_impacts(
+    conn: sqlite3.Connection, run_id: str, *, recomputed_at: str | None = None
+) -> ImpactStats:
     """Replace the run's development_impacts with the table's rows, in one transaction, and count
     the rows under both INDIRECT_FROM_LOW settings."""
     tags: dict[str, dict[str, Tagged]] = {}
@@ -381,7 +401,7 @@ def store_impacts(conn: sqlite3.Connection, run_id: str) -> ImpactStats:
         (run_id,),
     ):
         tags.setdefault(r["development_id"], {})[r["subject_id"]] = Tagged(
-            level=int(r["priority_level"]), adverse=bool(r["adverse"])
+            level=int(r["priority_level"]), adverse=bool(r["adverse"]), types=None
         )
     stats = ImpactStats()
     rows: list[tuple[str, Reached]] = []
