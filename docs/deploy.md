@@ -80,3 +80,21 @@ The runner computes paid weeks on whatever code is deployed, so this follows the
 [northflank.md](northflank.md) has the exact settings, what must change and the questions for the platform team.
 
 To confirm with the platform team: outbound access from the runner to the Anthropic API, or a switch of its model client to the cloud provider's Claude endpoint; and which bucket service is allowed.
+
+### Test deployment on Northflank's free plan
+
+Running since 23 Nov 2026, from the private repo `wongkang01/intelmonitor`, branch `main`, in project `default` (region US Central).
+Deploying is a push to that branch: the service builds the `Dockerfile` and rolls out, so `scripts/deploy.sh` is not used there.
+
+| Resource | Settings |
+|---|---|
+| Service `intelmontior` (combined: build and deploy) | Plan `nf-compute-20` (0.2 vCPU, 512 MB), 2 GB temporary disk, port `http` 8000 public at `https://http--intelmontior--rpdtytzxv9bj.code.run`, startup probe `/api/health` every 10 s for up to 10 minutes, liveness probe every 30 s. |
+| Addon `stores` | MinIO 2025.10.15, 6 GB, TLS, private; bucket `stores` inside it. |
+| Secret group `bucket` | `STORE_BUCKET=stores`, `STORE_S3_REGION=us-east-1`, `STORE_KEEP=8`, and the addon's `MINIO_ENDPOINT`, `ACCESS_KEY`, `SECRET_KEY` as `STORE_S3_ENDPOINT`, `STORE_S3_ACCESS_KEY_ID`, `STORE_S3_SECRET_ACCESS_KEY`; restricted to the service. |
+
+The free plan's limits per container are 0.2 vCPU, 512 MB and 2 GB of temporary disk; larger plans and disks are refused.
+The site sits at about 85% of its memory and reaches 100% under the endpoint check, so 1 GB (`nf-compute-50`, a paid plan) is the safer size.
+The internal MinIO endpoint's TLS certificate is trusted by the image, so no CA file is needed.
+
+The first store was published by hand through `northflank forward addon --skipHostnames`, with certificate checks off for that loopback connection only, because the certificate names the internal hostname.
+It is the 16 Nov store from before the link-types changes (latest run 2026-11-08), for testing.
