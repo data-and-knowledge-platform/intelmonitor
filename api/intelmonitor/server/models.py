@@ -680,8 +680,7 @@ class RelatedNode(BaseModel):
         "in display order"
     )
     harmful: int = Field(
-        description="How many of them are adverse for the entity they are about; every "
-        "indirect impact is, so this equals the number of developments"
+        description="How many of them are adverse for the entity they reach the centre from"
     )
 
 

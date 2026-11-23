@@ -1493,7 +1493,7 @@ export interface components {
             development_ids: string[];
             /**
              * Harmful
-             * @description How many of them are adverse for the entity they are about; every indirect impact is, so this equals the number of developments
+             * @description How many of them are adverse for the entity they reach the centre from
              */
             harmful: number;
         };
