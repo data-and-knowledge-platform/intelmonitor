@@ -10,7 +10,7 @@ Recomputing a complete run keeps it complete while it runs: each step swaps its 
 transaction, so the app keeps serving the run instead of falling back to an older one.
 
 Order (phase1-plan.md, section 5): sync the relationship store, detectors, screen, extract, merge
-and priority, the activated link types, headlines, indirect impact by table, upcoming dates,
+and priority, the activated link types, headlines, inferred impact by table, upcoming dates,
 indicators and notes, diff, briefs.
 """
 
@@ -28,11 +28,18 @@ from intelmonitor.pipeline.developments import build_developments
 from intelmonitor.pipeline.diff import development_changes, previous_run, store_changes
 from intelmonitor.pipeline.extract import extract_documents
 from intelmonitor.pipeline.headlines import write_headlines
-from intelmonitor.pipeline.impact import ImpactStats, store_impacts
+from intelmonitor.pipeline.impact import (
+    SETTINGS,
+    STORED,
+    ImpactStats,
+    Reached,
+    Setting,
+    store_impacts,
+)
 from intelmonitor.pipeline.indicators import store_run_indicators
 from intelmonitor.pipeline.inference import Inference
 from intelmonitor.pipeline.notes import write_notes
-from intelmonitor.pipeline.params import INDIRECT_FROM_LOW, PRIORITY_LABELS, RUN_SPACING_DAYS
+from intelmonitor.pipeline.params import NEEDS_ATTENTION_LEVEL, PRIORITY_LABELS, RUN_SPACING_DAYS
 from intelmonitor.pipeline.screen import screen_documents
 from intelmonitor.pipeline.subjects import monitored_subjects
 from intelmonitor.pipeline.summaries import write_summaries
@@ -41,9 +48,10 @@ from intelmonitor.relationships import sync_relationships
 from intelmonitor.store.db import connect, get_meta
 from intelmonitor.store.documents import list_documents
 
-# Entities whose indirect row counts each run prints, for the Low direct item decision.
+# Entities whose inferred row counts each run prints, for the picks of the two switches (P6, P7),
+# and the sample rows it prints for each switch.
 INDIRECT_REPORTED = ("dbs", "ocbc", "uob", "mas")
-INDIRECT_LOW_SAMPLES = 10
+INDIRECT_SAMPLES = 10
 
 # Tables with a run_id column that `im clear-runs` keeps: every model call (replayed by later
 # runs) and the execution history.
@@ -138,12 +146,8 @@ async def compute_run(
             f"{heads.refused} refused"
         )
         impact = store_impacts(conn, run_id)
-        step(
-            f"impact by table: {impact.impacts} indirect impacts from {impact.developments} "
-            f"developments (INDIRECT_FROM_LOW {INDIRECT_FROM_LOW}); {impact.without_low} rows "
-            f"without Low direct items, {impact.with_low} with them"
-        )
-        for line in [*_impact_lines(conn, run_id, impact), *_topic_only_lines(conn, run_id)]:
+        step(impact_step(impact))
+        for line in [*impact_lines(conn, run_id, impact), *_topic_only_lines(conn, run_id)]:
             log(f"[{run_id}] {line}")
         upcoming = store_upcoming(conn, run_id, as_of, devs)
         base_id = previous_run(conn, run_id)
@@ -184,45 +188,85 @@ async def compute_run(
     step(f"complete: {runlog.result_line(outcome, previous)}")
 
 
-def _impact_lines(conn: sqlite3.Connection, run_id: str, impact: ImpactStats) -> list[str]:
-    """The indirect row counts without and with Low direct items, in total and for
-    INDIRECT_REPORTED, over every development and over the shown ones (those the source gate
-    passes, the only ones a page shows); then up to INDIRECT_LOW_SAMPLES rows that only Low
-    direct items reach, one per development. A subject no longer in the seed shows by its id."""
+def impact_step(impact: ImpactStats) -> str:
+    """The impact step's line: the stored paths, the entities they reach and the developments
+    they come from."""
+    stored = impact.stored
+    return (
+        f"inferred impact by table: {len(stored)} paths, {sum(r.best for _, r in stored)} "
+        f"entities reached, from {len({d for d, _ in stored})} developments "
+        f"(INDIRECT_ADVERSE_ONLY {STORED.adverse_only}, INDIRECT_FROM_LOW {STORED.from_low})"
+    )
+
+
+def impact_lines(conn: sqlite3.Connection, run_id: str, impact: ImpactStats) -> list[str]:
+    """The inferred rows under each setting of the two switches, as entities reached (best paths)
+    and paths, in total and for INDIRECT_REPORTED, over every development and over the shown ones
+    (those the source gate passes, the only ones a page shows); the stored setting's paths that are
+    not best; its inferred High rows, every one; then up to INDIRECT_SAMPLES rows that flipping
+    each switch adds or removes, one per development. A subject no longer in the seed shows by
+    its id."""
     subjects = monitored_subjects()
     shown = shown_developments(conn, run_id)
+    titles = {
+        r["id"]: r["title"]
+        for r in conn.execute("SELECT id, title FROM developments WHERE run_id = ?", (run_id,))
+    }
 
     def name(subject_id: str) -> str:
         return subjects[subject_id].name if subject_id in subjects else subject_id
 
-    def counts(only_shown: bool) -> str:
-        def n(low: bool, subject_id: str | None = None) -> int:
-            return sum(
-                (subject_id is None or s == subject_id) and (not only_shown or dev in shown)
-                for dev, s in impact.pairs[low]
-            )
+    def counts(setting: Setting, only_shown: bool) -> str:
+        rows = [(d, r) for d, r in impact.paths[setting] if not only_shown or d in shown]
 
-        by = [f"{name(s)} {n(False, s)}/{n(True, s)}" for s in INDIRECT_REPORTED]
-        return ", ".join([f"total {n(False)}/{n(True)}", *by])
+        def n(subject_id: str | None = None) -> str:
+            mine = [r for _, r in rows if subject_id is None or r.subject_id == subject_id]
+            return f"{sum(r.best for r in mine)}/{len(mine)}"
 
-    lines = [
-        f"indirect rows without/with Low direct items, all developments: {counts(False)}",
-        f"indirect rows without/with Low direct items, shown developments only: {counts(True)}",
-    ]
-    seen: set[str] = set()
-    for dev_id, r in impact.low_only:
-        if dev_id in seen or len(seen) == INDIRECT_LOW_SAMPLES:
-            continue
-        seen.add(dev_id)
-        title = conn.execute(
-            "SELECT title FROM developments WHERE run_id = ? AND id = ?", (run_id, dev_id)
-        ).fetchone()["title"]
-        gate = "" if dev_id in shown else " (unconfirmed, not shown)"
-        lines.append(
-            f"  Low adds {name(r.subject_id)}, {PRIORITY_LABELS[r.level]}, from "
-            f"{name(r.source_id)} by {r.relationship.type} ({r.strength}): "
-            f"{dev_id} {title[:90]}{gate}"
+        return ", ".join([f"total {n()}", *(f"{name(s)} {n(s)}" for s in INDIRECT_REPORTED)])
+
+    def label(s: Setting) -> str:
+        words = (
+            f"adverse gate {'on' if s.adverse_only else 'off'}, "
+            f"Low row {'on' if s.from_low else 'off'}"
         )
+        return words + (" (stored)" if s == STORED else "")
+
+    def row(dev_id: str, r: Reached) -> str:
+        gate = "" if dev_id in shown else " (unconfirmed, not shown)"
+        return (
+            f"{name(r.subject_id)}, {PRIORITY_LABELS[r.level]}, from {name(r.source_id)} by "
+            f"{r.relationship.type} ({r.strength}): {dev_id} {titles[dev_id][:90]}{gate}"
+        )
+
+    lines: list[str] = []
+    for only_shown in (False, True):
+        scope = "shown developments only" if only_shown else "all developments"
+        lines.append(f"inferred rows, entities reached/paths, {scope}:")
+        lines += [f"  {label(s)}: {counts(s, only_shown)}" for s in SETTINGS]
+    stored = impact.stored
+    lines.append(f"paths not best: {sum(not r.best for _, r in stored)}")
+    high = [(d, r) for d, r in stored if r.best and r.level == NEEDS_ATTENTION_LEVEL]
+    lines.append(f"inferred High rows: {len(high)}, {sum(d in shown for d, _ in high)} shown")
+    lines += [f"  {row(d, r)}" for d, r in high]
+    flips = [
+        ("Low row on adds", STORED._replace(from_low=False), STORED._replace(from_low=True)),
+        (
+            "adverse gate on drops",
+            STORED._replace(adverse_only=True),
+            STORED._replace(adverse_only=False),
+        ),
+    ]
+    for words, fewer, more in flips:
+        kept = {(d, r.subject_id) for d, r in impact.paths[fewer] if r.best}
+        seen: set[str] = set()
+        for d, r in impact.paths[more]:
+            if not r.best or (d, r.subject_id) in kept or d in seen:
+                continue
+            if len(seen) == INDIRECT_SAMPLES:
+                break
+            seen.add(d)
+            lines.append(f"  {words} {row(d, r)}")
     return lines
 
 

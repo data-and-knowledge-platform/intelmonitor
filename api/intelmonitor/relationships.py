@@ -553,18 +553,20 @@ def links_of(conn: sqlite3.Connection, subject_id: str) -> list[tuple[Relationsh
 
 class Reach(_Model):
     """One link by which an event at `source` reaches the seed entity `reached`, with the link's
-    strength in that direction. `region` names the region entity when the link goes into a region
-    that covers the source (UOB's Greater China loans, for news about Taiwan)."""
+    strength in that direction and its rating's reason. `region` names the region entity when the
+    link goes into a region that covers the source (UOB's Greater China loans, for news about
+    Taiwan)."""
 
     source: str
     reached: str
     relationship: Relationship
     strength: Strength
+    reason: str
     region: str | None = None
 
 
 def reaches(conn: sqlite3.Connection, source_id: str) -> list[Reach]:
-    """Every seed entity one link from the entity `source_id`, for indirect impact (ticket 20):
+    """Every seed entity one link from the entity `source_id`, for inferred impact (ticket 20):
     each link with the source at one end, read from_to when the source is its `from` and to_from
     when it is its `to`; and each link into a region entity whose members (its `members` in the
     seed) include the source, read to_from only. belongs_to_sector, unrated links (only made-up
@@ -598,6 +600,7 @@ def reaches(conn: sqlite3.Connection, source_id: str) -> list[Reach]:
                     reached=reached,
                     relationship=r,
                     strength=rating.strength,
+                    reason=rating.reason,
                     region=region,
                 )
             )

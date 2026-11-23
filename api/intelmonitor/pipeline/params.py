@@ -186,18 +186,22 @@ PRIORITY_DEFINITIONS: list[str] = [
 NEEDS_ATTENTION_LEVEL = 2
 MATERIAL_LEVEL = 1
 
-# Indirect impact (pipeline/impact.py; deck of 10 Nov 2026, slide 8; ticket 20): the level a
-# development adverse for a tagged entity passes through one link to a neighbour, by the entity's
-# direct level and the link's strength in that direction; None passes nothing, and nothing is High.
-# A Non-propagating direction (deck of 16 Nov 2026, page 6) passes nothing.
+# Inferred impact (pipeline/impact.py; deck of 16 Nov 2026, page 11; ticket 06 of
+# link-types-and-inferred-impact): the level a development passes through one link, of a type it
+# activates for a named entity, to a neighbour, by the entity's direct level and the link's
+# strength in that direction; None passes nothing. High by Strong gives High, with no further check
+# (page 12, P8). A Non-propagating direction (page 6) passes nothing.
 INDIRECT_TABLE: dict[int, dict[Strength, int | None]] = {
-    2: {"Strong": 1, "Moderate": 1, "Weak": 0, "Non-propagating": None},
+    2: {"Strong": 2, "Moderate": 1, "Weak": 0, "Non-propagating": None},
     1: {"Strong": 1, "Moderate": 0, "Weak": None, "Non-propagating": None},
     0: {"Strong": 0, "Moderate": None, "Weak": None, "Non-propagating": None},
 }
-# Whether a Low direct item passes, as the slide draws it (Low to a Strong link as Low). Off by
-# default; the run prints the row count under both settings for the first rebuilt week's pick.
+# Whether a Low direct item passes, as page 11 draws it (Low to a Strong link as Low). Off by
+# default (P7); the run prints the row counts under both settings for the pick.
 INDIRECT_FROM_LOW = False
+# Whether a named entity passes only developments adverse for it, the gate of the 10 Nov rules.
+# Off by default (P6): the activated types decide; the run prints the row counts under both.
+INDIRECT_ADVERSE_ONLY = False
 
 
 def display_key(
