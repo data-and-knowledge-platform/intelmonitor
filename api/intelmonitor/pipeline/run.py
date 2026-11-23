@@ -10,8 +10,8 @@ Recomputing a complete run keeps it complete while it runs: each step swaps its 
 transaction, so the app keeps serving the run instead of falling back to an older one.
 
 Order (phase1-plan.md, section 5): sync the relationship store, detectors, screen, extract, merge
-and priority, headlines, indirect impact by table, upcoming dates, indicators and notes, diff,
-briefs.
+and priority, the activated link types, headlines, indirect impact by table, upcoming dates,
+indicators and notes, diff, briefs.
 """
 
 import sqlite3
@@ -127,6 +127,10 @@ async def compute_run(
             f"({merge.merged_pairs}/{merge.pairs} candidate pairs merged), {merge.high} High; "
             f"left out {merge.promotional} promotional and {merge.price_move} price-move findings; "
             f"{merge.priority_refused} priority ratings refused"
+        )
+        step(
+            f"link types: {merge.link_types_asked} developments with an entity at Medium or "
+            f"High asked, {merge.link_types_refused} refused (their entities activate no type)"
         )
         heads = await write_headlines(inf, conn, run_id)
         step(

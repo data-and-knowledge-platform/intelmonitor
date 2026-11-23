@@ -145,6 +145,7 @@ CREATE TABLE IF NOT EXISTS development_subjects (
     priority_score REAL NOT NULL DEFAULT 0, -- the level; Jev's expected score in older runs
     priority_confidence REAL NOT NULL DEFAULT 0, -- 1.0 once rated
     priority_reason TEXT NOT NULL DEFAULT '', -- the rating's one sentence on why
+    link_types TEXT,                   -- JSON list of the types it activates; null: not asked
     PRIMARY KEY (run_id, development_id, subject_id)
 );
 
@@ -442,6 +443,9 @@ ADDED_COLUMNS = [
     ("inference_records", "prompt_version", "TEXT"),
     # A refused call's category (pipeline/claude.py).
     ("inference_records", "refusal_category", "TEXT"),
+    # The relationship types a development activates for an entity at Medium or High, a JSON
+    # list; null when it was not asked (pipeline/developments.py, the link_types stage).
+    ("development_subjects", "link_types", "TEXT"),
 ]
 
 

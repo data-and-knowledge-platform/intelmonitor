@@ -1,0 +1,102 @@
+[
+  {
+    "id": "singtel-connectivity-outage",
+    "ok": true,
+    "picked": [
+      "provides_connectivity_to"
+    ],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "singtel-advertising-fine",
+    "ok": true,
+    "picked": [
+      "holds_stake_in",
+      "invests_in"
+    ],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "moneysmart-data-breach",
+    "ok": true,
+    "picked": [
+      "shares_or_processes_data_with",
+      "distributes_products_for",
+      "regulated_by",
+      "operates_in"
+    ],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "moneysmart-misleading-comparison",
+    "ok": true,
+    "picked": [
+      "distributes_products_for"
+    ],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "payment-processor-outage",
+    "ok": true,
+    "picked": [
+      "processes_transactions_for",
+      "provides_technology_to",
+      "jointly_offers_product_with",
+      "provides_business_service_to"
+    ],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "engine-defect-isolated",
+    "ok": true,
+    "picked": [
+      "material_supplier_to"
+    ],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "engine-defect-fleet-wide",
+    "ok": true,
+    "picked": [
+      "material_supplier_to",
+      "provides_business_service_to",
+      "insures",
+      "holds_stake_in",
+      "invests_in",
+      "lends_to"
+    ],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "maintenance-failure",
+    "ok": true,
+    "picked": [
+      "provides_business_service_to"
+    ],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "krisflyer-redemption-outage",
+    "ok": true,
+    "picked": [
+      "provides_customer_benefits_with"
+    ],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "flight-disruption",
+    "ok": true,
+    "picked": [],
+    "missing": [],
+    "forbidden": []
+  }
+]

@@ -3,7 +3,8 @@
 from datetime import date
 from typing import Literal
 
-from intelmonitor.relationships import Strength
+from intelmonitor.pipeline.prompts import THINK_FIRST
+from intelmonitor.relationships import LINK_TYPES, Strength
 
 # Screen and same_event run on Claude Haiku 5.5 with thinking off; a Haiku
 # refusal is retried once on REFUSAL_FALLBACK_MODEL (pipeline/inference.py). The other stages run
@@ -86,6 +87,69 @@ def priority_system(entity: str, singapore: str, template: str = PRIORITY_PROMPT
         for joiner in (" or for ", " or "):
             text = text.replace(f"{SINGAPORE_SYSTEM}{joiner}{SINGAPORE_SYSTEM}", SINGAPORE_SYSTEM)
     return text
+
+
+def _link_types_text() -> str:
+    """The 22 types in the deck's three groups, each with its meaning."""
+    lines: list[str] = []
+    group = ""
+    for t, lt in LINK_TYPES.items():
+        if lt.group != group:
+            group = lt.group
+            lines.append(f"{group}:")
+        lines.append(f"- {t}: {lt.meaning}")
+    return "\n".join(lines)
+
+
+# The activated relationship types (deck of 16 Nov 2026, pages 9 and 10; ticket 05 of
+# link-types-and-inferred-impact): the link_types call (pipeline/developments.py) reads a
+# development and its direct entities at Medium or High, and picks for each entity the types its
+# consequences could travel through. Page 9's selection rule and ten examples and page 10's rule
+# are the deck's words, the second person for page 10's "The LLM"; the types are LINK_TYPES (pages
+# 1 to 4); the framing (the entities given with their levels, a type counting at either end of a
+# link) is ours. No JSON shape: the answer's fields are described in its schema (ticket 09).
+LINK_TYPES_PROMPT = f"""\
+You are a risk analyst at the Monetary Authority of Singapore. You will be given a news finding \
+and the entities it directly affects, each with its direct priority (High or Medium) and the \
+reason for it. For each entity, select the relationship types the finding could activate: the \
+types of relationship through which the consequences the finding describes could travel from \
+that entity to other entities. A type counts whichever end of the relationship the entity is \
+at: the entity may provide the service or receive it, hold the stake or be held.
+
+## Relationship types
+{_link_types_text()}
+
+## Selecting relationship types
+Select relationship types based on the consequences described in the finding, not merely the \
+finding's subject or every relationship connected to the direct entity. For example: an engine \
+defect can activate material_supplier_to; a maintenance failure can activate \
+provides_business_service_to; a KrisFlyer outage can activate provides_customer_benefits_with; \
+an engine problem should not activate airline-bank rewards relationships.
+You do not judge every possible indirect entity. Include a relationship type only where the \
+finding describes consequences that could plausibly travel through that pathway. Do not include \
+a type merely because the relationship exists.
+An entity for which the finding describes no such consequence gets no types.
+
+## Examples
+Finding: applicable relationship types
+- Singtel enterprise-connectivity outage: provides_connectivity_to
+- Singtel consumer-advertising fine: holds_stake_in, invests_in (not provides_connectivity_to)
+- MoneySmart bank-application data breach: shares_or_processes_data_with
+- MoneySmart misleading product comparison: distributes_products_for
+- Payment-processor outage: processes_transactions_for
+- Isolated engine defect affecting a specific engine model: material_supplier_to; potentially \
+provides_business_service_to if maintenance is implicated
+- Fleet-wide engine defect causing extensive grounding: material_supplier_to; potentially \
+provides_business_service_to, insures, holds_stake_in, invests_in and lends_to, where the stated \
+consequences support them
+- Aircraft-maintenance failure: provides_business_service_to
+- KrisFlyer redemption outage: provides_customer_benefits_with
+- General flight disruption unrelated to KrisFlyer: not provides_customer_benefits_with
+
+{THINK_FIRST}"""
+# The link_types call thinks at this effort on Sonnet 5.5. High follows the priority pick
+# (version 8); the spec has the user pick between medium and high from step 7's sweep.
+LINK_TYPES_EFFORT: Literal["high"] = "high"
 
 
 # Slide 7's definition of each level, in the same order, as Help shows them.
