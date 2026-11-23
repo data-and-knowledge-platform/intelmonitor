@@ -274,7 +274,7 @@ def publish_cmd(
     ] = None,
 ) -> None:
     """Upload the store as a new immutable file named by its latest complete run, repoint
-    latest.json at it and keep the 12 newest files; or, with --key, roll back or forward by
+    latest.json at it and keep the STORE_KEEP newest files; or, with --key, roll back or forward by
     repointing latest.json at a file already in the bucket."""
     from intelmonitor.pipeline import runlog
     from intelmonitor.store.db import DB_PATH, connect

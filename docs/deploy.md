@@ -9,7 +9,7 @@ Only the S3 API and environment variables connect them, so moving to another pla
    When a week is due, a preflight makes one Exa search and one Claude Haiku call, and the runner exits 1 before any other work if either fails.
 2. For each complete week since the store's last complete run (Monday to Sunday UTC, at most 4 per firing, oldest first), it ingests that week and computes its run, logged with trigger `scheduled`.
 3. After each week it uploads a compact copy of the store as an immutable file `stores/intelmonitor-<run date>-<short hash>.db`, then rewrites `latest.json` (`key`, `run_id`, `sha256`, `published_at`) last, so readers never see a half-written store.
-4. It keeps the 12 newest store files and deletes older ones, never the one `latest.json` names.
+4. It keeps the `STORE_KEEP` newest store files (12 by default) and deletes older ones, never the one `latest.json` names.
 5. The site downloads the file `latest.json` names when it starts, opens it read-only, and checks `latest.json` every 10 minutes; a new key is downloaded beside the old file, its sha256 checked, and swapped in without a restart.
 
 A failed run exits non-zero and publishes nothing for that week, so the site keeps the last good store.

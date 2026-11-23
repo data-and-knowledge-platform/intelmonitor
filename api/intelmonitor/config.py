@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     store_s3_region: str = ""
     store_s3_access_key_id: str = ""
     store_s3_secret_access_key: str = ""
+    # Store files kept in the bucket; older ones are deleted after each publish. About 500 MB each.
+    store_keep: int = 12
 
 
 @lru_cache

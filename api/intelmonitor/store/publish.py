@@ -25,7 +25,6 @@ if TYPE_CHECKING:  # the stubs are a dev dependency, absent from the image
 
 LATEST = "latest.json"
 PREFIX = "stores/"
-KEEP = 12  # store files kept in the bucket; older ones are deleted after each publish
 
 log = logging.getLogger(__name__)
 
@@ -105,9 +104,10 @@ class Bucket:
             raise ValueError(f"{latest.key}: sha256 {digest}, latest.json says {latest.sha256}")
         tmp.replace(dest)
 
-    def prune(self, keep: int = KEEP) -> list[str]:
-        """Delete all but the `keep` newest store files, never the one `latest.json` names.
-        Returns the deleted keys."""
+    def prune(self, keep: int | None = None) -> list[str]:
+        """Delete all but the `keep` newest store files (STORE_KEEP by default), never the one
+        `latest.json` names. Returns the deleted keys."""
+        keep = get_settings().store_keep if keep is None else keep
         pages = self.client.get_paginator("list_objects_v2").paginate(
             Bucket=self.name, Prefix=PREFIX
         )
