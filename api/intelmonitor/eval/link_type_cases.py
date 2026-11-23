@@ -1,8 +1,11 @@
 """Cases for the activated relationship types (spec step 7 of link-types-and-inferred-impact,
 ticket 05 Q7), written before the prompt from the ten examples of the deck of 16 Nov 2026, page 9.
-Each example is a made-up development with one direct entity, its level and priority reason, the
-types the link_types call must pick for that entity and the types it must not. Where the deck
-says "potentially" a type, the case neither requires nor forbids it.
+Each example is a made-up development with one direct entity, its level and priority reason, and
+the types its row names. The row lists the types that apply, so a case requires the types it names
+outright, allows those it names as "potentially", and forbids the rest of the 22: a reply that adds
+a type because the entity holds that relationship fails (page 10: "Do not include a type merely
+because the relationship exists"). The general flight disruption's row names no type that applies,
+so its case forbids all 22.
 
 The engine, maintenance and KrisFlyer examples are about Singapore Airlines and SIA Engineering,
 which are not seed entities; the stage reads an entity's name from the call, so a case may name
@@ -28,7 +31,7 @@ from intelmonitor.pipeline.developments import (
 )
 from intelmonitor.pipeline.extract import FindingRole
 from intelmonitor.pipeline.inference import Inference
-from intelmonitor.relationships import RelType
+from intelmonitor.relationships import REL_TYPES, RelType
 from intelmonitor.store.db import connect
 
 STORE = EVAL_DIR / "db" / "link_types.db"
@@ -42,7 +45,13 @@ class LinkTypeCase(BaseModel):
     statement: str
     quote: str
     must: list[RelType] = Field(description="Types the call must pick for the entity")
-    must_not: list[RelType] = Field(description="Types the call must not pick for the entity")
+    may: list[RelType] = Field(
+        default=[], description="Types the deck says the finding potentially activates"
+    )
+
+    def forbidden(self) -> list[RelType]:
+        """The types the call must not pick: every type the deck's row does not name."""
+        return [t for t in REL_TYPES if t not in self.must and t not in self.may]
 
 
 SINGTEL = ("singtel", "Singtel")
@@ -71,12 +80,6 @@ CASES = [
         quote="Enterprise customers on our leased-line and managed network services experienced "
         "a loss of connectivity from 6am to 3pm, Singtel said.",
         must=["provides_connectivity_to"],
-        must_not=[
-            "provides_customer_benefits_with",
-            "distributes_products_for",
-            "shares_or_processes_data_with",
-            "lends_to",
-        ],
     ),
     LinkTypeCase(
         id="singtel-advertising-fine",
@@ -95,11 +98,6 @@ CASES = [
         quote="The fine and refunds, about S$120 million in all, will be taken as a one-off "
         "charge in the second half, Singtel said.",
         must=["holds_stake_in", "invests_in"],
-        must_not=[
-            "provides_connectivity_to",
-            "processes_transactions_for",
-            "provides_customer_benefits_with",
-        ],
     ),
     LinkTypeCase(
         id="moneysmart-data-breach",
@@ -118,11 +116,6 @@ CASES = [
         quote="The data accessed includes the information applicants submitted to be passed on "
         "to their chosen banks, MoneySmart said.",
         must=["shares_or_processes_data_with"],
-        must_not=[
-            "provides_connectivity_to",
-            "processes_transactions_for",
-            "material_supplier_to",
-        ],
     ),
     LinkTypeCase(
         id="moneysmart-misleading-comparison",
@@ -141,11 +134,6 @@ CASES = [
         quote="Consumers were led to believe the rankings reflected the products' merits, the "
         "commission said.",
         must=["distributes_products_for"],
-        must_not=[
-            "shares_or_processes_data_with",
-            "provides_connectivity_to",
-            "processes_transactions_for",
-        ],
     ),
     LinkTypeCase(
         id="payment-processor-outage",
@@ -161,11 +149,6 @@ CASES = [
         "customers could not pay with their NETS-enabled ATM cards.",
         quote="All NETS transactions failed to be processed between 11am and 5pm, NETS said.",
         must=["processes_transactions_for"],
-        must_not=[
-            "provides_connectivity_to",
-            "distributes_products_for",
-            "provides_customer_benefits_with",
-        ],
     ),
     LinkTypeCase(
         id="engine-defect-isolated",
@@ -183,11 +166,7 @@ CASES = [
         quote="The inspections apply only to aircraft fitted with the affected engine model, "
         "the airline said.",
         must=["material_supplier_to"],
-        must_not=[
-            "provides_customer_benefits_with",
-            "lends_to",
-            "processes_transactions_for",
-        ],
+        may=["provides_business_service_to"],
     ),
     LinkTypeCase(
         id="engine-defect-fleet-wide",
@@ -206,11 +185,7 @@ CASES = [
         quote="We expect the groundings to last at least three months and to have a material "
         "impact on our results, the airline said.",
         must=["material_supplier_to"],
-        must_not=[
-            "provides_customer_benefits_with",
-            "processes_transactions_for",
-            "provides_connectivity_to",
-        ],
+        may=["provides_business_service_to", "insures", "holds_stake_in", "invests_in", "lends_to"],
     ),
     LinkTypeCase(
         id="maintenance-failure",
@@ -228,11 +203,6 @@ CASES = [
         quote="Airlines whose aircraft were serviced in the period must have them re-inspected, "
         "the authority said.",
         must=["provides_business_service_to"],
-        must_not=[
-            "provides_customer_benefits_with",
-            "processes_transactions_for",
-            "shares_or_processes_data_with",
-        ],
     ),
     LinkTypeCase(
         id="krisflyer-redemption-outage",
@@ -248,7 +218,6 @@ CASES = [
         quote="Members were unable to redeem miles on any channel during the disruption, the "
         "airline said.",
         must=["provides_customer_benefits_with"],
-        must_not=["material_supplier_to", "lends_to", "provides_connectivity_to"],
     ),
     LinkTypeCase(
         id="flight-disruption",
@@ -264,7 +233,6 @@ CASES = [
         "Nov 9 delayed 60 Singapore Airlines flights and led it to cancel 12.",
         quote="Flights are operating normally again, the airline said on Nov 10.",
         must=[],
-        must_not=["provides_customer_benefits_with", "material_supplier_to", "lends_to"],
     ),
 ]
 
@@ -304,7 +272,7 @@ class LinkTypeCaseResult(BaseModel):
 def check(case: LinkTypeCase, picked: list[RelType] | None) -> LinkTypeCaseResult:
     got: set[RelType] = set(picked or [])
     missing: list[RelType] = [t for t in case.must if t not in got]
-    forbidden: list[RelType] = [t for t in case.must_not if t in got]
+    forbidden: list[RelType] = [t for t in case.forbidden() if t in got]
     ok = picked is not None and not missing and not forbidden
     return LinkTypeCaseResult(
         id=case.id, ok=ok, picked=picked, missing=missing, forbidden=forbidden
