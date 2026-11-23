@@ -15,6 +15,7 @@ development's entities, and is rated itself only where the development names no 
 
 import asyncio
 import atexit
+import hashlib
 import json
 import sqlite3
 from collections import Counter
@@ -149,9 +150,15 @@ def load_findings(
     ]
 
 
+# Statements per model call, and one thread, as the runner gets one CPU or less. In the Linux
+# image, embedding at fastembed's default of 256 per batch peaked at 1.3 GB; at 32 it peaked at
+# 478 MB, just as fast.
+EMBED_BATCH = 32
+
+
 @lru_cache
 def _embedder() -> TextEmbedding:
-    return TextEmbedding(EMBEDDING_MODEL, cache_dir=str(MODELS_DIR))
+    return TextEmbedding(EMBEDDING_MODEL, cache_dir=str(MODELS_DIR), threads=1)
 
 
 # Close the ONNX session before the interpreter tears down: left to finalization, it sometimes
@@ -161,31 +168,74 @@ atexit.register(_embedder.cache_clear)
 
 def embed(texts: list[str]) -> NDArray[np.float32]:
     """Unit-length embeddings, one row per text."""
-    vectors = np.array(list(_embedder().embed(texts)), dtype=np.float32)
+    vectors = np.array(list(_embedder().embed(texts, batch_size=EMBED_BATCH)), dtype=np.float32)
     return vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
 
 
-def candidate_pairs(findings: list[RunFinding]) -> list[tuple[RunFinding, RunFinding]]:
+def _embedding_key(text: str) -> str:
+    return hashlib.sha256(f"{EMBEDDING_MODEL}\n{text}".encode()).hexdigest()
+
+
+def stored_embeddings(conn: sqlite3.Connection, texts: list[str]) -> NDArray[np.float32]:
+    """Unit-length embeddings, one row per text, read from the store's embeddings table; texts it
+    lacks are embedded and stored, so each run embeds only new statements."""
+    keys = [_embedding_key(t) for t in texts]
+    found: dict[str, bytes] = {}
+    for start in range(0, len(keys), 500):  # under SQLite's limit on bound parameters
+        chunk = keys[start : start + 500]
+        marks = ",".join("?" * len(chunk))
+        query = f"SELECT key, vector FROM embeddings WHERE key IN ({marks})"  # noqa: S608
+        found.update((r[0], r[1]) for r in conn.execute(query, chunk))
+    new = {k: t for k, t in zip(keys, texts, strict=True) if k not in found}
+    if new:
+        vectors = embed(list(new.values()))
+        rows = [(k, v.tobytes()) for k, v in zip(new, vectors, strict=True)]
+        conn.executemany("INSERT OR REPLACE INTO embeddings (key, vector) VALUES (?, ?)", rows)
+        conn.commit()
+        found.update(rows)
+    return np.stack([np.frombuffer(found[k], dtype=np.float32) for k in keys])
+
+
+# Findings scored per batch in candidate_pairs: each batch's tables are this many rows by the
+# findings within the window of it, so memory does not grow with the corpus.
+PAIR_BATCH = 512
+
+
+def candidate_pairs(
+    findings: list[RunFinding], vectors: NDArray[np.float32]
+) -> list[tuple[RunFinding, RunFinding]]:
     """Pairs from different documents that share a subject, fall within MERGE_WINDOW_DAYS and are
-    similar, keeping each finding's MERGE_MAX_NEIGHBOURS most similar partners."""
+    similar, keeping each finding's MERGE_MAX_NEIGHBOURS most similar partners (ties to the later
+    finding). `vectors` holds the findings' embeddings, one row each. Findings are scored a
+    batch at a time, in date order, against only those within MERGE_WINDOW_DAYS of the batch."""
     if len(findings) < 2:
         return []
-    vectors = embed([f.statement for f in findings])
-    sims = vectors @ vectors.T
+    days: NDArray[np.int64] = np.array([f.when.toordinal() for f in findings], dtype=np.int64)
+    documents = np.unique([f.document_id for f in findings], return_inverse=True)[1]
+    subject_ids = {s: n for n, s in enumerate(sorted({s for f in findings for s in f.subjects}))}
+    subjects = np.zeros((len(findings), len(subject_ids)), dtype=np.float32)
+    for i, f in enumerate(findings):
+        subjects[i, [subject_ids[s] for s in f.subjects]] = 1
+    order = np.argsort(days, kind="stable")
+    sorted_days = days[order]
     pairs: set[tuple[int, int]] = set()
-    for i, a in enumerate(findings):
-        near: list[tuple[float, int]] = []
-        for j, b in enumerate(findings):
-            if (
-                j != i
-                and a.document_id != b.document_id
-                and sims[i, j] >= MERGE_MIN_SIMILARITY
-                and abs((a.when - b.when).days) <= MERGE_WINDOW_DAYS
-                and set(a.subjects) & set(b.subjects)
-            ):
-                near.append((float(sims[i, j]), j))
-        for _, j in sorted(near, reverse=True)[:MERGE_MAX_NEIGHBOURS]:
-            pairs.add((min(i, j), max(i, j)))
+    for start in range(0, len(order), PAIR_BATCH):
+        rows = order[start : start + PAIR_BATCH]
+        lo = int(np.searchsorted(sorted_days, days[rows].min() - MERGE_WINDOW_DAYS, side="left"))
+        hi = int(np.searchsorted(sorted_days, days[rows].max() + MERGE_WINDOW_DAYS, side="right"))
+        cols = order[lo:hi]
+        sims = vectors[rows] @ vectors[cols].T
+        near = (
+            (sims >= MERGE_MIN_SIMILARITY)
+            & (np.abs(days[rows][:, None] - days[cols][None, :]) <= MERGE_WINDOW_DAYS)
+            & (documents[rows][:, None] != documents[cols][None, :])
+            & ((subjects[rows] @ subjects[cols].T) > 0)
+        )
+        for r, i in enumerate(rows):
+            js = cols[near[r]]
+            ranked = np.lexsort((js, sims[r][near[r]]))[::-1][:MERGE_MAX_NEIGHBOURS]
+            for j in js[ranked]:
+                pairs.add((min(int(i), int(j)), max(int(i), int(j))))
     ordered = sorted(pairs, key=lambda p: (findings[p[0]].id, findings[p[1]].id))
     return [(findings[i], findings[j]) for i, j in ordered]
 
@@ -495,7 +545,7 @@ class MergeStats:
 
 async def merge(inf: Inference, findings: list[RunFinding]) -> tuple[list[Development], MergeStats]:
     """Developments from the findings, merging the pairs Haiku says report the same event."""
-    pairs = candidate_pairs(findings)
+    pairs = candidate_pairs(findings, stored_embeddings(inf.conn, [f.statement for f in findings]))
     failures: list[str] = []
 
     async def decide(a: RunFinding, b: RunFinding) -> bool:

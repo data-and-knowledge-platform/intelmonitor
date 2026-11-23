@@ -96,5 +96,8 @@ The free plan's limits per container are 0.2 vCPU, 512 MB and 2 GB of temporary 
 The site sits at about 85% of its memory and reaches 100% under the endpoint check, so 1 GB (`nf-compute-50`, a paid plan) is the safer size.
 The internal MinIO endpoint's TLS certificate is trusted by the image, so no CA file is needed.
 
+The runner's development merge, measured in the image on 1 CPU over the 16,392 findings of run 2026-11-08, peaks at 470 MB once the store holds their embeddings and at 652 MB on the first run, which embeds them all (6.5 minutes).
+It scores findings in batches against only those within the merge window, so its memory no longer grows with the corpus; the rest of a run on a full store is not measured yet.
+
 The first store was published by hand through `northflank forward addon --skipHostnames`, with certificate checks off for that loopback connection only, because the certificate names the internal hostname.
 Since 23 Nov it serves a copy of the local store taken after the links were rated (1,364 links, latest run 2026-11-08), migrated by the deployed code before publishing, since the site opens stores read-only and cannot migrate them.
