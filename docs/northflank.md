@@ -67,7 +67,7 @@ The government version may differ from them anywhere; items marked **unconfirmed
 - Ephemeral storage 5 GB: the pulled store, its WAL, the `VACUUM INTO` copy made at each publish, a week of HTTP cache under `/data/raw` and the 67 MB embedding model under `/data/models`.
 - No ports, no health checks.
 - Secret groups `store-write` and `runner-keys`.
-- `INTELMONITOR_DATA_DIR=/data` comes from the image; Railway also sets it on the runner, which is redundant.
+- `INTELMONITOR_DATA_DIR=/data` and `INTELMONITOR_MODELS_DIR=/app/models` come from the image; Railway also sets the first on the runner, which is redundant.
 
 ### Bucket
 
@@ -103,7 +103,7 @@ All of type secret, runtime scope, with Restrict secret group on.
 |---|---|---|
 | `store-read` | `site` | `STORE_BUCKET`, `STORE_S3_ENDPOINT`, `STORE_S3_REGION`, `STORE_S3_ACCESS_KEY_ID`, `STORE_S3_SECRET_ACCESS_KEY` (read-only user) |
 | `store-write` | `runner` | The same names with the admin or read-write keys |
-| `runner-keys` | `runner` | `ANTHROPIC_API_KEY`, `CLAUDE_VIA_API=1`, `EXA_API_KEY`, `FRED_API_KEY`, `COINGECKO_API_KEY`, `MAS_EXCHANGE_RATES_API_KEY`, `MAS_BANK_ASSET_QUALITY_API_KEY`, `MAS_BANK_LIQUIDITY_API_KEY`, `MAS_BANK_EXPOSURE_API_KEY`, `MAS_SORA_KEY` |
+| `runner-keys` | `runner` | `ANTHROPIC_API_KEY`, `CLAUDE_VIA_API=1`, `EXA_API_KEY`, `EXA_API_KEY_2`, `FRED_API_KEY`, `COINGECKO_API_KEY`, `MAS_EXCHANGE_RATES_API_KEY`, `MAS_BANK_ASSET_QUALITY_API_KEY`, `MAS_BANK_LIQUIDITY_API_KEY`, `MAS_BANK_EXPOSURE_API_KEY`, `MAS_SORA_KEY` |
 
 The two store groups use the same names, so each must stay restricted to its one workload.
 Updating a group through the API or CLI replaces all its variables, even with PATCH; edit in the UI or send the full set.
@@ -149,26 +149,21 @@ These become necessary under the conditions given:
    The image runs as root and `/data` does not exist until the app makes it.
    Add a user, `RUN mkdir /data && chown <user> /data` and `USER <user>`.
    A read-only root filesystem would need a writable mount at `/data`, which Northflank's docs do not describe for jobs (**unconfirmed**).
-3. **Egress without Hugging Face**, `Dockerfile` and `api/intelmonitor/pipeline/developments.py`.
-   fastembed downloads the 67 MB model from Hugging Face on every firing, because the runner starts with an empty `/data/models`.
-   Download it at build time into a directory in the image and point `cache_dir` there.
-   This is worth doing on Railway too: one fewer network dependency per run.
+3. **Egress without Hugging Face**: done.
+   The image builds the embedding model into `/app/models` (`INTELMONITOR_MODELS_DIR`), and it loads with networking off.
 
 Recommended on both platforms, before the first scheduled firing:
 
-4. **Fail before spending**, `api/intelmonitor/cli.py` (`weekly`).
-   A preflight in `--publish` mode: one Exa search and one Claude call, exiting non-zero on 401 or 403 before any ingest.
-   Today a rejected Exa key is cached as an empty result and the week publishes with no news, and a missing Anthropic key retries until the 4-hour stop.
-5. **Fail when sources fail**, `api/intelmonitor/ingest/run.py` and `weekly`.
-   `run_ingest` collects each `FetchError` in `result.failures` and carries on, so a blocked egress host publishes a week without that source and nothing alerts.
-   Exit non-zero, without publishing, when a whole source fails or failures pass a threshold.
-6. **Guard `latest.json`**, `api/intelmonitor/store/publish.py`.
-   Before `point`, re-read `latest.json` and abort if it no longer names the store this run pulled or last published.
-   Two runners can overlap on Northflank, because Forbid does not cover manual runs; the guard stops the later one from overwriting the earlier one's week.
-7. **Comments that name Railway**:
-   `api/intelmonitor/cli.py` line 160 says Railway emails the account owner;
-   `api/intelmonitor/config.py` says the deploy points `DATA_DIR` at its volume, but there is no volume any more;
-   the `Dockerfile` header says to deploy with `scripts/deploy.sh`.
+4. **Fail before spending**: done.
+   `im weekly` makes one Exa search and one Claude Haiku call before the first due week and exits 1 if either fails (`api/intelmonitor/preflight.py`).
+   Exa answers 401 or 403 for a bad key and 402 when out of credits; those stop the ingest, other Exa errors count as failed searches, and none is cached.
+   `EXA_API_KEY_2` takes over when Exa refuses the first key.
+5. **Fail when sources fail**: done, with one difference from the proposal.
+   An official source not reached, most news searches failed, or a series key missing or refused makes `im weekly` exit 1 after computing and publishing the week, listing what was missing.
+   Publishing keeps the sources that did arrive; the non-zero exit still raises the platform's alert.
+6. **Guard `latest.json`**: done.
+   `publish` re-reads `latest.json` before repointing it and raises `LatestMoved` if it no longer names the store the run pulled or last published.
+7. **Comments that name Railway**: the `cli.py` and `config.py` comments are fixed; the `Dockerfile` header still names `scripts/deploy.sh`, which is right for Railway.
 8. **`scripts/deploy.sh`** is Railway only (`railway up` from a staged copy, which includes uncommitted files).
    On Northflank, deploys come from commits on the tracked branch; keep the script for Railway, and document the push flow in deploy.md when moving.
 
@@ -194,10 +189,10 @@ These gaps apply to both platforms, so close them where it runs now:
    Apply the Dockerfile builder and the `/api/health` 300 s healthcheck before any deploy.
 2. **The first firing rescreens about 9,000 documents with paid calls**, because no screen call in the current seed is cached.
    Seed the screen cache, or accept and budget the cost, before setting the cron schedule.
-3. **Items 4 to 6 in 2.1**: the preflight, failing on source failures, and the `latest.json` guard.
-4. **A write round trip on the real bucket.**
-   The bucket is empty, so `im publish` and `im pull` have not run against Tigris.
-   A read-only check on 23 Nov 2026 with the runner's variables found `GET latest.json` (404 NoSuchKey) and a one-key list working with both path-style (boto3's default here) and virtual-host requests; multipart upload and metadata were not tested.
+3. **Items 4 to 6 in 2.1**: done.
+4. **A write round trip on the real bucket**: done.
+   On 23 Nov 2026 a 40 MB multipart upload (5 parts) with `sha256` and `run-id` metadata, a `stored()` read of the metadata, a checked download and a delete all worked on the Railway bucket, which is empty again.
+   `GET latest.json` (404 NoSuchKey) and listing work with both path-style (boto3's default here) and virtual-host requests.
 5. **Bake the embedding model into the image** (2.1 item 3).
 
 ## 3. Open questions for the platform team

@@ -30,7 +30,7 @@ from fastembed import TextEmbedding
 from numpy.typing import NDArray
 from pydantic import BaseModel, TypeAdapter
 
-from intelmonitor.config import DATA_DIR
+from intelmonitor.config import MODELS_DIR
 from intelmonitor.pipeline.detectors import materiality_level
 from intelmonitor.pipeline.extract import TONE_ORDER, FindingRole, Tone
 from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
@@ -151,7 +151,7 @@ def load_findings(
 
 @lru_cache
 def _embedder() -> TextEmbedding:
-    return TextEmbedding(EMBEDDING_MODEL, cache_dir=str(DATA_DIR / "models"))
+    return TextEmbedding(EMBEDDING_MODEL, cache_dir=str(MODELS_DIR))
 
 
 # Close the ONNX session before the interpreter tears down: left to finalization, it sometimes

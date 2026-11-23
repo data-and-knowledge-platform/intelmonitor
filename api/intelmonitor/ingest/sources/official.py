@@ -698,12 +698,10 @@ SITE_SEARCHES = [
 SITE_RESULTS_PER_QUERY = 10
 
 
-def site_search_documents(
-    http: CachedHttp, api_key: str, site: SiteSearch, window: Window
-) -> list[RawDocument]:
+def site_search_documents(http: CachedHttp, site: SiteSearch, window: Window) -> list[RawDocument]:
     """The window's pages from one SITE_SEARCHES site, as official documents."""
     own = list(dict.fromkeys(s.split("/")[0] for s in site.sites))
-    found = exa_search(http, api_key, site.query, window, site.sites, SITE_RESULTS_PER_QUERY, own)
+    found = exa_search(http, site.query, window, site.sites, SITE_RESULTS_PER_QUERY, own)
     docs: list[RawDocument] = []
     for doc in found:
         if site.skip and site.skip.search(doc.url):
@@ -742,7 +740,7 @@ API_FALLBACKS: dict[str, SiteSearch] = {
 
 
 def feed_backfill(
-    http: CachedHttp, api_key: str, feed: Feed, window: Window, listed: list[Listing]
+    http: CachedHttp, feed: Feed, window: Window, listed: list[Listing]
 ) -> list[RawDocument]:
     """The window's pages from a feed's sites that the feed did not list, for a feed that does not
     reach back to the window start."""
@@ -751,9 +749,7 @@ def feed_backfill(
     )
     known = {canonical_url(item.url) for item in listed}
     return [
-        d
-        for d in site_search_documents(http, api_key, site, window)
-        if canonical_url(d.url) not in known
+        d for d in site_search_documents(http, site, window) if canonical_url(d.url) not in known
     ]
 
 

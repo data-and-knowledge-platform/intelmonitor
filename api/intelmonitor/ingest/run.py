@@ -21,7 +21,6 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
-from intelmonitor.config import get_settings
 from intelmonitor.ingest.candidates import candidate_counts, normalize, subject_matchers
 from intelmonitor.ingest.http import CachedHttp, FetchError
 from intelmonitor.ingest.models import (
@@ -80,6 +79,9 @@ class IngestResult:
     duplicates: int = 0
     failures: list[str] = field(default_factory=list[str])
     gap_subjects: list[str] = field(default_factory=list[str])
+    # Failures that leave the week missing a source, as against a single page or query: an
+    # official source not reached, or most news searches failed. `im weekly` alerts on them.
+    problems: list[str] = field(default_factory=list[str])
 
 
 def resolve_t0(conn: sqlite3.Connection, override: date | None) -> date:
@@ -102,7 +104,6 @@ def run_ingest(
     """The weekly ingest, or when `seeding` the SEED_DAYS history; `days` sets another window
     length (`im weekly` shortens the week the corpus starts in). Seeding `subject_ids` runs only
     their news and gap searches: official sources and trends are not per subject."""
-    settings = get_settings()
     conn = connect()
     length = days or (SEED_DAYS if seeding else WEEK_DAYS)
     window = Window(resolve_t0(conn, t0_override), length)
@@ -158,7 +159,7 @@ def run_ingest(
         for source in official.failed:
             if fallback := API_FALLBACKS.get(source):
                 try:
-                    docs = site_search_documents(http, settings.exa_api_key, fallback, window)
+                    docs = site_search_documents(http, fallback, window)
                 except FetchError as e:
                     fail(f"official fallback search {source}", e)
                     continue
@@ -166,7 +167,7 @@ def run_ingest(
                 keep(docs)
         for site in SITE_SEARCHES:
             try:
-                keep(site_search_documents(http, settings.exa_api_key, site, window))
+                keep(site_search_documents(http, site, window))
             except FetchError as e:
                 failed.add(site.source)
                 fail(f"official site search {site.source}", e)
@@ -177,7 +178,7 @@ def run_ingest(
             label = f"{feed.source} {feed.doc_type}"
             listed = [item for item in official.listings if item.source == feed.source]
             try:
-                docs = feed_backfill(http, settings.exa_api_key, feed, window, listed)
+                docs = feed_backfill(http, feed, window, listed)
             except FetchError as e:
                 failed.add(feed.source)
                 fail(f"official backfill {label}", e)
@@ -199,6 +200,7 @@ def run_ingest(
         if backfilled:
             log(f"feeds whose oldest item is after {window.start}, Exa backfill: {backfilled}")
         log(f"official failed: {sorted(failed)}")
+        result.problems += [f"official source {s} not reached" for s in sorted(failed)]
         log(f"official short: {short}")
         log(f"official quiet: {quiet}")
 
@@ -206,12 +208,13 @@ def run_ingest(
     seed = load_subjects()
     queries = [q for q in news_queries(seed) if subject_ids is None or q.subject_id in subject_ids]
 
+    news_failed: list[str] = []
+
     def search_news(query: SearchQuery) -> list[RawDocument]:
         try:
-            return exa_search(
-                http, settings.exa_api_key, query.text, window, NEWS_DOMAINS, EXA_RESULTS_PER_QUERY
-            )
+            return exa_search(http, query.text, window, NEWS_DOMAINS, EXA_RESULTS_PER_QUERY)
         except FetchError as e:
+            news_failed.append(query.text)
             fail(f"exa {query.text}", e)
             return []
 
@@ -219,6 +222,8 @@ def run_ingest(
         for batch in pool.map(search_news, queries):
             keep(batch)
     log(f"news: {len(queries)} queries, {result.added['exa']} stored")
+    if len(news_failed) * 2 > len(queries):
+        result.problems.append(f"news: {len(news_failed)} of {len(queries)} Exa searches failed")
 
     # 3. Gaps: for thinly covered subjects, a wider Exa news search and Exa on the subject's own
     # domains. Only hits that name the subject are kept. Thin subjects are decided from this run's
@@ -241,11 +246,9 @@ def run_ingest(
         docs: list[RawDocument] = []
         try:
             phrase = gap_query(entity) if entity else f'"{name}"'
-            docs += exa_search(
-                http, settings.exa_api_key, phrase, window, NEWS_DOMAINS, GAP_NEWS_RESULTS, own
-            )
+            docs += exa_search(http, phrase, window, NEWS_DOMAINS, GAP_NEWS_RESULTS, own)
             if own:
-                docs += exa_search(http, settings.exa_api_key, label, window, own, n, own)
+                docs += exa_search(http, label, window, own, n, own)
         except FetchError as e:
             fail(f"gap {label}", e)
         matcher = matchers[subject_id]

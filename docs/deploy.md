@@ -6,12 +6,16 @@ Only the S3 API and environment variables connect them, so moving to another pla
 ## How a week reaches the site
 
 1. Every Monday the runner starts with an empty disk, downloads the store `latest.json` names, and migrates it.
+   When a week is due, a preflight makes one Exa search and one Claude Haiku call, and the runner exits 1 before any other work if either fails.
 2. For each complete week since the store's last complete run (Monday to Sunday UTC, at most 4 per firing, oldest first), it ingests that week and computes its run, logged with trigger `scheduled`.
 3. After each week it uploads a compact copy of the store as an immutable file `stores/intelmonitor-<run date>-<short hash>.db`, then rewrites `latest.json` (`key`, `run_id`, `sha256`, `published_at`) last, so readers never see a half-written store.
 4. It keeps the 12 newest store files and deletes older ones, never the one `latest.json` names.
 5. The site downloads the file `latest.json` names when it starts, opens it read-only, and checks `latest.json` every 10 minutes; a new key is downloaded beside the old file, its sha256 checked, and swapped in without a restart.
 
 A failed run exits non-zero and publishes nothing for that week, so the site keeps the last good store.
+A week that left out a whole source (an official source not reached, most news searches failed, a series key missing or refused) is still computed and published, and the runner then exits 1 listing what was missing.
+Exa searches use `EXA_API_KEY`, and `EXA_API_KEY_2` once Exa refuses the first (revoked, or out of credits); with both refused, ingest stops.
+Before rewriting `latest.json`, a publish checks it still names the store the run started from, so a run that overlapped another fails instead of overwriting its week.
 A firing with nothing due exits 0 and uploads nothing, so the 14:00 retry is harmless.
 The runner stops itself after 4 hours.
 There is no spend cap.
@@ -35,8 +39,8 @@ Variables:
 | Variable | `site` | `runner` |
 |---|---|---|
 | `STORE_BUCKET`, `STORE_S3_ENDPOINT`, `STORE_S3_REGION`, `STORE_S3_ACCESS_KEY_ID`, `STORE_S3_SECRET_ACCESS_KEY` | yes | yes |
-| `INTELMONITOR_DATA_DIR=/data` | set by the image | yes |
-| `ANTHROPIC_API_KEY` (a key made for the runner) with `CLAUDE_VIA_API=1`, `EXA_API_KEY`, `FRED_API_KEY`, `COINGECKO_API_KEY`, the five MAS keys | no | yes, sealed |
+| `INTELMONITOR_DATA_DIR=/data`, `INTELMONITOR_MODELS_DIR=/app/models` | set by the image | set by the image |
+| `ANTHROPIC_API_KEY` with `CLAUDE_VIA_API=1`, `EXA_API_KEY`, `EXA_API_KEY_2`, `FRED_API_KEY`, `COINGECKO_API_KEY`, the five MAS keys | no | yes, sealed |
 
 The bucket's values come from `railway bucket credentials --bucket stores --json`.
 The site holds no API keys and has no endpoint that writes.

@@ -17,6 +17,10 @@ COPY api/pyproject.toml api/uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY api/ ./
 RUN uv sync --frozen --no-dev
+# The embedding model, built in so runs never download it (a restricted network may block
+# Hugging Face).
+ENV INTELMONITOR_MODELS_DIR=/app/models
+RUN .venv/bin/python -c "from intelmonitor.pipeline.developments import _embedder; _embedder()"
 COPY --from=web /app/web/dist /app/web/dist
 COPY deploy/ /app/deploy/
 ENV INTELMONITOR_DATA_DIR=/data

@@ -129,10 +129,17 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def publish(bucket: Bucket, store: Path) -> Latest:
+class LatestMoved(RuntimeError):
+    """latest.json changed while this store was computed: another run published first."""
+
+
+def publish(bucket: Bucket, store: Path, *, replaces: str | None) -> Latest:
     """Upload a compact, self-contained copy of the store (VACUUM INTO, in rollback-journal mode
     so it opens read-only as one file) under a new key, repoint `latest.json` at it, then prune.
-    The copy is named by the store's latest complete run; raises LookupError when it has none."""
+    `replaces` is the key latest.json named when the store was pulled (None before the first
+    publish): if it names another now, two runs overlapped, and LatestMoved is raised before
+    latest.json is touched; the uploaded file stays for a rollback. The copy is named by the
+    store's latest complete run; raises LookupError when it has none."""
     with tempfile.TemporaryDirectory(dir=store.parent) as tmp:
         copy = Path(tmp) / "store.db"
         source = sqlite3.connect(f"{store.resolve().as_uri()}?mode=ro", uri=True)
@@ -161,6 +168,8 @@ def publish(bucket: Bucket, store: Path) -> Latest:
             latest.key,
             ExtraArgs={"Metadata": {"sha256": digest, "run-id": latest.run_id}},
         )
+    if (found := (now := bucket.latest()) and now.key) != replaces:
+        raise LatestMoved(f"latest.json names {found}, not {replaces}: another run published")
     bucket.point(latest)
     bucket.prune()
     return latest

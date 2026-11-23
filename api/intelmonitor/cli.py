@@ -157,7 +157,7 @@ def run(
 
 
 # The runner's limit on one firing: past it, `im weekly --publish` exits non-zero, publishing
-# nothing more, and Railway emails the account owner.
+# nothing more, and the platform reports the failed run.
 RUNNER_TIMEOUT_HOURS = 4
 
 
@@ -177,7 +177,10 @@ def weekly(
 ) -> None:
     """For each complete week (Monday to Sunday UTC) since the last complete run, or since the
     corpus start, oldest first: ingest that week's window with the Sunday as T0, then compute its
-    run, dated the Sunday. Fetches the measured series once first. Exits 0 when no week is due."""
+    run, dated the Sunday. Fetches the measured series once first. Exits 0 when no week is due.
+    Before the first week it checks the Exa and Claude keys with one search and one Haiku call.
+    Exits 1 when a week left out a whole source (an official source not reached, most news
+    searches failed, a series key missing or refused), after computing and publishing it."""
     import threading
     from datetime import UTC, date, datetime
 
@@ -185,10 +188,12 @@ def weekly(
     from intelmonitor.ingest.run import run_ingest
     from intelmonitor.ingest.series.collect import fetch_series
     from intelmonitor.pipeline.run import compute_run, weekly_dates
+    from intelmonitor.preflight import preflight
     from intelmonitor.store.db import DB_PATH, connect
     from intelmonitor.store.publish import publish as publish_store
 
     bucket = _bucket() if publish else None
+    published: str | None = None  # the key latest.json names, which each publish replaces
     if bucket is not None:
         if DB_PATH.exists():
             raise typer.BadParameter(
@@ -199,6 +204,7 @@ def weekly(
         if latest is None:
             raise typer.BadParameter(f"nothing published in {bucket.name}: run `im publish` first")
         bucket.download(latest, DB_PATH)
+        published = latest.key
         typer.echo(f"pulled {latest.key} (run {latest.run_id})")
 
         def time_out() -> None:
@@ -215,8 +221,21 @@ def weekly(
         typer.echo("no complete week since the last complete run")
         return
     due = weeks[:max_weeks]
-    typer.echo(f"{len(weeks)} weeks due, running {', '.join(map(str, due))}\n")
-    fetch_series(conn, date.today(), log=typer.echo)
+    typer.echo(f"{len(weeks)} weeks due, running {', '.join(map(str, due))}")
+    try:
+        asyncio.run(preflight(week_window(due[0], corpus_start(conn))))
+    except Exception as error:
+        typer.echo(f"preflight failed, nothing computed: {error!r}", err=True)
+        raise typer.Exit(1) from error
+    typer.echo("preflight: Exa and Claude answered\n")
+    series = fetch_series(conn, date.today(), log=typer.echo)
+    problems = sorted(
+        {
+            f"series: {reason}"
+            for reason in series.failures.values()
+            if "key rejected" in reason or "is not set" in reason
+        }
+    )
     for sunday in due:
         window = week_window(sunday, corpus_start(conn))
         typer.echo(f"\nweek {window.start} to {sunday}")
@@ -225,12 +244,17 @@ def weekly(
             f"added {sum(result.added.values())} {dict(result.added)}, "
             f"{result.duplicates} duplicates, {len(result.failures)} failures\n"
         )
+        problems += [f"week {sunday}: {p}" for p in result.problems]
         trigger = "scheduled" if bucket else "cli"
         asyncio.run(compute_run(sunday, lambda line: typer.echo(line), trigger))
         if bucket is not None:
-            typer.echo(f"published {publish_store(bucket, DB_PATH).key}")
+            published = publish_store(bucket, DB_PATH, replaces=published).key
+            typer.echo(f"published {published}")
     if left := weeks[len(due) :]:
         typer.echo(f"\n{len(left)} weeks still due, from {left[0]}: run `im weekly` again")
+    if problems:
+        typer.echo("\ncomputed, but sources were missing:\n" + "\n".join(problems), err=True)
+        raise typer.Exit(1)
 
 
 def _bucket() -> "Bucket":
@@ -254,7 +278,7 @@ def publish_cmd(
     repointing latest.json at a file already in the bucket."""
     from intelmonitor.pipeline import runlog
     from intelmonitor.store.db import DB_PATH, connect
-    from intelmonitor.store.publish import publish
+    from intelmonitor.store.publish import LatestMoved, publish
 
     bucket = _bucket()
     if key is not None:
@@ -265,13 +289,14 @@ def publish_cmd(
         bucket.point(latest)
         typer.echo(f"latest.json now names {key} (run {latest.run_id})")
         return
+    current = bucket.latest()
     conn = connect()  # migrated, with its run log as the site shows it
     runlog.backfill(conn)
     runlog.migrate(conn)
     conn.close()
     try:
-        latest = publish(bucket, DB_PATH)
-    except LookupError as error:
+        latest = publish(bucket, DB_PATH, replaces=current and current.key)
+    except (LookupError, LatestMoved) as error:
         raise typer.BadParameter(str(error)) from error
     typer.echo(f"published {latest.key} (run {latest.run_id}, sha256 {latest.sha256})")
 

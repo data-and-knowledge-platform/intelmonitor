@@ -9,8 +9,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 REPO_ROOT = Path(__file__).resolve().parents[2]
 API_ROOT = REPO_ROOT / "api"
 SEED_DIR = API_ROOT / "seed"
-# The deploy points this at its volume (Dockerfile).
+# The image points this at /data, a local disk: the deployed services keep no volume, and the
+# store comes from the bucket (store/publish.py).
 DATA_DIR = Path(os.environ.get("INTELMONITOR_DATA_DIR", REPO_ROOT / "data"))
+# The embedding model's files; the image has them built in, so runs never download them.
+MODELS_DIR = Path(os.environ.get("INTELMONITOR_MODELS_DIR", DATA_DIR / "models"))
 ARTIFACTS_DIR = REPO_ROOT / "artifacts"
 
 
@@ -26,6 +29,7 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-5-5"
 
     exa_api_key: str = ""
+    exa_api_key_2: str = ""  # used when Exa refuses the first (ingest/sources/search.py)
 
     fred_api_key: str = ""
     coingecko_api_key: str = ""
