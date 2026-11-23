@@ -7,7 +7,7 @@ The rest are unconfirmed and left out of every list, count and total by default:
 Feeds show only on entity and topic pages: a page's Developments tab (`/entities/<id>/developments` or `/topics/<id>/developments`, section `Developments about <name>`) shows one subject's feed, and its Overview the top 5 rows without headings.
 The list pages show only each row's top development ([list-pages](list-pages.md)).
 Rows sit in one list under a column header, `Priority`, `Finding`, `Date` (hidden from the accessibility tree and below 640 px), in that order; each row's priority badge is in the Priority column.
-Each row has a status column (priority badge High, Medium or Low for the subjects in view, then New or Updated: added or updated in the latest weekly run, shown to everyone and never cleared by opening it), the full wrapping title, one line on who it impacts (`Impacts DBS · By MAS · About Banking & Lending · Could also affect UOB`), a facts line (`Unconfirmed` when it is, `High for OCBC` when the subjects in view disagree, `Adverse event` when it applies, the tone, the source counts, the category), and at the right the date and a visible `View sources ›` cue.
+Each row is a card, after the team's Citibank draft: the priority badge (High, Medium or Low for the subjects in view) with `button "Priority definitions"`, the category chip, New or Updated (added or updated in the latest weekly run, shown to everyone and never cleared by opening it) and `Unconfirmed` when listed; the headline; one line of detail (its first key point, else its full title); then the date or span at the left and `<n> sources` with the leading outlet and `+<n>` for the rest (`outlets` in the API) at the right.
 The source counts read `3 outlets · 1 official source · 2 research papers · 1 data source`, each part left out when zero; outlets are distinct parent domains, not articles.
 The whole row opens the development's popup over the list (see [development-page](development-page.md)).
 Above the rows: the period control (Today, This week, This month, All time; This month is the default), the facet buttons Priority, Adverse event, Tone, Category and Source type, each a popover with All first and the values with counts, and the checkbox `Show unconfirmed <n>` while some unconfirmed developments match.
@@ -16,9 +16,9 @@ The period, facets and `unconfirmed=true` live in the URL, so a reload and closi
 ## Sub-features
 
 - `feed-open`: the page's Developments tab shows the subject's feed; the Overview's `See all ... developments` opens it.
-- `feed-rows`: one ordered list under the `.frow-head` column header, High adverse rows first, then High, Medium adverse, Medium and the rest, newest first in each; a priority filter leaves only its rows.
+- `feed-rows`: one ordered list of `.frow` cards, High adverse rows first, then High, Medium adverse, Medium and the rest, newest first in each; a priority filter leaves only its rows.
 - `feed-gate`: unconfirmed developments are not listed or counted by default; `Show unconfirmed <n>` (`unconfirmed=true`) lists them among the others, each marked `Unconfirmed`, and adds them to the period and facet counts. The checkbox shows only while `n` is above 0 or it is on.
-- `feed-row`: priority badge, New badge or Updated word, full title, impact line, facts line, date and `View sources ›`.
+- `feed-row`: priority badge and its definitions button, category, New badge or Updated word, headline, detail line, date, source count and outlet chip; the headline's link covers the card.
 - `feed-period`: the period segments with counts; This month by default, `days=1|7|any` otherwise.
 - `feed-facets`: Priority, Adverse event (single choice), Tone, Category and Source type narrow the list; the button reads `Priority`, `Priority: High` or `Priority: 2 selected`; zero-count values are hidden.
 - `feed-open-row`: a row adds `development=<id>&scope=subject:<id>` to the list's URL.
@@ -30,7 +30,7 @@ The period, facets and `unconfirmed=true` live in the URL, so a reload and closi
 ## How to get to it (user POV)
 
 - An entity or topic page: the `Developments` tab, or the Overview's `See all ... developments`.
-- There is no cross-subject feed: `/developments` lands on home.
+- There is no cross-subject feed: `/developments` lands on Home.
 
 ## Driving it with verify
 

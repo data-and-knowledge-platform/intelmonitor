@@ -96,6 +96,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[WEB_ORIGIN, "http://localhost:3000"],
+    # Another Portless name, such as a worktree's web server next to the main one.
+    allow_origin_regex=r"https://[a-z0-9.-]+\.localhost",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -322,7 +324,8 @@ def materiality_levels(q: Q) -> list[MaterialityLevel]:
         MaterialityLevel(
             level=level,
             name=name,
-            description=PRIORITY_DEFINITIONS[level],
+            description=PRIORITY_DEFINITIONS[level].definition,
+            examples=PRIORITY_DEFINITIONS[level].examples,
             material=level >= MATERIAL_LEVEL,
             needs_attention=level >= NEEDS_ATTENTION_LEVEL,
             developments=counts[level],

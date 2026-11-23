@@ -20,7 +20,7 @@ import { PERSONAL, recordView, usePersonalWatchlist, useView } from "@/lib/viewe
 
 import { SummaryBand } from "./overview/SummaryBand";
 import { hasRelated } from "./Related";
-import { RelatedGraph } from "./RelatedGraph";
+import { RelatedTree } from "./RelatedTree";
 import { TopDevelopments } from "./SubjectDevelopments";
 
 type Page = Schema<"MonitorPage">;
@@ -48,7 +48,7 @@ function Overview({ page: p }: { page: Page }) {
           <div className="panel ov-card">
             <TopDevelopments subject={p.subject} />
           </div>
-          {graph && graph.nodes.length > 0 && <RelatedGraph subject={p.subject} relatedTab={hasRelated(p)} />}
+          {graph && graph.nodes.length > 0 && <RelatedTree subject={p.subject} relatedTab={hasRelated(p)} />}
         </div>
       </div>
     </>

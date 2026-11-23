@@ -17,18 +17,25 @@ nav.side {
   background: var(--rail);
   border-right: 1px solid var(--line);
 }
+/* Brand: the name over the product line, opening Home. */
 .brand {
-  height: 56px;
   flex: none;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   align-self: flex-start;
-  padding: 0 var(--s-4);
+  padding: var(--s-4) var(--s-4) var(--s-3);
+  color: var(--ink);
+}
+.brand-name {
   font-size: var(--fs-lead);
   line-height: var(--lh-lead);
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--ink);
+}
+.brand-sub {
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--ink2);
 }
 .brand:focus-visible {
   outline-offset: -2px;

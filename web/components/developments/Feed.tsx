@@ -12,7 +12,7 @@ import { filtered, listQuery, PERIODS, periodOf, withoutFilters, withPeriod, typ
 import { shortDate } from "@/lib/format";
 import { usePathname, useSearchParams } from "@/lib/router";
 
-import { FeedHeader, FeedRow } from "./FeedRow";
+import { FeedRow } from "./FeedRow";
 import { FilterBar } from "./FilterBar";
 import type { ViewScope } from "./link";
 
@@ -60,7 +60,6 @@ export function Feed({
         <Empty filteredOut={filtered(params)} period={period} count={count} onParams={onParams} params={params} />
       ) : (
         <>
-          <FeedHeader />
           <ol className="frows">
             {rows.map((d) => (
               <FeedRow key={d.id} development={d} scope={view} />

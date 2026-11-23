@@ -24,8 +24,8 @@ Light mode only; at 1024 px nothing scrolls sideways.
 
 ## How to get to it (user POV)
 
-- The sidebar's `All` section: `link "Entities 89"`, `link "Topics 30"`.
-- Home, when the current watchlist is empty.
+- The sidebar's `Dashboards` section: `link "Entities 57"`, `link "Topics 30"`.
+- Home's `Manage your watchlist` link and Explore cards ([home](home.md)).
 - A group link anywhere ([entity-and-topic-pages](entity-and-topic-pages.md)).
 
 ## Driving it with verify

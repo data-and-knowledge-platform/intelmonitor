@@ -6,6 +6,7 @@ ranking and the top development use direct priority only (`development_subjects`
 holds the highest level among the development's entities); indirect impact never counts. New and
 the latest date ignore the period. Hidden entities have no row."""
 
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
@@ -47,6 +48,7 @@ class _Tally:
     top: tuple[tuple[int, bool, int, str], DevelopmentSummary, int] | None = None
     new: int = 0
     latest: date | None = None
+    topics: Counter[str] = field(default_factory=Counter[str])  # an entity's, by developments
 
 
 def subject_list(q: Queries, name: ListName, period: Period) -> SubjectList:
@@ -70,6 +72,8 @@ def subject_list(q: Queries, name: ListName, period: Period) -> SubjectList:
             if d.last_published <= since:
                 continue
             t.counts[p.level] += 1
+            if kind == "entity":
+                t.topics.update(tid for tid in mine if tid in topic_order)
             key = display_key(p.level, p.adverse, d.last_published, d.id)
             if t.top is None or key < t.top[0]:
                 t.top = (key, d, p.level)
@@ -97,6 +101,11 @@ def subject_list(q: Queries, name: ListName, period: Period) -> SubjectList:
                 function=function_ref(s.function) if s.function else None,
                 counts=PriorityCounts(high=t.counts[2], medium=t.counts[1], low=t.counts[0]),
                 top=top(t),
+                # Most developments first, then the seed's topic order.
+                topics=[
+                    subject_ref(tid)
+                    for tid, _ in sorted(t.topics.items(), key=lambda c: (-c[1], topic_order[c[0]]))
+                ],
                 new=t.new,
                 latest=t.latest,
             )

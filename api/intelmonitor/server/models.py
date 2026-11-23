@@ -182,6 +182,9 @@ class DevelopmentSummary(BaseModel):
     outlet_count: int = Field(
         description="Distinct news outlets among its sources, one per parent domain"
     )
+    outlets: list[str] = Field(
+        description="The parent domains of all its sources, the most documents first"
+    )
     unconfirmed: bool = Field(
         description="Its sources do not pass the source gate (pipeline/corroboration.py), so "
         "lists leave it out unless asked"
@@ -267,6 +270,10 @@ class ListRow(SubjectRef):
     function: FunctionRef | None = Field(description="The function that owns a topic; else null")
     counts: PriorityCounts
     top: TopDevelopment | None = Field(description="Null when nothing falls in the period")
+    topics: list[SubjectRef] = Field(
+        description="An entity's topics among its developments in the period, the most "
+        "developments first; empty for topics"
+    )
     new: int = Field(description="Shown developments new in the latest run, whatever the period")
     latest: date | None = Field(
         description="The latest last-published date among all its shown developments in the run"
@@ -437,6 +444,7 @@ class DirectSubject(BaseModel):
     priority: Priority
     adverse: bool
     tone: Tone
+    reason: str = Field(description="The priority rating's one sentence on why; empty when unrated")
 
 
 class MonitorPage(BaseModel):
@@ -631,11 +639,13 @@ class DataSources(BaseModel):
 
 
 class MaterialityLevel(BaseModel):
-    """A materiality level for Help: what it means and how the app treats it."""
+    """A materiality level for Help and the priority definitions: what it means and how the app
+    treats it."""
 
     level: int = Field(ge=0, le=2)
     name: str
-    description: str
+    description: str = Field(description="What the level means, in one sentence")
+    examples: str = Field(description="Typical findings at this level, as one list")
     material: bool = Field(description="Medium or High")
     needs_attention: bool
     developments: int = Field(
@@ -664,10 +674,25 @@ class RelatedLink(BaseModel):
         description='A few words from the centre: "holds 100%", "24.4% of loans", '
         '"gets its connectivity from"'
     )
+    detail: str = Field(description="The link's evidence in one sentence")
+    toward: Strength | None = Field(
+        description="How strongly an event at the node reaches the centre through this link; "
+        "null for a link with no rating"
+    )
+    toward_reason: str
+    away: Strength | None = Field(
+        description="How strongly an event at the centre reaches the node; null when unrated"
+    )
+    away_reason: str
+    development_ids: list[str] = Field(
+        description="Shown developments in the window this link carried to the centre, in "
+        "display order"
+    )
 
 
 class RelatedNode(BaseModel):
-    """An entity linked to the centre, with the developments that reach the centre through it."""
+    """An entity linked to the centre, with the developments that reach the centre through it
+    (its linked news: each development once, whichever of its links carried it)."""
 
     id: str
     name: str
@@ -691,9 +716,7 @@ class RelatedGraph(BaseModel):
     run: RunRef
     center: SubjectRef
     days: RelatedDays
-    nodes: list[RelatedNode] = Field(
-        description="Most developments first, then most harmful, then by name"
-    )
+    nodes: list[RelatedNode] = Field(description="Most linked news first, then by name")
     developments: list[DevelopmentSummary] = Field(
         description="Every development a node lists, in display order"
     )

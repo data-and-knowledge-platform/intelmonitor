@@ -1,13 +1,15 @@
 # Help
 
 Help is a modal that says what each label on a development means (High, Medium, Low, Adverse event, the tone, New, Updated) and lists the keyboard shortcuts; `?` opens it from anywhere outside a text field, and so does `button "Help"` in the sidebar's foot.
-High, Medium and Low read the team's definitions (slide 7) from `GET /materiality-levels`.
+High, Medium and Low read their one-sentence definitions from `GET /materiality-levels`.
+`button "Priority definitions"` in the `Labels on a development` heading, beside the popup's priority badge and beside each feed card's badge opens Priority definitions: a card per priority with its definition and `Examples:` (`description` and `examples` from `GET /materiality-levels`, written in `PRIORITY_DEFINITIONS` from priority prompt version 8), then `How a priority is set`. Esc closes it alone, leaving Help or the popup open.
 New and Updated mean added or updated in the latest weekly run.
 `button "Data sources"` beside it opens Data sources: documents stored per source and collection (`GET /data-sources`).
 
 ## Sub-features
 
 - `help-open` opens Help with `?`.
+- `prio-definitions`: `dialog "Priority definitions"` with regions `High`, `Medium` and `Low` and heading `How a priority is set`.
 - `help-content` shows regions `Labels on a development` (one row per label with its meaning) and `Keyboard shortcuts` (⌘K, ?, Esc).
 
 ## How to get to it (user POV)

@@ -1,6 +1,7 @@
-// A development's sources at the top of the popup's right column: news, official and research
-// reports and detections, each with its highlighted excerpts. An unconfirmed development says above
-// its sources what the source gate (api pipeline/corroboration.py) found missing.
+// A development's sources at the foot of the popup, two cards a row: news, official and research
+// reports, each with its outlet, title, highlighted excerpts and date, and detections as their
+// series, a full row each. An unconfirmed development says above its sources what the source gate
+// (api pipeline/corroboration.py) found missing.
 import { useId, type ReactNode } from "react";
 
 import type { Schema } from "@/lib/api/client";
@@ -16,14 +17,16 @@ export function Sources({ sources, title, unconfirmed = false }: { sources: Sour
   const id = useId();
   return (
     <section className="dp-src dp-sec" aria-labelledby={`${id}-heading`} id="sources">
-      <h3 id={`${id}-heading`}>Sources</h3>
-      <div className="src-panel">
+      <h3 id={`${id}-heading`}>
+        Sources <span className="dp-n">{sources.length}</span>
+      </h3>
+      <div className="src-grid">
         {unconfirmed && (
           <p className="src-lead">
             <span className="unv">Unconfirmed:</span> not enough independent sources yet.
           </p>
         )}
-        {sources.length === 0 && <p className="muted">No news or official report yet.</p>}
+        {sources.length === 0 && <p className="muted src-lead">No news or official report yet.</p>}
         {sources.map((s) => (
           <SourceBlock key={s.document_id} source={s} title={title} />
         ))}
@@ -38,20 +41,22 @@ function kindOf(s: Source): string {
   return s.doc_type.toLowerCase() === s.collection ? label : `${label}, ${s.doc_type}`;
 }
 
-/** One source with its findings; a detector's document is its series, with the event highlighted. */
-export function SourceBlock({ source: s, title }: { source: Source; title: string }) {
+/** One source card with its findings; a detector's document is its series, with the event highlighted. */
+function SourceBlock({ source: s, title }: { source: Source; title: string }) {
   if (s.series) {
     const sentence = s.findings.find((f) => f.statement !== title)?.statement ?? null;
-    return <SeriesSource chart={s.series} known={s.published_at} sentence={sentence} />;
+    return (
+      <div className="src-card src-series">
+        <SeriesSource chart={s.series} known={s.published_at} sentence={sentence} />
+      </div>
+    );
   }
   return (
-    <article className="source">
+    <article className="source src-card">
+      <p className="src-outlet">{s.domain}</p>
       <a href={s.url} target="_blank" rel="noreferrer">
         {s.title}
       </a>
-      <p className="meta">
-        <Dotted parts={[publishedText(s.published_at), kindOf(s), s.domain]} />
-      </p>
       {s.findings.map((f) => (
         <div key={f.id} className="finding">
           {f.statement !== title && <p>{f.statement}</p>}
@@ -60,6 +65,9 @@ export function SourceBlock({ source: s, title }: { source: Source; title: strin
           </blockquote>
         </div>
       ))}
+      <p className="meta">
+        <Dotted parts={[publishedText(s.published_at), kindOf(s)]} />
+      </p>
     </article>
   );
 }
