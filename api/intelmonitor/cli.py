@@ -351,7 +351,8 @@ def trial_priority(
         typer.Option(
             "--candidate",
             help="live (the current priority prompt) or a candidate of trial.py: medium, "
-            "medium-think, high, high-think, price-promo, high-think-price-promo",
+            "medium-think, high, high-think, price-promo, high-think-price-promo, "
+            "high-think-price-promo-fi, high-think-price-promo-fi-lower",
         ),
     ] = "live",
 ) -> None:

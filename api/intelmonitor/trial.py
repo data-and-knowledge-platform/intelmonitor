@@ -126,11 +126,36 @@ otherwise. A finding that also reports what the move did to {singapore} is rated
 sponsorship, a customer offer, or a pilot or partnership with no material consequence yet.
 Rules 4 and 5 cover only those two kinds of finding. Rate every other finding by the levels and \
 rules 1 to 3 alone."""
+# Rules 6 and 7 (version 9): High needs a financial institution in Singapore, not a general
+# effect on Singapore or a non-financial company's deal (team review, 18 Nov 2026).
+FINANCIAL_INSTITUTION_RULES = """\
+6. High for Singapore's financial system as a whole needs the finding to name a financial \
+institution in Singapore that it materially changes, or a MAS decision or action. A general effect \
+on Singapore, such as market-wide statistics, deal or fee totals, rates or prices moving, or a \
+foreign central bank's decision, is at most Medium.
+7. A deal, investment or expansion by a company that is not a financial institution is at most \
+Medium for that company, unless the finding shows it materially changes a financial institution \
+in Singapore.
+Rules 6 and 7 cover only those two kinds of finding. Rate every other finding by the levels and \
+rules 1 to 5."""
+# Rules 6 and 7 as version 10 words them: they only keep a finding from High, since version 9's
+# wording also raised some findings to High.
+FINANCIAL_INSTITUTION_RULES_LOWER_ONLY = """\
+6. A general effect on Singapore is never High on that effect alone: market-wide statistics, deal \
+or fee totals, rates or prices moving, or a foreign central bank's decision. Rate such a finding \
+Medium or Low by the levels above, unless it names a financial institution in Singapore that it \
+materially changes.
+7. A deal, investment or expansion by a company that is not a financial institution is at most \
+Medium for that company, unless the finding shows it materially changes a financial institution \
+in Singapore.
+Rules 6 and 7 cover only those two kinds of finding, and they only keep a finding from being \
+High; they never raise a level. Rate every other finding by the levels and rules 1 to 5."""
 # The sweep of ticket 09: the tidied prompt at medium and high effort, each with and without
 # THINK_FIRST as its last line. The levels and rules are the live prompt's, unchanged. "live" is
 # the current PRIORITY_PROMPT, PriorityRating and PRIORITY_EFFORT. "price-promo" is the live
 # prompt with PRICE_AND_PROMO_RULES added and nothing else changed, and "high-think-price-promo"
-# is "high-think" with them added.
+# is "high-think" with them added; "high-think-price-promo-fi" adds rules 6 and 7 to that, and
+# "high-think-price-promo-fi-lower" adds their version 10 wording instead.
 CANDIDATES: dict[str, Candidate] = {
     "live": Candidate(PRIORITY_PROMPT, PriorityRating, PRIORITY_EFFORT, None),
     "medium": Candidate(_TIDY, DescribedPriorityRating, "medium", f"{_TIDY_NOTE}; medium effort."),
@@ -160,6 +185,25 @@ CANDIDATES: dict[str, Candidate] = {
         "high",
         f"{_TIDY_NOTE}; rules 4 and 5 added and kept to their findings (a price move alone is "
         "never High, promotional and product news is Low); high effort; ends with THINK_FIRST.",
+    ),
+    "high-think-price-promo-fi": Candidate(
+        f"{_TIDY}\n{PRICE_AND_PROMO_RULES}\n{FINANCIAL_INSTITUTION_RULES}\n\n{THINK_FIRST}",
+        DescribedPriorityRating,
+        "high",
+        "Version 8 with rules 6 and 7 added and kept to their findings: High for Singapore's "
+        "financial system as a whole needs a named financial institution in Singapore or a MAS "
+        "action, and a non-financial company's deal is at most Medium unless it changes one; high "
+        "effort; ends with THINK_FIRST.",
+    ),
+    "high-think-price-promo-fi-lower": Candidate(
+        f"{_TIDY}\n{PRICE_AND_PROMO_RULES}\n{FINANCIAL_INSTITUTION_RULES_LOWER_ONLY}\n\n"
+        f"{THINK_FIRST}",
+        DescribedPriorityRating,
+        "high",
+        "Version 8 with rules 6 and 7 that only keep a finding from High: a general effect on "
+        "Singapore is never High alone, unless a named financial institution in Singapore is "
+        "materially changed, and a non-financial company's deal is at most Medium unless it "
+        "changes one; high effort; ends with THINK_FIRST.",
     ),
 }
 
