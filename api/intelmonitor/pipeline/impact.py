@@ -455,8 +455,10 @@ def _tags(conn: sqlite3.Connection, run_id: str) -> dict[str, dict[str, Tagged]]
 def store_impacts(
     conn: sqlite3.Connection, run_id: str, *, recomputed_at: str | None = None
 ) -> ImpactStats:
-    """Replace the run's development_impacts with the best path to each entity under STORED, in
-    one transaction, and find every path under each setting."""
+    """Replace the run's development_impacts with every path under STORED, in one transaction,
+    and find every path under each setting. The same transaction sets the run's
+    impacts_recomputed mark to `recomputed_at`: a time from `im impacts`, None from the run's own
+    impact step."""
     known: dict[str, list[Reach]] = {}
     stats = ImpactStats(paths={s: [] for s in SETTINGS})
     for dev_id, tagged in _tags(conn, run_id).items():
@@ -469,7 +471,8 @@ def store_impacts(
         conn.execute("DELETE FROM development_impacts WHERE run_id = ?", (run_id,))
         conn.executemany(
             "INSERT INTO development_impacts (run_id, development_id, subject_id, source_id, "
-            "relationship_id, region, strength, level) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "relationship_id, region, strength, level, best, reason) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 (
                     run_id,
@@ -480,9 +483,11 @@ def store_impacts(
                     r.region,
                     r.strength,
                     r.level,
+                    r.best,
+                    r.reason,
                 )
                 for dev_id, r in stats.stored
-                if r.best
             ],
         )
+        conn.execute("UPDATE runs SET impacts_recomputed = ? WHERE id = ?", (recomputed_at, run_id))
     return stats

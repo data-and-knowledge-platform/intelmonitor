@@ -1,26 +1,19 @@
 [
   {
     "id": "table",
-    "ok": false,
-    "problems": [
-      "2 by Strong (from_low False): 1, 2",
-      "2 by Strong (from_low True): 1, 2"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [],
     "reason": "indirect_level by cell"
   },
   {
     "id": "cell-high-strong",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='High', source='singtel', link='dbs:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "not expected Expect(subject='dbs', level='Medium', source='singtel', link='dbs:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
-        "level": "Medium",
+        "level": "High",
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Strong",
@@ -32,10 +25,8 @@
   },
   {
     "id": "cell-high-moderate",
-    "ok": false,
-    "problems": [
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -51,10 +42,8 @@
   },
   {
     "id": "cell-high-weak",
-    "ok": false,
-    "problems": [
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -77,10 +66,8 @@
   },
   {
     "id": "cell-medium-strong",
-    "ok": false,
-    "problems": [
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -96,10 +83,8 @@
   },
   {
     "id": "cell-medium-moderate",
-    "ok": false,
-    "problems": [
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -157,16 +142,12 @@
   },
   {
     "id": "cell-high-strong-from-low",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='High', source='singtel', link='dbs:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "not expected Expect(subject='dbs', level='Medium', source='singtel', link='dbs:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
-        "level": "Medium",
+        "level": "High",
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Strong",
@@ -178,10 +159,8 @@
   },
   {
     "id": "cell-high-moderate-from-low",
-    "ok": false,
-    "problems": [
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -197,10 +176,8 @@
   },
   {
     "id": "cell-high-weak-from-low",
-    "ok": false,
-    "problems": [
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -223,10 +200,8 @@
   },
   {
     "id": "cell-medium-strong-from-low",
-    "ok": false,
-    "problems": [
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -242,10 +217,8 @@
   },
   {
     "id": "cell-medium-moderate-from-low",
-    "ok": false,
-    "problems": [
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -275,10 +248,8 @@
   },
   {
     "id": "cell-low-strong-from-low",
-    "ok": false,
-    "problems": [
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -315,16 +286,12 @@
   },
   {
     "id": "high-by-strong-gives-high",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='High', source='singtel', link='singtel:provides_connectivity_to:dbs', strength='Strong', best=True, region=None)",
-      "not expected Expect(subject='dbs', level='Medium', source='singtel', link='singtel:provides_connectivity_to:dbs', strength='Strong', best=True, region=None)",
-      "dbs via singtel:provides_connectivity_to:dbs has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
-        "level": "Medium",
+        "level": "High",
         "source": "singtel",
         "link": "singtel:provides_connectivity_to:dbs",
         "strength": "Strong",
@@ -343,39 +310,22 @@
   },
   {
     "id": "not-activated",
-    "ok": false,
-    "problems": [
-      "not expected Expect(subject='dbs', level='Medium', source='singtel', link='dbs:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
-    "rows": [
-      {
-        "subject": "dbs",
-        "level": "Medium",
-        "source": "singtel",
-        "link": "dbs:material_customer_of:singtel",
-        "strength": "Strong",
-        "best": true,
-        "region": null
-      }
-    ],
+    "ok": true,
+    "problems": [],
+    "rows": [],
     "reason": "The development activates provides_connectivity_to, not material_customer_of"
   },
   {
     "id": "two-links-only-activated",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='Low', source='singtel', link='singtel:provides_connectivity_to:dbs', strength='Weak', best=True, region=None)",
-      "not expected Expect(subject='dbs', level='Medium', source='singtel', link='dbs:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
-        "level": "Medium",
+        "level": "Low",
         "source": "singtel",
-        "link": "dbs:material_customer_of:singtel",
-        "strength": "Strong",
+        "link": "singtel:provides_connectivity_to:dbs",
+        "strength": "Weak",
         "best": true,
         "region": null
       }
@@ -384,42 +334,41 @@
   },
   {
     "id": "not-asked",
-    "ok": false,
-    "problems": [
-      "not expected Expect(subject='dbs', level='Medium', source='singtel', link='singtel:provides_connectivity_to:dbs', strength='Strong', best=True, region=None)",
-      "dbs via singtel:provides_connectivity_to:dbs has no reason"
-    ],
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Singtel's types were not asked: it passes nothing"
+  },
+  {
+    "id": "three-paths",
+    "ok": true,
+    "problems": [],
     "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "singtel",
+        "link": "dbs:material_customer_of:singtel",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      },
       {
         "subject": "dbs",
         "level": "Medium",
         "source": "singtel",
         "link": "singtel:provides_connectivity_to:dbs",
-        "strength": "Strong",
-        "best": true,
+        "strength": "Moderate",
+        "best": false,
         "region": null
-      }
-    ],
-    "reason": "Singtel's types were not asked: it passes nothing"
-  },
-  {
-    "id": "three-paths",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='High', source='singtel', link='dbs:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "missing Expect(subject='dbs', level='Low', source='singtel', link='dbs:provides_customer_benefits_with:singtel', strength='Weak', best=False, region=None)",
-      "missing Expect(subject='dbs', level='Medium', source='singtel', link='singtel:provides_connectivity_to:dbs', strength='Moderate', best=False, region=None)",
-      "not expected Expect(subject='dbs', level='Medium', source='singtel', link='dbs:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
-    "rows": [
+      },
       {
         "subject": "dbs",
-        "level": "Medium",
+        "level": "Low",
         "source": "singtel",
-        "link": "dbs:material_customer_of:singtel",
-        "strength": "Strong",
-        "best": true,
+        "link": "dbs:provides_customer_benefits_with:singtel",
+        "strength": "Weak",
+        "best": false,
         "region": null
       }
     ],
@@ -427,11 +376,8 @@
   },
   {
     "id": "two-medium-paths",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='Medium', source='singtel', link='singtel:provides_connectivity_to:dbs', strength='Strong', best=False, region=None)",
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -441,22 +387,27 @@
         "strength": "Strong",
         "best": true,
         "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "singtel",
+        "link": "singtel:provides_connectivity_to:dbs",
+        "strength": "Strong",
+        "best": false,
+        "region": null
       }
     ],
     "reason": "Two Medium paths stay Medium: paths are never added together; equal level, strength and share, so the first link id is best"
   },
   {
     "id": "direction-to-from",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='High', source='singtel', link='dbs:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "not expected Expect(subject='dbs', level='Medium', source='singtel', link='dbs:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
-        "level": "Medium",
+        "level": "High",
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Strong",
@@ -468,10 +419,8 @@
   },
   {
     "id": "direction-from-to",
-    "ok": false,
-    "problems": [
-      "singtel via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "singtel",
@@ -494,12 +443,8 @@
   },
   {
     "id": "several-links-larger-share",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='Medium', source='hong-kong', link='dbs:exposed_to:hong-kong', strength='Strong', best=False, region=None)",
-      "missing Expect(subject='dbs', level='Medium', source='hong-kong', link='dbs:material_customer_of:hong-kong', strength='Strong', best=False, region=None)",
-      "dbs via dbs:holds_stake_in:hong-kong has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -509,17 +454,32 @@
         "strength": "Strong",
         "best": true,
         "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "hong-kong",
+        "link": "dbs:exposed_to:hong-kong",
+        "strength": "Strong",
+        "best": false,
+        "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "hong-kong",
+        "link": "dbs:material_customer_of:hong-kong",
+        "strength": "Strong",
+        "best": false,
+        "region": null
       }
     ],
     "reason": "Equal level and strength: the 12.2% share is best, then 5%, then no share"
   },
   {
     "id": "several-links-id",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='Medium', source='singtel', link='dbs:provides_customer_benefits_with:singtel', strength='Moderate', best=False, region=None)",
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -529,17 +489,23 @@
         "strength": "Moderate",
         "best": true,
         "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "singtel",
+        "link": "dbs:provides_customer_benefits_with:singtel",
+        "strength": "Moderate",
+        "best": false,
+        "region": null
       }
     ],
     "reason": "Equal level, strength and no share: the first link id is best"
   },
   {
     "id": "several-sources-highest-level",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='Low', source='singtel', link='dbs:material_customer_of:singtel', strength='Weak', best=False, region=None)",
-      "dbs via dbs:exposed_to:hong-kong has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -549,17 +515,23 @@
         "strength": "Strong",
         "best": true,
         "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Low",
+        "source": "singtel",
+        "link": "dbs:material_customer_of:singtel",
+        "strength": "Weak",
+        "best": false,
+        "region": null
       }
     ],
     "reason": "High by Weak gives Low; Medium by Strong gives Medium, which is best"
   },
   {
     "id": "several-sources-level-before-strength",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='Low', source='hong-kong', link='dbs:exposed_to:hong-kong', strength='Strong', best=False, region=None)",
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -569,17 +541,23 @@
         "strength": "Moderate",
         "best": true,
         "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Low",
+        "source": "hong-kong",
+        "link": "dbs:exposed_to:hong-kong",
+        "strength": "Strong",
+        "best": false,
+        "region": null
       }
     ],
     "reason": "Low by Strong gives Low; High by Moderate gives Medium, which is best over the stronger link"
   },
   {
     "id": "several-sources-source-id",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='Medium', source='singtel', link='dbs:material_customer_of:singtel', strength='Strong', best=False, region=None)",
-      "dbs via dbs:material_customer_of:hong-kong has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -589,22 +567,27 @@
         "strength": "Strong",
         "best": true,
         "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "singtel",
+        "link": "dbs:material_customer_of:singtel",
+        "strength": "Strong",
+        "best": false,
+        "region": null
       }
     ],
     "reason": "Equal level, strength and no share: the first link id is best"
   },
   {
     "id": "named-no-row",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='ocbc', level='High', source='singtel', link='ocbc:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "not expected Expect(subject='ocbc', level='Medium', source='singtel', link='ocbc:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "ocbc via ocbc:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "ocbc",
-        "level": "Medium",
+        "level": "High",
         "source": "singtel",
         "link": "ocbc:material_customer_of:singtel",
         "strength": "Strong",
@@ -616,11 +599,19 @@
   },
   {
     "id": "adverse-off-passes",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='High', source='singtel', link='singtel:provides_connectivity_to:dbs', strength='Strong', best=True, region=None)"
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "singtel",
+        "link": "singtel:provides_connectivity_to:dbs",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
     ],
-    "rows": [],
     "reason": "With INDIRECT_ADVERSE_ONLY off, a High development not adverse for Singtel passes at its level"
   },
   {
@@ -632,10 +623,8 @@
   },
   {
     "id": "adverse-on-per-entity",
-    "ok": false,
-    "problems": [
-      "uob via uob:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "uob",
@@ -658,10 +647,8 @@
   },
   {
     "id": "low-switch-on",
-    "ok": false,
-    "problems": [
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
@@ -684,16 +671,12 @@
   },
   {
     "id": "two-hops",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='High', source='singtel', link='dbs:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "not expected Expect(subject='dbs', level='Medium', source='singtel', link='dbs:material_customer_of:singtel', strength='Strong', best=True, region=None)",
-      "dbs via dbs:material_customer_of:singtel has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
-        "level": "Medium",
+        "level": "High",
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Strong",
@@ -705,10 +688,8 @@
   },
   {
     "id": "region-member",
-    "ok": false,
-    "problems": [
-      "uob via uob:exposed_to:greater-china has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "uob",
@@ -731,16 +712,12 @@
   },
   {
     "id": "region-to-from-only",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='greater-china', level='High', source='uob', link='uob:exposed_to:greater-china', strength='Strong', best=True, region=None)",
-      "not expected Expect(subject='greater-china', level='Medium', source='uob', link='uob:exposed_to:greater-china', strength='Strong', best=True, region=None)",
-      "greater-china via uob:exposed_to:greater-china has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "greater-china",
-        "level": "Medium",
+        "level": "High",
         "source": "uob",
         "link": "uob:exposed_to:greater-china",
         "strength": "Strong",
@@ -752,22 +729,26 @@
   },
   {
     "id": "region-beats-weaker-direct",
-    "ok": false,
-    "problems": [
-      "missing Expect(subject='dbs', level='High', source='hong-kong', link='dbs:exposed_to:greater-china', strength='Strong', best=True, region='greater-china')",
-      "missing Expect(subject='dbs', level='Low', source='hong-kong', link='dbs:exposed_to:hong-kong', strength='Weak', best=False, region=None)",
-      "not expected Expect(subject='dbs', level='Medium', source='hong-kong', link='dbs:exposed_to:greater-china', strength='Strong', best=True, region='greater-china')",
-      "dbs via dbs:exposed_to:greater-china has no reason"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [
       {
         "subject": "dbs",
-        "level": "Medium",
+        "level": "High",
         "source": "hong-kong",
         "link": "dbs:exposed_to:greater-china",
         "strength": "Strong",
         "best": true,
         "region": "greater-china"
+      },
+      {
+        "subject": "dbs",
+        "level": "Low",
+        "source": "hong-kong",
+        "link": "dbs:exposed_to:hong-kong",
+        "strength": "Weak",
+        "best": false,
+        "region": null
       }
     ],
     "reason": "The direct link is Weak (Low); the region figure is Strong (High) and is best"
@@ -788,10 +769,8 @@
   },
   {
     "id": "store",
-    "ok": false,
-    "problems": [
-      "OperationalError: table development_impacts has no column named best"
-    ],
+    "ok": true,
+    "problems": [],
     "rows": [],
     "reason": "store_impacts on a made-up run"
   }
