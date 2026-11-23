@@ -11,14 +11,19 @@ topics or entities, never groups. It is adverse to a subject
 when one of those findings says so. Subjects that only comment on it or are mentioned in it are
 kept apart, as mentions, and are never rated. A topic takes the highest priority among the
 development's entities, and is rated itself only where the development names no entity. Its level
-(materiality_level, 0 Low to 2 High) is its highest priority over its subjects."""
+(materiality_level, 0 Low to 2 High) is its highest priority over its subjects.
+
+After priority, one more Sonnet call per development with an entity at Medium or High (the
+link_types stage, deck of 16 Nov 2026, pages 9 and 10) picks for each such entity the relationship
+types the development activates, which the inferred impact step follows. With INDIRECT_FROM_LOW
+on, entities at Low are asked too, so a Low entity can pass its Low row."""
 
 import asyncio
 import atexit
 import json
 import sqlite3
 from collections import Counter
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from functools import lru_cache
@@ -28,7 +33,7 @@ import numpy as np
 from claude_agent_sdk import EffortLevel
 from fastembed import TextEmbedding
 from numpy.typing import NDArray
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, Field, TypeAdapter
 
 from intelmonitor.config import DATA_DIR
 from intelmonitor.pipeline.detectors import materiality_level
@@ -37,6 +42,10 @@ from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
 from intelmonitor.pipeline.params import (
     EMBEDDING_MODEL,
     HAIKU_MODEL,
+    INDIRECT_FROM_LOW,
+    LINK_TYPES_EFFORT,
+    LINK_TYPES_PROMPT,
+    MATERIAL_LEVEL,
     MERGE_MAX_NEIGHBOURS,
     MERGE_MIN_SIMILARITY,
     MERGE_WINDOW_DAYS,
@@ -49,10 +58,12 @@ from intelmonitor.pipeline.params import (
 )
 from intelmonitor.pipeline.subjects import (
     PrioritySubject,
+    Subject,
     monitored_subjects,
     priority_subjects,
     resolve_groups,
 )
+from intelmonitor.relationships import RelType
 from intelmonitor.seed import SubjectType, load_detectors
 from intelmonitor.store import search
 
@@ -243,6 +254,10 @@ class DevelopmentSubject:
     # The detector whose rule set the level: every source is a detection, or the rule measured
     # this subject and its level is at least the rated one. None when the rating set it.
     rule: str | None = None
+    # The relationship types the development activates for this entity (`activate_link_types`);
+    # None when it was not asked: a topic, an entity at Low with INDIRECT_FROM_LOW off, or before
+    # the stage ran.
+    link_types: list[RelType] | None = None
 
     def set_priority(self, level: int, reason: str) -> None:
         self.priority_level, self.priority_score, self.priority_confidence = (
@@ -481,6 +496,124 @@ async def rate(inf: Inference, dev: Development) -> None:
         apply_rule(topics)
 
 
+@dataclass(frozen=True)
+class DirectEntity:
+    """A direct entity as the link_types call reads it: its id and name, and its priority level
+    and reason."""
+
+    id: str
+    name: str
+    level: int  # 1 Medium or 2 High; 0 Low only with INDIRECT_FROM_LOW
+    reason: str
+
+
+class EntityLinkTypes(BaseModel):
+    entity: str = Field(description="The entity's id, as the message lists it.")
+    types: list[RelType] = Field(
+        description="The relationship types the finding could activate for this entity; empty "
+        "when it activates none."
+    )
+
+
+# The link_types call's answer. (No docstrings: pydantic would send them to the model as the
+# schema's descriptions.)
+class LinkTypeSelection(BaseModel):
+    entities: list[EntityLinkTypes] = Field(
+        description="One entry for each entity the message lists."
+    )
+
+
+def link_types_prompt(dev: Development, entities: Sequence[DirectEntity]) -> str:
+    """What the link_types call reads: the development as the priority call reads it, then each
+    entity with its level and priority reason. No links."""
+    listed = "\n".join(
+        f"- {e.id} ({e.name}), {PRIORITY_LABELS[e.level]}: {e.reason}" for e in entities
+    )
+    return f"{priority_prompt(dev)}\n\nEntities:\n{listed}"
+
+
+def link_types_entities(
+    dev: Development, names: Mapping[str, Subject], *, from_low: bool = INDIRECT_FROM_LOW
+) -> list[DirectEntity]:
+    """The development's entities the link_types call asks about: those at Medium or High, and
+    those at Low too with `from_low`, by id. Topics are not asked."""
+    lowest = 0 if from_low else MATERIAL_LEVEL
+    return [
+        DirectEntity(sid, names[sid].name, s.priority_level, s.priority_reason)
+        for sid, s in sorted(dev.subjects.items())
+        if names[sid].type == "entity" and s.priority_level >= lowest
+    ]
+
+
+async def select_link_types(
+    inf: Inference,
+    dev: Development,
+    entities: Sequence[DirectEntity],
+    *,
+    template: str = LINK_TYPES_PROMPT,
+    schema: type[LinkTypeSelection] = LinkTypeSelection,
+    effort: EffortLevel | None = LINK_TYPES_EFFORT,
+) -> dict[str, list[RelType]] | None:
+    """One Sonnet call: the relationship types the development activates for each of the
+    entities, by LINK_TYPES_PROMPT (`entity_types`). None when Claude declines. `im trial
+    link-types` passes a candidate's template, schema and effort instead; the eval's cases pass
+    an effort."""
+    try:
+        reply = await inf.claude(
+            "link_types",
+            f"dev:{dev.id}:{len(dev.findings)}",
+            link_types_prompt(dev, entities),
+            schema,
+            template,
+            effort=effort or LINK_TYPES_EFFORT,
+        )
+    except ClaudeRefused:
+        return None
+    return entity_types(reply, entities)
+
+
+def entity_types(
+    reply: LinkTypeSelection, entities: Sequence[DirectEntity]
+) -> dict[str, list[RelType]]:
+    """Each entity's types from a link_types reply, each type once; an entity the reply leaves
+    out gets none, and an entity it adds is dropped."""
+    picked: dict[str, list[RelType]] = {}
+    for answer in reply.entities:
+        picked.setdefault(answer.entity, []).extend(answer.types)
+    return {e.id: list(dict.fromkeys(picked.get(e.id, []))) for e in entities}
+
+
+async def activate_link_types(
+    inf: Inference, devs: list[Development], *, from_low: bool = INDIRECT_FROM_LOW
+) -> tuple[int, int]:
+    """The link_types stage, after priority: one call per development with an entity at Medium or
+    High, which sets each such entity's `link_types`. With `from_low` (INDIRECT_FROM_LOW), entities
+    at Low are asked as well, so a development whose entities are all Low is asked too; without
+    it, they are not asked and keep None. A refused call leaves the entities asked with none.
+    Topics and developments that name no entity are not asked. The developments asked and the
+    calls refused."""
+    names = monitored_subjects()
+    failures: list[str] = []
+    asked = [(d, e) for d in devs if (e := link_types_entities(d, names, from_low=from_low))]
+    refused = 0
+
+    async def one(dev: Development, entities: list[DirectEntity]) -> None:
+        nonlocal refused
+        try:
+            picked = await select_link_types(inf, dev, entities)
+        except Exception as error:
+            failures.append(f"{dev.id}: {type(error).__name__}: {error}")
+            return
+        refused += picked is None
+        for e in entities:
+            dev.subjects[e.id].link_types = [] if picked is None else picked[e.id]
+
+    await asyncio.gather(*(one(d, e) for d, e in asked))
+    if failures:
+        raise StepFailed("link_types", failures)
+    return len(asked), refused
+
+
 @dataclass
 class MergeStats:
     findings: int = 0
@@ -491,6 +624,8 @@ class MergeStats:
     promotional: int = 0  # findings left out as promotional
     price_move: int = 0  # findings left out as price moves
     priority_refused: int = 0  # development and subject pairs Claude declined to rate
+    link_types_asked: int = 0  # developments the link_types call asked about
+    link_types_refused: int = 0  # of those, the calls Claude declined
 
 
 async def merge(inf: Inference, findings: list[RunFinding]) -> tuple[list[Development], MergeStats]:
@@ -537,6 +672,7 @@ async def build_developments(
     stats.price_move = sum(f.price_move for f in findings)
     link_subjects(conn, devs)
     await score_priorities(inf, devs)
+    stats.link_types_asked, stats.link_types_refused = await activate_link_types(inf, devs)
     store_developments(conn, run_id, devs)
     stats.high = sum(d.materiality_level >= NEEDS_ATTENTION_LEVEL for d in devs)
     stats.priority_refused = sum(
@@ -577,7 +713,7 @@ def store_developments(conn: sqlite3.Connection, run_id: str, devs: list[Develop
         conn.executemany(
             "INSERT INTO development_subjects (run_id, development_id, subject_id, confidence, "
             "source, role, adverse, tone, priority_level, priority_score, priority_confidence, "
-            "priority_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "priority_reason, link_types) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 (
                     run_id,
@@ -592,6 +728,7 @@ def store_developments(conn: sqlite3.Connection, run_id: str, devs: list[Develop
                     s.priority_score,
                     s.priority_confidence,
                     s.priority_reason,
+                    None if s.link_types is None else json.dumps(s.link_types),
                 )
                 for sid, s in d.subjects.items()
             ],

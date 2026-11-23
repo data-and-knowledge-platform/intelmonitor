@@ -205,7 +205,7 @@ class RunDevelopments:
         return d.model_copy(update=priority_fields(mine)) if mine else d
 
 
-_run_cache: dict[tuple[str, str], RunDevelopments] = {}
+_run_cache: dict[tuple[str, str, str], RunDevelopments] = {}
 
 
 def load_developments(conn: sqlite3.Connection, run: RunRef) -> RunDevelopments:
@@ -250,7 +250,7 @@ def load_developments(conn: sqlite3.Connection, run: RunRef) -> RunDevelopments:
     names = all_subjects()
     indirect: dict[str, list[str]] = {}
     for r in conn.execute(
-        "SELECT development_id, subject_id FROM development_impacts WHERE run_id = ? "
+        "SELECT development_id, subject_id FROM development_impacts WHERE run_id = ? AND best = 1 "
         "ORDER BY development_id, level DESC, subject_id",
         (run.id,),
     ):
@@ -340,7 +340,9 @@ class Queries:
 
     @cached_property
     def devs(self) -> RunDevelopments:
-        key = (self.run.id, str(self._run_row["finished_at"]))
+        # `im impacts` rewrites a run's inferred impacts without finishing it again.
+        row = self._run_row
+        key = (self.run.id, str(row["finished_at"]), str(row["impacts_recomputed"]))
         if key not in _run_cache:
             _run_cache.clear()
             _run_cache[key] = load_developments(self.conn, self.run)

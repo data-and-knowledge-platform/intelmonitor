@@ -45,7 +45,8 @@ CREATE TABLE IF NOT EXISTS runs (
     documents INTEGER NOT NULL,        -- documents published on or before as_of
     started_at TEXT NOT NULL,
     finished_at TEXT,
-    error TEXT
+    error TEXT,
+    impacts_recomputed TEXT            -- when `im impacts` last rewrote its inferred impacts
 );
 
 -- One row per execution of a run: `im run` or `im weekly` on the command line (Run now in the app
@@ -145,6 +146,7 @@ CREATE TABLE IF NOT EXISTS development_subjects (
     priority_score REAL NOT NULL DEFAULT 0, -- the level; Jev's expected score in older runs
     priority_confidence REAL NOT NULL DEFAULT 0, -- 1.0 once rated
     priority_reason TEXT NOT NULL DEFAULT '', -- the rating's one sentence on why
+    link_types TEXT,                   -- JSON list of the types it activates; null: not asked
     PRIMARY KEY (run_id, development_id, subject_id)
 );
 
@@ -158,18 +160,21 @@ CREATE TABLE IF NOT EXISTS development_mentions (
     PRIMARY KEY (run_id, development_id, subject_id)
 );
 
--- Indirect impacts (pipeline/impact.py): entities a development reaches through one stored link,
--- at the level the fixed table gives, kept apart from development_subjects.
+-- Inferred impacts (pipeline/impact.py): every path by which a development reaches an entity it
+-- does not name through one stored link of a type it activates, at the level the fixed table
+-- gives, kept apart from development_subjects. Each entity reached has one best path.
 CREATE TABLE IF NOT EXISTS development_impacts (
     run_id TEXT NOT NULL,
     development_id TEXT NOT NULL,
     subject_id TEXT NOT NULL,          -- the entity reached
-    source_id TEXT NOT NULL,           -- the tagged entity the development is adverse for
+    source_id TEXT NOT NULL,           -- the named entity the path starts from
     relationship_id TEXT NOT NULL,     -- the link it passes through
     region TEXT,                       -- the region entity, when the link covers the source in it
     strength TEXT NOT NULL,            -- from the source's end: Strong, Moderate or Weak
-    level INTEGER NOT NULL,            -- 0 Low or 1 Medium, never High
-    PRIMARY KEY (run_id, development_id, subject_id)
+    level INTEGER NOT NULL,            -- 0 Low, 1 Medium or 2 High
+    best INTEGER NOT NULL,             -- 1 on the entity's best path for the development
+    reason TEXT NOT NULL,              -- the path in words, with the link's rating reason
+    PRIMARY KEY (run_id, development_id, subject_id, source_id, relationship_id)
 );
 CREATE INDEX IF NOT EXISTS development_impacts_subject ON development_impacts (run_id, subject_id);
 
@@ -442,6 +447,12 @@ ADDED_COLUMNS = [
     ("inference_records", "prompt_version", "TEXT"),
     # A refused call's category (pipeline/claude.py).
     ("inference_records", "refusal_category", "TEXT"),
+    # The relationship types a development activates for an entity at Medium or High, or at Low
+    # with INDIRECT_FROM_LOW on, a JSON list; null when it was not asked (pipeline/developments.py,
+    # the link_types stage).
+    ("development_subjects", "link_types", "TEXT"),
+    # When `im impacts` last rewrote the run's inferred impacts; null when its own run did.
+    ("runs", "impacts_recomputed", "TEXT"),
 ]
 
 
@@ -563,11 +574,16 @@ def _drop_social(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def _impacts_by_table(conn: sqlite3.Connection) -> None:
-    """Stores made before indirect impact by table kept Claude's judgement in development_impacts
-    (why, direction, confidence, a multi-link route). The table is recreated in its new shape,
-    empty: its rows are per run, and the next run of each date writes them again."""
-    stale = "SELECT 1 FROM pragma_table_info('development_impacts') WHERE name = 'why'"
+def _impacts_by_path(conn: sqlite3.Connection) -> None:
+    """Stores made before every inferred path was kept (spec step 8 of
+    link-types-and-inferred-impact) hold one row per entity reached, never High, with no best
+    flag; older ones kept Claude's judgement there. The table is recreated in its new shape,
+    empty: its rows are per run, and `im impacts` or the next run of each date writes them again.
+    Run twice, the second finds the best column and does nothing."""
+    stale = (
+        "SELECT 1 FROM sqlite_master WHERE name = 'development_impacts' AND NOT EXISTS "
+        "(SELECT 1 FROM pragma_table_info('development_impacts') WHERE name = 'best')"
+    )
     if conn.execute(stale).fetchone() is None:
         return
     conn.execute("BEGIN IMMEDIATE")  # another connection may be recreating it too
@@ -814,7 +830,7 @@ def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     _drop_graph(conn)
     _drop_endpoints(conn)
     _relink(conn)
-    _impacts_by_table(conn)
+    _impacts_by_path(conn)
     conn.execute(
         "CREATE INDEX IF NOT EXISTS inference_records_version "
         "ON inference_records (prompt_version, input_ref)"

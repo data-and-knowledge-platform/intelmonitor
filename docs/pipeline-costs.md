@@ -9,6 +9,8 @@ The sections after "Measured, October rebuild" keep the estimate and its method 
 
 Noted 16 Nov 2026: trials of link strength judged per development cost $17.56 (measured); the work is not merged, and its code and cost record are on the branch `park/per-development-strength`.
 
+Noted 23 Nov 2026: a new Sonnet stage, `link_types`, picks the relationship types each development activates for its entities at Medium or High (spec step 7 of link-types-and-inferred-impact); its measured cost is under "Activated link types" below, and the weekly figure in the totals is an estimate.
+
 Noted 17 Nov 2026: the theme stage no longer runs.
 It labelled each development with a theme for the graph view, which was removed on 16 Nov 2026 (spec step 3b of link-types-and-inferred-impact).
 Its rows below are what it cost while it ran ($0.64 of the October rebuild, measured), and a weekly run now costs that much less.
@@ -20,6 +22,7 @@ Its rows below are what it cost while it ran ($0.64 of the October rebuild, meas
 | One weekly run | about 1,560 | $1.70 | $38 | about $40 | measured, $38 to $42 over five full weeks |
 | Seed (6 weekly runs, 4 Oct to 8 Nov) | 9,277 | $9.42 | $214.07 | $223.49 | measured |
 | Link rating (once) | | | $2.49 | $2.49 | measured |
+| Activated link types, one weekly run | | | about $1.39 | about $1.39 | estimate: 283 calls at $0.00492 a call, measured |
 
 Sonnet stages are about 96% of the bill.
 Exa ingest is about $5 a week on top (about 700 searches at $0.007), so about $29 for the rebuild.
@@ -107,6 +110,29 @@ On 17 Nov 2026 it rated all 543 links again, belongs_to_sector included, with th
 Pipeline runs read the ratings from `api/seed/collected/transmission.yaml` and call no model for them.
 A rerun pays only for links that are new or whose input changed.
 
+## Activated link types
+
+`link_types` is one Claude Sonnet 5.5 call per development with an entity at Medium or High, after priority, at effort high with adaptive thinking (`LINK_TYPES_EFFORT`).
+Its system prompt is fixed text (the 22 types, pages 9 and 10's selection rule, our rule for when a consequence travels through a relationship and when the structural types apply, including for an entity that is itself a jurisdiction, regulator or exchange, page 9's examples and `THINK_FIRST`), so it is cached; the user prompt is the development as the priority call reads it, then each entity at Medium or High with its level and reason.
+
+Measured on 23 Nov 2026 with `im trial link-types` on a fixed sample of 100 of the baseline's developments with an entity at Medium or High (130 entities), from the API's usage on each recorded call, for the live prompt (versions 5 at high and 6 at medium on the baseline):
+
+| Effort | Calls | Mean output tokens | Cost | Cost a call |
+|---|---|---|---|---|
+| high | 100 | 389 | $0.4919 | $0.00492 |
+| medium | 100 | 42 | $0.1447 | $0.00145 |
+
+Input costs about $0.001 a call at either effort (the cost less the output tokens at $10 a million), since the system prompt is read from the cache after the first calls; the rest is output tokens, which include thinking.
+The first prompt, without our rule (versions 1 and 2), cost $0.00406 a call at high with 308 mean output tokens and $0.00146 at medium with 49 (measured); the rule adds about 320 input tokens and, at high, more thinking.
+Versions 3 and 4, before our sentence on jurisdictions, regulators and exchanges (23 Nov 2026), cost $0.00541 a call at high with 440 mean output tokens and $0.00142 at medium with 41 (measured).
+The cases send about 2,500 input tokens a call (measured).
+The 18 cases of `uv run python -m intelmonitor.eval link-types` (the deck's ten and our eight) cost $0.0601 at high and $0.0199 at medium (measured).
+
+A run pays for each development with an entity at Medium or High that is new or updated in it; the others replay from `inference_records`.
+In the baseline's run of 8 Nov 2026 that is 283 of the 1,148 developments with an entity at Medium or High, about $1.39 at high (estimate).
+A run that pays for every one of them, such as a first run on an empty `inference_records`, is about $5.65 (estimate: 1,148 calls).
+The six stored weeks hold 1,366 distinct inputs, about $6.72 at high with the 89 entities they were run with (estimate); step 9's rerun with 142 entities will differ.
+
 ## Stages that cost nothing now
 
 | Stage | Why |
@@ -125,6 +151,7 @@ A rerun pays only for links that are new or whose input changed.
 - screen and extract are paid once per document: `Inference` records each call by its input hash, and later runs replay it.
 - same_event is paid once per candidate pair.
 - headline is paid for each new development, and priority for each new development and entity, and again when a development gains findings, because its input changes.
+- link_types is paid for each new or updated development with an entity at Medium or High, and again when an entity's level or reason changes.
 - brief and note are paid on every run, whatever arrived.
 
 ## Method

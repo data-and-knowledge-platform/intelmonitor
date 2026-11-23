@@ -399,13 +399,14 @@ class RelationshipLink(BaseModel):
     figures: list[RelationshipFigure]
 
 
-IndirectLevel = Literal["Medium", "Low"]
+IndirectLevel = Literal["High", "Medium", "Low"]
 
 
 class IndirectImpact(BaseModel):
     """An entity a development reaches through one stored link, at the level the fixed table
-    gives (pipeline/impact.py): the development is adverse for `source` at a direct level, and
-    the link's strength from the source's end turns that into `level`."""
+    gives (pipeline/impact.py): the development activates the link's type for `source` at a
+    direct level, and the link's strength from the source's end turns that into `level`. Only the
+    entity's best path is served."""
 
     development_id: str
     subject: SubjectRef = Field(description="The entity reached")
@@ -679,8 +680,7 @@ class RelatedNode(BaseModel):
         "in display order"
     )
     harmful: int = Field(
-        description="How many of them are adverse for the entity they are about; every "
-        "indirect impact is, so this equals the number of developments"
+        description="How many of them are adverse for the entity they reach the centre from"
     )
 
 

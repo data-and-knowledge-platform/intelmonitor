@@ -13,14 +13,15 @@
     "rows": [
       {
         "subject": "dbs",
-        "level": "Medium",
+        "level": "High",
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Strong",
+        "best": true,
         "region": null
       }
     ],
-    "reason": "High by Strong gives Medium"
+    "reason": "High by Strong gives High"
   },
   {
     "id": "cell-high-moderate",
@@ -33,6 +34,7 @@
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Moderate",
+        "best": true,
         "region": null
       }
     ],
@@ -49,10 +51,18 @@
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Weak",
+        "best": true,
         "region": null
       }
     ],
     "reason": "High by Weak gives Low"
+  },
+  {
+    "id": "cell-high-nonpropagating",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "High by Non-propagating gives nothing"
   },
   {
     "id": "cell-medium-strong",
@@ -65,6 +75,7 @@
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Strong",
+        "best": true,
         "region": null
       }
     ],
@@ -81,6 +92,7 @@
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Moderate",
+        "best": true,
         "region": null
       }
     ],
@@ -92,6 +104,13 @@
     "problems": [],
     "rows": [],
     "reason": "Medium by Weak gives nothing"
+  },
+  {
+    "id": "cell-medium-nonpropagating",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Medium by Non-propagating gives nothing"
   },
   {
     "id": "cell-low-strong",
@@ -115,20 +134,28 @@
     "reason": "Low by Weak gives nothing"
   },
   {
+    "id": "cell-low-nonpropagating",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Low by Non-propagating gives nothing"
+  },
+  {
     "id": "cell-high-strong-from-low",
     "ok": true,
     "problems": [],
     "rows": [
       {
         "subject": "dbs",
-        "level": "Medium",
+        "level": "High",
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Strong",
+        "best": true,
         "region": null
       }
     ],
-    "reason": "High by Strong gives Medium"
+    "reason": "High by Strong gives High"
   },
   {
     "id": "cell-high-moderate-from-low",
@@ -141,6 +168,7 @@
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Moderate",
+        "best": true,
         "region": null
       }
     ],
@@ -157,10 +185,18 @@
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Weak",
+        "best": true,
         "region": null
       }
     ],
     "reason": "High by Weak gives Low"
+  },
+  {
+    "id": "cell-high-nonpropagating-from-low",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "High by Non-propagating gives nothing"
   },
   {
     "id": "cell-medium-strong-from-low",
@@ -173,6 +209,7 @@
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Strong",
+        "best": true,
         "region": null
       }
     ],
@@ -189,6 +226,7 @@
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Moderate",
+        "best": true,
         "region": null
       }
     ],
@@ -202,6 +240,13 @@
     "reason": "Medium by Weak gives nothing"
   },
   {
+    "id": "cell-medium-nonpropagating-from-low",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Medium by Non-propagating gives nothing"
+  },
+  {
     "id": "cell-low-strong-from-low",
     "ok": true,
     "problems": [],
@@ -212,6 +257,7 @@
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Strong",
+        "best": true,
         "region": null
       }
     ],
@@ -232,7 +278,137 @@
     "reason": "Low by Weak gives nothing"
   },
   {
-    "id": "direction-to-from",
+    "id": "cell-low-nonpropagating-from-low",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Low by Non-propagating gives nothing"
+  },
+  {
+    "id": "high-by-strong-gives-high",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "singtel",
+        "link": "singtel:provides_connectivity_to:dbs",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "A Singtel connectivity outage at High reaches DBS through a Strong, activated link at one hop: inferred High, no further check"
+  },
+  {
+    "id": "non-propagating",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "The direction from Singtel is Non-propagating: nothing, whatever the other direction says"
+  },
+  {
+    "id": "not-activated",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "The development activates provides_connectivity_to, not material_customer_of"
+  },
+  {
+    "id": "two-links-only-activated",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "Low",
+        "source": "singtel",
+        "link": "singtel:provides_connectivity_to:dbs",
+        "strength": "Weak",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "Only the activated connectivity link counts, Weak, so Low; the Strong material_customer_of link is not activated and gives nothing"
+  },
+  {
+    "id": "not-asked",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Singtel's types were not asked: it passes nothing"
+  },
+  {
+    "id": "asked-none",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Singtel was asked and the development activates no type for it: it passes nothing"
+  },
+  {
+    "id": "types-per-entity",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "singtel",
+        "link": "singtel:provides_connectivity_to:dbs",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      },
+      {
+        "subject": "uob",
+        "level": "Medium",
+        "source": "ocbc",
+        "link": "uob:material_customer_of:ocbc",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "Singtel activates only connectivity and OCBC only material_customer_of: DBS's custom of Singtel is not followed from Singtel, though OCBC activates its type"
+  },
+  {
+    "id": "three-paths",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "singtel",
+        "link": "dbs:material_customer_of:singtel",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "singtel",
+        "link": "singtel:provides_connectivity_to:dbs",
+        "strength": "Moderate",
+        "best": false,
+        "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Low",
+        "source": "singtel",
+        "link": "dbs:provides_customer_benefits_with:singtel",
+        "strength": "Weak",
+        "best": false,
+        "region": null
+      }
+    ],
+    "reason": "Three activated links reach DBS: three rows, the High one best"
+  },
+  {
+    "id": "two-medium-paths",
     "ok": true,
     "problems": [],
     "rows": [
@@ -242,6 +418,33 @@
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Strong",
+        "best": true,
+        "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "singtel",
+        "link": "singtel:provides_connectivity_to:dbs",
+        "strength": "Strong",
+        "best": false,
+        "region": null
+      }
+    ],
+    "reason": "Two Medium paths stay Medium: paths are never added together; equal level, strength and share, so the first link id is best"
+  },
+  {
+    "id": "direction-to-from",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "singtel",
+        "link": "dbs:material_customer_of:singtel",
+        "strength": "Strong",
+        "best": true,
         "region": null
       }
     ],
@@ -258,6 +461,7 @@
         "source": "dbs",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Weak",
+        "best": true,
         "region": null
       }
     ],
@@ -271,22 +475,6 @@
     "reason": "from_to is Weak, and Medium by Weak gives nothing; to_from's Strong is not read"
   },
   {
-    "id": "several-links-strongest",
-    "ok": true,
-    "problems": [],
-    "rows": [
-      {
-        "subject": "dbs",
-        "level": "Medium",
-        "source": "singtel",
-        "link": "dbs:provides_customer_benefits_with:singtel",
-        "strength": "Moderate",
-        "region": null
-      }
-    ],
-    "reason": "The Moderate link beats the Weak one, which would give only Low"
-  },
-  {
     "id": "several-links-larger-share",
     "ok": true,
     "problems": [],
@@ -297,10 +485,29 @@
         "source": "hong-kong",
         "link": "dbs:holds_stake_in:hong-kong",
         "strength": "Strong",
+        "best": true,
+        "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "hong-kong",
+        "link": "dbs:exposed_to:hong-kong",
+        "strength": "Strong",
+        "best": false,
+        "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "hong-kong",
+        "link": "dbs:material_customer_of:hong-kong",
+        "strength": "Strong",
+        "best": false,
         "region": null
       }
     ],
-    "reason": "Equal strength: the 12.2% share beats 5% and the links with no share"
+    "reason": "Equal level and strength: the 12.2% share is best, then 5%, then no share"
   },
   {
     "id": "several-links-id",
@@ -313,10 +520,20 @@
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Moderate",
+        "best": true,
+        "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "singtel",
+        "link": "dbs:provides_customer_benefits_with:singtel",
+        "strength": "Moderate",
+        "best": false,
         "region": null
       }
     ],
-    "reason": "Equal strength, no share: the first id wins"
+    "reason": "Equal level, strength and no share: the first link id is best"
   },
   {
     "id": "several-sources-highest-level",
@@ -329,10 +546,20 @@
         "source": "hong-kong",
         "link": "dbs:exposed_to:hong-kong",
         "strength": "Strong",
+        "best": true,
+        "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Low",
+        "source": "singtel",
+        "link": "dbs:material_customer_of:singtel",
+        "strength": "Weak",
+        "best": false,
         "region": null
       }
     ],
-    "reason": "High by Weak gives Low; Medium by Strong gives Medium, which wins"
+    "reason": "High by Weak gives Low; Medium by Strong gives Medium, which is best"
   },
   {
     "id": "several-sources-level-before-strength",
@@ -345,75 +572,23 @@
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Moderate",
+        "best": true,
         "region": null
-      }
-    ],
-    "reason": "Low by Strong gives Low; High by Moderate gives Medium, which wins over the stronger link"
-  },
-  {
-    "id": "several-sources-stronger-link",
-    "ok": true,
-    "problems": [],
-    "rows": [
+      },
       {
         "subject": "dbs",
-        "level": "Medium",
+        "level": "Low",
         "source": "hong-kong",
         "link": "dbs:exposed_to:hong-kong",
         "strength": "Strong",
+        "best": false,
         "region": null
       }
     ],
-    "reason": "Both give Medium: the Strong link beats the Moderate one"
+    "reason": "Low by Strong gives Low; High by Moderate gives Medium, which is best over the stronger link"
   },
   {
-    "id": "tagged-no-row",
-    "ok": true,
-    "problems": [],
-    "rows": [
-      {
-        "subject": "ocbc",
-        "level": "Medium",
-        "source": "singtel",
-        "link": "ocbc:material_customer_of:singtel",
-        "strength": "Strong",
-        "region": null
-      }
-    ],
-    "reason": "DBS and Singtel are both tagged, so neither gets a row from the other"
-  },
-  {
-    "id": "not-adverse-high",
-    "ok": true,
-    "problems": [],
-    "rows": [],
-    "reason": "A High development not adverse for Singtel passes nothing"
-  },
-  {
-    "id": "not-adverse-per-entity",
-    "ok": true,
-    "problems": [],
-    "rows": [
-      {
-        "subject": "uob",
-        "level": "Medium",
-        "source": "singtel",
-        "link": "uob:material_customer_of:singtel",
-        "strength": "Strong",
-        "region": null
-      }
-    ],
-    "reason": "Adverse for Singtel only: its neighbour gets a row, OCBC's does not"
-  },
-  {
-    "id": "low-switch-moderate",
-    "ok": true,
-    "problems": [],
-    "rows": [],
-    "reason": "With the switch on, Low reaches only a Strong link"
-  },
-  {
-    "id": "two-hops-entity",
+    "id": "several-sources-strength-before-share",
     "ok": true,
     "problems": [],
     "rows": [
@@ -423,6 +598,181 @@
         "source": "singtel",
         "link": "dbs:material_customer_of:singtel",
         "strength": "Strong",
+        "best": true,
+        "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "hong-kong",
+        "link": "dbs:exposed_to:hong-kong",
+        "strength": "Moderate",
+        "best": false,
+        "region": null
+      }
+    ],
+    "reason": "Medium by Strong and High by Moderate both give Medium: the Strong link is best, though Hong Kong's has the larger share, the first link id and the first source id"
+  },
+  {
+    "id": "several-sources-link-id-before-source-id",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "singtel",
+        "link": "dbs:distributes_products_for:singtel",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "hong-kong",
+        "link": "dbs:material_customer_of:hong-kong",
+        "strength": "Strong",
+        "best": false,
+        "region": null
+      }
+    ],
+    "reason": "Equal level, strength and no share: Singtel's link id is first, so it is best, though Hong Kong's source id is first"
+  },
+  {
+    "id": "several-sources-source-id",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "uob",
+        "level": "Medium",
+        "source": "hong-kong",
+        "link": "uob:exposed_to:greater-china",
+        "strength": "Strong",
+        "best": true,
+        "region": "greater-china"
+      },
+      {
+        "subject": "uob",
+        "level": "Medium",
+        "source": "taiwan",
+        "link": "uob:exposed_to:greater-china",
+        "strength": "Strong",
+        "best": false,
+        "region": "greater-china"
+      }
+    ],
+    "reason": "Two members of Greater China reach UOB through its one region figure: two paths on the same link, so the first source id, Hong Kong, is best"
+  },
+  {
+    "id": "named-no-row",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "ocbc",
+        "level": "High",
+        "source": "singtel",
+        "link": "ocbc:material_customer_of:singtel",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "DBS and Singtel are both named, so neither gets a row from the other"
+  },
+  {
+    "id": "adverse-off-passes",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "singtel",
+        "link": "singtel:provides_connectivity_to:dbs",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "With INDIRECT_ADVERSE_ONLY off, a High development not adverse for Singtel passes at its level"
+  },
+  {
+    "id": "adverse-default-blocks",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "As decided (P6, 23 Nov 2026), the stored setting passes only developments adverse for the named entity"
+  },
+  {
+    "id": "adverse-on-blocks",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "With INDIRECT_ADVERSE_ONLY on, a development not adverse for Singtel passes nothing"
+  },
+  {
+    "id": "adverse-on-per-entity",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "uob",
+        "level": "Medium",
+        "source": "singtel",
+        "link": "uob:material_customer_of:singtel",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "With the switch on, adverse for Singtel only: its neighbour gets a row, OCBC's does not"
+  },
+  {
+    "id": "low-switch-off",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "With INDIRECT_FROM_LOW off, a Low direct item passes nothing"
+  },
+  {
+    "id": "low-switch-on",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "Low",
+        "source": "singtel",
+        "link": "dbs:material_customer_of:singtel",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "With INDIRECT_FROM_LOW on, Low by Strong gives Low"
+  },
+  {
+    "id": "low-switch-on-moderate",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "With the switch on, Low reaches only a Strong link"
+  },
+  {
+    "id": "two-hops",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "singtel",
+        "link": "dbs:material_customer_of:singtel",
+        "strength": "Strong",
+        "best": true,
         "region": null
       }
     ],
@@ -439,6 +789,7 @@
         "source": "taiwan",
         "link": "uob:exposed_to:greater-china",
         "strength": "Moderate",
+        "best": true,
         "region": "greater-china"
       }
     ],
@@ -458,10 +809,11 @@
     "rows": [
       {
         "subject": "greater-china",
-        "level": "Medium",
+        "level": "High",
         "source": "uob",
         "link": "uob:exposed_to:greater-china",
         "strength": "Strong",
+        "best": true,
         "region": null
       }
     ],
@@ -474,28 +826,195 @@
     "rows": [
       {
         "subject": "dbs",
-        "level": "Medium",
+        "level": "High",
         "source": "hong-kong",
         "link": "dbs:exposed_to:greater-china",
         "strength": "Strong",
+        "best": true,
         "region": "greater-china"
+      },
+      {
+        "subject": "dbs",
+        "level": "Low",
+        "source": "hong-kong",
+        "link": "dbs:exposed_to:hong-kong",
+        "strength": "Weak",
+        "best": false,
+        "region": null
       }
     ],
-    "reason": "The direct link is Weak (Low); the region figure is Strong (Medium) and wins"
+    "reason": "The direct link is Weak (Low); the region figure is Strong (High) and is best"
   },
   {
     "id": "no-carry-belongs-to-sector",
     "ok": true,
     "problems": [],
     "rows": [],
-    "reason": "belongs_to_sector carries nothing, even between two entities"
+    "reason": "belongs_to_sector carries nothing, even activated and between two entities"
   },
   {
     "id": "topic-passes-nothing",
     "ok": true,
     "problems": [],
     "rows": [],
-    "reason": "A topic has no links"
+    "reason": "A topic is not asked and has no links"
+  },
+  {
+    "id": "hub-country-operates-in",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Hong Kong's news does not reach DBS through DBS operating in Hong Kong"
+  },
+  {
+    "id": "hub-regulator-regulated-by",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Neither MAS (a central bank) nor the FCA (a regulator) passes its news to a firm it regulates"
+  },
+  {
+    "id": "hub-firm-to-regulator",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "mas",
+        "level": "High",
+        "source": "dbs",
+        "link": "dbs:regulated_by:mas",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "DBS's own news still reaches MAS through regulated_by, read at from_to"
+  },
+  {
+    "id": "hub-firm-to-country",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "hong-kong",
+        "level": "Medium",
+        "source": "dbs",
+        "link": "dbs:operates_in:hong-kong",
+        "strength": "Moderate",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "DBS's own news still reaches Hong Kong through operates_in, read at from_to"
+  },
+  {
+    "id": "hub-foreign-lender",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "hong-kong",
+        "link": "dbs:exposed_to:hong-kong",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "Hong Kong's news reaches DBS, whose home is Singapore, through its Hong Kong loans"
+  },
+  {
+    "id": "hub-home-lender",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "hsbc",
+        "level": "High",
+        "source": "singapore",
+        "link": "hsbc:exposed_to:singapore",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "Singapore's news does not reach DBS, whose home it is, through its Singapore loans; it reaches HSBC, whose home is the United Kingdom"
+  },
+  {
+    "id": "hub-region-member-type",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Hong Kong's news does not reach DBS through DBS operating in Greater China, a region that covers Hong Kong"
+  },
+  {
+    "id": "hub-region-home",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "mainland-china",
+        "link": "dbs:exposed_to:greater-china",
+        "strength": "Strong",
+        "best": true,
+        "region": "greater-china"
+      }
+    ],
+    "reason": "Mainland China's news reaches DBS through its Greater China figure, but not Bank of China, whose home it is"
+  },
+  {
+    "id": "hub-member-from-end",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "asean",
+        "level": "High",
+        "source": "singapore",
+        "link": "singapore:member_of:asean",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "A hub that is itself the member passes along member_of, though ASEAN is a region that covers Singapore"
+  },
+  {
+    "id": "hub-exchange-listed-on",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "sgx",
+        "link": "dbs:listed_on:sgx",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "SGX is market infrastructure, not a hub: its outage still reaches DBS, listed on it"
+  },
+  {
+    "id": "hub-parent-subsidiary",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "great-eastern",
+        "level": "High",
+        "source": "ocbc",
+        "link": "ocbc:holds_stake_in:great-eastern",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "OCBC's own news still reaches Great Eastern through its stake"
   },
   {
     "id": "store",
@@ -503,5 +1022,12 @@
     "problems": [],
     "rows": [],
     "reason": "store_impacts on a made-up run"
+  },
+  {
+    "id": "stage",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "the link_types stage's entities asked, under both Low settings"
   }
 ]
