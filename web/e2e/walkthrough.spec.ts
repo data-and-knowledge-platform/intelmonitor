@@ -104,9 +104,8 @@ async function storedState(page: Page): Promise<unknown> {
 /** The feed rows' priority badges, top to bottom. */
 const badges = (feed: Locator) => feed.locator(".frow .fstat .badge:not(.b-new)").allTextContents();
 
-/** The feed's column header, then the shown rows' priority badges, High first, as the API lists them. */
+/** The shown rows' priority badges, High first, as the API lists them. */
 async function expectOrdered(feed: Locator, shown: { priority: string }[]) {
-  await expect(feed.locator(".frow-head")).toHaveText("PriorityFindingDate");
   await expect(feed.locator(".frow .fstat .badge:not(.b-new)")).toHaveText(shown.map((d) => d.priority));
 }
 
@@ -296,12 +295,9 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
     const shown = ids.map(subject).sort(byName);
     return [...shown.filter((s) => s.type === "entity"), ...shown.filter((s) => s.type === "topic")].map((s) => s.name);
   };
-  /** Where `/` lands for a watchlist: its first entity, else its first topic, else the Entities list. */
-  const homeOf = (ids: string[]) => {
-    const shown = ids.map(subject).sort(byName);
-    const first = shown.find((s) => s.type === "entity") ?? shown.find((s) => s.type === "topic");
-    return first ? pagePath(first) : "/entities";
-  };
+  /** Home's New developments rows: the watchlist subjects that have a list row. */
+  const homeRows = (page: Page) => page.locator(".home-table tbody tr:not(:has(.home-empty))");
+  const home = (page: Page) => new URL("/", page.url()).href;
   const month = await unwrap(api.GET("/developments", { params: { query: { subject_id: ["dbs"], days: 30 } } }));
   expect(month.developments.length, "DBS has developments this month").toBeGreaterThan(0);
   const supervision = functions.find((f) => f.id === "financial-supervision");
@@ -314,9 +310,25 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
   try {
     await step(STEPS[0], async () => {
       await page.goto("/");
+      await expect(page).toHaveURL(home(page));
+      await expect(page.getByRole("heading", { level: 1, name: "Entity Intel Monitor Dashboard" })).toBeVisible();
+      await expect(page.locator(".topbar .updated")).toHaveText(`Week to ${shortDate(latest.as_of)} · updated weekly`);
+      await expect(sidebar(page).getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
+      // MAS's week as the Entities list counts it: the total, each priority and Needs attention when any is High.
+      const week = await unwrap(api.GET("/lists/{list_name}", { params: { path: { list_name: "entities" }, query: { period: "week" } } }));
+      const mas = week.rows.find((r) => r.id === "mas");
+      if (!mas) throw new Error("no MAS row in /lists/entities");
+      const row = homeRows(page);
+      await expect(row).toHaveCount(1);
+      const total = mas.counts.high + mas.counts.medium + mas.counts.low;
+      await expect(row.locator(".home-total")).toHaveText(`${total} development${total === 1 ? "" : "s"}`);
+      if (total > 0) await expect(row.locator(".home-counts")).toHaveText(`High ${mas.counts.high}Medium ${mas.counts.medium}Low ${mas.counts.low}`);
+      await expect(row.locator(".badge")).toHaveText(mas.counts.high > 0 ? "Needs attention" : "Nothing of note");
+      await expect(recentLinks(page)).toHaveCount(0);
+      expect(await storedState(page), "Home writes nothing").toBeNull();
+      await row.getByRole("link", { name: "MAS", exact: true }).click();
       await expect(page).toHaveURL(/\/entities\/mas$/);
       await expect(page.getByRole("heading", { level: 1, name: "MAS" })).toBeVisible();
-      await expect(page.locator(".topbar .updated")).toHaveText(`Week to ${shortDate(latest.as_of)} · updated weekly`);
       // No onboarding, profile menu or dashboard on a first visit.
       await expect(page.getByRole("button", { name: /^(Create dashboard|Get started|Profile)/ })).toHaveCount(0);
       await expect(page.locator(".profile, dialog.tour, [data-dashboard-id]")).toHaveCount(0);
@@ -483,7 +495,12 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       await expect(page.getByRole("link", { name: /^Ask/ }), "no Ask page or Ask about").toHaveCount(0);
       await expect(page.getByRole("button", { name: /^Ask/ }), "no Ask about").toHaveCount(0);
       await expect(page.getByRole("region", { name: /^What changed/ })).toHaveCount(0);
-      await expect(sidebar(page).getByText("Dashboards", { exact: true }), "no dashboards in the sidebar").toHaveCount(0);
+      // The sidebar's Dashboards section is the three pages, no saved dashboards.
+      await expect(sidebar(page).getByRole("region", { name: "Dashboards" }).getByRole("link"), "no saved dashboards in the sidebar").toHaveText([
+        "Home",
+        `Entities${ENTITY_COUNT}`,
+        `Topics${TOPIC_COUNT}`,
+      ]);
       await expect(page.locator("[data-dashboard-id], [data-widget-id], .profile, dialog.tour")).toHaveCount(0);
 
       await expect(recentLinks(page)).toHaveText(["DBS", "MAS"]);
@@ -515,7 +532,7 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       if (!level) throw new Error("DBS has no developments this week");
       await feed.getByRole("group", { name: "Period" }).getByRole("button", { name: /^This week/ }).click();
       await expect(page).toHaveURL(/days=7/);
-      await feed.getByRole("button", { name: /^Priority/ }).click();
+      await feed.getByRole("button", { name: /^Priority(?! definitions)/ }).click();
       await page.getByRole("dialog", { name: "Priority" }).getByRole("checkbox", { name: new RegExp(`^${level}`) }).check();
       await expect(page).toHaveURL(new RegExp(`priority=${level}`));
       await page.keyboard.press("Escape");
@@ -560,7 +577,7 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       // Removed pages land on home, the first entity on the watchlist.
       for (const old of ["/setup", "/ask?about=dbs", "/dashboards/anything", "/developments?dashboard=anything"]) {
         await page.goto(old);
-        await expect(page, `${old} lands on home`).toHaveURL(new RegExp(`${homeOf(personal)}$`));
+        await expect(page, `${old} lands on home`).toHaveURL(home(page));
       }
 
       // A topic links to nothing: Overview, Developments and Data (when it has series), no Related.
@@ -588,7 +605,7 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       await expect(fromList.getByRole("heading", { level: 2, name: title })).toBeFocused();
       const listId = new URL(page.url()).searchParams.get("development") ?? "";
       await expect(page).toHaveURL(popupUrl("/entities", listId));
-      await expect(fromList.getByRole("heading", { name: "Who it impacts" })).toBeVisible();
+      await expect(fromList.getByRole("heading", { name: "Affected entities" })).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(page).toHaveURL(listUrl);
       await expect(fromList).toHaveCount(0);
@@ -596,7 +613,7 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       expect(await storedState(page), "the popup changes no browser state").toEqual(atList);
 
       // A row from DBS's Developments tab that reaches other entities: its labels, key points, and
-      // Who it impacts rows with the API's level and route.
+      // Affected entities cards with the API's level and route.
       await page.goto("/entities/dbs/developments");
       const feedUrl = page.url();
       await expect(page.getByRole("heading", { level: 1, name: "DBS" })).toBeVisible();
@@ -625,13 +642,14 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       }
       if (d.points.length > 0) await expect(popup.locator("ul.dp-points li")).toHaveText(d.points);
       else if (d.headline !== d.title) await expect(popup.locator(".dp-points")).toHaveText(d.title);
-      await expect(popup.getByRole("heading", { name: "Who it impacts" })).toBeVisible();
-      await expect(popup.getByRole("heading", { name: "Connections" })).toBeVisible();
-      const rows = popup.locator(".imp");
+      await expect(popup.getByRole("heading", { name: "Affected entities" })).toBeVisible();
+      await expect(popup.getByRole("heading", { name: "Connection", exact: true })).toBeVisible();
+      await expect(popup.getByRole("heading", { name: "Sources" })).toBeVisible();
+      const rows = popup.locator(".aff-imp");
       await expect(rows).toHaveCount(d.impacts.length);
       // A hidden entity reached has no page, so its name is text and only displayed ones link.
-      await expect(rows.locator(".imp-h a")).toHaveText(d.impacts.filter((i) => i.subject.displayed).map((i) => i.subject.name));
-      for (const [n, i] of d.impacts.entries()) await expect(rows.nth(n).locator(".imp-h")).toContainText(i.subject.name);
+      await expect(rows.locator(".aff-h a")).toHaveText(d.impacts.filter((i) => i.subject.displayed).map((i) => i.subject.name));
+      for (const [n, i] of d.impacts.entries()) await expect(rows.nth(n).locator(".aff-h")).toContainText(i.subject.name);
       await expect(rows.locator(".imp-route")).toHaveText(d.impacts.map((i) => i.route));
       await expect(rows.locator(".imp-dir")).toHaveText(d.impacts.map((i) => i.level));
       // 80% of the screen, within its bounds.
@@ -650,10 +668,10 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       await popup.getByRole("button", { name: "Close development" }).click();
       await expect(page).toHaveURL(/\/entities\/dbs$/);
       await page.goto(`/developments/${d.id}`);
-      await expect(page).toHaveURL(popupUrl(homeOf(personal), d.id));
+      await expect(page).toHaveURL(popupUrl("/", d.id));
       await expect(popup).toBeVisible();
       await popup.getByRole("button", { name: "Close development" }).click();
-      await expect(page).toHaveURL(new RegExp(`${homeOf(personal)}$`));
+      await expect(page).toHaveURL(home(page));
     });
 
     await step(STEPS[7], async () => {
@@ -684,7 +702,9 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       await expect(page.getByRole("heading", { level: 1, name: "DBS" })).toBeVisible();
       await expect(watchlistLinks(page), "MAS does not come back").toHaveCount(0);
       await page.goto("/");
-      await expect(page).toHaveURL(/\/entities$/);
+      await expect(page).toHaveURL(home(page));
+      await expect(page.getByText("Your watchlist is empty.")).toBeVisible();
+      await expect(homeRows(page)).toHaveCount(0);
       expect(await storedState(page)).toMatchObject({ watchlist: [] });
     });
 
@@ -699,8 +719,12 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       await expect(watchlistLinks(page)).toHaveText(watchlistNames(preset));
       await expect(removeButtons(page)).toHaveCount(0);
       expect(await storedState(page)).toMatchObject({ view: supervision.id, watchlist: [] });
+      // Home lists the preset's subjects that have a list row, entities then topics.
       await page.goto("/");
-      await expect(page).toHaveURL(new RegExp(`${homeOf(preset)}$`));
+      await expect(page).toHaveURL(home(page));
+      const listed = new Set((await Promise.all((["entities", "topics"] as const).map((list_name) => unwrap(api.GET("/lists/{list_name}", { params: { path: { list_name }, query: { period: "week" } } }))))).flatMap((l) => l.rows.map((r) => r.id)));
+      const presetNames = preset.filter((id) => listed.has(id)).map((id) => subject(id).name).sort();
+      expect((await homeRows(page).locator("td:first-child").allTextContents()).sort()).toEqual(presetNames);
 
       // The Topics list's function filter does not follow the view.
       await sidebar(page).getByRole("link", { name: `Topics ${TOPIC_COUNT}` }).click();
@@ -884,6 +908,19 @@ test("IntelMonitor walkthrough", async ({ page, browser, baseURL }) => {
       const labels = help.getByRole("region", { name: "Labels on a development" });
       for (const word of ["High", "Medium", "Low", "Adverse event", "New", "Updated"]) await expect(labels).toContainText(word);
       await expect(labels, "New is the latest run, not the last visit").not.toContainText("last visit");
+      // Priority definitions from Help: a card per priority with the API's definition and examples; Esc returns to Help.
+      await labels.getByRole("button", { name: "Priority definitions" }).click();
+      const definitions = page.getByRole("dialog", { name: "Priority definitions" });
+      const levels = await unwrap(api.GET("/materiality-levels"));
+      for (const l of levels) {
+        const card = definitions.getByRole("region", { name: l.name, exact: true });
+        await expect(card).toContainText(l.description);
+        await expect(card).toContainText(`Examples: ${l.examples}`);
+      }
+      await expect(definitions.getByRole("heading", { name: "How a priority is set" })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(definitions).toHaveCount(0);
+      await expect(help).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(help).toHaveCount(0);
       await sidebar(page).getByRole("button", { name: "Help", exact: true }).click();

@@ -10,7 +10,7 @@ Open the one file that matches the change, not the whole map.
 - The store holds the weekly runs from 4 Oct to 8 Nov 2026 (`verify api /runs/latest`).
 - No sign-in, profile or dashboard: one store serves everyone, and the web app only reads it.
 - Browser state lives in the harness browser only, in `localStorage["im.state.v1"]`: start a recipe from a known watchlist, view and Recently viewed with `verify state clear` or `verify state set '<json>'`, and read it back with `verify state show`.
-- A first visit (empty storage) lands on MAS's page in the Personal view, with MAS on the watchlist.
+- A first visit (empty storage) lands on Home in the Personal view, with MAS on the watchlist.
 - Browser: `ab` in these files means `agent-browser --session im-verify` (or `--session $VERIFY_SESSION`), after `verify open ...`. Handles are ARIA roles and names as `ab snapshot -i` prints them.
 
 ## Driving conventions
@@ -44,10 +44,11 @@ Walk top to bottom for a broad regression, or run `pnpm -C web e2e`, which cover
 
 ## Shell
 
-- [sidebar](sidebar.md): Recently viewed, the view's Watchlist, the All links to the list pages, Help and Data sources, and the view switcher.
+- [home](home.md): Home (`/`): the monitoring scope, New developments for the watchlist and the Explore cards.
+- [sidebar](sidebar.md): the brand, Dashboards (Home and the list pages), Recently viewed, the view's Watchlist, Help and Data sources, and the view switcher.
 - [watchlist](watchlist.md): the Personal watchlist and the five function views: first visit, home, Add to watchlist on page heads and list rows, removal, fixed presets, `im.state.v1`, tab sync, blocked storage.
 - [top-bar](top-bar.md): ⌘K search and `Week to <date>`.
-- [help](help.md): Help with the labels and shortcuts, and Data sources.
+- [help](help.md): Help with the labels and shortcuts, Priority definitions, and Data sources.
 
 ## Lists and pages
 

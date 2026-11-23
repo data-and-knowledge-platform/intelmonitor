@@ -10,9 +10,14 @@ export type CloseReason = "escape" | "backdrop";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/** Whether an event belongs to this dialog and not to a dialog opened inside it, whose events
+ *  bubble up the React tree to this one. */
+const own = (e: React.SyntheticEvent<HTMLDialogElement>) =>
+  e.target instanceof Element && e.target.closest("dialog") === e.currentTarget;
+
 /** Tab and Shift+Tab wrap around inside the dialog instead of leaving for the browser's own controls. */
 function wrapTab(e: React.KeyboardEvent<HTMLDialogElement>) {
-  if (e.key !== "Tab" || e.defaultPrevented) return;
+  if (e.key !== "Tab" || e.defaultPrevented || !own(e)) return;
   const items = [...e.currentTarget.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.checkVisibility());
   const first = items[0];
   const last = items.at(-1);
@@ -55,6 +60,7 @@ export function Modal({
       aria-labelledby={labelledBy}
       aria-label={label}
       onCancel={(e) => {
+        if (!own(e)) return;
         e.preventDefault();
         onClose("escape");
       }}

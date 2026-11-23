@@ -1,0 +1,241 @@
+/* Home (components/home/Home.tsx), after the team's design of 23 Nov 2026: the heading, the
+   monitoring scope, New developments as a table, and the two Explore cards. */
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-7);
+  max-width: 1160px;
+  padding: var(--s-5) var(--s-6) var(--s-7);
+}
+.home-head h1 {
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.home-head p,
+.home-lede {
+  margin: var(--s-2) 0 0;
+  max-width: 90ch;
+  color: var(--ink2);
+}
+.home-sec h2 {
+  margin: 0;
+  font-size: var(--fs-hero);
+  line-height: var(--lh-hero);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.home-sec h3 {
+  margin: var(--s-4) 0 var(--s-2);
+  font-size: var(--fs-lead);
+  line-height: var(--lh-lead);
+  font-weight: 600;
+}
+.home-empty {
+  margin: var(--s-2) 0 0;
+  color: var(--ink2);
+}
+
+/* Scope: three count tiles, the watchlist as chips, then the link to the Entities list. */
+.home-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 220px));
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+}
+.home-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-widget);
+  background: var(--new-bg);
+}
+.home-tile-n {
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.home-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.home-more {
+  display: inline-block;
+  margin-top: var(--s-3);
+  color: var(--accent);
+  font-weight: 500;
+}
+.home-more:hover {
+  color: var(--accent-strong);
+}
+
+/* New developments: a row per watchlist subject; a row that needs attention has a red left edge. */
+.home-table {
+  width: 100%;
+  margin-top: var(--s-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-widget);
+  border-spacing: 0;
+  overflow: hidden;
+  background: var(--surface);
+}
+.home-table th {
+  padding: var(--s-2) var(--s-4);
+  background: var(--rail);
+  border-bottom: 1px solid var(--line-strong);
+  text-align: left;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  font-weight: 500;
+  color: var(--ink2);
+}
+.home-table td {
+  padding: var(--s-4);
+  vertical-align: top;
+  border-top: 1px solid var(--line);
+  box-shadow: inset 3px 0 transparent;
+}
+.home-table tbody tr:first-child td {
+  border-top: 0;
+}
+.home-table tr.attn td:first-child {
+  box-shadow: inset 3px 0 var(--attn);
+}
+.home-table th:nth-child(2) {
+  width: 60%;
+}
+.home-dev {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.home-total {
+  font-weight: 500;
+}
+.home-bar {
+  display: flex;
+  height: 16px;
+  border-radius: var(--r-badge);
+  overflow: hidden;
+}
+.home-bar > span {
+  flex-basis: 0;
+}
+/* The bar's colors, with the count dots under it. */
+.home-bar .High,
+.home-counts .lp-dot.High {
+  background: var(--attn);
+}
+.home-bar .Medium,
+.home-counts .lp-dot.Medium {
+  background: oklch(0.83 0.13 85);
+}
+.home-bar .Low,
+.home-counts .lp-dot.Low {
+  background: var(--line-strong);
+}
+.home-counts {
+  display: flex;
+  gap: var(--s-5);
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--ink2);
+}
+.home-counts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.home-counts b {
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.home-headline {
+  color: var(--ink);
+  font-weight: 500;
+}
+.home-headline::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: var(--s-2);
+  border-radius: 50%;
+  background: var(--attn);
+}
+.home-headline:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--line-field);
+}
+.home-topics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-2);
+}
+.home-topics-label,
+.home-topics-more {
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--ink2);
+}
+.home-period {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Explore: two link cards, an icon tile, the title and a line, and a chevron. */
+.home-explore {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+}
+.home-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-5);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-widget);
+  background: var(--surface);
+  color: var(--ink2);
+}
+.home-card:hover {
+  background: var(--hover);
+}
+.home-card > svg {
+  flex: none;
+  margin-left: auto;
+}
+.home-card-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-widget);
+  background: var(--new-bg);
+  color: var(--ink);
+}
+.home-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+.home-card-title {
+  font-size: var(--fs-lead);
+  line-height: var(--lh-lead);
+  font-weight: 600;
+  color: var(--ink);
+}
+.home-table th:first-child {
+  width: 180px;
+}

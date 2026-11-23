@@ -1359,6 +1359,14 @@
             "title": "Outlet Count",
             "description": "Distinct news outlets among its sources, one per parent domain"
           },
+          "outlets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Outlets",
+            "description": "The parent domains of all its sources, the most documents first"
+          },
           "unconfirmed": {
             "type": "boolean",
             "title": "Unconfirmed",
@@ -1481,6 +1489,7 @@
           "source_count",
           "source_types",
           "outlet_count",
+          "outlets",
           "unconfirmed",
           "collections",
           "jurisdictions",
@@ -1772,6 +1781,14 @@
             "title": "Outlet Count",
             "description": "Distinct news outlets among its sources, one per parent domain"
           },
+          "outlets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Outlets",
+            "description": "The parent domains of all its sources, the most documents first"
+          },
           "unconfirmed": {
             "type": "boolean",
             "title": "Unconfirmed",
@@ -1844,6 +1861,7 @@
           "source_count",
           "source_types",
           "outlet_count",
+          "outlets",
           "unconfirmed",
           "collections",
           "jurisdictions",
@@ -1887,6 +1905,11 @@
               "neutral"
             ],
             "title": "Tone"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "The priority rating's one sentence on why; empty when unrated"
           }
         },
         "type": "object",
@@ -1895,7 +1918,8 @@
           "role",
           "priority",
           "adverse",
-          "tone"
+          "tone",
+          "reason"
         ],
         "title": "DirectSubject",
         "description": "A subject the development happened to (affected) or that did it (actor)."
@@ -2753,6 +2777,14 @@
             ],
             "description": "Null when nothing falls in the period"
           },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/SubjectRef"
+            },
+            "type": "array",
+            "title": "Topics",
+            "description": "An entity's topics among its developments in the period, the most developments first; empty for topics"
+          },
           "new": {
             "type": "integer",
             "title": "New",
@@ -2783,6 +2815,7 @@
           "function",
           "counts",
           "top",
+          "topics",
           "new",
           "latest"
         ],
@@ -2831,7 +2864,13 @@
           },
           "description": {
             "type": "string",
-            "title": "Description"
+            "title": "Description",
+            "description": "What the level means, in one sentence"
+          },
+          "examples": {
+            "type": "string",
+            "title": "Examples",
+            "description": "Typical findings at this level, as one list"
           },
           "material": {
             "type": "boolean",
@@ -2853,12 +2892,13 @@
           "level",
           "name",
           "description",
+          "examples",
           "material",
           "needs_attention",
           "developments"
         ],
         "title": "MaterialityLevel",
-        "description": "A materiality level for Help: what it means and how the app treats it."
+        "description": "A materiality level for Help and the priority definitions: what it means and how the app\ntreats it."
       },
       "MonitorPage": {
         "properties": {
@@ -3124,7 +3164,7 @@
             },
             "type": "array",
             "title": "Nodes",
-            "description": "Most developments first, then most harmful, then by name"
+            "description": "Most linked news first, then by name"
           },
           "developments": {
             "items": {
@@ -3189,6 +3229,63 @@
             "type": "string",
             "title": "Label",
             "description": "A few words from the centre: \"holds 100%\", \"24.4% of loans\", \"gets its connectivity from\""
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "description": "The link's evidence in one sentence"
+          },
+          "toward": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Strong",
+                  "Moderate",
+                  "Weak",
+                  "Non-propagating"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toward",
+            "description": "How strongly an event at the node reaches the centre through this link; null for a link with no rating"
+          },
+          "toward_reason": {
+            "type": "string",
+            "title": "Toward Reason"
+          },
+          "away": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Strong",
+                  "Moderate",
+                  "Weak",
+                  "Non-propagating"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Away",
+            "description": "How strongly an event at the centre reaches the node; null when unrated"
+          },
+          "away_reason": {
+            "type": "string",
+            "title": "Away Reason"
+          },
+          "development_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Development Ids",
+            "description": "Shown developments in the window this link carried to the centre, in display order"
           }
         },
         "type": "object",
@@ -3196,7 +3293,13 @@
           "id",
           "type",
           "outbound",
-          "label"
+          "label",
+          "detail",
+          "toward",
+          "toward_reason",
+          "away",
+          "away_reason",
+          "development_ids"
         ],
         "title": "RelatedLink",
         "description": "A stored link between the Related graph's centre and one of its nodes."
@@ -3271,7 +3374,7 @@
           "harmful"
         ],
         "title": "RelatedNode",
-        "description": "An entity linked to the centre, with the developments that reach the centre through it."
+        "description": "An entity linked to the centre, with the developments that reach the centre through it\n(its linked news: each development once, whichever of its links carried it)."
       },
       "RelationshipFigure": {
         "properties": {

@@ -1,20 +1,9 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
-import { functionsOptions, subjectsOptions } from "@/lib/api/queries";
-import { subjectLink } from "@/lib/links";
-import { currentWatchlist, inPersonalView } from "@/lib/viewerState";
+import { Home } from "@/components/home/Home";
 
-// Home opens the alphabetically first entity on the current view's watchlist, else its first topic,
-// else the Entities list; a first visit's watchlist is MAS. It keeps the query, so a development
-// popup opened at `/` stays open. If the subjects cannot load, it opens MAS's page.
+// Home: the current view's watchlist and its week (components/home/Home.tsx). A development popup
+// opened at `/` stays open, as the root route keeps its parameters.
 export const Route = createFileRoute("/")({
-  beforeLoad: async ({ context: { queryClient }, search }) => {
-    const subjects = await queryClient.ensureQueryData(subjectsOptions).catch(() => null);
-    if (!subjects) throw redirect({ to: "/entities/$id", params: { id: "mas" }, search, replace: true });
-    const functions = inPersonalView() ? [] : await queryClient.ensureQueryData(functionsOptions).catch(() => []);
-    const { entities, topics } = currentWatchlist(subjects, functions);
-    const first = entities[0] ?? topics[0];
-    if (first) throw redirect({ ...subjectLink(first), search, replace: true });
-    throw redirect({ to: "/entities", search, replace: true });
-  },
+  component: Home,
 });

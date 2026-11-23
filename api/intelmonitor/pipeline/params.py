@@ -1,5 +1,6 @@
 """Pipeline tuning: models, budgets, prompts and concurrency, all in one place."""
 
+from dataclasses import dataclass
 from datetime import date
 from typing import Literal
 
@@ -88,19 +89,38 @@ def priority_system(entity: str, singapore: str, template: str = PRIORITY_PROMPT
     return text
 
 
-# Slide 7's definition of each level, in the same order, as Help shows them.
-PRIORITY_DEFINITIONS: list[str] = [
-    "Minor: small or expected, such as routine statistics, speeches, FAQs, procedural notices, "
-    "product and promotional news, or a foreign event with little route to Singapore. Trivial: "
-    "routine, promotional, or barely about the subject, with no consequence for it or for "
-    "Singapore.",
-    "Worth knowing: a moderate change for the subject, such as new guidance, a consultation, a "
-    "results update, or a larger event that reaches the subject or Singapore only indirectly; "
-    "or a material event at the subject's head office or another branch that could plausibly "
-    "reach the Singapore branch but has not yet been shown to.",
-    "Significant: a material change for the subject's Singapore branch, whether a threat or an "
-    "opportunity. Critical: severe, urgent or systemic for the Singapore branch or for "
-    "Singapore's financial system, and needs immediate attention.",
+@dataclass(frozen=True)
+class PriorityDefinition:
+    definition: str  # one sentence
+    examples: str  # typical findings at the level, as one list
+
+
+# Each level as Help and the priority definitions show it, by level: slide 7's levels with the
+# price and promotional rules of priority version 8 (trial.py `PRICE_AND_PROMO_RULES`), the
+# version step 9 of the link-types spec switches on. Keep in step with the priority prompt.
+PRIORITY_DEFINITIONS: list[PriorityDefinition] = [
+    PriorityDefinition(
+        "Small, expected or routine news, or news barely about the subject, with no consequence "
+        "for it or for Singapore.",
+        "routine statistics, speeches, FAQs, procedural notices, product launches, awards and "
+        "other promotional news, a price move outside Singapore's markets, or a foreign event "
+        "with little route to Singapore.",
+    ),
+    PriorityDefinition(
+        "Worth knowing: a moderate change for the subject, or a material event at its head "
+        "office or another branch that has not yet been shown to reach Singapore.",
+        "new guidance, a consultation, a results update, a larger event that reaches the subject "
+        "or Singapore only indirectly, or a price move in a Singapore market or a Singapore "
+        "financial institution's shares.",
+    ),
+    PriorityDefinition(
+        "A material change for the subject's Singapore unit or for Singapore's financial "
+        "system, whether a threat or an opportunity, or anything severe, urgent or systemic "
+        "there.",
+        "an incident, an enforcement action, a loss or failure at the subject, a binding "
+        "decision that changes what it must do, a major deal, or a market shock it is exposed "
+        "to. A price move alone is never High.",
+    ),
 ]
 # Needs attention is High; Watch and "material" start at Medium.
 NEEDS_ATTENTION_LEVEL = 2

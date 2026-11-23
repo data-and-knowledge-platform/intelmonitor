@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from functools import cached_property
 
-from intelmonitor.pipeline.corroboration import corroboration
+from intelmonitor.pipeline.corroboration import corroboration, outlet
 from intelmonitor.pipeline.extract import TONE_ORDER, Tone
 from intelmonitor.pipeline.params import (
     JURISDICTION_THRESHOLD,
@@ -288,6 +288,7 @@ def load_developments(conn: sqlite3.Connection, run: RunRef) -> RunDevelopments:
             also_affects=[subject_ref(s) for s in indirect.get(r["id"], []) if s not in direct],
             source_count=len(docs),
             outlet_count=backing.outlets,
+            outlets=[d for d, _ in Counter(outlet(d) for _, d in docs.values()).most_common()],
             unconfirmed=not backing.shown,
             source_types=[
                 SourceTypeCount(collection=c, count=per_type[c])

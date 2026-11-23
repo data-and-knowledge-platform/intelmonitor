@@ -4,13 +4,13 @@ A view decides which watchlist the sidebar shows.
 The Personal view's watchlist is the viewer's own: it starts as MAS, changes through Add to watchlist on a page head and the bookmark on a list row, and an emptied one stays empty.
 Each of the five function views (Financial Supervision, FinTech & Technology, Markets & Financial Sector Development, Economic Policy, Cross-cutting Functions) shows a fixed preset from `GET /functions`, with MAS in every one.
 Add to watchlist always changes the Personal watchlist, whatever the view.
-Home (`/`) opens the alphabetically first entity on the current view's watchlist, else its first topic, else the Entities list; a first visit lands on MAS.
+Home (`/`) shows the current view's watchlist and its week ([home](home.md)); a first visit's watchlist is MAS.
 All of it lives in this browser only, in one key, `localStorage["im.state.v1"]` (`web/lib/viewerState.ts`), with the fields `watchlist`, `recent` and `view`, each written only once the viewer acts; nothing reaches the server.
 
 ## Sub-features
 
 - `first-visit`: empty storage, `/` lands on `/entities/mas` in the Personal view with MAS on the watchlist and in Recently viewed; storage then holds `{"recent":["mas"]}` only.
-- `home`: `/` follows the current watchlist (first entity by name, else first topic, else `/entities`), and keeps its query, so `/?development=<id>` opens the popup over that page.
+- `home`: `/` lists the current watchlist's week ([home](home.md)) and keeps its query, so `/?development=<id>` opens the popup over Home.
 - `add-head`: an entity or topic page's head has `button "Add to watchlist"`; once on, it reads `On watchlist` (in a function view, `On Personal watchlist`) and `Remove from watchlist` on hover, and a click removes it. Right after a click the label holds until the pointer leaves the button once, and the button keeps one width through all its labels.
 - `add-row`: each list row has `button "Add <name> to watchlist"` (tooltip `Add to watchlist`), then `button "Remove <name> from watchlist"` (tooltip `On watchlist`, or `On Personal watchlist` in a function view), `aria-pressed` following.
 - `remove`: the sidebar's x on a Personal entry ([sidebar](sidebar.md)); removing MAS keeps it out after a reload.
@@ -32,11 +32,11 @@ Preconditions:
 - `pnpm -C web verify doctor` is ok.
 - Start from a known state: `pnpm -C web verify state clear` (a first visit) or `pnpm -C web verify state set '{"watchlist":["mas","dbs"],"view":"personal"}'`; both end on the Entities list.
 
-- **First visit.** `verify state clear`, `verify open home`: the URL is `/entities/mas`, `button "View: Personal"`, Watchlist `MAS`. `verify state show` reads `{"recent":["mas"]}`.
+- **First visit.** `verify state clear`, `verify open home`: the URL is `/`, `button "View: Personal"`, Watchlist `MAS`, and Home's New developments has one row, MAS. `verify state show` reads nothing stored.
 - **Add from a head.** `verify open page dbs`, click `button "Add to watchlist"`: it reads `On watchlist`, still under the pointer; move the mouse off, then `ab hover` it to read `Remove from watchlist`. The sidebar Watchlist reads DBS, MAS and `verify state show` has `"watchlist":["mas","dbs"]`.
 - **Add from a row.** `verify open entities`, click `button "Add OCBC to watchlist"`: the button becomes `Remove OCBC from watchlist` with `aria-pressed=true`; on `verify open topics`, `Add Banking & Lending to watchlist` adds a topic under the hairline.
-- **Home.** With `watchlist` `["mas","dbs"]`, `verify open home` lands on `/entities/dbs`; with `[]`, on `/entities`.
-- **Function view.** Pick `Financial Supervision` in the switcher: the Watchlist is the preset from `verify api /functions`, locked, and home opens DBS. `verify open page sgx`, click `Add to watchlist`: it reads `On Personal watchlist` and the preset does not change; switching back to Personal shows SGX on the Personal watchlist. A reload keeps the view.
+- **Home.** With `watchlist` `["mas","dbs"]`, `verify open home` lists DBS and MAS in New developments; with `[]`, it says `Your watchlist is empty.`
+- **Function view.** Pick `Financial Supervision` in the switcher: the Watchlist is the preset from `verify api /functions`, locked, and Home lists the preset's subjects. `verify open page sgx`, click `Add to watchlist`: it reads `On Personal watchlist` and the preset does not change; switching back to Personal shows SGX on the Personal watchlist. A reload keeps the view.
 - **Two tabs.** `ab tab new <url>` opens a second tab in the same session; an add, a removal or a view change in one shows in the other without a reload. `ab tab t1` returns.
 - **Bad stored state.** `verify state set '{"watchlist":["cyber-threats","banking","dbs"],"recent":42,"view":"no-such-view"}'`: the Watchlist shows DBS only, Recently viewed is empty (on the Entities list, which records nothing), the view is Personal. Adding OCBC stores `"watchlist":["dbs","ocbc"]`.
 - **Blocked storage.** A separate session with an init script whose `Storage.prototype.setItem` throws for `localStorage`: `agent-browser --session im-blocked --init-script <file> open <url>`. The first watchlist change shows the notice once; a reload starts from the defaults.

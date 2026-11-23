@@ -389,6 +389,30 @@ textarea.input {
   background: var(--rail);
   color: var(--ink2);
 }
+/* A chip: an entity, topic or sector name as a small tinted tag, often a link to its page. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 var(--s-2);
+  border-radius: var(--r-badge);
+  background: var(--new-bg);
+  color: var(--ink);
+  font: 500 var(--fs-meta) / var(--lh-meta) var(--font);
+}
+a.chip:hover {
+  background: var(--hover);
+}
+.chip-sm {
+  min-height: 20px;
+  padding: 0 6px;
+  background: var(--rail);
+  color: var(--ink2);
+  font-weight: 400;
+}
+.chip-sector {
+  background: var(--rail);
+}
 .stat {
   width: var(--stat);
   flex: none;
