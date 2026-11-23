@@ -12,13 +12,16 @@ import tempfile
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import boto3
 from botocore.exceptions import ClientError
-from mypy_boto3_s3 import S3Client
 from pydantic import BaseModel
 
 from intelmonitor.config import get_settings
+
+if TYPE_CHECKING:  # the stubs are a dev dependency, absent from the image
+    from mypy_boto3_s3 import S3Client
 
 LATEST = "latest.json"
 PREFIX = "stores/"
@@ -39,7 +42,7 @@ class Latest(BaseModel):
 class Bucket:
     """The bucket named by the STORE_* settings."""
 
-    def __init__(self, client: S3Client, name: str) -> None:
+    def __init__(self, client: "S3Client", name: str) -> None:
         self.client = client
         self.name = name
 
