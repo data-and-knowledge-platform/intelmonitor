@@ -18,7 +18,7 @@ import atexit
 import json
 import sqlite3
 from collections import Counter
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from functools import lru_cache
@@ -53,6 +53,7 @@ from intelmonitor.pipeline.subjects import (
     priority_subjects,
     resolve_groups,
 )
+from intelmonitor.relationships import RelType
 from intelmonitor.seed import SubjectType, load_detectors
 from intelmonitor.store import search
 
@@ -479,6 +480,28 @@ async def rate(inf: Inference, dev: Development) -> None:
                 f"{names[top].name}: {dev.subjects[top].priority_reason}",
             )
         apply_rule(topics)
+
+
+@dataclass(frozen=True)
+class DirectEntity:
+    """A direct entity at Medium or High as the link_types call reads it: its id and name, and
+    its priority level and reason."""
+
+    id: str
+    name: str
+    level: int  # 1 Medium or 2 High
+    reason: str
+
+
+async def select_link_types(
+    inf: Inference,
+    dev: Development,
+    entities: Sequence[DirectEntity],
+    *,
+    effort: EffortLevel | None = None,
+) -> dict[str, list[RelType]] | None:
+    """The relationship types the development activates for each entity; not built yet."""
+    raise NotImplementedError("the link_types stage is not built")
 
 
 @dataclass
