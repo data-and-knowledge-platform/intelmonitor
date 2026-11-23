@@ -212,8 +212,10 @@ def impact_lines(conn: sqlite3.Connection, run_id: str, impact: ImpactStats) -> 
     and paths, in total and for INDIRECT_REPORTED, over every development and over the shown ones
     (those the source gate passes, the only ones a page shows); the stored setting's paths that are
     not best; its inferred High rows, every one; then up to INDIRECT_SAMPLES rows that flipping
-    each switch adds or removes, one per development. A subject no longer in the seed shows by
-    its id."""
+    each switch adds or removes, one per development. With no entity at Low asked for its types
+    (the link_types stage asks Medium and High only), the Low row's counts and samples would equal
+    those without it by construction, so it says they are not counted instead. A subject no longer
+    in the seed shows by its id."""
     subjects = monitored_subjects()
     shown = shown_developments(conn, run_id)
     titles = {
@@ -247,11 +249,18 @@ def impact_lines(conn: sqlite3.Connection, run_id: str, impact: ImpactStats) -> 
             f"{r.relationship.type} ({r.strength}): {dev_id} {titles[dev_id][:90]}{gate}"
         )
 
+    uncounted = "not counted, no entity at Low has its types (link_types asks Medium and High)"
+
+    def measured(s: Setting) -> bool:
+        return not s.from_low or impact.low_asked > 0
+
     lines: list[str] = []
     for only_shown in (False, True):
         scope = "shown developments only" if only_shown else "all developments"
         lines.append(f"inferred rows, entities reached/paths, {scope}:")
-        lines += [f"  {label(s)}: {counts(s, only_shown)}" for s in SETTINGS]
+        lines += [
+            f"  {label(s)}: {counts(s, only_shown) if measured(s) else uncounted}" for s in SETTINGS
+        ]
     stored = impact.stored
     lines.append(f"paths not best: {sum(not r.best for _, r in stored)}")
     high = [(d, r) for d, r in stored if r.best and r.level == NEEDS_ATTENTION_LEVEL]
@@ -266,6 +275,9 @@ def impact_lines(conn: sqlite3.Connection, run_id: str, impact: ImpactStats) -> 
         ),
     ]
     for words, fewer, more in flips:
+        if not (measured(fewer) and measured(more)):
+            lines.append(f"  {words}: {uncounted}")
+            continue
         kept = {(d, r.subject_id) for d, r in impact.paths[fewer] if r.best}
         seen: set[str] = set()
         for d, r in impact.paths[more]:

@@ -19,7 +19,9 @@ Every way the rules could fail, and the cases that catch it:
 - several valid paths to one entity: a path is dropped, paths are added together or raise each
   other, or the best is not one path chosen by level, then strength, then share (a link with no
   share loses to one with a share), then link id, then source id (`three-paths`,
-  `two-medium-paths`, `several-links-*`, `several-sources-*`);
+  `two-medium-paths`, `several-links-*`, `several-sources-*`: one case for each tie-break, each
+  with the later keys pointing the other way; two members of a region reaching one lender through
+  its one region figure differ only by source id);
 - an entity named on the development gets a row (`named-no-row`);
 - the adverse switch: with INDIRECT_ADVERSE_ONLY off a development not adverse for the named
   entity passes at its level, with it on it passes nothing, and one entity's flag never leaks to
@@ -35,7 +37,9 @@ Every way the rules could fail, and the cases that catch it:
 - a topic passes something (`topic-*`);
 - the run step reads the wrong level, adverse flag or types from development_subjects, stores
   the wrong rows, a wrong best flag or no reason, touches another run's rows, counts the four
-  switch settings wrongly, or sets or clears the run's impacts_recomputed mark wrongly (`store`).
+  switch settings wrongly, miscounts the entities at Low whose types were asked (with none, the
+  Low row's counts equal the counts without it and the run says it cannot count them), or sets
+  or clears the run's impacts_recomputed mark wrongly (`store`).
 
 `uv run python -m intelmonitor.eval impact` runs them and writes impact_cases.json in the eval
 directory."""
@@ -355,20 +359,69 @@ CASES: list[Case] = [
         "stronger link",
     ),
     Case(
-        id="several-sources-source-id",
+        id="several-sources-strength-before-share",
         links=[
-            link("dbs", "material_customer_of", "singtel", "Weak", "Strong"),
-            link("dbs", "material_customer_of", "hong-kong", "Weak", "Strong"),
+            link("dbs", "material_customer_of", "singtel", "Weak", "Strong", weight=0.05),
+            link("dbs", "exposed_to", "hong-kong", "Weak", "Moderate", weight=0.3),
         ],
         tagged={
             "singtel": adverse(MEDIUM, "material_customer_of"),
-            "hong-kong": adverse(MEDIUM, "material_customer_of"),
+            "hong-kong": adverse(HIGH, "exposed_to"),
         },
         expected=[
-            Expect("dbs", "Medium", "hong-kong", "dbs:material_customer_of:hong-kong", "Strong"),
-            Expect("dbs", "Medium", "singtel", DBS_SINGTEL, "Strong", best=False),
+            Expect("dbs", "Medium", "singtel", "dbs:material_customer_of:singtel", "Strong"),
+            Expect("dbs", "Medium", "hong-kong", "dbs:exposed_to:hong-kong", "Moderate", False),
         ],
-        reason="Equal level, strength and no share: the first link id is best",
+        reason="Medium by Strong and High by Moderate both give Medium: the Strong link is best, "
+        "though Hong Kong's has the larger share, the first link id and the first source id",
+    ),
+    Case(
+        id="several-sources-link-id-before-source-id",
+        links=[
+            link("dbs", "material_customer_of", "hong-kong", "Weak", "Strong"),
+            link("dbs", "distributes_products_for", "singtel", "Weak", "Strong"),
+        ],
+        tagged={
+            "hong-kong": adverse(MEDIUM, "material_customer_of"),
+            "singtel": adverse(MEDIUM, "distributes_products_for"),
+        },
+        expected=[
+            Expect("dbs", "Medium", "singtel", "dbs:distributes_products_for:singtel", "Strong"),
+            Expect(
+                "dbs", "Medium", "hong-kong", "dbs:material_customer_of:hong-kong", "Strong", False
+            ),
+        ],
+        reason="Equal level, strength and no share: Singtel's link id is first, so it is best, "
+        "though Hong Kong's source id is first",
+    ),
+    Case(
+        id="several-sources-source-id",
+        links=[link("uob", "exposed_to", "greater-china", "Weak", "Strong", weight=0.135)],
+        tagged={
+            "taiwan": adverse(MEDIUM, "exposed_to"),
+            "hong-kong": adverse(MEDIUM, "exposed_to"),
+        },
+        expected=[
+            Expect(
+                "uob",
+                "Medium",
+                "hong-kong",
+                "uob:exposed_to:greater-china",
+                "Strong",
+                region="greater-china",
+            ),
+            Expect(
+                "uob",
+                "Medium",
+                "taiwan",
+                "uob:exposed_to:greater-china",
+                "Strong",
+                best=False,
+                region="greater-china",
+            ),
+        ],
+        reason="Two members of Greater China reach UOB through its one region figure: two paths "
+        "on the same link, so the first source id, Hong Kong, is best",
     ),
     Case(
         id="named-no-row",
@@ -609,7 +662,9 @@ def check_store() -> list[str]:
         ("dev-a", "singtel", HIGH, 1, customer),
         # dev-b: Taiwan Medium and adverse reaches OCBC as Low through the region figure
         ("dev-b", "taiwan", MEDIUM, 1, json.dumps(["exposed_to"])),
-        # dev-c: Singtel Low reaches DBS as Low only with INDIRECT_FROM_LOW on
+        # dev-c: Singtel Low reaches DBS as Low only with INDIRECT_FROM_LOW on. Its types are as
+        # the link_types stage would give them once it asks entities at Low; today it asks only
+        # Medium and High, so a run's Low row can only be counted where a Low entity has types.
         ("dev-c", "singtel", LOW, 1, customer),
         # dev-d: Singtel High, not adverse: DBS and UOB unless INDIRECT_ADVERSE_ONLY is on
         ("dev-d", "singtel", HIGH, 0, customer),
@@ -666,6 +721,8 @@ def check_store() -> list[str]:
     counts = {s: len(rows) for s, rows in stats.paths.items()}
     if counts != STORE_COUNTS:
         problems.append(f"counts {counts}, expected {STORE_COUNTS}")
+    if stats.low_asked != 1:
+        problems.append(f"{stats.low_asked} entities at Low with types, expected 1 (dev-c)")
     marks = dict(conn.execute("SELECT id, impacts_recomputed FROM runs").fetchall())
     if marks != {"case": STORED_AT, "other": None}:
         problems.append(f"marks {marks}, expected case set and other unset")

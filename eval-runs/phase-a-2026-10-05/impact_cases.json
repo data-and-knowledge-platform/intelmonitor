@@ -555,15 +555,15 @@
     "reason": "Low by Strong gives Low; High by Moderate gives Medium, which is best over the stronger link"
   },
   {
-    "id": "several-sources-source-id",
+    "id": "several-sources-strength-before-share",
     "ok": true,
     "problems": [],
     "rows": [
       {
         "subject": "dbs",
         "level": "Medium",
-        "source": "hong-kong",
-        "link": "dbs:material_customer_of:hong-kong",
+        "source": "singtel",
+        "link": "dbs:material_customer_of:singtel",
         "strength": "Strong",
         "best": true,
         "region": null
@@ -571,14 +571,66 @@
       {
         "subject": "dbs",
         "level": "Medium",
+        "source": "hong-kong",
+        "link": "dbs:exposed_to:hong-kong",
+        "strength": "Moderate",
+        "best": false,
+        "region": null
+      }
+    ],
+    "reason": "Medium by Strong and High by Moderate both give Medium: the Strong link is best, though Hong Kong's has the larger share, the first link id and the first source id"
+  },
+  {
+    "id": "several-sources-link-id-before-source-id",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "Medium",
         "source": "singtel",
-        "link": "dbs:material_customer_of:singtel",
+        "link": "dbs:distributes_products_for:singtel",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      },
+      {
+        "subject": "dbs",
+        "level": "Medium",
+        "source": "hong-kong",
+        "link": "dbs:material_customer_of:hong-kong",
         "strength": "Strong",
         "best": false,
         "region": null
       }
     ],
-    "reason": "Equal level, strength and no share: the first link id is best"
+    "reason": "Equal level, strength and no share: Singtel's link id is first, so it is best, though Hong Kong's source id is first"
+  },
+  {
+    "id": "several-sources-source-id",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "uob",
+        "level": "Medium",
+        "source": "hong-kong",
+        "link": "uob:exposed_to:greater-china",
+        "strength": "Strong",
+        "best": true,
+        "region": "greater-china"
+      },
+      {
+        "subject": "uob",
+        "level": "Medium",
+        "source": "taiwan",
+        "link": "uob:exposed_to:greater-china",
+        "strength": "Strong",
+        "best": false,
+        "region": "greater-china"
+      }
+    ],
+    "reason": "Two members of Greater China reach UOB through its one region figure: two paths on the same link, so the first source id, Hong Kong, is best"
   },
   {
     "id": "named-no-row",

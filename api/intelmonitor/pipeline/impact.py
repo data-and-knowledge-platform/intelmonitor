@@ -427,9 +427,12 @@ def reached(
 @dataclass
 class ImpactStats:
     """What store_impacts found in a run: every path under each setting, with its development's
-    id. The run stores those of STORED."""
+    id, and how many named entities at Low have their types asked. The run stores the paths of
+    STORED. The link_types stage asks only entities at Medium or High, so with none at Low the
+    Low row's paths equal those without it by construction, and its effect is not measured."""
 
     paths: dict[Setting, list[tuple[str, Reached]]]
+    low_asked: int = 0
 
     @property
     def stored(self) -> list[tuple[str, Reached]]:
@@ -462,6 +465,7 @@ def store_impacts(
     known: dict[str, list[Reach]] = {}
     stats = ImpactStats(paths={s: [] for s in SETTINGS})
     for dev_id, tagged in _tags(conn, run_id).items():
+        stats.low_asked += sum(t.level == 0 and t.types is not None for t in tagged.values())
         for s in SETTINGS:
             found = reached(
                 conn, tagged, from_low=s.from_low, adverse_only=s.adverse_only, links=known
