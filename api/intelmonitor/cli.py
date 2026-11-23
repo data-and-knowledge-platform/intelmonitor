@@ -451,8 +451,9 @@ def prompts_compare(
     store: StoreOption = None,
 ) -> None:
     """Compare two versions on the pairs both rated, from the store opened read-only with no
-    migration and its seed as rated: write the count table of level under a against level under
-    b and, per run, the pairs that moved; print the table, the hand-set cases under each, and the
+    migration and its seed as rated: write each version's pairs by level, the two prompts and,
+    per run, the pairs that moved with their headlines and sources; print the table of level under
+    a against level under b, the hand-set cases under each, and the
     pairs version 1 rated whose record is not found. Calls no model."""
     from contextlib import closing
 
@@ -466,7 +467,7 @@ def prompts_compare(
             c = compare(conn, stage, a, b)
         except LookupError as error:
             raise typer.BadParameter(str(error)) from error
-    counts = compare_workbook(c, Path(out))
+        counts = compare_workbook(conn, c, Path(out))
     for row in count_table(c):
         typer.echo("".join(f"{v!s:>10}" for v in row))
     for case, outcome_a, outcome_b, detail_a, detail_b in c.cases:
