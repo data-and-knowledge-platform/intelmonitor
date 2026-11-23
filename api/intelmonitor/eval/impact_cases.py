@@ -27,8 +27,15 @@ Every way the rules could fail, and the cases that catch it:
   its one region figure differ only by source id);
 - an entity named on the development gets a row (`named-no-row`);
 - the adverse switch: with INDIRECT_ADVERSE_ONLY off a development not adverse for the named
-  entity passes at its level, with it on it passes nothing, and one entity's flag never leaks to
-  another (`adverse-*`);
+  entity passes at its level, with it on (as decided, P6, 23 Nov 2026) it passes nothing, and one
+  entity's flag never leaks to another (`adverse-*`);
+- a hub (a country, region, regulator, central bank, agency or international body; HUB_KINDS)
+  passes its news down a member link to what operates in it, is regulated by it, is listed on it
+  or is a member of it, directly or through a region that covers it, or to an entity whose home
+  it is; or the hub rules overreach: they block a firm's own news to its regulator or country, a
+  country's news to a foreign lender through exposed_to, a hub's member link where the hub is the
+  member, an exchange's outage to what is listed on it, or a parent's news to its subsidiary
+  (`hub-*`, decided 23 Nov 2026);
 - the Low switch: a Low direct item passes nothing with INDIRECT_FROM_LOW off, and only Strong to
   Low with it on (`cell-*`, `low-*`);
 - anything reaches two hops (`two-hops`);
@@ -72,6 +79,7 @@ from intelmonitor.pipeline.developments import (
     link_types_prompt,
 )
 from intelmonitor.pipeline.impact import (
+    STORED,
     Reached,
     Setting,
     Tagged,
@@ -149,6 +157,11 @@ class Expect:
     region: str | None = None
 
 
+# The switches as decided: the adverse gate on (P6, 23 Nov 2026), the Low row off (P7). A case
+# runs under them unless it names another setting.
+DECIDED = Setting(adverse_only=True, from_low=False)
+
+
 @dataclass(frozen=True)
 class Case:
     id: str
@@ -156,7 +169,7 @@ class Case:
     tagged: dict[str, Tagged]
     # Every path found must be listed, and nothing else.
     expected: list[Expect]
-    setting: Setting = Setting(adverse_only=False, from_low=False)
+    setting: Setting = DECIDED
     reason: str = ""
 
 
@@ -178,8 +191,11 @@ def unasked(level: int) -> Tagged:
 DBS_SINGTEL = "dbs:material_customer_of:singtel"
 SINGTEL_DBS = "singtel:provides_connectivity_to:dbs"
 BENEFITS = "dbs:provides_customer_benefits_with:singtel"
-LOW_ON = Setting(adverse_only=False, from_low=True)
+# The Low row on with the adverse gate as decided (on since 23 Nov 2026; every Low case's tag is
+# adverse, so the gate does not change what it finds).
+LOW_ON = DECIDED._replace(from_low=True)
 ADVERSE_ON = Setting(adverse_only=True, from_low=False)
+ADVERSE_OFF = Setting(adverse_only=False, from_low=False)
 
 
 def cells() -> list[Case]:
@@ -205,7 +221,9 @@ def cells() -> list[Case]:
                         links=[link("dbs", "material_customer_of", "singtel", "Weak", strength)],
                         tagged={"singtel": adverse(direct, "material_customer_of")},
                         expected=expected,
-                        setting=Setting(adverse_only=False, from_low=from_low),
+                        # The adverse gate as decided (on since 23 Nov 2026); the tag is adverse,
+                        # so it does not change the cell.
+                        setting=DECIDED._replace(from_low=from_low),
                         reason=f"{PRIORITY_LABELS[direct]} by {strength} gives "
                         f"{PRIORITY_LABELS[level] if level is not None else 'nothing'}",
                     )
@@ -489,8 +507,20 @@ CASES: list[Case] = [
         links=[link("singtel", "provides_connectivity_to", "dbs", "Strong", "Weak")],
         tagged={"singtel": calm(HIGH, "provides_connectivity_to")},
         expected=[Expect("dbs", "High", "singtel", SINGTEL_DBS, "Strong")],
+        # Names the off setting since the gate is on by default (P6, 23 Nov 2026); the case still
+        # pins what the switch does when off.
+        setting=ADVERSE_OFF,
         reason="With INDIRECT_ADVERSE_ONLY off, a High development not adverse for Singtel "
         "passes at its level",
+    ),
+    Case(
+        id="adverse-default-blocks",
+        links=[link("singtel", "provides_connectivity_to", "dbs", "Strong", "Weak")],
+        tagged={"singtel": calm(HIGH, "provides_connectivity_to")},
+        expected=[],
+        setting=STORED,
+        reason="As decided (P6, 23 Nov 2026), the stored setting passes only developments "
+        "adverse for the named entity",
     ),
     Case(
         id="adverse-on-blocks",
@@ -617,6 +647,113 @@ CASES: list[Case] = [
         expected=[],
         reason="A topic is not asked and has no links",
     ),
+    # The hub rules, decided 23 Nov 2026: class-wide country and regulator news does not pass.
+    Case(
+        id="hub-country-operates-in",
+        links=[link("dbs", "operates_in", "hong-kong", "Strong", "Strong")],
+        tagged={"hong-kong": adverse(HIGH, "operates_in")},
+        expected=[],
+        reason="Hong Kong's news does not reach DBS through DBS operating in Hong Kong",
+    ),
+    Case(
+        id="hub-regulator-regulated-by",
+        links=[
+            link("dbs", "regulated_by", "mas", "Strong", "Strong"),
+            link("barclays", "regulated_by", "uk-fca", "Strong", "Strong"),
+        ],
+        tagged={
+            "mas": adverse(HIGH, "regulated_by"),
+            "uk-fca": adverse(HIGH, "regulated_by"),
+        },
+        expected=[],
+        reason="Neither MAS (a central bank) nor the FCA (a regulator) passes its news to a firm "
+        "it regulates",
+    ),
+    Case(
+        id="hub-firm-to-regulator",
+        links=[link("dbs", "regulated_by", "mas", "Strong", "Strong")],
+        tagged={"dbs": adverse(HIGH, "regulated_by")},
+        expected=[Expect("mas", "High", "dbs", "dbs:regulated_by:mas", "Strong")],
+        reason="DBS's own news still reaches MAS through regulated_by, read at from_to",
+    ),
+    Case(
+        id="hub-firm-to-country",
+        links=[link("dbs", "operates_in", "hong-kong", "Moderate", "Strong")],
+        tagged={"dbs": adverse(HIGH, "operates_in")},
+        expected=[Expect("hong-kong", "Medium", "dbs", "dbs:operates_in:hong-kong", "Moderate")],
+        reason="DBS's own news still reaches Hong Kong through operates_in, read at from_to",
+    ),
+    Case(
+        id="hub-foreign-lender",
+        links=[link("dbs", "exposed_to", "hong-kong", "Weak", "Strong", weight=0.122)],
+        tagged={"hong-kong": adverse(HIGH, "exposed_to")},
+        expected=[Expect("dbs", "High", "hong-kong", "dbs:exposed_to:hong-kong", "Strong")],
+        reason="Hong Kong's news reaches DBS, whose home is Singapore, through its Hong Kong loans",
+    ),
+    Case(
+        id="hub-home-lender",
+        links=[
+            link("dbs", "exposed_to", "singapore", "Weak", "Strong", weight=0.5),
+            link("hsbc", "exposed_to", "singapore", "Weak", "Strong", weight=0.05),
+        ],
+        tagged={"singapore": adverse(HIGH, "exposed_to")},
+        expected=[Expect("hsbc", "High", "singapore", "hsbc:exposed_to:singapore", "Strong")],
+        reason="Singapore's news does not reach DBS, whose home it is, through its Singapore "
+        "loans; it reaches HSBC, whose home is the United Kingdom",
+    ),
+    Case(
+        id="hub-region-member-type",
+        links=[link("dbs", "operates_in", "greater-china", "Strong", "Strong")],
+        tagged={"hong-kong": adverse(HIGH, "operates_in")},
+        expected=[],
+        reason="Hong Kong's news does not reach DBS through DBS operating in Greater China, a "
+        "region that covers Hong Kong",
+    ),
+    Case(
+        id="hub-region-home",
+        links=[
+            link("bank-of-china", "exposed_to", "greater-china", "Weak", "Strong", weight=0.8),
+            link("dbs", "exposed_to", "greater-china", "Weak", "Strong", weight=0.2),
+        ],
+        tagged={"mainland-china": adverse(HIGH, "exposed_to")},
+        expected=[
+            Expect(
+                "dbs",
+                "High",
+                "mainland-china",
+                "dbs:exposed_to:greater-china",
+                "Strong",
+                region="greater-china",
+            )
+        ],
+        reason="Mainland China's news reaches DBS through its Greater China figure, but not Bank "
+        "of China, whose home it is",
+    ),
+    Case(
+        id="hub-member-from-end",
+        links=[link("singapore", "member_of", "asean", "Strong", "Weak")],
+        tagged={"singapore": adverse(HIGH, "member_of")},
+        expected=[Expect("asean", "High", "singapore", "singapore:member_of:asean", "Strong")],
+        reason="A hub that is itself the member passes along member_of, though ASEAN is a region "
+        "that covers Singapore",
+    ),
+    Case(
+        id="hub-exchange-listed-on",
+        links=[link("dbs", "listed_on", "sgx", "Weak", "Strong")],
+        tagged={"sgx": adverse(HIGH, "listed_on")},
+        expected=[Expect("dbs", "High", "sgx", "dbs:listed_on:sgx", "Strong")],
+        reason="SGX is market infrastructure, not a hub: its outage still reaches DBS, listed on "
+        "it",
+    ),
+    Case(
+        id="hub-parent-subsidiary",
+        links=[link("ocbc", "holds_stake_in", "great-eastern", "Strong", "Weak", weight=0.88)],
+        tagged={"ocbc": adverse(HIGH, "holds_stake_in")},
+        expected=[
+            Expect("great-eastern", "High", "ocbc", "ocbc:holds_stake_in:great-eastern", "Strong")
+        ],
+        reason="OCBC's own news still reaches Great Eastern through its stake",
+    ),
 ]
 
 
@@ -695,10 +832,11 @@ STORED_AT = "2026-11-23T00:00:00+00:00"
 
 def check_store() -> list[str]:
     """store_impacts on a run of five developments: it reads each named entity's level, adverse
-    flag and activated types from development_subjects, stores every path of the default setting
-    with its best flag and reason, leaves another run's rows alone, counts the four settings, and
-    sets the run's impacts_recomputed mark when given one and clears it when not, and counts the
-    entities at Medium or High with their types and with none asked, topics apart."""
+    flag and activated types from development_subjects, stores every path of the decided setting
+    (the adverse gate on) with its best flag and reason, leaves another run's rows alone, counts
+    the four settings, sets the run's impacts_recomputed mark when given one and clears it when
+    not, and counts the entities at Medium or High with their types and with none asked, topics
+    apart."""
     links = [
         link("dbs", "material_customer_of", "singtel", "Weak", "Strong"),
         link("uob", "material_customer_of", "singtel", "Weak", "Weak"),
@@ -754,8 +892,8 @@ def check_store() -> list[str]:
         ("dev-a", "dbs", "singtel", DBS_SINGTEL, None, "Strong", HIGH, 1),
         ("dev-a", "uob", "singtel", uob, None, "Weak", LOW, 1),
         ("dev-b", "ocbc", "taiwan", region, "greater-china", "Moderate", LOW, 1),
-        ("dev-d", "dbs", "singtel", DBS_SINGTEL, None, "Strong", HIGH, 1),
-        ("dev-d", "uob", "singtel", uob, None, "Weak", LOW, 1),
+        # No dev-d row: the stored setting has the adverse gate on (P6, 23 Nov 2026), so a
+        # development not adverse for Singtel is counted under the gate off but not stored.
     }
     problems: list[str] = []
     if stored != want:
