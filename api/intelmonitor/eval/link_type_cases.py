@@ -11,6 +11,16 @@ The engine, maintenance and KrisFlyer examples are about Singapore Airlines and 
 which are not seed entities; the stage reads an entity's name from the call, so a case may name
 any entity.
 
+OUR_CASES are ours, not from the deck's page 9 (added 23 Nov 2026, after the step 8 preview made
+hundreds of firms High through a country's operates_in or a regulator's regulated_by). Each has a
+direct entity that is itself a jurisdiction, regulator or exchange, with the wording of a real
+development of the 8 Nov run: one finding's statement, its source's title and quote, and the
+entity's level and priority reason. A structural type is activated for such an entity only when
+the finding is a measure, condition or disruption of it that bears on the firms operating in it,
+regulated by it or listed on it as a class; not when the finding is about one firm, or a local
+event that only happened there. These cases name what must not be picked (`must_not`) and may
+require one of several types (`one_of`); the other types are free.
+
 The cases run through the stage's own call (`select_link_types`), one Claude call each, in their
 own store, eval-runs/.../db/link_types.db, so the app's store is never touched and a repeat run
 replays the recorded calls: `uv run python -m intelmonitor.eval link-types [medium|high]`, at the
@@ -31,7 +41,7 @@ from intelmonitor.pipeline.developments import (
 )
 from intelmonitor.pipeline.extract import FindingRole
 from intelmonitor.pipeline.inference import Inference
-from intelmonitor.relationships import REL_TYPES, RelType
+from intelmonitor.relationships import LINK_TYPES, REL_TYPES, RelType
 from intelmonitor.store.db import connect
 
 STORE = EVAL_DIR / "db" / "link_types.db"
@@ -39,7 +49,7 @@ STORE = EVAL_DIR / "db" / "link_types.db"
 
 class LinkTypeCase(BaseModel):
     id: str
-    example: str = Field(description="The deck's finding, page 9")
+    example: str | None = Field(description="The deck's finding, page 9; None for our cases")
     entity: DirectEntity
     title: str
     statement: str
@@ -48,9 +58,19 @@ class LinkTypeCase(BaseModel):
     may: list[RelType] = Field(
         default=[], description="Types the deck says the finding potentially activates"
     )
+    one_of: list[RelType] = Field(
+        default=[], description="Our cases: at least one of these must be picked"
+    )
+    must_not: list[RelType] | None = Field(
+        default=None,
+        description="Our cases: the types that must not be picked; None for the deck's",
+    )
 
     def forbidden(self) -> list[RelType]:
-        """The types the call must not pick: every type the deck's row does not name."""
+        """The types the call must not pick: `must_not`, or for the deck's cases every type the
+        row does not name."""
+        if self.must_not is not None:
+            return self.must_not
         return [t for t in REL_TYPES if t not in self.must and t not in self.may]
 
 
@@ -236,6 +256,200 @@ CASES = [
     ),
 ]
 
+# The deck's third group: regulated_by, operates_in, exposed_to, member_of, participates_in,
+# listed_on, belongs_to_sector.
+STRUCTURAL: list[RelType] = [
+    t for t, lt in LINK_TYPES.items() if lt.group == "Structural and institutional"
+]
+SINGAPORE = ("singapore", "Singapore")
+MAS = ("mas", "MAS")
+SGX = ("sgx", "SGX")
+
+# Ours, not from the deck's page 9: see the module's docstring. From the 8 Nov run of the
+# worktree's store, its development ids in the case ids' comments.
+OUR_CASES = [
+    # 657dc3f4bb3f2032-0
+    LinkTypeCase(
+        id="ours-regulator-revokes-one-licence",
+        example=None,
+        entity=_entity(
+            MAS,
+            2,
+            "MAS revoked a Singapore-licensed Major Payment Institution's licence under the "
+            "Payment Services Act 2019 for letting a third party run a cross-border remittance "
+            "business under its name and for giving false or misleading information, which is a "
+            "binding enforcement action directly affecting Singapore's financial system.",
+        ),
+        title="MAS Revokes the Major Payment Institution License of Sir Money Changer Pte Ltd",
+        statement="MAS revoked Sir Money Changer Pte Ltd's Major Payment Institution License "
+        "under the Payment Services Act 2019, effective 15 September 2026, after finding it let a "
+        "third party run a cross-border remittance business under its name and gave MAS false or "
+        "misleading information.",
+        quote="The Monetary Authority of Singapore (MAS) has revoked the Major Payment "
+        "Institution License of Sir Money Changer Pte. Ltd. (SMC) under the Payment Services Act "
+        "2019, with effect from 15 September 2026.",
+        must=[],
+        must_not=STRUCTURAL,
+    ),
+    # a3065a895267fb9f-1
+    LinkTypeCase(
+        id="ours-regulator-directs-one-firm",
+        example=None,
+        entity=_entity(
+            MAS,
+            2,
+            "A data breach at MoneySmart Financial, a MAS-regulated insurance broker affecting "
+            "Singapore customers, has prompted MAS to direct containment, IT security, root cause "
+            "analysis and remediation, so it is a significant incident directly within "
+            "Singapore's financial system.",
+        ),
+        title="MoneySmart data breach affects Singapore and Hong Kong customers - The Business "
+        "Times",
+        statement="MAS is following up with MoneySmart Financial, its regulated insurance broker, "
+        "over the breach, directing it to contain the breach, secure its IT environment, conduct "
+        "a root cause analysis and implement remedial measures.",
+        quote="In a response to queries from BT, MAS said that it was following up closely with "
+        "MoneySmart Financial – the group’s MAS-regulated insurance broker, over the "
+        "incident.",
+        must=[],
+        must_not=STRUCTURAL,
+    ),
+    # 5bedd77aa8abe1ff-0
+    LinkTypeCase(
+        id="ours-regulator-issues-guidelines",
+        example=None,
+        entity=_entity(
+            MAS,
+            2,
+            "MAS issued final Guidelines on AI Risk Management setting supervisory expectations "
+            "for all financial institutions in Singapore (AI governance, lifecycle controls, "
+            "third-party AI), a binding-in-effect regulatory change that alters what Singapore's "
+            "financial system must do from 7 October 2027.",
+        ),
+        title="MAS Sets Out Supervisory Expectations on Responsible AI Adoption by Financial "
+        "Institutions",
+        statement="MAS issued Guidelines on AI Risk Management on 7 October 2026, setting "
+        "supervisory expectations for all financial institutions on AI governance, lifecycle risk "
+        "controls, third-party AI and risk-proportionate application, effective 7 October 2027.",
+        quote="The Monetary Authority of Singapore (MAS) today issued a set of Guidelines on "
+        'Artificial Intelligence (AI) Risk Management ("Guidelines") to support responsible AI '
+        "adoption in Singapore’s financial sector.",
+        must=["regulated_by"],
+        must_not=[],
+    ),
+    # 037f633f65ab6c87-1
+    LinkTypeCase(
+        id="ours-country-arrests",
+        example=None,
+        entity=_entity(
+            SINGAPORE,
+            2,
+            "Police in Singapore arrested nine people for setting up corporate entities and bank "
+            "accounts used to funnel illegal gambling proceeds through Singapore's banking "
+            "system, with customer accounts frozen, which is a direct AML/financial-crime "
+            "incident affecting Singapore's financial system.",
+        ),
+        title="GemBet issuing invoices to mask illegal gambling bets in Singapore | The Straits "
+        "Times",
+        statement="Police in Singapore arrested nine people in July over setting up business "
+        "entities and corporate bank accounts used to facilitate illegal gambling transactions "
+        "for the syndicate behind GemBet; punters said their bank accounts were frozen.",
+        quote="Six of them are suspected of setting up business entities and corporate bank "
+        "accounts believed to have been used to facilitate monetary transactions for illegal "
+        "gambling, while three are said to have assisted the syndicate behind GemBet in "
+        "obtaining these entities and bank accounts.",
+        must=[],
+        must_not=STRUCTURAL,
+    ),
+    # 21c965d40c03cd82-0
+    LinkTypeCase(
+        id="ours-country-company-deal",
+        example=None,
+        entity=_entity(
+            SINGAPORE,
+            2,
+            "A ~S$611-626 million sponsor-to-REIT acquisition of a 51% stake in Keppel South "
+            "Central, a Singapore property, with five-year income support, is a major deal within "
+            "Singapore's financial system (listed REIT sector) that raises $12.1 billion pro "
+            "forma portfolio value and minority-shareholder governance concerns.",
+        ),
+        title="Keppel REIT to acquire 51% stake in Keppel South Central for $626.2 mil; Sponsor "
+        "to provide five-year income support",
+        statement="Keppel REIT announced it will acquire a 51% stake in Keppel South Central "
+        "from sponsor Keppel Limited for $626.2 million, with Keppel Limited providing income "
+        "support of $2.23 million monthly for up to five years.",
+        quote="Keppel REIT has announced that it will acquire a 51% stake in Keppel South "
+        "Central from its sponsor, Keppel Limited, for a total consideration of $626.2 million.",
+        must=[],
+        must_not=STRUCTURAL,
+    ),
+    # 3732a968254f6641-1
+    LinkTypeCase(
+        id="ours-country-monetary-policy",
+        example=None,
+        entity=_entity(
+            SINGAPORE,
+            2,
+            "MAS's surprise decision to hold the S$NEER policy band (against expected tightening) "
+            "and cut its 2026 core inflation forecast is a binding monetary policy decision that "
+            "materially affects Singapore's financial system, including the Singapore dollar, "
+            "rates and market pricing.",
+        ),
+        title="MAS' surprise hold suggests core inflation is near its peak - The Business Times",
+        statement="On Oct 14, 2026, MAS unexpectedly left the S$NEER policy band slope, width and "
+        "centre unchanged, against the expectations of 17 of 20 economists polled by Bloomberg "
+        "who had forecast a steeper slope.",
+        quote="MAS left the slope of the Singapore dollar nominal effective exchange rate "
+        "(S$NEER) policy band unchanged, with no change to its width or the level at which it is "
+        "centred.",
+        must=[],
+        one_of=["operates_in", "exposed_to"],
+        must_not=[],
+    ),
+    # 51cea549dc309f6c-0
+    LinkTypeCase(
+        id="ours-exchange-rule-change",
+        example=None,
+        entity=_entity(
+            SGX,
+            1,
+            "SGX RegCo's new enhanced disclosure rules on remuneration, dividend and investor "
+            "relations policies are new regulatory guidance that applies to listed issuers "
+            "(effective for financial years from Jan 1, 2027) and only indirectly affect SGX as "
+            "the exchange operator and regulator, with no direct binding change on SGX itself.",
+        ),
+        title="When reigniting markets, don’t overcook the broth",
+        statement="On Sept 23, SGX RegCo introduced new rules requiring listed issuers to make "
+        "enhanced disclosures on remuneration, dividend and investor relations policies.",
+        quote="On Sept 23, Singapore Exchange Regulation (SGX RegCo) introduced new rules "
+        "requiring enhanced disclosures among listed issuers on remuneration, dividend and "
+        "investor relations policies.",
+        must=["listed_on"],
+        must_not=[],
+    ),
+    # 7e9a55f20446296c-0
+    LinkTypeCase(
+        id="ours-exchange-one-company",
+        example=None,
+        entity=_entity(
+            SGX,
+            1,
+            "A large Singapore-headquartered firm (DayOne, ~US$20bn market cap) chose a "
+            "Nasdaq-only IPO over a dual Nasdaq-SGX listing, a missed opportunity for SGX's Global "
+            "Listing Board and its liquidity ambitions, but it is not an incident, enforcement "
+            "action, or loss at SGX itself.",
+        ),
+        title="Why tech and data centre IPOs are facing delays now - The Business Times",
+        statement="Singapore-headquartered data centre operator DayOne filed for a US Nasdaq IPO "
+        "in October seeking up to US$5 billion, with H1 revenue tripling but net losses "
+        "widening; an SGX listing is not ruled out.",
+        quote="DayOne officially filed for a US Nasdaq IPO directly in October this year, citing "
+        "plans to raise as much as US$5 billion.",
+        must=[],
+        must_not=STRUCTURAL,
+    ),
+]
+
 
 def development(case: LinkTypeCase) -> Development:
     """The case as a development of one finding from one made-up news document."""
@@ -265,13 +479,15 @@ class LinkTypeCaseResult(BaseModel):
     id: str
     ok: bool
     picked: list[RelType] | None = Field(description="None when the call was refused")
-    missing: list[RelType]
+    missing: list[str] = Field(description='Types of `must`, or "a or b" for an unmet `one_of`')
     forbidden: list[RelType]
 
 
 def check(case: LinkTypeCase, picked: list[RelType] | None) -> LinkTypeCaseResult:
     got: set[RelType] = set(picked or [])
-    missing: list[RelType] = [t for t in case.must if t not in got]
+    missing: list[str] = [t for t in case.must if t not in got]
+    if case.one_of and not got & set(case.one_of):
+        missing.append(" or ".join(case.one_of))
     forbidden: list[RelType] = [t for t in case.forbidden() if t in got]
     ok = picked is not None and not missing and not forbidden
     return LinkTypeCaseResult(
@@ -285,7 +501,7 @@ async def run(effort: EffortLevel | None = None) -> None:
     before = conn.execute("SELECT coalesce(max(id), 0) FROM inference_records").fetchone()[0]
     inf = Inference(conn, "eval-link-types")
     results: list[LinkTypeCaseResult] = []
-    for case in CASES:
+    for case in [*CASES, *OUR_CASES]:
         reply = await select_link_types(inf, development(case), [case.entity], effort=effort)
         results.append(check(case, None if reply is None else reply[case.entity.id]))
     cost, output_tokens = conn.execute(
@@ -296,11 +512,12 @@ async def run(effort: EffortLevel | None = None) -> None:
     (EVAL_DIR / "link_type_cases.json").write_text(
         json.dumps([r.model_dump() for r in results], indent=2)
     )
-    passed = sum(r.ok for r in results)
+    deck, ours = results[: len(CASES)], results[len(CASES) :]
     lines = [
-        f"Link type cases, effort {effort or 'the stage default'}: {passed} of {len(results)} "
-        f"pass ({inf.calls} Claude calls, {inf.cache_hits} replayed, ${cost:.4f} for the calls "
-        f"made, mean {output_tokens:.0f} output tokens, measured; versions "
+        f"Link type cases, effort {effort or 'the stage default'}: the deck's "
+        f"{sum(r.ok for r in deck)} of {len(deck)} and ours {sum(r.ok for r in ours)} of "
+        f"{len(ours)} pass ({inf.calls} Claude calls, {inf.cache_hits} replayed, ${cost:.4f} "
+        f"for the calls made, mean {output_tokens:.0f} output tokens, measured; versions "
         f"{', '.join(sorted(inf.versions))})",
         "",
         "| Case | Result | Picked | Missing | Must not, picked |",
