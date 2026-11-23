@@ -63,8 +63,7 @@
       "provides_business_service_to",
       "insures",
       "holds_stake_in",
-      "invests_in",
-      "lends_to"
+      "invests_in"
     ],
     "missing": [],
     "forbidden": []
@@ -89,6 +88,69 @@
   },
   {
     "id": "flight-disruption",
+    "ok": true,
+    "picked": [],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "ours-regulator-revokes-one-licence",
+    "ok": true,
+    "picked": [],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "ours-regulator-directs-one-firm",
+    "ok": true,
+    "picked": [],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "ours-regulator-issues-guidelines",
+    "ok": true,
+    "picked": [
+      "regulated_by"
+    ],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "ours-country-arrests",
+    "ok": true,
+    "picked": [],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "ours-country-company-deal",
+    "ok": true,
+    "picked": [],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "ours-country-monetary-policy",
+    "ok": true,
+    "picked": [
+      "operates_in",
+      "exposed_to"
+    ],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "ours-exchange-rule-change",
+    "ok": true,
+    "picked": [
+      "listed_on"
+    ],
+    "missing": [],
+    "forbidden": []
+  },
+  {
+    "id": "ours-exchange-one-company",
     "ok": true,
     "picked": [],
     "missing": [],

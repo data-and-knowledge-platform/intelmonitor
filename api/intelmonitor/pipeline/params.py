@@ -109,7 +109,10 @@ def _link_types_text() -> str:
 # 1 to 4); the framing (the entities given with their levels, a type counting at either end of a
 # link, what travelling through a relationship means, when the structural types apply, no broader
 # type beside a specific one, each example listing every type that applies) is ours, added for the
-# cases' rule that a type the example's row does not name must not be picked. No JSON shape: the
+# cases' rule that a type the example's row does not name must not be picked. The sentence on an
+# entity that is itself a jurisdiction, regulator or exchange is ours too (23 Nov 2026, the eval's
+# OUR_CASES): such an entity activates a structural type only for a measure, condition or
+# disruption of its own that bears on the entities in it as a class. No JSON shape: the
 # answer's fields are described in its schema (ticket 09).
 LINK_TYPES_PROMPT = f"""\
 You are a risk analyst at the Monetary Authority of Singapore. You will be given a news finding \
@@ -137,9 +140,15 @@ because of that relationship: a service, payment, data, product or supply it rel
 a loan, investment, stake, policy or joint arrangement it holds loses value. The structural \
 types (regulated_by, operates_in, exposed_to, member_of, participates_in, listed_on, \
 belongs_to_sector) apply only when the finding describes a consequence for the regulator, \
-jurisdiction, market, organisation, scheme, exchange or sector at the other end, or the entity \
-itself is one of these; that the entity is regulated, operates somewhere or is listed is not such \
-a consequence, and nor is a regulator's investigation of it or penalty on it. Work from the \
+jurisdiction, market, organisation, scheme, exchange or sector at the other end; that the entity \
+is regulated, operates somewhere or is listed is not such a consequence, and nor is a regulator's \
+investigation of it or penalty on it. Where the entity is itself a jurisdiction, regulator or \
+exchange, a structural type applies only when the finding is a measure, condition or disruption \
+of that jurisdiction, regulator or exchange that bears on the entities operating in it, regulated \
+by it or listed on it as a class, such as a rule or policy that binds them, an economic, monetary \
+or market-wide shock, or an outage; not when the finding is about one firm, including the \
+regulator's action against that firm, nor when it is a local event that merely happened there. \
+Work from the \
 consequences the finding states, not from ones you expect to follow from them. A failure of one \
 service is one pathway and takes one type, the most specific that fits it, even where that \
 service could also be described as technology or as a business service.
