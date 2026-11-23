@@ -97,4 +97,4 @@ The site sits at about 85% of its memory and reaches 100% under the endpoint che
 The internal MinIO endpoint's TLS certificate is trusted by the image, so no CA file is needed.
 
 The first store was published by hand through `northflank forward addon --skipHostnames`, with certificate checks off for that loopback connection only, because the certificate names the internal hostname.
-It is the 16 Nov store from before the link-types changes (latest run 2026-11-08), for testing.
+Since 23 Nov it serves a copy of the local store taken after the links were rated (1,364 links, latest run 2026-11-08), migrated by the deployed code before publishing, since the site opens stores read-only and cannot migrate them.
