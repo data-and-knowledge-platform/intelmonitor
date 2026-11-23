@@ -447,8 +447,9 @@ ADDED_COLUMNS = [
     ("inference_records", "prompt_version", "TEXT"),
     # A refused call's category (pipeline/claude.py).
     ("inference_records", "refusal_category", "TEXT"),
-    # The relationship types a development activates for an entity at Medium or High, a JSON
-    # list; null when it was not asked (pipeline/developments.py, the link_types stage).
+    # The relationship types a development activates for an entity at Medium or High, or at Low
+    # with INDIRECT_FROM_LOW on, a JSON list; null when it was not asked (pipeline/developments.py,
+    # the link_types stage).
     ("development_subjects", "link_types", "TEXT"),
     # When `im impacts` last rewrote the run's inferred impacts; null when its own run did.
     ("runs", "impacts_recomputed", "TEXT"),

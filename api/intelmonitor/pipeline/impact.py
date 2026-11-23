@@ -30,6 +30,7 @@ from intelmonitor.pipeline.params import (
     INDIRECT_ADVERSE_ONLY,
     INDIRECT_FROM_LOW,
     INDIRECT_TABLE,
+    MATERIAL_LEVEL,
     PRIORITY_LABELS,
 )
 from intelmonitor.relationships import (
@@ -301,8 +302,8 @@ def route_text(r: Relationship, source: str, reached: str, nodes: dict[str, Node
 class Tagged:
     """An entity named on a development: the development's direct level for it (0 Low to 2
     High), whether it is adverse for it, and the relationship types the development activates for
-    it (the link_types stage); None when they were not asked (a topic, an entity at Low, or a run
-    from before the stage), which passes nothing."""
+    it (the link_types stage); None when they were not asked (a topic, an entity at Low with
+    INDIRECT_FROM_LOW off, or a run from before the stage), which passes nothing."""
 
     level: int
     adverse: bool
@@ -427,12 +428,17 @@ def reached(
 @dataclass
 class ImpactStats:
     """What store_impacts found in a run: every path under each setting, with its development's
-    id, and how many named entities at Low have their types asked. The run stores the paths of
-    STORED. The link_types stage asks only entities at Medium or High, so with none at Low the
-    Low row's paths equal those without it by construction, and its effect is not measured."""
+    id; how many named entities at Low have their types asked; and how many at Medium or High
+    have them and have none asked, each a development and entity pair. The run stores the paths
+    of STORED. The link_types stage asks entities at Low only with INDIRECT_FROM_LOW on, so with
+    none at Low asked the Low row's paths equal those without it by construction, and its effect
+    is not measured. A run whose entities were never asked (one from before the stage) has none
+    with types and finds no path."""
 
     paths: dict[Setting, list[tuple[str, Reached]]]
     low_asked: int = 0
+    typed: int = 0  # entities at Medium or High with their types, [] included
+    unasked: int = 0  # entities at Medium or High whose types were not asked
 
     @property
     def stored(self) -> list[tuple[str, Reached]]:
@@ -464,8 +470,12 @@ def store_impacts(
     impact step."""
     known: dict[str, list[Reach]] = {}
     stats = ImpactStats(paths={s: [] for s in SETTINGS})
+    entities = _names()
     for dev_id, tagged in _tags(conn, run_id).items():
         stats.low_asked += sum(t.level == 0 and t.types is not None for t in tagged.values())
+        material = [t for sid, t in tagged.items() if sid in entities and t.level >= MATERIAL_LEVEL]
+        stats.typed += sum(t.types is not None for t in material)
+        stats.unasked += sum(t.types is None for t in material)
         for s in SETTINGS:
             found = reached(
                 conn, tagged, from_low=s.from_low, adverse_only=s.adverse_only, links=known

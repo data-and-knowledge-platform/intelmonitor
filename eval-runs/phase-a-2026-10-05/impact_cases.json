@@ -340,6 +340,39 @@
     "reason": "Singtel's types were not asked: it passes nothing"
   },
   {
+    "id": "asked-none",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "Singtel was asked and the development activates no type for it: it passes nothing"
+  },
+  {
+    "id": "types-per-entity",
+    "ok": true,
+    "problems": [],
+    "rows": [
+      {
+        "subject": "dbs",
+        "level": "High",
+        "source": "singtel",
+        "link": "singtel:provides_connectivity_to:dbs",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      },
+      {
+        "subject": "uob",
+        "level": "Medium",
+        "source": "ocbc",
+        "link": "uob:material_customer_of:ocbc",
+        "strength": "Strong",
+        "best": true,
+        "region": null
+      }
+    ],
+    "reason": "Singtel activates only connectivity and OCBC only material_customer_of: DBS's custom of Singtel is not followed from Singtel, though OCBC activates its type"
+  },
+  {
     "id": "three-paths",
     "ok": true,
     "problems": [],
@@ -825,5 +858,12 @@
     "problems": [],
     "rows": [],
     "reason": "store_impacts on a made-up run"
+  },
+  {
+    "id": "stage",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "the link_types stage's entities asked, under both Low settings"
   }
 ]

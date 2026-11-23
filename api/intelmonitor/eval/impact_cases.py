@@ -13,7 +13,10 @@ Every way the rules could fail, and the cases that catch it:
 - a link whose type the development does not activate for the named entity passes something
   (`not-activated`), or of two links between a pair the stronger one counts though only the
   other is activated (`two-links-only-activated`);
-- an entity whose types were not asked passes something (`not-asked`);
+- an entity whose types were not asked passes something (`not-asked`), or one asked whose
+  answer was no type passes everything (`asked-none`);
+- the gate reads the types of every entity named on the development, not those of the entity
+  the link starts from (`types-per-entity`);
 - a link is read in the wrong direction: Singtel's event reaches DBS through "DBS is a major
   customer of Singtel" at `to_from`, DBS's event reaches Singtel at `from_to` (`direction-*`);
 - several valid paths to one entity: a path is dropped, paths are added together or raise each
@@ -39,17 +42,35 @@ Every way the rules could fail, and the cases that catch it:
   the wrong rows, a wrong best flag or no reason, touches another run's rows, counts the four
   switch settings wrongly, miscounts the entities at Low whose types were asked (with none, the
   Low row's counts equal the counts without it and the run says it cannot count them), or sets
-  or clears the run's impacts_recomputed mark wrongly (`store`).
+  or clears the run's impacts_recomputed mark wrongly, or miscounts the entities at Medium or
+  High with their types and with none asked, by which `im impacts` tells a run from before the
+  link_types stage (`store`);
+- the link_types stage asks entities at Low with INDIRECT_FROM_LOW off, or does not ask them
+  with it on, so the Low row passes nothing end to end; asks a topic or a development that names
+  no entity; or, with the switch off, sends any prompt other than the Medium and High entities'
+  (`stage`, with a stub in place of the model).
 
 `uv run python -m intelmonitor.eval impact` runs them and writes impact_cases.json in the eval
 directory."""
 
+import asyncio
 import json
 import sqlite3
 from dataclasses import dataclass
 from datetime import date
 
+from claude_agent_sdk import EffortLevel
+from pydantic import BaseModel
+
 from intelmonitor.eval.common import EVAL_DIR
+from intelmonitor.pipeline.developments import (
+    Development,
+    DevelopmentSubject,
+    DirectEntity,
+    RunFinding,
+    activate_link_types,
+    link_types_prompt,
+)
 from intelmonitor.pipeline.impact import (
     Reached,
     Setting,
@@ -58,7 +79,9 @@ from intelmonitor.pipeline.impact import (
     reached,
     store_impacts,
 )
+from intelmonitor.pipeline.inference import Inference
 from intelmonitor.pipeline.params import PRIORITY_LABELS, Priority
+from intelmonitor.pipeline.subjects import monitored_subjects
 from intelmonitor.relationships import (
     SCHEMA,
     Rating,
@@ -232,6 +255,31 @@ CASES: list[Case] = [
         tagged={"singtel": unasked(HIGH)},
         expected=[],
         reason="Singtel's types were not asked: it passes nothing",
+    ),
+    Case(
+        id="asked-none",
+        links=[link("singtel", "provides_connectivity_to", "dbs", "Strong", "Strong")],
+        tagged={"singtel": adverse(HIGH)},
+        expected=[],
+        reason="Singtel was asked and the development activates no type for it: it passes nothing",
+    ),
+    Case(
+        id="types-per-entity",
+        links=[
+            link("singtel", "provides_connectivity_to", "dbs", "Strong", "Weak"),
+            link("dbs", "material_customer_of", "singtel", "Weak", "Strong"),
+            link("uob", "material_customer_of", "ocbc", "Strong", "Strong"),
+        ],
+        tagged={
+            "singtel": adverse(HIGH, "provides_connectivity_to"),
+            "ocbc": adverse(MEDIUM, "material_customer_of"),
+        },
+        expected=[
+            Expect("dbs", "High", "singtel", SINGTEL_DBS, "Strong"),
+            Expect("uob", "Medium", "ocbc", "uob:material_customer_of:ocbc", "Strong"),
+        ],
+        reason="Singtel activates only connectivity and OCBC only material_customer_of: DBS's "
+        "custom of Singtel is not followed from Singtel, though OCBC activates its type",
     ),
     Case(
         id="three-paths",
@@ -649,7 +697,8 @@ def check_store() -> list[str]:
     """store_impacts on a run of five developments: it reads each named entity's level, adverse
     flag and activated types from development_subjects, stores every path of the default setting
     with its best flag and reason, leaves another run's rows alone, counts the four settings, and
-    sets the run's impacts_recomputed mark when given one and clears it when not."""
+    sets the run's impacts_recomputed mark when given one and clears it when not, and counts the
+    entities at Medium or High with their types and with none asked, topics apart."""
     links = [
         link("dbs", "material_customer_of", "singtel", "Weak", "Strong"),
         link("uob", "material_customer_of", "singtel", "Weak", "Weak"),
@@ -663,13 +712,15 @@ def check_store() -> list[str]:
         # dev-b: Taiwan Medium and adverse reaches OCBC as Low through the region figure
         ("dev-b", "taiwan", MEDIUM, 1, json.dumps(["exposed_to"])),
         # dev-c: Singtel Low reaches DBS as Low only with INDIRECT_FROM_LOW on. Its types are as
-        # the link_types stage would give them once it asks entities at Low; today it asks only
-        # Medium and High, so a run's Low row can only be counted where a Low entity has types.
+        # the link_types stage gives them with that switch on (`stage`); with it off a Low entity
+        # is not asked, so a run's Low row can only be counted where a Low entity has types.
         ("dev-c", "singtel", LOW, 1, customer),
         # dev-d: Singtel High, not adverse: DBS and UOB unless INDIRECT_ADVERSE_ONLY is on
         ("dev-d", "singtel", HIGH, 0, customer),
         # dev-e: Singtel High and adverse, its types not asked: nothing
         ("dev-e", "singtel", HIGH, 1, None),
+        # dev-e's topic, High and never asked, is not an entity whose types are missing
+        ("dev-e", "banking-lending", HIGH, 1, None),
     ]
     conn.executemany(
         "INSERT INTO development_subjects (run_id, development_id, subject_id, confidence, "
@@ -723,6 +774,11 @@ def check_store() -> list[str]:
         problems.append(f"counts {counts}, expected {STORE_COUNTS}")
     if stats.low_asked != 1:
         problems.append(f"{stats.low_asked} entities at Low with types, expected 1 (dev-c)")
+    if (stats.typed, stats.unasked) != (3, 1):
+        problems.append(
+            f"entities at Medium or High: {stats.typed} with types, {stats.unasked} not asked; "
+            "expected 3 (dev-a, dev-b, dev-d) and 1 (dev-e)"
+        )
     marks = dict(conn.execute("SELECT id, impacts_recomputed FROM runs").fetchall())
     if marks != {"case": STORED_AT, "other": None}:
         problems.append(f"marks {marks}, expected case set and other unset")
@@ -730,6 +786,128 @@ def check_store() -> list[str]:
     mark = conn.execute("SELECT impacts_recomputed FROM runs WHERE id = 'case'").fetchone()[0]
     if mark is not None:
         problems.append(f"a run's own impact step left the mark {mark}")
+    return problems
+
+
+class StubTypes(Inference):
+    """Stands in for the model in the link_types stage: keeps each call's prompt by its input ref
+    and answers with no type for any entity, so an entity asked gets [] and one not asked keeps
+    None."""
+
+    def __init__(self) -> None:
+        super().__init__(sqlite3.connect(":memory:"), None)
+        self.prompts: dict[str, str] = {}
+
+    async def claude[T: BaseModel](
+        self,
+        stage: str,
+        input_ref: str,
+        prompt: str,
+        schema: type[T],
+        system: str,
+        model: str | None = None,
+        effort: EffortLevel | None = None,
+        template: str | None = None,
+    ) -> T:
+        self.prompts[input_ref] = prompt
+        return schema.model_validate({"entities": []})
+
+
+# The stage's developments, each subject at its level; then the entities each setting of
+# INDIRECT_FROM_LOW must ask about, by development. A topic and a development naming no entity
+# are never asked.
+STAGE_DEVELOPMENTS: dict[str, dict[str, int]] = {
+    "dev-mixed": {"singtel": HIGH, "dbs": LOW, "banking-lending": MEDIUM},
+    "dev-medium": {"uob": MEDIUM},
+    "dev-low": {"ocbc": LOW},
+    "dev-topic": {"banking-lending": HIGH},
+    "dev-none": {},
+}
+STAGE_ASKED: dict[bool, dict[str, list[str]]] = {
+    False: {"dev-mixed": ["singtel"], "dev-medium": ["uob"]},
+    True: {"dev-mixed": ["dbs", "singtel"], "dev-medium": ["uob"], "dev-low": ["ocbc"]},
+}
+
+
+def _development(dev_id: str, levels: dict[str, int]) -> Development:
+    """A made-up development of one finding, naming these subjects at these levels."""
+    finding = RunFinding(
+        id=f"{dev_id}-finding",
+        document_id=f"{dev_id}-document",
+        statement=f"{dev_id} happened, made up for a case.",
+        category="operations",
+        event_date=None,
+        subjects=tuple(levels),
+        roles={},
+        promotional=False,
+        price_move=False,
+        first_quote="made up for a case",
+        published=date(2026, 11, 1),
+        collection="news",
+        domain="example.com",
+        title=f"{dev_id}, a case",
+        stage=None,
+        rule_level=None,
+        rule_id=None,
+    )
+    dev = Development(dev_id, [finding])
+    for sid, level in levels.items():
+        s = DevelopmentSubject(
+            role="affected", adverse=True, tone="negative", confidence=1.0, source="claude"
+        )
+        s.set_priority(level, f"{PRIORITY_LABELS[level]} for a case.")
+        dev.subjects[sid] = s
+    return dev
+
+
+def check_stage() -> list[str]:
+    """activate_link_types under both settings of INDIRECT_FROM_LOW, with StubTypes for the
+    model: the developments asked, the entities each prompt lists (the prompt is the one
+    link_types_prompt makes for exactly those entities, so with the switch off it is the one the
+    stage sent before the switch reached it, and so is its cache key), the entities given types,
+    and the counts the run prints."""
+    problems: list[str] = []
+    names = monitored_subjects()
+    for from_low, want in STAGE_ASKED.items():
+        devs = [_development(d, levels) for d, levels in STAGE_DEVELOPMENTS.items()]
+        inf = StubTypes()
+        counts = asyncio.run(activate_link_types(inf, devs, from_low=from_low))
+        where = f"INDIRECT_FROM_LOW {from_low}"
+        expected_prompts = {
+            f"dev:{d.id}:1": link_types_prompt(
+                d,
+                [
+                    DirectEntity(
+                        e,
+                        names[e].name,
+                        d.subjects[e].priority_level,
+                        d.subjects[e].priority_reason,
+                    )
+                    for e in want[d.id]
+                ],
+            )
+            for d in devs
+            if d.id in want
+        }
+        if sorted(inf.prompts) != sorted(expected_prompts):
+            problems.append(
+                f"{where}: asked {sorted(inf.prompts)}, expected {sorted(expected_prompts)}"
+            )
+        problems += [
+            f"{where}: {ref} sent another prompt"
+            for ref, prompt in expected_prompts.items()
+            if ref in inf.prompts and inf.prompts[ref] != prompt
+        ]
+        for d in devs:
+            for sid, s in d.subjects.items():
+                asked = sid in want.get(d.id, [])
+                if (s.link_types is not None) != asked:
+                    problems.append(
+                        f"{where}: {d.id} {sid} has types {s.link_types}, "
+                        f"{'asked' if asked else 'not asked'}"
+                    )
+        if counts != (len(want), 0):
+            problems.append(f"{where}: counts {counts}, expected ({len(want)}, 0)")
     return problems
 
 
@@ -755,11 +933,16 @@ def run() -> None:
         problems = check(case, rows)
         rows_out = [_expect(r).__dict__ for r in rows]
         results.append(Result(case.id, not problems, problems, rows_out, case.reason))
-    try:
-        problems = check_store()
-    except sqlite3.Error as error:  # a store without the columns the step writes
-        problems = [f"{type(error).__name__}: {error}"]
-    results.append(Result("store", not problems, problems, [], "store_impacts on a made-up run"))
+    steps = [
+        ("store", check_store, "store_impacts on a made-up run"),
+        ("stage", check_stage, "the link_types stage's entities asked, under both Low settings"),
+    ]
+    for id_, check_step, reason in steps:
+        try:
+            problems = check_step()
+        except Exception as error:  # a step that cannot do what the case asks of it
+            problems = [f"{type(error).__name__}: {error}"]
+        results.append(Result(id_, not problems, problems, [], reason))
     EVAL_DIR.mkdir(parents=True, exist_ok=True)
     (EVAL_DIR / "impact_cases.json").write_text(json.dumps([r.__dict__ for r in results], indent=2))
     failed = [r for r in results if not r.ok]

@@ -69,9 +69,10 @@ class ModelCallError(RuntimeError):
 
 class NoModelCalls(Inference):
     """Fails the check on any model call: a development made only of a detection takes its rule's
-    level without one. The link_types stage still asks about it when that level is Medium or High
-    (ticket 05 Q6 of link-types-and-inferred-impact); the check does not read the types, so that
-    call is answered here with none and reaches no model."""
+    level without one. The link_types stage still asks about it when that level is Medium or High,
+    or at any level with INDIRECT_FROM_LOW on (ticket 05 Q6 of link-types-and-inferred-impact);
+    the check does not read the types, so that call is answered here with none and reaches no
+    model."""
 
     async def claude[T: BaseModel](
         self,

@@ -15,7 +15,8 @@ development's entities, and is rated itself only where the development names no 
 
 After priority, one more Sonnet call per development with an entity at Medium or High (the
 link_types stage, deck of 16 Nov 2026, pages 9 and 10) picks for each such entity the relationship
-types the development activates, which the inferred impact step follows."""
+types the development activates, which the inferred impact step follows. With INDIRECT_FROM_LOW
+on, entities at Low are asked too, so a Low entity can pass its Low row."""
 
 import asyncio
 import atexit
@@ -41,6 +42,7 @@ from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
 from intelmonitor.pipeline.params import (
     EMBEDDING_MODEL,
     HAIKU_MODEL,
+    INDIRECT_FROM_LOW,
     LINK_TYPES_EFFORT,
     LINK_TYPES_PROMPT,
     MATERIAL_LEVEL,
@@ -253,7 +255,8 @@ class DevelopmentSubject:
     # this subject and its level is at least the rated one. None when the rating set it.
     rule: str | None = None
     # The relationship types the development activates for this entity (`activate_link_types`);
-    # None when it was not asked: a topic, an entity at Low, or before the stage ran.
+    # None when it was not asked: a topic, an entity at Low with INDIRECT_FROM_LOW off, or before
+    # the stage ran.
     link_types: list[RelType] | None = None
 
     def set_priority(self, level: int, reason: str) -> None:
@@ -495,12 +498,12 @@ async def rate(inf: Inference, dev: Development) -> None:
 
 @dataclass(frozen=True)
 class DirectEntity:
-    """A direct entity at Medium or High as the link_types call reads it: its id and name, and
-    its priority level and reason."""
+    """A direct entity as the link_types call reads it: its id and name, and its priority level
+    and reason."""
 
     id: str
     name: str
-    level: int  # 1 Medium or 2 High
+    level: int  # 1 Medium or 2 High; 0 Low only with INDIRECT_FROM_LOW
     reason: str
 
 
@@ -529,13 +532,16 @@ def link_types_prompt(dev: Development, entities: Sequence[DirectEntity]) -> str
     return f"{priority_prompt(dev)}\n\nEntities:\n{listed}"
 
 
-def link_types_entities(dev: Development, names: Mapping[str, Subject]) -> list[DirectEntity]:
-    """The development's entities the link_types call asks about: those at Medium or High, by
-    id. Topics and entities at Low are not asked."""
+def link_types_entities(
+    dev: Development, names: Mapping[str, Subject], *, from_low: bool = INDIRECT_FROM_LOW
+) -> list[DirectEntity]:
+    """The development's entities the link_types call asks about: those at Medium or High, and
+    those at Low too with `from_low`, by id. Topics are not asked."""
+    lowest = 0 if from_low else MATERIAL_LEVEL
     return [
         DirectEntity(sid, names[sid].name, s.priority_level, s.priority_reason)
         for sid, s in sorted(dev.subjects.items())
-        if names[sid].type == "entity" and s.priority_level >= MATERIAL_LEVEL
+        if names[sid].type == "entity" and s.priority_level >= lowest
     ]
 
 
@@ -577,14 +583,18 @@ def entity_types(
     return {e.id: list(dict.fromkeys(picked.get(e.id, []))) for e in entities}
 
 
-async def activate_link_types(inf: Inference, devs: list[Development]) -> tuple[int, int]:
+async def activate_link_types(
+    inf: Inference, devs: list[Development], *, from_low: bool = INDIRECT_FROM_LOW
+) -> tuple[int, int]:
     """The link_types stage, after priority: one call per development with an entity at Medium or
-    High, which sets each such entity's `link_types`. A refused call leaves them with none. Topics,
-    entities at Low and developments that name no entity are not asked, and keep None. The
-    developments asked and the calls refused."""
+    High, which sets each such entity's `link_types`. With `from_low` (INDIRECT_FROM_LOW), entities
+    at Low are asked as well, so a development whose entities are all Low is asked too; without
+    it, they are not asked and keep None. A refused call leaves the entities asked with none.
+    Topics and developments that name no entity are not asked. The developments asked and the
+    calls refused."""
     names = monitored_subjects()
     failures: list[str] = []
-    asked = [(d, e) for d in devs if (e := link_types_entities(d, names))]
+    asked = [(d, e) for d in devs if (e := link_types_entities(d, names, from_low=from_low))]
     refused = 0
 
     async def one(dev: Development, entities: list[DirectEntity]) -> None:
