@@ -545,7 +545,12 @@ class MergeStats:
 
 async def merge(inf: Inference, findings: list[RunFinding]) -> tuple[list[Development], MergeStats]:
     """Developments from the findings, merging the pairs Haiku says report the same event."""
-    pairs = candidate_pairs(findings, stored_embeddings(inf.conn, [f.statement for f in findings]))
+    # Fewer than two findings have no pairs, so nothing is embedded and the model never loads.
+    pairs = (
+        candidate_pairs(findings, stored_embeddings(inf.conn, [f.statement for f in findings]))
+        if len(findings) >= 2
+        else []
+    )
     failures: list[str] = []
 
     async def decide(a: RunFinding, b: RunFinding) -> bool:
