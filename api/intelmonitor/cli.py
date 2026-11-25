@@ -204,8 +204,8 @@ def weekly(
             "week from the corpus start is due again. The label reaches the bucket with the "
             "first week published after, so the same label later changes nothing and a new "
             "label reruns again. Refused when the bucket records this label as published but "
-            "the pulled store lacks it, as after a rollback. A label is letters, digits, dots, "
-            "dashes and underscores, at most 64",
+            "the pulled store lacks it, as after a rollback. A label is 1 to 64 letters, "
+            "digits, dots, dashes or underscores, starting with a letter or digit",
         ),
     ] = None,
 ) -> None:
