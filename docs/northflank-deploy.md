@@ -68,7 +68,7 @@ A read-only MinIO user for the site is better but not set up; [northflank.md](no
 ### 5. First publish
 
 The runner and the site both start from the store `latest.json` names.
-Either the runner starts a new store in the empty bucket and pays for every week ("First start" under "From the web UI"), with no tunnel, or an existing store is uploaded by hand:
+Either the runner starts a new store in the empty bucket and pays for every week ("First start" under "From the web UI"), with no tunnel once the bucket exists, or an existing store is uploaded by hand:
 
 1. Take the store to publish with `sqlite3 data/intelmonitor.db ".backup <copy>"`, not `cp`, and never open the live store with the app's `connect()`.
 2. Open a tunnel: `northflank forward addon --projectId <project> --addonId stores --skipHostnames --portConflict random`.
@@ -136,7 +136,7 @@ There is no way to stop at an earlier week; a later run always catches up to the
 
 Each of these weeks is paid again in model and search calls, so check before pressing Run.
 
-- The date in `--start-from`: a wrong year queues every week since that date, up to `--max-weeks` a run. Read the "weeks due" line at the top of the first log.
+- The date in `--start-from`: a date that makes more than 26 weeks due is refused, but a wrong date within that still queues every week since it, up to `--max-weeks` a run. Read the "weeks due" line at the top of the first log.
 - The priority prompt: every week uses the prompt in the deployed code. Switch a new version on in code before the run, not between weeks.
 - The runner's plan and disk (see Sizes), its secret groups, and outbound access to the Anthropic and Exa APIs.
 - The series keys: without them a week is still computed and published, but the run ends as failed.
@@ -145,16 +145,18 @@ Each of these weeks is paid again in model and search calls, so check before pre
 
 ### First start
 
-1. Check the bucket exists and holds nothing.
+1. The bucket must exist (step 3 under "Steps" creates it) and hold no published store; the runner checks both and refuses otherwise, before any paid call.
 2. Set the command to `/app/api/.venv/bin/im weekly --publish --start-from 2026-10-01 --max-weeks 8` and press Run.
 3. With nothing published, the runner starts a new store with 1 Oct 2026 as its corpus start and runs the complete weeks from it, oldest first, publishing after each.
 4. The site starts once the first week is published.
-5. If the log ends with "weeks still due", press Run again.
+5. Once the log shows a line "published stores/...", remove `--start-from 2026-10-01` from the command.
+   If the run ended before any such line, the bucket is still empty: press Run again with the same command.
+6. If the log ends with "weeks still due", press Run again.
 
 Without `--start-from`, the runner refuses an empty bucket, so a wrong bucket name cannot start a paid rebuild.
+With `--start-from`, the runner refuses a bucket that already has a published store, so a command that still has it fails at the next run, the weekly cron included, instead of starting again.
 The date must be a past date, and its first week must have ended.
-Once a store is published, `--start-from` changes nothing, so it can stay on the command.
-If the published store's corpus start differs from the date, the log says so and the store's own is used.
+A date that makes more than 26 weeks due is refused as a likely typo; raise `MAX_START_WEEKS` in `api/intelmonitor/cli.py` to start further back.
 
 ### A weekly run by hand
 
@@ -171,9 +173,13 @@ The runner runs the complete weeks after the published store's latest run, at mo
    If the run stops before that publish (an error, a crash, the 4-hour stop), the bucket is unchanged and the next run deletes and starts again.
 4. Once a rerun week is published, runs with the same label delete nothing and carry on with the weeks still due.
    Press Run until the log no longer says "weeks still due"; the 4-hour stop also ends a run early.
-5. When the rerun is done, remove `--rerun` from the command, so a later rollback to the store from before it does not start the rerun again.
+5. When the rerun is done, remove `--rerun` from the command.
 
 A new label starts a new rerun.
+Each publish of a rerun week also writes `reruns/<label>` in the bucket.
+If a run with `--rerun <label>` pulls a store without that label while `reruns/<label>` exists, it refuses with exit 2 before any paid call: the store is from before the rerun, as after a rollback.
+Remove `--rerun` to carry on from that store, or give a new label to rerun it again.
+Rarely, a run that dies in the instant between writing `reruns/<label>` and repointing `latest.json` leaves the same refusal although no rerun week reached the site; give a new label then too.
 Model calls whose input has not changed replay for free; Exa searches and series are fetched again, as the runner keeps no HTTP cache.
 
 ### What the site shows meanwhile
@@ -187,7 +193,7 @@ The site picks up each publish within 10 minutes.
 Every run's log names the store it pulled, and the run that starts a rerun logs "the store published before the rerun, `stores/<file>`, is kept".
 Pruning keeps that store, the one `latest.json` names and the `STORE_KEEP` newest; a rollback can only go to one of these.
 
-1. Remove `--rerun` from the command if it is there.
+1. Remove `--rerun` from the command if it is there; a run that keeps it after a rollback to the store from before the rerun is refused.
 2. Set the command to `/app/api/.venv/bin/im publish --key stores/<file>` and press Run.
    It repoints `latest.json` at that file, and the site serves it within 10 minutes.
    A weekly run still in progress then fails at its next publish instead of overwriting the rollback.

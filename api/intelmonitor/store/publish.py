@@ -19,13 +19,16 @@ from botocore.exceptions import ClientError
 from pydantic import BaseModel
 
 from intelmonitor.config import get_settings
-from intelmonitor.store.db import RERUN_ROLLBACK, connect
+from intelmonitor.store.db import RERUN, RERUN_ROLLBACK, connect
 
 if TYPE_CHECKING:  # the stubs are a dev dependency, absent from the image
     from mypy_boto3_s3 import S3Client
 
 LATEST = "latest.json"
 PREFIX = "stores/"
+# One small object per rerun label, `reruns/<label>`, naming the last store published with it.
+# `im weekly --publish --rerun` reads it to tell a rollback from a rerun not yet published.
+RERUNS = "reruns/"
 
 log = logging.getLogger(__name__)
 
@@ -62,15 +65,31 @@ class Bucket:
         )
         return cls(client, s.store_bucket)
 
-    def latest(self) -> Latest | None:
-        """What `latest.json` names, or None before the first publish."""
+    def _get(self, key: str) -> bytes | None:
+        """The object's body, or None when there is no such object."""
         try:
-            body = self.client.get_object(Bucket=self.name, Key=LATEST)["Body"].read()
+            return self.client.get_object(Bucket=self.name, Key=key)["Body"].read()
         except ClientError as error:
             if error.response.get("Error", {}).get("Code") in {"NoSuchKey", "404"}:
                 return None
             raise
-        return Latest.model_validate_json(body)
+
+    def latest(self) -> Latest | None:
+        """What `latest.json` names, or None before the first publish."""
+        body = self._get(LATEST)
+        return None if body is None else Latest.model_validate_json(body)
+
+    def rerun_published(self, label: str) -> str | None:
+        """The store key last published holding meta RERUN `label`, or None when no store with
+        that label was ever published."""
+        body = self._get(f"{RERUNS}{label}")
+        return None if body is None else body.decode()
+
+    def mark_rerun(self, label: str, key: str) -> None:
+        """Record that the store `key`, holding meta RERUN `label`, is being published."""
+        self.client.put_object(
+            Bucket=self.name, Key=f"{RERUNS}{label}", Body=key.encode(), ContentType="text/plain"
+        )
 
     def stored(self, key: str) -> Latest:
         """A published store file as `latest.json` would name it, from the metadata it was
@@ -143,9 +162,11 @@ def publish(bucket: Bucket, store: Path, *, replaces: str | None) -> Latest:
     `replaces` is the key latest.json named when the store was pulled (None before the first
     publish): if it names another now, two runs overlapped, and LatestMoved is raised before
     latest.json is touched; the uploaded file stays for a rollback. The copy is named by the
-    store's latest complete run; raises LookupError when it has none. The prune keeps the store
-    the copy's meta RERUN_ROLLBACK names, the one published before its runs were rerun, however
-    many weeks the rerun publishes."""
+    store's latest complete run; raises LookupError when it has none. When the copy's meta holds a
+    RERUN label, `reruns/<label>` is written just before latest.json, so a store holding a label
+    never becomes latest without the mark. The prune keeps the store the copy's meta
+    RERUN_ROLLBACK names, the one published before its runs were rerun, however many weeks the
+    rerun publishes."""
     with tempfile.TemporaryDirectory(dir=store.parent) as tmp:
         copy = Path(tmp) / "store.db"
         source = sqlite3.connect(f"{store.resolve().as_uri()}?mode=ro", uri=True)
@@ -157,9 +178,11 @@ def publish(bucket: Bucket, store: Path, *, replaces: str | None) -> Latest:
         try:
             conn.execute("PRAGMA journal_mode=DELETE")
             row = conn.execute("SELECT max(id) FROM runs WHERE status = 'complete'").fetchone()
-            before = conn.execute(
-                "SELECT value FROM meta WHERE key = ?", (RERUN_ROLLBACK,)
-            ).fetchone()
+            meta: dict[str, str] = dict(
+                conn.execute(
+                    "SELECT key, value FROM meta WHERE key IN (?, ?)", (RERUN, RERUN_ROLLBACK)
+                ).fetchall()
+            )
         finally:
             conn.close()
         if row[0] is None:
@@ -179,8 +202,10 @@ def publish(bucket: Bucket, store: Path, *, replaces: str | None) -> Latest:
         )
     if (found := (now := bucket.latest()) and now.key) != replaces:
         raise LatestMoved(f"latest.json names {found}, not {replaces}: another run published")
+    if label := meta.get(RERUN):
+        bucket.mark_rerun(label, latest.key)
     bucket.point(latest)
-    bucket.prune(also_keep=before and before[0])
+    bucket.prune(also_keep=meta.get(RERUN_ROLLBACK))
     return latest
 
 

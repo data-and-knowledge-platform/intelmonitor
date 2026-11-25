@@ -7,6 +7,7 @@ Only the S3 API and environment variables connect them, so moving to another pla
 
 1. Every Monday the runner starts with an empty disk, downloads the store `latest.json` names, and migrates it.
    With nothing published it stops, unless its command has `--start-from <date>`: then it starts a new store with that date as the corpus start.
+   `--start-from` is refused once a store is published, and so is a date that makes more than 26 weeks due (`MAX_START_WEEKS` in `api/intelmonitor/cli.py`), as a guard against a mistyped date.
    When a week is due, a preflight makes one Exa search and one Claude Haiku call, and the runner exits 1 before any other work if either fails.
 2. For each complete week since the store's last complete run (Monday to Sunday UTC, at most 4 per firing, oldest first), it ingests that week and computes its run, logged with trigger `scheduled`.
 3. After each week it uploads a compact copy of the store as an immutable file `stores/intelmonitor-<run date>-<short hash>.db`, then rewrites `latest.json` (`key`, `run_id`, `sha256`, `published_at`) last, so readers never see a half-written store.
@@ -23,6 +24,8 @@ There is no spend cap.
 
 With `--rerun <label>`, a firing whose pulled store does not record that label deletes the stored runs, as `im clear-runs` does, and records the label; every week from the corpus start is then due again.
 The label reaches the bucket only inside the first week published after the delete, so a firing that stops before that publish changes nothing, and the next one deletes again.
+Each publish of a store holding a label first writes `reruns/<label>`, naming that store.
+A firing with `--rerun <label>` whose pulled store lacks a label that `reruns/` records is refused before any paid call: the store is from before that rerun, as after a rollback.
 Until every week is rerun, the site shows only the weeks rerun so far.
 [northflank-deploy.md](northflank-deploy.md), section "From the web UI", has the steps for a first start, a rerun and a rollback.
 
