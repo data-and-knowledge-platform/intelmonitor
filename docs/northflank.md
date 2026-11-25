@@ -8,7 +8,7 @@ The government version may differ from them anywhere; items marked **unconfirmed
 
 | Railway | Northflank |
 |---|---|
-| Each service builds from `Dockerfile` | One build service builds the image; `site` and `runner` both deploy from it with CD on, so code and schema match |
+| Each service builds from `Dockerfile` | One build service builds the image; `site` and `runner` both deploy from it with CD on, so both run the same code; the site brings its pulled copy of the store to its own schema before serving it |
 | `scripts/deploy.sh` (`railway up` to both) | A push to the tracked branch (CI on the build service, CD on both workloads) |
 | `site` service | Deployment service `site` |
 | `runner` cron service | Cron job `runner` |

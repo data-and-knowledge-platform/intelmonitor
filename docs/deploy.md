@@ -25,7 +25,7 @@ The code is `api/intelmonitor/store/publish.py`, `im weekly --publish`, `im publ
 ## Railway
 
 Project `intelmonitor`, environment `production`.
-Both services build from the repo's `Dockerfile`; `scripts/deploy.sh` uploads the same files to both, so code and schema always match.
+Both services build from the repo's `Dockerfile`; `scripts/deploy.sh` uploads the same files to both, so the two run the same code. The store's schema is that of the runner that published it, so the site brings its pulled copy to its own schema before serving it.
 There is no `railway.json`: Railway stops reading config files on 1 Dec 2026, so each service's settings live in the service.
 
 | Resource | Settings |
