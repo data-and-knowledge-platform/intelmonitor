@@ -18,6 +18,7 @@ Each week it reads public news and regulatory documents, groups them into develo
 | [docs/prompts/priority-versions.md](docs/prompts/priority-versions.md) | The priority prompt's versions and results. |
 | [docs/pipeline-costs.md](docs/pipeline-costs.md) | Measured cost per stage and per run. |
 | [docs/deploy.md](docs/deploy.md), [docs/northflank.md](docs/northflank.md) | The deployed site, the runner and the bucket. |
+| [docs/northflank-deploy.md](docs/northflank-deploy.md) | The steps to deploy on Northflank, and what is left on the test deployment. |
 | [PRODUCT.md](PRODUCT.md), [DESIGN.md](DESIGN.md) | Who the app is for and how it should look. |
 
 `prd.md`, `phase1-plan.md`, `phase1-decisions.md` and `docs/archive/` are history.

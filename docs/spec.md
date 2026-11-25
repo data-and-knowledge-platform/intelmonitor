@@ -1,6 +1,6 @@
 # IntelMonitor: what is built and what is left
 
-State of the repo on 25 Nov 2026, branch `feat/link-types-and-inferred-impact`.
+State of the repo on 25 Nov 2026, branch `main`.
 This file says what the system does now and what work remains.
 The reasons behind each choice are in [decisions.md](decisions.md).
 Terms follow [GLOSSARY.md](../GLOSSARY.md).
