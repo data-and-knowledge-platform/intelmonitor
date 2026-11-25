@@ -122,6 +122,27 @@ Everything here is done in the `runner` job's settings and with its Run button, 
 `im weekly --help` describes the options.
 Concurrency Forbid does not cover runs started by hand, so wait for a run to end before starting another; a run that overlaps another fails at its publish instead of overwriting the other's week.
 
+### Which weeks run
+
+There is no end date to give.
+A week is Monday to Sunday UTC, dated its Sunday.
+The runner runs every complete week from the corpus start (or after the store's latest run) up to the last Sunday before the day it runs, oldest first.
+Run on 25 Nov 2026 from 1 Oct 2026, that is eight weeks: 4 Oct to 22 Nov.
+The first week is short when the corpus start is not a Monday: from 1 Oct it covers 1 to 4 Oct.
+`--max-weeks` limits one run, 4 unless set; the weeks left over are still due at the next run, and the log says "weeks still due".
+There is no way to stop at an earlier week; a later run always catches up to the present.
+
+### Before a first start or a rerun
+
+Each of these weeks is paid again in model and search calls, so check before pressing Run.
+
+- The date in `--start-from`: a wrong year queues every week since that date, up to `--max-weeks` a run. Read the "weeks due" line at the top of the first log.
+- The priority prompt: every week uses the prompt in the deployed code. Switch a new version on in code before the run, not between weeks.
+- The runner's plan and disk (see Sizes), its secret groups, and outbound access to the Anthropic and Exa APIs.
+- The series keys: without them a week is still computed and published, but the run ends as failed.
+- Time: how many weeks fit in the 4-hour stop is not measured. Expect to press Run several times for eight weeks.
+- Cost: the six weeks to 8 Nov cost $223 with 89 entities (measured, `pipeline-costs.md`); with 142 entities and nothing recorded to replay it will be more.
+
 ### First start
 
 1. Check the bucket exists and holds nothing.
