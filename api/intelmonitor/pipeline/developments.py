@@ -150,10 +150,12 @@ def load_findings(
     ]
 
 
-# Statements per model call, and one thread, as the runner gets one CPU or less. In the Linux
-# image, embedding at fastembed's default of 256 per batch peaked at 1.3 GB; at 32 it peaked at
-# 478 MB, just as fast.
-EMBED_BATCH = 32
+# Statements per model call, and one thread, as the runner gets one CPU or less. One statement a
+# call: a batch pads each statement to its longest, which moves the vector by up to 7e-4, so a
+# stored vector would depend on what was embedded with it. Alone, the same text always gets the
+# same vector, and no time is spent on padding (3,000 statements in 66 s on a Mac at 1 against
+# 95 s at 32). In the Linux image, fastembed's default of 256 per batch peaked at 1.3 GB.
+EMBED_BATCH = 1
 
 
 @lru_cache
@@ -178,26 +180,41 @@ def _embedding_key(text: str) -> str:
 
 def stored_embeddings(conn: sqlite3.Connection, texts: list[str]) -> NDArray[np.float32]:
     """Unit-length embeddings, one row per text, read from the store's embeddings table; texts it
-    lacks are embedded and stored, so each run embeds only new statements."""
-    keys = [_embedding_key(t) for t in texts]
-    found: dict[str, bytes] = {}
+    lacks are embedded and stored, so each run embeds only new statements. Each stored vector is
+    read straight into its rows, so the vectors are held once."""
+    rows: dict[str, list[int]] = {}  # each distinct text's key, with the rows it fills
+    for n, text in enumerate(texts):
+        rows.setdefault(_embedding_key(text), []).append(n)
+    size = TextEmbedding.get_embedding_size(EMBEDDING_MODEL)
+    vectors = np.empty((len(texts), size), dtype=np.float32)
+    missing = set(rows)
+    keys = list(rows)
     for start in range(0, len(keys), 500):  # under SQLite's limit on bound parameters
         chunk = keys[start : start + 500]
         marks = ",".join("?" * len(chunk))
         query = f"SELECT key, vector FROM embeddings WHERE key IN ({marks})"  # noqa: S608
-        found.update((r[0], r[1]) for r in conn.execute(query, chunk))
-    new = {k: t for k, t in zip(keys, texts, strict=True) if k not in found}
-    if new:
-        vectors = embed(list(new.values()))
-        rows = [(k, v.tobytes()) for k, v in zip(new, vectors, strict=True)]
-        conn.executemany("INSERT OR REPLACE INTO embeddings (key, vector) VALUES (?, ?)", rows)
+        for key, blob in conn.execute(query, chunk):
+            vector = np.frombuffer(blob, dtype=np.float32)
+            if vector.shape != (size,):
+                raise ValueError(f"stored embedding {key} has {vector.size} values, not {size}")
+            vectors[rows[key]] = vector
+            missing.discard(key)
+    if missing:
+        new = [k for k in keys if k in missing]
+        embedded = embed([texts[rows[k][0]] for k in new])
+        conn.executemany(
+            "INSERT OR REPLACE INTO embeddings (key, vector) VALUES (?, ?)",
+            [(k, v.tobytes()) for k, v in zip(new, embedded, strict=True)],
+        )
         conn.commit()
-        found.update(rows)
-    return np.stack([np.frombuffer(found[k], dtype=np.float32) for k in keys])
+        for k, v in zip(new, embedded, strict=True):
+            vectors[rows[k]] = v
+    return vectors
 
 
 # Findings scored per batch in candidate_pairs: each batch's tables are this many rows by the
-# findings within the window of it, so memory does not grow with the corpus.
+# findings within the window of it, so their memory does not grow with the corpus; only the
+# vectors themselves do, at 1.5 KB a finding.
 PAIR_BATCH = 512
 
 

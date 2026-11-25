@@ -97,7 +97,11 @@ The site sits at about 85% of its memory and reaches 100% under the endpoint che
 The internal MinIO endpoint's TLS certificate is trusted by the image, so no CA file is needed.
 
 The runner's development merge, measured in the image on 1 CPU over the 16,392 findings of run 2026-11-08, peaks at 470 MB once the store holds their embeddings and at 652 MB on the first run, which embeds them all (6.5 minutes).
-It scores findings in batches against only those within the merge window, so its memory no longer grows with the corpus; the rest of a run on a full store is not measured yet.
+Those figures predate two changes: the merge now holds one copy of the stored vectors instead of two while loading them, and embeds one statement per call so that a statement's vector does not depend on what was embedded with it.
+The pair scoring is bounded: it scores 512 findings at a time against only those within the merge window, so its tables depend on how many findings a few weeks hold, not on the corpus.
+What still grows is the one copy of the stored vectors, about 1.5 KB a finding, held through the merge.
+On synthetic data at 3,000 findings a week, measured with Python's tracemalloc and not in the image, loading the vectors peaked at 32 MB for 18,000 findings and 254 MB for 144,000 (61 MB and 489 MB before the change), and scoring the pairs at 141 MB and 395 MB including those vectors.
+The rest of a run on a full store is not measured yet.
 
 The first store was published by hand through `northflank forward addon --skipHostnames`, with certificate checks off for that loopback connection only, because the certificate names the internal hostname.
 Since 23 Nov it serves a copy of the local store taken after the links were rated (1,364 links, latest run 2026-11-08), migrated by the deployed code before publishing, since the site opens stores read-only and cannot migrate them.
