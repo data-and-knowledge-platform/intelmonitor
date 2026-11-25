@@ -2,7 +2,9 @@
 model)."""
 
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import date, datetime
 
@@ -165,11 +167,41 @@ def read_sources(conn: sqlite3.Connection, series_id: str) -> dict[date, Observa
     }
 
 
+# The observations read so far inside reusing_observations(), by series and as_of; None outside.
+_reads: ContextVar[dict[tuple[str, date | None], list[Observation]] | None] = ContextVar(
+    "_reads", default=None
+)
+
+
+@contextmanager
+def reusing_observations() -> Generator[None]:
+    """Within it, read_observations reads each series once per as_of and hands every later caller
+    the same observations. For read-only work on one connection that reads a series several
+    times, such as the API's indicators, whose indicators and detectors each read every series;
+    nothing written inside it would be seen."""
+    token = _reads.set({})
+    try:
+        yield
+    finally:
+        _reads.reset(token)
+
+
 def read_observations(
     conn: sqlite3.Connection, series_id: str, as_of: date | None = None
 ) -> list[Observation]:
     """A series' observations by period. With as_of, only what was known by the end of that day:
     observations available on or before it, at the value they had before any later revision."""
+    reads = _reads.get()
+    if reads is None:
+        return _read_observations(conn, series_id, as_of)
+    if (series_id, as_of) not in reads:
+        reads[(series_id, as_of)] = _read_observations(conn, series_id, as_of)
+    return list(reads[(series_id, as_of)])
+
+
+def _read_observations(
+    conn: sqlite3.Connection, series_id: str, as_of: date | None
+) -> list[Observation]:
     if as_of is None:
         rows = conn.execute(
             "SELECT period, value, preliminary, available_at FROM observations "

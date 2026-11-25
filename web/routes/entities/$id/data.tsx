@@ -1,11 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { DataView } from "@/components/monitor/TrendView";
-import { trendOptions } from "@/lib/api/queries";
+import { monitorPageOptions, trendOptions } from "@/lib/api/queries";
 
-// An entity's Data tab: its indicators, then why its series moved run by run.
+// An entity's Data tab: its indicators, then its series over the 12 months to the latest run. The
+// page loads beside the trend, as the indicators wait for its run date.
 export const Route = createFileRoute("/entities/$id/data")({
-  loader: ({ context: { queryClient }, params }) => void queryClient.prefetchQuery(trendOptions(params.id)),
+  loader: ({ context: { queryClient }, params }) => {
+    void queryClient.prefetchQuery(monitorPageOptions(params.id));
+    void queryClient.prefetchQuery(trendOptions(params.id));
+  },
   component: DataPage,
 });
 

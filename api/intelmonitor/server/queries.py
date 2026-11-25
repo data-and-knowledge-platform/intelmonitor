@@ -3,13 +3,15 @@
 `Queries` is built per request around one connection. The run's developments are loaded once per
 run version and shared across requests, since the API reads far more often than runs change."""
 
+import gc
 import json
 import sqlite3
+import threading
 from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import timedelta
-from functools import cached_property
+from functools import cache, cached_property
 
 from intelmonitor.pipeline.corroboration import corroboration, outlet
 from intelmonitor.pipeline.extract import TONE_ORDER, Tone
@@ -67,7 +69,10 @@ def page_subject(subject_id: str) -> Subject:
     return found
 
 
+@cache
 def subject_ref(subject_id: str) -> SubjectRef:
+    """The subject's ref, one shared instance per subject for the process, as the seed is loaded
+    once: a run's developments hold tens of thousands of them. Never modify one in place."""
     s = subject(subject_id)
     seed = load_subjects()
     entity = next((e for e in seed.entities if e.id == subject_id), None)
@@ -206,6 +211,8 @@ class RunDevelopments:
 
 
 _run_cache: dict[tuple[str, str, str], RunDevelopments] = {}
+# Held while a run's developments load, so requests in parallel load them once between them.
+_run_lock = threading.Lock()
 
 
 def load_developments(conn: sqlite3.Connection, run: RunRef) -> RunDevelopments:
@@ -344,10 +351,23 @@ class Queries:
         # `im impacts` rewrites a run's inferred impacts without finishing it again.
         row = self._run_row
         key = (self.run.id, str(row["finished_at"]), str(row["impacts_recomputed"]))
-        if key not in _run_cache:
-            _run_cache.clear()
-            _run_cache[key] = load_developments(self.conn, self.run)
-        return _run_cache[key]
+        if (found := _run_cache.get(key)) is not None:
+            return found
+        # A page's parallel requests all miss on a cold worker: one loads, the rest wait for it.
+        with _run_lock:
+            if (found := _run_cache.get(key)) is None:
+                found = load_developments(self.conn, self.run)
+                # A loaded run is hundreds of thousands of objects that live until the next run.
+                # Frozen, the garbage collector stops walking them on every full collection,
+                # which took about 100 ms and ran every few requests. A run being replaced is
+                # unfrozen and collected, so nothing of it outlives the cache.
+                if _run_cache:
+                    gc.unfreeze()
+                    _run_cache.clear()
+                    gc.collect()
+                _run_cache[key] = found
+                gc.freeze()
+            return found
 
     def development(self, development_id: str) -> DevelopmentSummary:
         """A development by id, unconfirmed ones included, so a listed one always opens."""

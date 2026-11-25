@@ -27,6 +27,7 @@ from intelmonitor.store.series import (
     read_observations,
     read_revisions,
     read_sources,
+    reusing_observations,
 )
 
 # primary: the subject's own series. context: system-wide or market-wide context for it.
@@ -189,13 +190,15 @@ def _status(events: list[IndicatorEvent]) -> IndicatorStatus:
     return "needs_attention" if worst >= NEEDS_ATTENTION_LEVEL else "watch"
 
 
+@reusing_observations()
 def subject_indicators(
     conn: sqlite3.Connection, subject_id: str, as_of: date, series_id: str | None = None
 ) -> SubjectIndicators:
     """The indicators of every series mapped to the subject, or only `series_id`, from what was
     available by the end of `as_of`: each with its status from the detector events known since
     the previous run or still holding and its line over the 12 months to the date; and which of
-    them Key data shows."""
+    them Key data shows. Each series is read once, though the indicators, the detectors and the
+    lines each read it."""
     subject(subject_id)
     mapped: list[tuple[SeriesDef, SeriesRole]] = [
         (s, r) for s, r in mapped_series(subject_id) if series_id in (None, s.id)
