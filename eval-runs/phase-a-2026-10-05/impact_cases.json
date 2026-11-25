@@ -1029,5 +1029,12 @@
     "problems": [],
     "rows": [],
     "reason": "the link_types stage's entities asked, under both Low settings"
+  },
+  {
+    "id": "stage-adverse",
+    "ok": true,
+    "problems": [],
+    "rows": [],
+    "reason": "the link_types stage's developments asked, under the adverse rule's settings"
   }
 ]

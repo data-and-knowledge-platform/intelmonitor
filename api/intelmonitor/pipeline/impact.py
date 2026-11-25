@@ -8,7 +8,9 @@ level comes from INDIRECT_TABLE (pipeline/params.py): the named entity's direct 
 link's strength in the direction from it. High gives High, Medium, Low for a Strong, Moderate,
 Weak link; Medium gives Medium, Low, nothing; Low passes nothing unless INDIRECT_FROM_LOW; a
 Non-propagating direction passes nothing. An entity whose types were not asked passes nothing.
-With INDIRECT_ADVERSE_ONLY (on, P6), only entities the development is adverse for pass. A hub
+With INDIRECT_ADVERSE_ONLY (on, P6), only entities the development is adverse for pass
+(passes_adverse_rule), and the link_types stage does not ask a development that none of its
+entities would pass. A hub
 (HUB_KINDS: a country, region, regulator, central bank, agency or international body) passes
 nothing down a MEMBER_TYPES link to the entity that operates in it, is regulated by it, is listed
 on it or is a member of it, itself or through a region that covers it, nor to an entity whose
@@ -310,7 +312,8 @@ class Tagged:
     """An entity named on a development: the development's direct level for it (0 Low to 2
     High), whether it is adverse for it, and the relationship types the development activates for
     it (the link_types stage); None when they were not asked (a topic, an entity at Low with
-    INDIRECT_FROM_LOW off, or a run from before the stage), which passes nothing."""
+    INDIRECT_FROM_LOW off, one of a development adverse for none of its entities with
+    INDIRECT_ADVERSE_ONLY on, or a run from before the stage), which passes nothing."""
 
     level: int
     adverse: bool
@@ -356,6 +359,14 @@ def indirect_level(direct: int, strength: Strength, *, from_low: bool) -> int | 
     if direct == 0 and not from_low:
         return None
     return INDIRECT_TABLE[direct][strength]
+
+
+def passes_adverse_rule(adverse: bool, *, adverse_only: bool = INDIRECT_ADVERSE_ONLY) -> bool:
+    """Whether the adverse rule lets a named entity pass: any entity with `adverse_only`
+    (INDIRECT_ADVERSE_ONLY) off, else only one the development is adverse for. `reached` gates
+    each entity by it, and the link_types stage asks a development only when one of the
+    entities it would ask about passes it (developments.link_types_entities)."""
+    return adverse or not adverse_only
 
 
 def _rank(r: Reached) -> tuple[int, int, float, str, str]:
@@ -425,7 +436,7 @@ def reached(
     known = {} if links is None else links
     found: dict[str, list[Reached]] = {}
     for source, tag in tagged.items():
-        if tag.types is None or (adverse_only and not tag.adverse):
+        if tag.types is None or not passes_adverse_rule(tag.adverse, adverse_only=adverse_only):
             continue
         if source not in known:
             known[source] = reaches(conn, source)
@@ -459,15 +470,19 @@ def reached(
 @dataclass
 class ImpactStats:
     """What store_impacts found in a run: every path under each setting, with its development's
-    id; how many named entities at Low have their types asked; and how many at Medium or High
-    have them and have none asked, each a development and entity pair. The run stores the paths
-    of STORED. The link_types stage asks entities at Low only with INDIRECT_FROM_LOW on, so with
+    id; how many named entities at Low have their types asked; how many developments with types
+    the adverse rule would not have asked; and how many entities at Medium or High have their
+    types and have none asked, each a development and entity pair. The run stores the paths of
+    STORED. The link_types stage asks entities at Low only with INDIRECT_FROM_LOW on, so with
     none at Low asked the Low row's paths equal those without it by construction, and its effect
-    is not measured. A run whose entities were never asked (one from before the stage) has none
-    with types and finds no path."""
+    is not measured. It asks a development adverse for none of its entities only with
+    INDIRECT_ADVERSE_ONLY off, so with none such asked the paths with the adverse rule off lack
+    those developments, and its effect is not measured either. A run whose entities were never
+    asked (one from before the stage) has none with types and finds no path."""
 
     paths: dict[Setting, list[tuple[str, Reached]]]
     low_asked: int = 0
+    calm_asked: int = 0  # developments with types, adverse for none of the entities with them
     typed: int = 0  # entities at Medium or High with their types, [] included
     unasked: int = 0  # entities at Medium or High whose types were not asked
 
@@ -504,6 +519,10 @@ def store_impacts(
     entities = _names()
     for dev_id, tagged in _tags(conn, run_id).items():
         stats.low_asked += sum(t.level == 0 and t.types is not None for t in tagged.values())
+        asked = [t for t in tagged.values() if t.types is not None]
+        stats.calm_asked += bool(asked) and not any(
+            passes_adverse_rule(t.adverse, adverse_only=True) for t in asked
+        )
         material = [t for sid, t in tagged.items() if sid in entities and t.level >= MATERIAL_LEVEL]
         stats.typed += sum(t.types is not None for t in material)
         stats.unasked += sum(t.types is None for t in material)

@@ -47,7 +47,7 @@ The stages, in order:
 | Merge | Embeddings, then Haiku 5.5 | Findings that report the same event become one development. |
 | Headline | Sonnet 5.5, low effort | Writes the headline and key points, and keeps only the subjects the development is about. |
 | Priority | Sonnet 5.5, medium effort | High, Medium or Low for each subject of each development, with a reason. |
-| Link types | Sonnet 5.5, high effort | For each entity at Medium or High, the relationship types the development could travel through. |
+| Link types | Sonnet 5.5, high effort | For each entity at Medium or High, the relationship types the development could travel through. Only developments adverse for at least one of those entities are asked. |
 | Impact | none | Inferred impact on linked entities, from a fixed table. |
 | Briefs | Sonnet 5.5 | Each subject's brief and notes for the week. |
 
@@ -97,6 +97,7 @@ A link is followed from A only when all of these hold:
 - Its type is one the development activates for A (the link types stage).
 - Its rating in the direction away from A is not Non-propagating.
 - The development is adverse for A.
+  The link types stage does not ask a development that is adverse for none of its entities at Medium or High, so their types stay unset.
 - A is not a hub passing along a membership link. A hub is a country, region, regulator, central bank, agency or international body. The membership types are `operates_in`, `regulated_by`, `listed_on`, `member_of` and `participates_in`.
 - A is not B's home country.
 

@@ -146,7 +146,9 @@ async def compute_run(
         )
         step(
             f"link types: {merge.link_types_asked} developments with an entity at Medium or "
-            f"High{' or Low' if STORED.from_low else ''} asked, {merge.link_types_refused} "
+            f"High{' or Low' if STORED.from_low else ''}"
+            f"{', adverse for one of them,' if STORED.adverse_only else ''} asked, "
+            f"{merge.link_types_refused} "
             "refused (their entities activate no type)"
         )
         impact = store_impacts(conn, run_id)
@@ -223,7 +225,10 @@ def impact_lines(conn: sqlite3.Connection, run_id: str, impact: ImpactStats) -> 
     INDIRECT_SAMPLES rows that flipping each switch adds or removes, one per development. With no
     entity at Low asked for its types (the link_types stage asks them only with INDIRECT_FROM_LOW
     on), the Low row's counts and samples would equal those without it by construction, so it
-    says they are not counted instead. A subject no longer in the seed shows by its id."""
+    says they are not counted instead. With no development adverse for none of its entities
+    asked (the stage asks those only with INDIRECT_ADVERSE_ONLY off), the counts and samples with
+    the adverse rule off would lack them, so it says those are not counted either. A subject no
+    longer in the seed shows by its id."""
     subjects = monitored_subjects()
     shown = shown_developments(conn, run_id)
     titles = {
@@ -257,21 +262,25 @@ def impact_lines(conn: sqlite3.Connection, run_id: str, impact: ImpactStats) -> 
             f"{r.relationship.type} ({r.strength}): {dev_id} {titles[dev_id][:90]}{gate}"
         )
 
-    uncounted = (
-        "not counted, no entity at Low has its types (link_types asks them only with "
-        "INDIRECT_FROM_LOW on)"
-    )
-
-    def measured(s: Setting) -> bool:
-        return not s.from_low or impact.low_asked > 0
+    def uncounted(s: Setting) -> str | None:
+        """Why the setting's paths cannot be counted, or None when they can."""
+        if s.from_low and not impact.low_asked:
+            return (
+                "not counted, no entity at Low has its types (link_types asks them only with "
+                "INDIRECT_FROM_LOW on)"
+            )
+        if not s.adverse_only and not impact.calm_asked:
+            return (
+                "not counted, no development adverse for none of its entities was asked for "
+                "types (link_types asks those only with INDIRECT_ADVERSE_ONLY off)"
+            )
+        return None
 
     lines: list[str] = []
     for only_shown in (False, True):
         scope = "shown developments only" if only_shown else "all developments"
         lines.append(f"inferred rows, development and entity pairs reached/paths, {scope}:")
-        lines += [
-            f"  {label(s)}: {counts(s, only_shown) if measured(s) else uncounted}" for s in SETTINGS
-        ]
+        lines += [f"  {label(s)}: {uncounted(s) or counts(s, only_shown)}" for s in SETTINGS]
     stored = impact.stored
     lines.append(f"paths not best: {sum(not r.best for _, r in stored)}")
     high = [(d, r) for d, r in stored if r.best and r.level == NEEDS_ATTENTION_LEVEL]
@@ -286,8 +295,8 @@ def impact_lines(conn: sqlite3.Connection, run_id: str, impact: ImpactStats) -> 
         ),
     ]
     for words, fewer, more in flips:
-        if not (measured(fewer) and measured(more)):
-            lines.append(f"  {words}: {uncounted}")
+        if why := uncounted(fewer) or uncounted(more):
+            lines.append(f"  {words}: {why}")
             continue
         kept = {(d, r.subject_id) for d, r in impact.paths[fewer] if r.best}
         seen: set[str] = set()

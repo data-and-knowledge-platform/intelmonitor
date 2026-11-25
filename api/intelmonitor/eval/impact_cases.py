@@ -48,14 +48,21 @@ Every way the rules could fail, and the cases that catch it:
 - the run step reads the wrong level, adverse flag or types from development_subjects, stores
   the wrong rows, a wrong best flag or no reason, touches another run's rows, counts the four
   switch settings wrongly, miscounts the entities at Low whose types were asked (with none, the
-  Low row's counts equal the counts without it and the run says it cannot count them), or sets
-  or clears the run's impacts_recomputed mark wrongly, or miscounts the entities at Medium or
+  Low row's counts equal the counts without it and the run says it cannot count them) or the
+  developments with types that are adverse for none of their entities (with none, the counts with
+  the adverse rule off lack them and the run says it cannot count them), or sets or clears the
+  run's impacts_recomputed mark wrongly, or miscounts the entities at Medium or
   High with their types and with none asked, by which `im impacts` tells a run from before the
   link_types stage (`store`);
 - the link_types stage asks entities at Low with INDIRECT_FROM_LOW off, or does not ask them
   with it on, so the Low row passes nothing end to end; asks a topic or a development that names
   no entity; or, with the switch off, sends any prompt other than the Medium and High entities'
-  (`stage`, with a stub in place of the model).
+  (`stage`, with a stub in place of the model);
+- with INDIRECT_ADVERSE_ONLY on, the stage asks a development adverse for none of the entities it
+  would ask about, which can pass nothing, or stores [] for them instead of null; skips one
+  adverse for some of them, or sends it only the adverse ones, so its prompt and cache key move;
+  counts an entity at Low towards that with INDIRECT_FROM_LOW off; or, with the switch off, skips
+  anything (`stage-adverse`).
 
 `uv run python -m intelmonitor.eval impact` runs them and writes impact_cases.json in the eval
 directory."""
@@ -834,9 +841,9 @@ def check_store() -> list[str]:
     """store_impacts on a run of five developments: it reads each named entity's level, adverse
     flag and activated types from development_subjects, stores every path of the decided setting
     (the adverse gate on) with its best flag and reason, leaves another run's rows alone, counts
-    the four settings, sets the run's impacts_recomputed mark when given one and clears it when
-    not, and counts the entities at Medium or High with their types and with none asked, topics
-    apart."""
+    the four settings and the developments with types adverse for none of their entities, sets
+    the run's impacts_recomputed mark when given one and clears it when not, and counts the
+    entities at Medium or High with their types and with none asked, topics apart."""
     links = [
         link("dbs", "material_customer_of", "singtel", "Weak", "Strong"),
         link("uob", "material_customer_of", "singtel", "Weak", "Weak"),
@@ -912,6 +919,10 @@ def check_store() -> list[str]:
         problems.append(f"counts {counts}, expected {STORE_COUNTS}")
     if stats.low_asked != 1:
         problems.append(f"{stats.low_asked} entities at Low with types, expected 1 (dev-c)")
+    if stats.calm_asked != 1:
+        problems.append(
+            f"{stats.calm_asked} developments with types adverse for none, expected 1 (dev-d)"
+        )
     if (stats.typed, stats.unasked) != (3, 1):
         problems.append(
             f"entities at Medium or High: {stats.typed} with types, {stats.unasked} not asked; "
@@ -967,8 +978,44 @@ STAGE_ASKED: dict[bool, dict[str, list[str]]] = {
 }
 
 
-def _development(dev_id: str, levels: dict[str, int]) -> Development:
-    """A made-up development of one finding, naming these subjects at these levels."""
+# The adverse rule's developments, each entity at its level and whether the development is
+# adverse for it; then the entities each setting of (INDIRECT_ADVERSE_ONLY, INDIRECT_FROM_LOW)
+# must ask about, by development. With the rule on, a development adverse for none of the
+# entities it would ask about is not asked; one adverse for any of them sends all of them.
+ADVERSE_DEVELOPMENTS: dict[str, dict[str, tuple[int, bool]]] = {
+    "dev-adverse": {"singtel": (HIGH, True)},
+    "dev-calm": {"uob": (MEDIUM, False), "dbs": (HIGH, False)},
+    "dev-some": {"singtel": (HIGH, True), "dbs": (MEDIUM, False)},
+    # Adverse only for its entity at Low, which counts only with INDIRECT_FROM_LOW on.
+    "dev-low-adverse": {"ocbc": (LOW, True), "uob": (MEDIUM, False)},
+}
+ADVERSE_ASKED: dict[Setting, dict[str, list[str]]] = {
+    Setting(True, False): {"dev-adverse": ["singtel"], "dev-some": ["dbs", "singtel"]},
+    Setting(True, True): {
+        "dev-adverse": ["singtel"],
+        "dev-some": ["dbs", "singtel"],
+        "dev-low-adverse": ["ocbc", "uob"],
+    },
+    Setting(False, False): {
+        "dev-adverse": ["singtel"],
+        "dev-calm": ["dbs", "uob"],
+        "dev-some": ["dbs", "singtel"],
+        "dev-low-adverse": ["uob"],
+    },
+    Setting(False, True): {
+        "dev-adverse": ["singtel"],
+        "dev-calm": ["dbs", "uob"],
+        "dev-some": ["dbs", "singtel"],
+        "dev-low-adverse": ["ocbc", "uob"],
+    },
+}
+
+
+def _development(
+    dev_id: str, levels: dict[str, int], calm: frozenset[str] = frozenset()
+) -> Development:
+    """A made-up development of one finding, naming these subjects at these levels, adverse for
+    each but those in `calm`."""
     finding = RunFinding(
         id=f"{dev_id}-finding",
         document_id=f"{dev_id}-document",
@@ -991,61 +1038,97 @@ def _development(dev_id: str, levels: dict[str, int]) -> Development:
     dev = Development(dev_id, [finding])
     for sid, level in levels.items():
         s = DevelopmentSubject(
-            role="affected", adverse=True, tone="negative", confidence=1.0, source="claude"
+            role="affected",
+            adverse=sid not in calm,
+            tone="negative",
+            confidence=1.0,
+            source="claude",
         )
         s.set_priority(level, f"{PRIORITY_LABELS[level]} for a case.")
         dev.subjects[sid] = s
     return dev
 
 
-def check_stage() -> list[str]:
-    """activate_link_types under both settings of INDIRECT_FROM_LOW, with StubTypes for the
-    model: the developments asked, the entities each prompt lists (the prompt is the one
-    link_types_prompt makes for exactly those entities, so with the switch off it is the one the
-    stage sent before the switch reached it, and so is its cache key), the entities given types,
-    and the counts the run prints."""
+def _check_asked(
+    devs: list[Development], want: dict[str, list[str]], where: str, setting: Setting
+) -> list[str]:
+    """activate_link_types under `setting`, with StubTypes for the model: the developments asked,
+    the entities each prompt lists (the prompt is the one link_types_prompt makes for exactly
+    those entities, so it is the one the stage sent before either switch reached it, and so is
+    its cache key), the entities given types, and the counts the run prints."""
     problems: list[str] = []
     names = monitored_subjects()
+    inf = StubTypes()
+    counts = asyncio.run(
+        activate_link_types(inf, devs, from_low=setting.from_low, adverse_only=setting.adverse_only)
+    )
+    expected_prompts = {
+        f"dev:{d.id}:1": link_types_prompt(
+            d,
+            [
+                DirectEntity(
+                    e,
+                    names[e].name,
+                    d.subjects[e].priority_level,
+                    d.subjects[e].priority_reason,
+                )
+                for e in want[d.id]
+            ],
+        )
+        for d in devs
+        if d.id in want
+    }
+    if sorted(inf.prompts) != sorted(expected_prompts):
+        problems.append(
+            f"{where}: asked {sorted(inf.prompts)}, expected {sorted(expected_prompts)}"
+        )
+    problems += [
+        f"{where}: {ref} sent another prompt"
+        for ref, prompt in expected_prompts.items()
+        if ref in inf.prompts and inf.prompts[ref] != prompt
+    ]
+    for d in devs:
+        for sid, s in d.subjects.items():
+            asked = sid in want.get(d.id, [])
+            if (s.link_types is not None) != asked:
+                problems.append(
+                    f"{where}: {d.id} {sid} has types {s.link_types}, "
+                    f"{'asked' if asked else 'not asked'}"
+                )
+    if counts != (len(want), 0):
+        problems.append(f"{where}: counts {counts}, expected ({len(want)}, 0)")
+    return problems
+
+
+def check_stage() -> list[str]:
+    """The link_types stage under both settings of INDIRECT_FROM_LOW, with the adverse rule as
+    decided; every subject is adverse, so the rule does not change what it asks."""
+    problems: list[str] = []
     for from_low, want in STAGE_ASKED.items():
         devs = [_development(d, levels) for d, levels in STAGE_DEVELOPMENTS.items()]
-        inf = StubTypes()
-        counts = asyncio.run(activate_link_types(inf, devs, from_low=from_low))
-        where = f"INDIRECT_FROM_LOW {from_low}"
-        expected_prompts = {
-            f"dev:{d.id}:1": link_types_prompt(
+        problems += _check_asked(
+            devs, want, f"INDIRECT_FROM_LOW {from_low}", DECIDED._replace(from_low=from_low)
+        )
+    return problems
+
+
+def check_stage_adverse() -> list[str]:
+    """The link_types stage under each setting of INDIRECT_ADVERSE_ONLY and INDIRECT_FROM_LOW,
+    on developments adverse for all, some or none of their entities."""
+    problems: list[str] = []
+    for setting, want in ADVERSE_ASKED.items():
+        devs = [
+            _development(
                 d,
-                [
-                    DirectEntity(
-                        e,
-                        names[e].name,
-                        d.subjects[e].priority_level,
-                        d.subjects[e].priority_reason,
-                    )
-                    for e in want[d.id]
-                ],
+                {sid: level for sid, (level, _) in subjects.items()},
+                frozenset(sid for sid, (_, adverse) in subjects.items() if not adverse),
             )
-            for d in devs
-            if d.id in want
-        }
-        if sorted(inf.prompts) != sorted(expected_prompts):
-            problems.append(
-                f"{where}: asked {sorted(inf.prompts)}, expected {sorted(expected_prompts)}"
-            )
-        problems += [
-            f"{where}: {ref} sent another prompt"
-            for ref, prompt in expected_prompts.items()
-            if ref in inf.prompts and inf.prompts[ref] != prompt
+            for d, subjects in ADVERSE_DEVELOPMENTS.items()
         ]
-        for d in devs:
-            for sid, s in d.subjects.items():
-                asked = sid in want.get(d.id, [])
-                if (s.link_types is not None) != asked:
-                    problems.append(
-                        f"{where}: {d.id} {sid} has types {s.link_types}, "
-                        f"{'asked' if asked else 'not asked'}"
-                    )
-        if counts != (len(want), 0):
-            problems.append(f"{where}: counts {counts}, expected ({len(want)}, 0)")
+        where = (
+            f"INDIRECT_ADVERSE_ONLY {setting.adverse_only}, INDIRECT_FROM_LOW {setting.from_low}"
+        )
+        problems += _check_asked(devs, want, where, setting)
     return problems
 
 
@@ -1074,6 +1157,11 @@ def run() -> None:
     steps = [
         ("store", check_store, "store_impacts on a made-up run"),
         ("stage", check_stage, "the link_types stage's entities asked, under both Low settings"),
+        (
+            "stage-adverse",
+            check_stage_adverse,
+            "the link_types stage's developments asked, under the adverse rule's settings",
+        ),
     ]
     for id_, check_step, reason in steps:
         try:

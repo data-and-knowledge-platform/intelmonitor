@@ -22,7 +22,7 @@ Its rows below are what it cost while it ran ($0.64 of the October rebuild, meas
 | One weekly run | about 1,560 | $1.70 | $38 | about $40 | measured, $38 to $42 over five full weeks |
 | Seed (6 weekly runs, 4 Oct to 8 Nov) | 9,277 | $9.42 | $214.07 | $223.49 | measured |
 | Link rating (once) | | | $2.49 | $2.49 | measured |
-| Activated link types, one weekly run | | | about $1.39 | about $1.39 | estimate: 283 calls at $0.00492 a call, measured |
+| Activated link types, one weekly run | | | about $0.41 | about $0.41 | estimate: 84 calls at $0.00492 a call, measured |
 
 Sonnet stages are about 96% of the bill.
 Exa ingest is about $5 a week on top (about 700 searches at $0.007), so about $29 for the rebuild.
@@ -113,6 +113,7 @@ A rerun pays only for links that are new or whose input changed.
 ## Activated link types
 
 `link_types` is one Claude Sonnet 5.5 call per development with an entity at Medium or High, after priority, at effort high with adaptive thinking (`LINK_TYPES_EFFORT`).
+With `INDIRECT_ADVERSE_ONLY` on, a development adverse for none of those entities is not asked, since none of them could pass inferred impact (25 Nov 2026); an asked development still lists every one of them, so its input is unchanged.
 Its system prompt is fixed text (the 22 types, pages 9 and 10's selection rule, our rule for when a consequence travels through a relationship and when the structural types apply, including for an entity that is itself a jurisdiction, regulator or exchange, page 9's examples and `THINK_FIRST`), so it is cached; the user prompt is the development as the priority call reads it, then each entity at Medium or High with its level and reason.
 
 Measured on 23 Nov 2026 with `im trial link-types` on a fixed sample of 100 of the baseline's developments with an entity at Medium or High (130 entities), from the API's usage on each recorded call, for the live prompt (versions 5 at high and 6 at medium on the baseline):
@@ -128,10 +129,12 @@ Versions 3 and 4, before our sentence on jurisdictions, regulators and exchanges
 The cases send about 2,500 input tokens a call (measured).
 The 18 cases of `uv run python -m intelmonitor.eval link-types` (the deck's ten and our eight) cost $0.0601 at high and $0.0199 at medium (measured).
 
-A run pays for each development with an entity at Medium or High that is new or updated in it; the others replay from `inference_records`.
-In the baseline's run of 8 Nov 2026 that is 283 of the 1,148 developments with an entity at Medium or High, about $1.39 at high (estimate).
-A run that pays for every one of them, such as a first run on an empty `inference_records`, is about $5.65 (estimate: 1,148 calls).
-The six stored weeks hold 1,366 distinct inputs, about $6.72 at high with the 89 entities they were run with (estimate); step 9's rerun with 142 entities will differ.
+A run pays for each asked development that is new or updated in it; the others replay from `inference_records`.
+In the run of 8 Nov 2026, 1,148 developments have an entity at Medium or High and 311 of them are adverse for one of those entities.
+Of those 311, 84 are new or updated, about $0.41 at high (estimate); before the adverse rule reached the stage it was 283, about $1.39.
+A run that pays for every one of them, such as a first run on an empty `inference_records`, is about $1.53 (estimate: 311 calls; $5.65 for 1,148 before).
+The six stored weeks hold 370 distinct inputs to ask, about $1.82 at high with the 89 entities they were run with (estimate; 1,366 and $6.72 before); step 9's rerun with 142 entities will differ.
+These counts are from the app's store; its 1,148, 283 and 1,366 match the baseline's.
 
 ## Stages that cost nothing now
 
@@ -151,7 +154,7 @@ The six stored weeks hold 1,366 distinct inputs, about $6.72 at high with the 89
 - screen and extract are paid once per document: `Inference` records each call by its input hash, and later runs replay it.
 - same_event is paid once per candidate pair.
 - headline is paid for each new development, and priority for each new development and entity, and again when a development gains findings, because its input changes.
-- link_types is paid for each new or updated development with an entity at Medium or High, and again when an entity's level or reason changes.
+- link_types is paid for each new or updated development adverse for one of its entities at Medium or High, and again when an entity's level or reason changes.
 - brief and note are paid on every run, whatever arrived.
 
 ## Method

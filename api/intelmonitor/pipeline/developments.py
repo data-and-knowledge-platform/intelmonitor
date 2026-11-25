@@ -18,7 +18,9 @@ priority over its subjects.
 After priority, one more Sonnet call per development with an entity at Medium or High (the
 link_types stage, deck of 16 Nov 2026, pages 9 and 10) picks for each such entity the relationship
 types the development activates, which the inferred impact step follows. With INDIRECT_FROM_LOW
-on, entities at Low are asked too, so a Low entity can pass its Low row."""
+on, entities at Low are asked too, so a Low entity can pass its Low row. With
+INDIRECT_ADVERSE_ONLY on, a development adverse for none of those entities is not asked, since
+none of them could pass anything."""
 
 import asyncio
 import atexit
@@ -49,10 +51,12 @@ from intelmonitor.pipeline.headlines import (
     detection_headline,
     headline_prompt,
 )
+from intelmonitor.pipeline.impact import passes_adverse_rule
 from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
 from intelmonitor.pipeline.params import (
     EMBEDDING_MODEL,
     HAIKU_MODEL,
+    INDIRECT_ADVERSE_ONLY,
     INDIRECT_FROM_LOW,
     LINK_TYPES_EFFORT,
     LINK_TYPES_PROMPT,
@@ -266,8 +270,9 @@ class DevelopmentSubject:
     # this subject and its level is at least the rated one. None when the rating set it.
     rule: str | None = None
     # The relationship types the development activates for this entity (`activate_link_types`);
-    # None when it was not asked: a topic, an entity at Low with INDIRECT_FROM_LOW off, or before
-    # the stage ran.
+    # None when it was not asked: a topic, an entity at Low with INDIRECT_FROM_LOW off, an entity
+    # of a development adverse for none of the entities the stage would ask about with
+    # INDIRECT_ADVERSE_ONLY on, or before the stage ran.
     link_types: list[RelType] | None = None
 
     def set_priority(self, level: int, reason: str) -> None:
@@ -640,15 +645,27 @@ def link_types_prompt(dev: Development, entities: Sequence[DirectEntity]) -> str
 
 
 def link_types_entities(
-    dev: Development, names: Mapping[str, Subject], *, from_low: bool = INDIRECT_FROM_LOW
+    dev: Development,
+    names: Mapping[str, Subject],
+    *,
+    from_low: bool = INDIRECT_FROM_LOW,
+    adverse_only: bool = INDIRECT_ADVERSE_ONLY,
 ) -> list[DirectEntity]:
     """The development's entities the link_types call asks about: those at Medium or High, and
-    those at Low too with `from_low`, by id. Topics are not asked."""
+    those at Low too with `from_low`, by id; none when the adverse rule (`adverse_only`,
+    impact.passes_adverse_rule) lets none of them pass, since none could pass anything. When any
+    passes, every one is asked, adverse or not, so the call's input does not depend on the
+    rule. Topics are not asked."""
     lowest = 0 if from_low else MATERIAL_LEVEL
-    return [
-        DirectEntity(sid, names[sid].name, s.priority_level, s.priority_reason)
+    listed = [
+        (sid, s)
         for sid, s in sorted(dev.subjects.items())
         if names[sid].type == "entity" and s.priority_level >= lowest
+    ]
+    if not any(passes_adverse_rule(s.adverse, adverse_only=adverse_only) for _, s in listed):
+        return []
+    return [
+        DirectEntity(sid, names[sid].name, s.priority_level, s.priority_reason) for sid, s in listed
     ]
 
 
@@ -691,17 +708,27 @@ def entity_types(
 
 
 async def activate_link_types(
-    inf: Inference, devs: list[Development], *, from_low: bool = INDIRECT_FROM_LOW
+    inf: Inference,
+    devs: list[Development],
+    *,
+    from_low: bool = INDIRECT_FROM_LOW,
+    adverse_only: bool = INDIRECT_ADVERSE_ONLY,
 ) -> tuple[int, int]:
     """The link_types stage, after priority: one call per development with an entity at Medium or
     High, which sets each such entity's `link_types`. With `from_low` (INDIRECT_FROM_LOW), entities
     at Low are asked as well, so a development whose entities are all Low is asked too; without
-    it, they are not asked and keep None. A refused call leaves the entities asked with none.
-    Topics and developments that name no entity are not asked. The developments asked and the
-    calls refused."""
+    it, they are not asked and keep None. With `adverse_only` (INDIRECT_ADVERSE_ONLY), a
+    development adverse for none of the entities it would ask about is not asked and they keep
+    None (link_types_entities). A refused call leaves the entities asked with none. Topics and
+    developments that name no entity are not asked. The developments asked and the calls
+    refused."""
     names = monitored_subjects()
     failures: list[str] = []
-    asked = [(d, e) for d in devs if (e := link_types_entities(d, names, from_low=from_low))]
+    asked = [
+        (d, e)
+        for d in devs
+        if (e := link_types_entities(d, names, from_low=from_low, adverse_only=adverse_only))
+    ]
     refused = 0
 
     async def one(dev: Development, entities: list[DirectEntity]) -> None:

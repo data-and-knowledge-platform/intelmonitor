@@ -168,6 +168,10 @@ A "run" is one weekly pipeline pass, and "the store" is the SQLite database a ru
   Under the deck's rules about 9% of 6,020 previewed rows read as useful: a regulator's rule reached every firm it regulates and a country's news reached every firm in it, whatever the rule or event touched.
   Under these rules a preview week held 447 rows, none High, and 16 of 25 sampled made sense; a firm's own news still reaches its regulator and country, a country's news still reaches a foreign lender, and a parent's news still reaches its subsidiaries.
   Status: stands, but all three rules depart from the team's deck of 16 Nov, and the team has not yet seen them.
+- **25 Nov 2026.** The link types call is made only for a development that is adverse for at least one of its entities at Medium or High.
+  With the adverse-only rule on, the others can pass nothing, and they were 837 of the 1,148 developments asked in the week ending 8 Nov (measured).
+  An asked development still lists every entity it listed before, so recorded calls replay.
+  The cost is that inferred rows with the adverse rule off can no longer be counted from a run; the run says so.
 
 ## Models, prompts and versions
 
