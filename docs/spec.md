@@ -160,6 +160,7 @@ A new machine needs the live store copied in, or pulled from the bucket with `im
 5. **Tests and docs.** The walkthrough and `check_endpoints.py` move to the 57 displayed entities and the new rules. `im check past-run` replays the link types stage.
 6. **Scheduled runs.** Set the weekly schedule and publish the first real store once a rerun exists.
 7. **A link pass for the 85 hidden entities**, if wanted.
+8. **Remove the Data tab, the Related tab and the note on why a series moved** from the deployed version (decided 25 Nov 2026). The note is a Sonnet call per subject with series on every run. Whether the series ingest and the detectors go too is open; until they do, a run without the series keys completes but `im weekly` exits 1.
 
 ## Known problems
 

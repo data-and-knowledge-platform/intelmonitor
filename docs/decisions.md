@@ -239,6 +239,17 @@ A "run" is one weekly pipeline pass, and "the store" is the SQLite database a ru
 - **11 Nov 2026.** How link strength, inferred levels and the priority reason are shown waits for the team's Figma designs; the existing layouts only swap in the new fields.
   Status: partly overtaken on 23 Nov 2026 (below); the full display is still open.
 - **23 Nov 2026.** The team's designs of 23 Nov are built over the current pages: a Home page with the watchlist at a glance and the week's developments per subject, cards defining each priority, development cards, a one-scroll popup, and a Related tree in place of the force graph.
+- **25 Nov 2026.** The note on why a subject's series moved leaves the deployed version.
+  It is one Sonnet call per subject with listed series on every run, about 55 calls and $0.58 a run (measured), and only the Data tab and one line of the brief read it.
+  Status: decided, not yet built.
+- **25 Nov 2026.** The Related tab leaves the deployed version.
+  It lists the developments that could affect the subject through a link; the development popup and the Overview's Related tree show inferred impact too.
+  The owner's call; no reason was recorded.
+  Status: decided, not yet built.
+- **25 Nov 2026.** The Data tab leaves the deployed version, because the entities added on 16 Nov have no data source.
+  Only 6 of the 57 displayed entities have any measured series (DBS, OCBC, UOB, MAS and SGX have their own), 9 of the 30 topics do, and the five displayed entities added on 16 Nov have none.
+  Status: decided, not yet built.
+  Whether the series ingest and the detectors go with it is open: the owner expects a deployed run to need only the Anthropic and Exa keys, and today `im weekly` exits 1 when a series key is missing.
 
 ## Open decisions
 
@@ -255,4 +266,5 @@ A "run" is one weekly pipeline pass, and "the store" is the SQLite database a ru
 - **Questions for the team.** Whether entities such as SIA, used in the deck's examples, join; whether sectors become subjects so a sector-wide event can reach its members; whether schemes such as Project Guardian join so `participates_in` has rows; whether the four-value rating prompt was tested; what counts as a partner.
 - **Telling MAS.** The added sentence on vendor breaches in the cybersecurity descriptor.
 - **Questions for the platform team.** Whether the runner may reach the Anthropic API or must use a cloud provider's Claude endpoint, which bucket service is allowed, and the rest listed in [northflank.md](northflank.md).
+- **Measured series and detectors.** Whether they are removed with the Data tab, so a run needs only the Anthropic and Exa keys.
 - **Failure alerts.** A channel for run failures beyond the account owner's email has not been named.
