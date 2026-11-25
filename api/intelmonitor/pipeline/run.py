@@ -1,8 +1,8 @@
 """`im run`: compute a pipeline run as of a date, from the documents published from the corpus
 start (meta `corpus_start`) to that date. Documents stored from before the corpus start stay in
 the store but outside every run. `im weekly` ingests and computes each complete week in turn, and
-`im clear-runs` deletes every run before a rebuild. `im impacts` rewrites only the inferred
-impacts of stored runs.
+`im clear-runs` deletes every run before a rebuild (`im weekly --publish --rerun` does the same on
+the published store). `im impacts` rewrites only the inferred impacts of stored runs.
 
 Every model call is cached in inference_records by its input, and every derived table is rebuilt
 from those calls, so rerunning after a failure resumes where it stopped.
@@ -44,7 +44,7 @@ from intelmonitor.pipeline.subjects import monitored_subjects
 from intelmonitor.pipeline.summaries import write_summaries
 from intelmonitor.pipeline.upcoming import store_upcoming
 from intelmonitor.relationships import sync_relationships
-from intelmonitor.store.db import connect, get_meta
+from intelmonitor.store.db import RERUN, RERUN_ROLLBACK, connect, get_meta
 from intelmonitor.store.documents import list_documents
 
 # Entities whose inferred row counts each run prints, for the picks of the two switches (P6, P7),
@@ -396,11 +396,22 @@ def run_tables(conn: sqlite3.Connection) -> list[str]:
     ]
 
 
-def clear_runs(conn: sqlite3.Connection) -> dict[str, int]:
+def clear_runs(
+    conn: sqlite3.Connection, *, rerun: str | None = None, rollback: str | None = None
+) -> dict[str, int]:
     """Delete every run and its per-run rows in one transaction. Documents and their per-document
-    rows, inference_records, series and run_log stay. Returns the rows deleted per table."""
+    rows, inference_records, series and run_log stay. Returns the rows deleted per table.
+    `im weekly --rerun` passes its label as `rerun` and the key of the published store it pulled
+    as `rollback` (None from an empty bucket); the same transaction records them as meta RERUN
+    and RERUN_ROLLBACK, so the store never holds the label without the clear."""
     deleted: dict[str, int] = {}
     with conn:
         for table in [*run_tables(conn), "runs"]:
             deleted[table] = conn.execute(f"DELETE FROM {table}").rowcount  # noqa: S608
+        if rerun is not None:
+            conn.execute("DELETE FROM meta WHERE key IN (?, ?)", (RERUN, RERUN_ROLLBACK))
+            conn.executemany(
+                "INSERT INTO meta (key, value) VALUES (?, ?)",
+                [(k, v) for k, v in ((RERUN, rerun), (RERUN_ROLLBACK, rollback)) if v is not None],
+            )
     return deleted

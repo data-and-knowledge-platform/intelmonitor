@@ -154,7 +154,13 @@ A new machine needs the live store copied in, or pulled from the bucket with `im
 
 ## What is left
 
-1. **Run the weeks again.** The stored runs were rated before the 142 entities, the 22 link types, the headline call's subject choice and the inferred impact rules above. Until a store is rerun, it shows no inferred impact under these rules, and `im check past-run` fails on every stored run. The plan: back up the store, run the week ending 8 Nov on a copy and record its cost, then `im clear-runs` and `im weekly --max-weeks 6`. Six runs cost $223.49 with 89 entities; the headline calls alone were $69.44 and none of them replays.
+1. **Run the weeks again.** The stored runs were rated before the 142 entities, the 22 link types, the headline call's subject choice and the inferred impact rules above.
+   Until a store is rerun, it shows no inferred impact under these rules, and `im check past-run` fails on every stored run.
+   The plan: on the runner, from the platform's web UI, `im weekly --publish --rerun <label> --max-weeks 8` ([northflank-deploy.md](northflank-deploy.md), "Rerun every week").
+   It deletes the published store's runs once per label and runs every week from 1 Oct 2026 again, publishing after each.
+   Until all are published, the site shows only the weeks rerun so far, and the store from before stays in the bucket for a rollback.
+   Model calls whose input is unchanged replay for free; Exa searches are made again.
+   Six runs cost $223.49 with 89 entities; the headline calls alone were $69.44 and none of them replays.
 2. **Switch on priority version 13** for the weeks after that rerun.
 3. **Decide the Low row** of the inferred impact table from the rerun's counts, then apply it with `im impacts --all`.
 4. **Wording, API, web and export.** "Indirect impact" becomes "inferred impact" in the glossary, API, comments and export. An inferred row can be High. The export gains the activated types and one row per path.

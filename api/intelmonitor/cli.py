@@ -3,6 +3,7 @@
 import asyncio
 import os
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
@@ -160,6 +161,11 @@ def run(
 # nothing more, and the platform reports the failed run.
 RUNNER_TIMEOUT_HOURS = 4
 
+# The most weeks `im weekly --publish --start-from` may make due on a new store: a guard against a
+# mistyped date (a wrong year or a swapped day and month), as each week is paid. Raise it here to
+# start further back.
+MAX_START_WEEKS = 26
+
 
 @app.command()
 def weekly(
@@ -174,23 +180,78 @@ def weekly(
             "after each week, and stop after 4 hours. Needs STORE_BUCKET and no local store",
         ),
     ] = False,
+    start_from: Annotated[
+        datetime | None,
+        typer.Option(
+            "--start-from",
+            formats=["%Y-%m-%d"],
+            help="With --publish, only when nothing is published: start a new store with this "
+            "date as its corpus start and run the complete weeks from it, at most "
+            f"{MAX_START_WEEKS} due. Refused once a store is published, so remove it after the "
+            "first week is published",
+        ),
+    ] = None,
+    rerun: Annotated[
+        str | None,
+        typer.Option(
+            "--rerun",
+            help="With --publish: rerun every stored week once. Unless the pulled store records "
+            "this label, delete its runs as `im clear-runs` does and record the label, so every "
+            "week from the corpus start is due again. The label reaches the bucket with the "
+            "first week published after, so the same label later changes nothing and a new "
+            "label reruns again. Refused when the bucket records this label as published but "
+            "the pulled store lacks it, as after a rollback",
+        ),
+    ] = None,
 ) -> None:
     """For each complete week (Monday to Sunday UTC) since the last complete run, or since the
     corpus start, oldest first: ingest that week's window with the Sunday as T0, then compute its
     run, dated the Sunday. Fetches the measured series once first. Exits 0 when no week is due.
     Before the first week it checks the Exa and Claude keys with one search and one Haiku call.
     Exits 1 when a week left out a whole source (an official source not reached, most news
-    searches failed, a series key missing or refused), after computing and publishing it."""
+    searches failed, a series key missing or refused), after computing and publishing it. With
+    --publish, an empty bucket is refused unless --start-from gives the corpus start, and
+    --start-from is refused once a store is published: the date is the opt-in, so a mistyped or
+    emptied bucket never starts a paid rebuild. A date making more than MAX_START_WEEKS weeks due
+    is refused as a likely typo. --rerun deletes the pulled store's runs at most once per label.
+    The label is recorded in the local store with the clear, in one transaction, and reaches the
+    bucket only inside the first week published after it; a firing that stops before that
+    publish leaves the bucket as it was, and the next one clears again. Each publish of a store
+    holding a label marks the label in the bucket first, so a rerun whose label is marked but
+    absent from the pulled store, a rollback to the store from before it, is refused. Until every
+    due week is published, the site shows only the weeks rerun so far. The store published before
+    the rerun is never pruned. Both options need --publish."""
     import threading
-    from datetime import UTC, date, datetime
+    from datetime import UTC, date, timedelta
 
     from intelmonitor.ingest.models import corpus_start, week_window
     from intelmonitor.ingest.run import run_ingest
     from intelmonitor.ingest.series.collect import fetch_series
-    from intelmonitor.pipeline.run import compute_run, weekly_dates
+    from intelmonitor.pipeline.run import clear_runs, compute_run, weekly_dates
     from intelmonitor.preflight import preflight
-    from intelmonitor.store.db import DB_PATH, connect
+    from intelmonitor.store.db import DB_PATH, RERUN, connect, get_meta, set_meta
     from intelmonitor.store.publish import publish as publish_store
+
+    today = datetime.now(UTC).date()
+    if not publish and (start_from is not None or rerun is not None):
+        raise typer.BadParameter("--start-from and --rerun only apply with --publish")
+    if rerun is not None and not rerun.strip():
+        raise typer.BadParameter("--rerun needs a label, such as the date it was asked for")
+    start = start_from.date() if start_from is not None else None
+    if start is not None:
+        first = start + timedelta(days=(6 - start.weekday()) % 7)
+        count = len(range(first.toordinal(), today.toordinal(), 7))  # the Sundays before today
+        if not count:
+            raise typer.BadParameter(
+                f"--start-from {start}: its first week ends {first}, not before today ({today} "
+                "UTC), so it gives no complete week"
+            )
+        if count > MAX_START_WEEKS:
+            raise typer.BadParameter(
+                f"--start-from {start} makes {count} weeks due, more than {MAX_START_WEEKS}. The "
+                "limit guards against a mistyped date; check the date, or raise MAX_START_WEEKS "
+                "in api/intelmonitor/cli.py to start further back"
+            )
 
     bucket = _bucket() if publish else None
     published: str | None = None  # the key latest.json names, which each publish replaces
@@ -201,14 +262,32 @@ def weekly(
                 "INTELMONITOR_DATA_DIR to an empty directory"
             )
         latest = bucket.latest()
-        if latest is None:
-            raise typer.BadParameter(f"nothing published in {bucket.name}: run `im publish` first")
-        bucket.download(latest, DB_PATH)
-        published = latest.key
-        typer.echo(f"pulled {latest.key} (run {latest.run_id})")
+        if latest is not None and start is not None:
+            raise typer.BadParameter(
+                f"--start-from: a store is already published in {bucket.name} ({latest.key}), so "
+                "there is nothing to start. Remove --start-from from the command"
+            )
+        if latest is not None:
+            bucket.download(latest, DB_PATH)
+            published = latest.key
+            typer.echo(f"pulled {latest.key} (run {latest.run_id})")
+        elif start is None:
+            raise typer.BadParameter(
+                f"nothing published in {bucket.name}: pass --start-from <corpus start> to start "
+                "a new store there, or run `im publish`"
+            )
+
+        pulled = published
 
         def time_out() -> None:
-            typer.echo(f"stopped after {RUNNER_TIMEOUT_HOURS} hours", err=True)
+            if published == pulled:
+                done = "before this run published a week: the bucket is as it was"
+            else:
+                done = "mid-week: the weeks this run published stay published"
+            typer.echo(
+                f"stopped after {RUNNER_TIMEOUT_HOURS} hours, {done}; start the runner again",
+                err=True,
+            )
             os._exit(1)
 
         timer = threading.Timer(RUNNER_TIMEOUT_HOURS * 3600, time_out)
@@ -216,7 +295,30 @@ def weekly(
         timer.start()
 
     conn = connect()
-    weeks = weekly_dates(conn, datetime.now(UTC).date())
+    if start is not None:  # with --publish, and refused above unless the bucket is empty
+        set_meta(conn, "corpus_start", start.isoformat())
+        typer.echo(f"nothing published: a new store, corpus start {start}")
+    if rerun is not None:
+        if get_meta(conn, RERUN) == rerun:
+            typer.echo(f"rerun {rerun}: already applied to this store, nothing cleared")
+        elif (begins := corpus_start(conn)) is None:
+            raise typer.BadParameter("--rerun: the store has no corpus start to rerun from")
+        elif bucket is not None and (marked := bucket.rerun_published(rerun)) is not None:
+            raise typer.BadParameter(
+                f"--rerun {rerun}: the bucket marks {marked} as published with this label, but "
+                f"the store this run starts from ({published or 'a new one'}) lacks it: a "
+                "rollback to a store from before that rerun, or, rarely, a run that died while "
+                "publishing it. Remove --rerun from the command; to rerun again, give a new label"
+            )
+        else:
+            deleted = clear_runs(conn, rerun=rerun, rollback=published)
+            typer.echo(
+                f"rerun {rerun}: {deleted['runs']} stored runs deleted, every week from {begins} "
+                "is due again. Until all are published the site shows only the weeks rerun so far"
+            )
+            if published is not None:
+                typer.echo(f"the store published before the rerun, {published}, is kept")
+    weeks = weekly_dates(conn, today)
     if not weeks:
         typer.echo("no complete week since the last complete run")
         return
@@ -251,7 +353,8 @@ def weekly(
             published = publish_store(bucket, DB_PATH, replaces=published).key
             typer.echo(f"published {published}")
     if left := weeks[len(due) :]:
-        typer.echo(f"\n{len(left)} weeks still due, from {left[0]}: run `im weekly` again")
+        again = "start the runner again" if bucket else "run `im weekly` again"
+        typer.echo(f"\n{len(left)} weeks still due, from {left[0]}: {again}")
     if problems:
         typer.echo("\ncomputed, but sources were missing:\n" + "\n".join(problems), err=True)
         raise typer.Exit(1)

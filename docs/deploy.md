@@ -6,10 +6,12 @@ Only the S3 API and environment variables connect them, so moving to another pla
 ## How a week reaches the site
 
 1. Every Monday the runner starts with an empty disk, downloads the store `latest.json` names, and migrates it.
+   With nothing published it stops, unless its command has `--start-from <date>`: then it starts a new store with that date as the corpus start.
+   `--start-from` is refused once a store is published, and so is a date that makes more than 26 weeks due (`MAX_START_WEEKS` in `api/intelmonitor/cli.py`), as a guard against a mistyped date.
    When a week is due, a preflight makes one Exa search and one Claude Haiku call, and the runner exits 1 before any other work if either fails.
 2. For each complete week since the store's last complete run (Monday to Sunday UTC, at most 4 per firing, oldest first), it ingests that week and computes its run, logged with trigger `scheduled`.
 3. After each week it uploads a compact copy of the store as an immutable file `stores/intelmonitor-<run date>-<short hash>.db`, then rewrites `latest.json` (`key`, `run_id`, `sha256`, `published_at`) last, so readers never see a half-written store.
-4. It keeps the `STORE_KEEP` newest store files (12 by default) and deletes older ones, never the one `latest.json` names.
+4. It keeps the `STORE_KEEP` newest store files (12 by default) and deletes older ones, never the one `latest.json` names nor the one published before the latest rerun.
 5. The site downloads the file `latest.json` names when it starts, opens it read-only, and checks `latest.json` every 10 minutes; a new key is downloaded beside the old file, its sha256 checked, and swapped in without a restart.
 
 A failed run exits non-zero and publishes nothing for that week, so the site keeps the last good store.
@@ -19,6 +21,13 @@ Before rewriting `latest.json`, a publish checks it still names the store the ru
 A firing with nothing due exits 0 and uploads nothing, so the 14:00 retry is harmless.
 The runner stops itself after 4 hours.
 There is no spend cap.
+
+With `--rerun <label>`, a firing whose pulled store does not record that label deletes the stored runs, as `im clear-runs` does, and records the label; every week from the corpus start is then due again.
+The label reaches the bucket only inside the first week published after the delete, so a firing that stops before that publish changes nothing, and the next one deletes again.
+Each publish of a store holding a label first writes `reruns/<label>`, naming that store.
+A firing with `--rerun <label>` whose pulled store lacks a label that `reruns/` records is refused before any paid call: the store is from before that rerun, as after a rollback.
+Until every week is rerun, the site shows only the weeks rerun so far.
+[northflank-deploy.md](northflank-deploy.md), section "From the web UI", has the steps for a first start, a rerun and a rollback.
 
 The code is `api/intelmonitor/store/publish.py`, `im weekly --publish`, `im publish` and `im pull` in `api/intelmonitor/cli.py`, and the lifespan in `api/intelmonitor/server/app.py`.
 
@@ -52,7 +61,7 @@ A failed firing shows as crashed in Railway, which emails the account owner.
 
 With the `STORE_*` variables set in the shell or `.env`:
 
-- `uv run im publish` uploads `data/intelmonitor.db` and repoints `latest.json`; used for the first publish.
+- `uv run im publish` uploads `data/intelmonitor.db` and repoints `latest.json`: one way to make the first publish; the runner with `--start-from` is the other.
 - `uv run im publish --key stores/<file>` repoints `latest.json` at a file already in the bucket: a rollback, picked up by the site within 10 minutes.
 - `uv run im pull` downloads the published store as `data/intelmonitor.db`; `--replace` overwrites a local store.
 

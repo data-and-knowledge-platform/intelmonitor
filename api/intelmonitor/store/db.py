@@ -762,6 +762,14 @@ def _drop_endpoints(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+# Meta keys `im weekly --rerun` writes in the transaction that clears the runs (pipeline/run.py
+# clear_runs): the operator's label for the rerun, so a later firing with the same label clears
+# nothing (each publish also marks it in the bucket, so a rollback to a store without it is
+# refused), and the key of the store published before it, which a publish never prunes
+# (store/publish.py), so it stays a rollback target.
+RERUN = "rerun"
+RERUN_ROLLBACK = "rerun_rollback"
+
 # The meta key holding the version of the link model the stored links were last checked against.
 LINKS_CHECKED = "links_checked"
 
