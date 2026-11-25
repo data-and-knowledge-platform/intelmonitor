@@ -1,17 +1,15 @@
 #!/bin/sh
-# Deploy the demo to Railway: ./scripts/deploy.sh [--data]
-# Uploads the repo's tracked and unignored files. --data also ships a snapshot of
-# data/intelmonitor.db, which replaces the deployed store. The store holds no viewer state, so
-# --data only refreshes the data.
+# Deploy the code to Railway: ./scripts/deploy.sh
+# Uploads the repo's tracked and unignored files to both services, `site` and `runner`, so their
+# code and schema match. Data never ships with the code: the runner publishes stores to the bucket
+# and the site pulls them (docs/deploy.md).
 set -e
 root=$(cd "$(dirname "$0")/.." && pwd)
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 cd "$root"
 git ls-files -co --exclude-standard -z | xargs -0 -I{} sh -c '[ -f "$1" ] && mkdir -p "$2/$(dirname "$1")" && cp "$1" "$2/$1" || true' _ {} "$stage"
-mkdir -p "$stage/deploy/seed"
-if [ "$1" = "--data" ]; then
-  sqlite3 data/intelmonitor.db ".backup '$stage/deploy/seed/intelmonitor.db'"
-  sqlite3 "$stage/deploy/seed/intelmonitor.db" "PRAGMA journal_mode=DELETE" > /dev/null
-fi
-railway up "$stage" --path-as-root --no-gitignore --service site --detach -m "${DEPLOY_MESSAGE:-$(git log -1 --format=%s)}"
+message="${DEPLOY_MESSAGE:-$(git log -1 --format=%s)}"
+for service in site runner; do
+  railway up "$stage" --path-as-root --no-gitignore --service "$service" --detach -m "$message"
+done

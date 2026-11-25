@@ -34,3 +34,127 @@
 .help .keys {
   margin-top: var(--s-2);
 }
+
+/* The info button beside a priority, opening Priority definitions. */
+.btn-icon.prio-info {
+  width: 20px;
+  height: 20px;
+  color: var(--ink3);
+  vertical-align: middle;
+}
+.dp-prio {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Priority definitions (SidebarDialogs.tsx PriorityDialog), after the team's design: a card per
+   priority tinted by its status color with a stronger left edge, then How a priority is set. */
+dialog.panel.prio {
+  width: 1040px;
+  max-height: 88vh;
+}
+.prio-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-5) var(--s-5) 0 var(--s-6);
+}
+.prio-head > div {
+  flex: 1;
+}
+.prio-head h2 {
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.prio-head p {
+  margin: var(--s-2) 0 0;
+}
+.prio-head .prio-kicker {
+  margin: 0 0 var(--s-1);
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--ink2);
+}
+.panel-body.prio-body {
+  gap: var(--s-5);
+  padding: var(--s-5) var(--s-6) var(--s-6);
+}
+.prio-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+.prio-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-5);
+  border: 1px solid;
+  border-left-width: 3px;
+  border-radius: var(--r-widget);
+}
+.prio-card h3 {
+  margin: 0;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  font-weight: 600;
+}
+.prio-card p {
+  margin: 0;
+}
+.prio-card .prio-ex {
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+}
+.prio-card.attn {
+  border-color: var(--attn);
+  background: var(--attn-bg);
+}
+.prio-card.attn h3 {
+  color: var(--attn);
+}
+.prio-card.watch {
+  border-color: var(--watch);
+  background: var(--watch-bg);
+}
+.prio-card.watch h3 {
+  color: var(--watch);
+}
+.prio-card.low {
+  border-color: var(--stable);
+  background: oklch(0.96 0.02 155);
+}
+.prio-card.low h3 {
+  color: var(--stable);
+}
+.prio-how {
+  padding: var(--s-5);
+  border-radius: var(--r-widget);
+  background: var(--new-bg);
+}
+.prio-how h3 {
+  margin: 0 0 var(--s-3);
+  font-size: var(--fs-lead);
+  line-height: var(--lh-lead);
+  font-weight: 600;
+}
+.prio-how p {
+  max-width: 110ch;
+}
+.prio-how ol {
+  margin: var(--s-3) 0 0;
+  padding-left: 1.4em;
+  max-width: 110ch;
+}
+.prio-how li + li {
+  margin-top: var(--s-1);
+}
+@media (max-width: 1023px) {
+  .prio-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

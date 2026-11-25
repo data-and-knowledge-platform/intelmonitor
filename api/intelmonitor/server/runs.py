@@ -11,7 +11,7 @@ def _how(trigger: str, triggered_by: str | None) -> str:
     """How an execution started; Run now, since removed, named who pressed it."""
     if trigger == "manual":
         return f"Run now, {triggered_by}" if triggered_by else "Run now"
-    return "Command line"
+    return "Scheduled" if trigger == "scheduled" else "Command line"
 
 
 def _run_info(r: sqlite3.Row) -> RunInfo:

@@ -2,6 +2,8 @@
 browser needs no CORS. Build the web app with VITE_API_URL=/api. Development keeps the two apart
 behind Portless and does not use this module."""
 
+import logging
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException
@@ -12,6 +14,8 @@ from intelmonitor.config import REPO_ROOT
 from intelmonitor.server.app import app as api
 
 WEB_DIST = REPO_ROOT / "web" / "dist"
+# The app's own log lines (which store is served) beside uvicorn's.
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s: %(message)s")
 
 
 class SinglePageApp(StaticFiles):

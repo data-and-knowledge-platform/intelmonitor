@@ -128,9 +128,11 @@ def direct_subjects(q: Queries, development_id: str) -> list[DirectSubject]:
             priority=PRIORITY_LABELS[int(r["priority_level"])],
             adverse=bool(r["adverse"]),
             tone=r["tone"],
+            reason=r["priority_reason"],
         )
         for r in q.conn.execute(
-            "SELECT subject_id, role, priority_level, adverse, tone FROM development_subjects "
+            "SELECT subject_id, role, priority_level, adverse, tone, priority_reason "
+            "FROM development_subjects "
             "WHERE run_id = ? AND development_id = ? "
             "ORDER BY priority_level DESC, priority_score DESC, subject_id",
             (q.run.id, development_id),

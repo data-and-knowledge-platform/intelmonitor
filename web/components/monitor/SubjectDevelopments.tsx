@@ -10,7 +10,7 @@ import { plural } from "@/lib/format";
 import { useHashScroll } from "@/lib/dom";
 import { pageSection, subjectLink } from "@/lib/links";
 import { Feed, HrefLink } from "@/components/developments/Feed";
-import { FeedHeader, FeedRow } from "@/components/developments/FeedRow";
+import { FeedRow } from "@/components/developments/FeedRow";
 import { ChevronIcon } from "@/components/ui/icons";
 
 import { MonitorHead } from "./MonitorView";
@@ -37,7 +37,6 @@ export function TopDevelopments({ subject }: { subject: Schema<"SubjectRef"> }) 
         <p className="mon-empty">No developments this month.</p>
       ) : (
         <>
-          <FeedHeader />
           <ol className="frows">
             {rows.slice(0, TOP).map((d) => (
               <FeedRow key={d.id} development={d} scope={{ subject: subject.id }} />

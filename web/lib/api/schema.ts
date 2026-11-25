@@ -577,6 +577,11 @@ export interface components {
              */
             outlet_count: number;
             /**
+             * Outlets
+             * @description The parent domains of all its sources, the most documents first
+             */
+            outlets: string[];
+            /**
              * Unconfirmed
              * @description Its sources do not pass the source gate (pipeline/corroboration.py), so lists leave it out unless asked
              */
@@ -791,6 +796,11 @@ export interface components {
              */
             outlet_count: number;
             /**
+             * Outlets
+             * @description The parent domains of all its sources, the most documents first
+             */
+            outlets: string[];
+            /**
              * Unconfirmed
              * @description Its sources do not pass the source gate (pipeline/corroboration.py), so lists leave it out unless asked
              */
@@ -836,6 +846,11 @@ export interface components {
              * @enum {string}
              */
             tone: "positive" | "negative" | "neutral";
+            /**
+             * Reason
+             * @description The priority rating's one sentence on why; empty when unrated
+             */
+            reason: string;
         };
         /** DocumentDetail */
         DocumentDetail: {
@@ -1233,6 +1248,11 @@ export interface components {
             /** @description Null when nothing falls in the period */
             top: components["schemas"]["TopDevelopment"] | null;
             /**
+             * Topics
+             * @description An entity's topics among its developments in the period, the most developments first; empty for topics
+             */
+            topics: components["schemas"]["SubjectRef"][];
+            /**
              * New
              * @description Shown developments new in the latest run, whatever the period
              */
@@ -1263,15 +1283,24 @@ export interface components {
         };
         /**
          * MaterialityLevel
-         * @description A materiality level for Help: what it means and how the app treats it.
+         * @description A materiality level for Help and the priority definitions: what it means and how the app
+         *     treats it.
          */
         MaterialityLevel: {
             /** Level */
             level: number;
             /** Name */
             name: string;
-            /** Description */
+            /**
+             * Description
+             * @description What the level means, in one sentence
+             */
             description: string;
+            /**
+             * Examples
+             * @description Typical findings at this level, as one list
+             */
+            examples: string;
             /**
              * Material
              * @description Medium or High
@@ -1433,7 +1462,7 @@ export interface components {
             days: components["schemas"]["RelatedDays"];
             /**
              * Nodes
-             * @description Most developments first, then most harmful, then by name
+             * @description Most linked news first, then by name
              */
             nodes: components["schemas"]["RelatedNode"][];
             /**
@@ -1464,10 +1493,35 @@ export interface components {
              * @description A few words from the centre: "holds 100%", "24.4% of loans", "gets its connectivity from"
              */
             label: string;
+            /**
+             * Detail
+             * @description The link's evidence in one sentence
+             */
+            detail: string;
+            /**
+             * Toward
+             * @description How strongly an event at the node reaches the centre through this link; null for a link with no rating
+             */
+            toward: ("Strong" | "Moderate" | "Weak" | "Non-propagating") | null;
+            /** Toward Reason */
+            toward_reason: string;
+            /**
+             * Away
+             * @description How strongly an event at the centre reaches the node; null when unrated
+             */
+            away: ("Strong" | "Moderate" | "Weak" | "Non-propagating") | null;
+            /** Away Reason */
+            away_reason: string;
+            /**
+             * Development Ids
+             * @description Shown developments in the window this link carried to the centre, in display order
+             */
+            development_ids: string[];
         };
         /**
          * RelatedNode
-         * @description An entity linked to the centre, with the developments that reach the centre through it.
+         * @description An entity linked to the centre, with the developments that reach the centre through it
+         *     (its linked news: each development once, whichever of its links carried it).
          */
         RelatedNode: {
             /** Id */
@@ -1671,13 +1725,13 @@ export interface components {
             status: "running" | "complete" | "failed";
             /**
              * Trigger
-             * @description cli: `im run` or `im weekly`. manual: Run now, since removed
+             * @description cli: `im run` or `im weekly` by hand. scheduled: the weekly runner. manual: Run now, since removed
              * @enum {string}
              */
-            trigger: "cli" | "manual";
+            trigger: "cli" | "scheduled" | "manual";
             /**
              * How
-             * @description "Command line", or "Run now, <display name>"
+             * @description "Command line", "Scheduled", or "Run now, <display name>"
              */
             how: string;
             /**

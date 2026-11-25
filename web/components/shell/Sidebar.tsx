@@ -1,10 +1,10 @@
-// Sidebar, from Mock A: brand, Recently viewed (the last 5 pages opened, newest first), the current
-// view's Watchlist (entities, a hairline, then topics, each alphabetical), All (links to the Entities
-// and Topics lists), and the foot: Help and Data sources links over the view switcher. Personal
+// Sidebar: brand, Dashboards (Home and the Entities and Topics lists), Recently viewed (the last 5
+// pages opened, newest first), the current view's Watchlist (entities, a hairline, then topics, each
+// alphabetical), and the foot: Help and Data sources links over the view switcher. Personal
 // entries show an x on hover that removes them; a function view's fixed watchlist shows a lock on
 // its heading and no x. State lives in this browser (lib/viewerState.ts).
 import { Link } from "@tanstack/react-router";
-import { Bookmark, Briefcase, Building2, Check, ChevronsUpDown, Clock, Layers, Lock, User, X } from "lucide-react";
+import { Bookmark, Briefcase, Building2, Check, ChevronsUpDown, Clock, House, Layers, Lock, User, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import type { Schema } from "@/lib/api/client";
@@ -49,9 +49,29 @@ export function Sidebar() {
   return (
     <nav className="side" aria-label="Main">
       <Link to="/" activeOptions={{ exact: true }} className="brand">
-        IntelMonitor
+        <span className="brand-name">IntelMonitor</span>
+        <span className="brand-sub">Entity Monitoring Dashboard</span>
       </Link>
       <div className="side-scroll">
+        <section className="navsec" aria-labelledby="nav-dashboards">
+          <h2 className="navhead" id="nav-dashboards">
+            Dashboards
+          </h2>
+          <Link to="/" activeOptions={{ exact: true, includeSearch: false }} className="navitem">
+            <House size={16} aria-hidden="true" />
+            <span>Home</span>
+          </Link>
+          <Link to="/entities" activeOptions={{ exact: true, includeSearch: false }} className="navitem">
+            <Building2 size={16} aria-hidden="true" />
+            <span>Entities</span>
+            <span className="count">{subjects.filter((s) => s.type === "entity").length || ""}</span>
+          </Link>
+          <Link to="/topics" activeOptions={{ exact: true, includeSearch: false }} className="navitem">
+            <Layers size={16} aria-hidden="true" />
+            <span>Topics</span>
+            <span className="count">{subjects.filter((s) => s.type === "topic").length || ""}</span>
+          </Link>
+        </section>
         <section className="navsec" aria-labelledby="nav-recent">
           <h2 className="navhead" id="nav-recent">
             <Clock size={14} aria-hidden="true" />
@@ -81,21 +101,6 @@ export function Sidebar() {
             <Entry key={s.id} subject={s} onRemove={remove(s)} />
           ))}
           {loaded && entities.length === 0 && topics.length === 0 && <p className="navempty">Empty</p>}
-        </section>
-        <section className="navsec" aria-labelledby="nav-all">
-          <h2 className="navhead" id="nav-all">
-            All
-          </h2>
-          <Link to="/entities" activeOptions={{ exact: true, includeSearch: false }} className="navitem">
-            <Building2 size={16} aria-hidden="true" />
-            <span>Entities</span>
-            <span className="count">{subjects.filter((s) => s.type === "entity").length || ""}</span>
-          </Link>
-          <Link to="/topics" activeOptions={{ exact: true, includeSearch: false }} className="navitem">
-            <Layers size={16} aria-hidden="true" />
-            <span>Topics</span>
-            <span className="count">{subjects.filter((s) => s.type === "topic").length || ""}</span>
-          </Link>
         </section>
       </div>
       <div className="side-foot">

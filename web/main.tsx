@@ -12,6 +12,7 @@ import "@/styles/trend.css";
 import "@/styles/help.css";
 import "@/styles/developments.css";
 import "@/styles/lists.css";
+import "@/styles/home.css";
 import "@/styles/touch.css";
 
 import { ToastProvider } from "@/components/ui/Toast";

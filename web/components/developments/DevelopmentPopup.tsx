@@ -1,8 +1,7 @@
-// A development in a popup over the page it was opened from (the user's sketch, after mock u1
-// option B). The header holds its labels for the subjects in
-// view, the headline, its key points (the full title when it has none), and the close button;
-// below, "Who it impacts" over "Connections" (the claims and the graph snippet) on the left, and
-// the sources down the right. Each column scrolls inside the popup; under 1024 px they stack.
+// A development in a popup over the page it was opened from, after the team's design of 23 Nov 2026.
+// The header holds its labels for the subjects in view, the headline and the close button; below, in
+// one scroll, the Summary (its key points, or the full title when it has none), Affected entities
+// (a card per entity beside the Connection tree) and the Sources.
 //
 // The popup lives in the URL (`?development=<id>&scope=...`, built by link.ts), so a shared link and
 // browser Back work. Close, Esc and a backdrop click go back to the entry it was opened over, or drop
@@ -14,9 +13,10 @@ import type { Schema } from "@/lib/api/client";
 import { useDevelopment } from "@/lib/api/queries";
 import { capitalize, longDate } from "@/lib/format";
 import { Dotted } from "@/components/monitor/parts";
+import { PriorityInfo } from "@/components/shell/SidebarDialogs";
 import { CloseButton, Modal } from "@/components/ui/Modal";
 
-import { ImpactGraph, WhoItImpacts } from "./Impacts";
+import { AffectedEntities } from "./Impacts";
 import { AdverseTone, dateSpan, names, PriorityBadge, sourceCountText, UnconfirmedMark } from "./labels";
 import { closedDevelopmentLink, developmentLink, parseScope, scopeHere, type ViewScope } from "./link";
 import { Sources } from "./Sources";
@@ -89,14 +89,10 @@ function DevelopmentView({ id, scope, onClose }: { id: string; scope: ViewScope;
         <CloseButton onClick={onClose} label="Close development" />
       </div>
       {d && (
-        <div className="dp-cols">
-          <div className="dp-col dp-col-left">
-            <WhoItImpacts direct={d.direct_subjects} impacts={d.impacts} />
-            <ImpactGraph impacts={d.impacts} />
-          </div>
-          <div className="dp-col dp-col-src">
-            <Sources sources={d.sources} title={d.title} unconfirmed={d.unconfirmed} />
-          </div>
+        <div className="dp-body">
+          <Summary development={d} />
+          <AffectedEntities direct={d.direct_subjects} impacts={d.impacts} />
+          <Sources sources={d.sources} title={d.title} unconfirmed={d.unconfirmed} />
         </div>
       )}
     </>
@@ -119,7 +115,10 @@ function Head({
   return (
     <header className="dp-head">
       <p className="dp-labels">
-        <PriorityBadge priority={d.priority} />
+        <span className="dp-prio">
+          <PriorityBadge priority={d.priority} />
+          <PriorityInfo />
+        </span>
         <span>
           <Dotted
             parts={[
@@ -141,6 +140,16 @@ function Head({
       <h2 id="dp-title" tabIndex={-1} ref={headingRef}>
         {d.headline}
       </h2>
+    </header>
+  );
+}
+
+/** The key points, or the full title when none were written and it says more than the headline. */
+function Summary({ development: d }: { development: Schema<"DevelopmentDetail"> }) {
+  if (d.points.length === 0 && d.headline === d.title) return null;
+  return (
+    <section className="dp-summary" aria-labelledby="dp-summary">
+      <h3 id="dp-summary">Summary</h3>
       {d.points.length > 0 ? (
         <ul className="dp-points">
           {d.points.map((p) => (
@@ -148,9 +157,9 @@ function Head({
           ))}
         </ul>
       ) : (
-        d.headline !== d.title && <p className="dp-points">{d.title}</p>
+        <p className="dp-points">{d.title}</p>
       )}
-    </header>
+    </section>
   );
 }
 

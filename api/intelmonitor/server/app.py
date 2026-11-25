@@ -1,5 +1,8 @@
 """FastAPI app. Run with `uv run im serve` (behind Portless in development)."""
 
+import asyncio
+import logging
+import sqlite3
 from collections import Counter
 from collections.abc import AsyncGenerator, Iterator
 from contextlib import asynccontextmanager
@@ -12,6 +15,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
+from intelmonitor.config import DATA_DIR
 from intelmonitor.pipeline import runlog
 from intelmonitor.pipeline.params import (
     MATERIAL_LEVEL,
@@ -69,18 +73,48 @@ from intelmonitor.server.queries import (
 from intelmonitor.server.related_graph import related_graph
 from intelmonitor.server.search import search as search_all
 from intelmonitor.store.db import connect, get_meta
+from intelmonitor.store.publish import Bucket, PublishedStore
 
 WEB_ORIGIN = "https://intelmonitor.web.localhost"
+# How often the site checks the bucket for a newly published store.
+POLL_SECONDS = 600
+
+log = logging.getLogger(__name__)
+
+# With a bucket configured (the deployed site), the API serves the published store read-only;
+# without one (local development), the local store, migrated on start.
+_bucket = Bucket.from_settings()
+_published = PublishedStore(_bucket, DATA_DIR / "stores") if _bucket else None
+
+
+async def _poll(store: PublishedStore) -> None:
+    """Swap in each newly published store; a failed check keeps serving the current one."""
+    while True:
+        await asyncio.sleep(POLL_SECONDS)
+        try:
+            await asyncio.to_thread(store.refresh)
+        except Exception:
+            log.exception("checking the bucket for a new store failed")
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
-    conn = connect()
-    runlog.interrupt_stale(conn)
-    runlog.backfill(conn)
-    runlog.migrate(conn)
-    conn.close()
+    if _published is None:
+        conn = connect()
+        runlog.interrupt_stale(conn)
+        runlog.backfill(conn)
+        runlog.migrate(conn)
+        conn.close()
+        yield
+        return
+    await asyncio.to_thread(_published.refresh)
+    poll = asyncio.create_task(_poll(_published))
     yield
+    poll.cancel()
+
+
+def _open() -> sqlite3.Connection:
+    return _published.open() if _published else connect()
 
 
 def _operation_id(route: APIRoute) -> str:
@@ -96,6 +130,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[WEB_ORIGIN, "http://localhost:3000"],
+    # Another Portless name, such as a worktree's web server next to the main one.
+    allow_origin_regex=r"https://[a-z0-9.-]+\.localhost",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -114,7 +150,7 @@ async def _no_run(_: Request, error: NoRunError) -> JSONResponse:
 
 
 def _queries() -> Iterator[Queries]:
-    conn = connect()
+    conn = _open()
     try:
         yield Queries(conn)
     finally:
@@ -322,7 +358,8 @@ def materiality_levels(q: Q) -> list[MaterialityLevel]:
         MaterialityLevel(
             level=level,
             name=name,
-            description=PRIORITY_DEFINITIONS[level],
+            description=PRIORITY_DEFINITIONS[level].definition,
+            examples=PRIORITY_DEFINITIONS[level].examples,
             material=level >= MATERIAL_LEVEL,
             needs_attention=level >= NEEDS_ATTENTION_LEVEL,
             developments=counts[level],

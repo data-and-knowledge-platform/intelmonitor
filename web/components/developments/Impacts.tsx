@@ -1,14 +1,16 @@
-// "Who it impacts" in the development popup: the subjects it is about first, then the tracked
-// entities it reaches through one stored link (indirect impact by the fixed table), each with its
-// route, level, the link's reason and its evidence (grade, size, age, source). "Connections" under
-// it backs one claim per route with the graph, the claims written here from the links, never by a
-// model.
+// "Affected entities" in the development popup: a card for each subject it is about (its priority
+// and the rating's reason) and for each tracked entity it reaches through one stored link (indirect
+// impact by the fixed table: the level, the link's reason and its evidence), beside "Connection",
+// which draws the routes from the news through the entities it is about to the ones it reaches.
+// The words on a route are written here from the links, never by a model.
+import { Link as RouterLink } from "@tanstack/react-router";
+
 import type { Schema } from "@/lib/api/client";
 import { longDate } from "@/lib/format";
+import { subjectLink } from "@/lib/links";
 import { SubjectLink } from "@/components/shell/SubjectLink";
-import { Snippet, type SnippetPath } from "@/components/graph/Snippet";
 
-import { AdverseTone, names, PriorityBadge } from "./labels";
+import { AdverseTone, PriorityBadge } from "./labels";
 
 type Impact = Schema<"IndirectImpact">;
 type Direct = Schema<"DirectSubject">;
@@ -30,67 +32,120 @@ export const EVIDENCE: Record<Link["evidence"], { word: string; hint: string }> 
 // A source older than this gets its age flagged.
 const OLD_YEARS = 3;
 
-export function WhoItImpacts({ direct, impacts }: { direct: Direct[]; impacts: Impact[] }) {
+export function AffectedEntities({ direct, impacts }: { direct: Direct[]; impacts: Impact[] }) {
+  // A topic takes its priority, and its reason, from an entity, so topics are chips, not cards.
+  const entities = direct.filter((d) => d.subject.type === "entity");
+  const topics = direct.filter((d) => d.subject.type === "topic");
+  const total = entities.length + impacts.length;
   return (
-    <section className="dp-sec" aria-labelledby="who">
-      <h3 id="who">Who it impacts</h3>
-      {direct.length > 0 && (
-        <div className="who-group">
-          <h4>This development is about</h4>
-          <DirectRows direct={direct} />
-        </div>
-      )}
-      {impacts.length > 0 && (
-        <div className="who-group">
-          <h4>Could also be affected, through their links</h4>
-          {impacts.map((i, n) => (
-            <ImpactRow key={`${i.subject.id}-${n}`} impact={i} />
+    <section className="dp-sec" aria-labelledby="affected">
+      <h3 id="affected">
+        Affected entities <span className="dp-n">{total}</span>
+      </h3>
+      {topics.length > 0 && (
+        <p className="dp-topics">
+          {topics.map((t) => (
+            <RouterLink key={t.subject.id} {...subjectLink(t.subject)} className="chip chip-sm">
+              {t.subject.name}
+            </RouterLink>
           ))}
+        </p>
+      )}
+      {total === 0 ? (
+        <p className="muted">No tracked entity is linked to this news.</p>
+      ) : (
+        <div className={impacts.length > 0 ? "aff aff-graph" : "aff"}>
+          <div className="aff-cards">
+            {entities.map((d) => (
+              <DirectCard key={d.subject.id} direct={d} />
+            ))}
+            {impacts.map((i, n) => (
+              <ImpactCard key={`${i.subject.id}-${n}`} impact={i} />
+            ))}
+          </div>
+          {impacts.length > 0 && <Connection direct={entities} impacts={impacts} />}
         </div>
       )}
-      {direct.length === 0 && impacts.length === 0 && <p className="muted">No tracked entity or topic is linked to this news.</p>}
     </section>
   );
 }
 
-/** One row per subject, or one row listing them all when they share their labels. */
-function DirectRows({ direct }: { direct: Direct[] }) {
-  const same = direct.every(
-    (d) => d.priority === direct[0].priority && d.adverse === direct[0].adverse && d.tone === direct[0].tone && d.role === direct[0].role,
+/** A subject it is about: its priority, adverse flag and tone, and why it got that priority. */
+function DirectCard({ direct: d }: { direct: Direct }) {
+  return (
+    <article className="aff-card">
+      <p className="aff-h">
+        <SubjectLink subject={d.subject} />
+        <span className="chip chip-sm">{d.role === "actor" ? "Took the action" : "Main entity"}</span>
+        <PriorityBadge priority={d.priority} />
+      </p>
+      {d.reason && <p>{d.reason}</p>}
+      <p className="meta">
+        <AdverseTone adverse={d.adverse} tone={d.tone} />
+      </p>
+    </article>
   );
-  const groups = same ? [direct] : direct.map((d) => [d]);
-  return groups.map((g) => (
-    <p key={g[0].subject.id} className="who-direct">
-      <span className="who-names">
-        {g.map((d, i) => (
-          <span key={d.subject.id}>
-            {i > 0 && (i === g.length - 1 ? " and " : ", ")}
-            <SubjectLink subject={d.subject} />
-          </span>
-        ))}
-      </span>
-      <PriorityBadge priority={g[0].priority} />
-      <span className="meta">
-        <AdverseTone adverse={g[0].adverse} tone={g[0].tone} />
-        {g[0].role === "actor" && " · Took the action"}
-      </span>
-    </p>
-  ));
 }
 
-function ImpactRow({ impact: i }: { impact: Impact }) {
+/** An entity it reaches through a link: the level passed, the link's reason and its evidence. */
+function ImpactCard({ impact: i }: { impact: Impact }) {
   return (
-    <div className="imp">
-      <p className="imp-h">
-        <SubjectLink subject={i.subject} /> <span className="imp-route">{i.route}</span>
-        {" · "}
+    <article className="aff-card aff-imp">
+      <p className="aff-h">
+        <SubjectLink subject={i.subject} />
+        <span className="chip chip-sm">Potential exposure</span>
         <span className={`imp-dir ${LEVEL_CLASS[i.level]}`}>{i.level}</span>
       </p>
-      <p className="imp-why">{reasonFrom(i)}</p>
-      <p className="meta imp-ev">
+      <p>{reasonFrom(i)}</p>
+      <p className="meta">
+        <span className="imp-route">{i.route}</span>
+        {" · "}
         <LinkEvidence link={i.link} />
       </p>
-    </div>
+    </article>
+  );
+}
+
+/**
+ * The routes as a tree: "This news", about each entity whose links carry it on (or the region a
+ * link starts from), and under each, as branches off one line, the entities reached, every branch
+ * labelled with its link.
+ */
+function Connection({ direct, impacts }: { direct: Direct[]; impacts: Impact[] }) {
+  const heads = new Map<string, { name: string; reached: Impact[] }>();
+  for (const i of impacts) {
+    const end = farEnd(i);
+    const head = heads.get(end.id) ?? { name: end.name, reached: [] };
+    head.reached.push(i);
+    heads.set(end.id, head);
+  }
+  // Heads in the order the news names its subjects, then any other far end.
+  const order = new Map(direct.map((d, n) => [d.subject.id, n]));
+  const columns = [...heads.entries()].sort(([a], [b]) => (order.get(a) ?? order.size) - (order.get(b) ?? order.size));
+  return (
+    <section className="cx" aria-labelledby="connection">
+      <h4 id="connection">Connection</h4>
+      <p className="meta">Drawn from the stored links between entities.</p>
+      <div className="cx-tree">
+        <span className="cx-node cx-news">This news</span>
+        <span className="cx-edge">about</span>
+        <ul className="cx-cols">
+          {columns.map(([id, head]) => (
+            <li key={id} className="cx-col">
+              <span className="cx-node cx-ent">{head.name}</span>
+              <ul className="cx-branches">
+                {head.reached.map((i, n) => (
+                  <li key={`${i.subject.id}-${n}`}>
+                    <span className="cx-label">{edgeLabel(i.link)}</span>
+                    <span className="cx-node cx-ent">{i.subject.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 
@@ -170,64 +225,32 @@ export function reasonFrom({ subject, link: l }: Pick<Impact, "subject" | "link"
   return l.to_id === subject.id && l.reason !== l.detail ? `${l.from_name} ${l.reason}` : l.reason;
 }
 
-/** Whether the entity reached is the link's `from` end, so the link reads from it ("DBS lends in Hong Kong"). */
-const outward = (i: Impact) => i.link.from_id === i.subject.id;
-// Links from a provider, a payment system or a distributor to the entity it serves.
-const USED = new Set<Link["type"]>([
-  "provides_technology_to",
-  "provides_connectivity_to",
-  "provides_business_service_to",
-  "processes_transactions_for",
-  "distributes_products_for",
-]);
+const pct = (w: number) => `${(w * 100).toFixed(1).replace(/\.0$/, "")}%`;
 
-/** One sentence per route type and far end: "DBS, OCBC and UOB each lend over 40% of their loans in Singapore". */
-export function claims(impacts: Impact[]): string[] {
-  const groups = new Map<string, Impact[]>();
-  for (const i of impacts) {
-    const key = `${i.link.type}:${outward(i)}:${farEnd(i).id}`;
-    groups.set(key, [...(groups.get(key) ?? []), i]);
+/** A link as an edge label, read from the news toward the entity. */
+function edgeLabel(l: Link): string {
+  switch (l.type) {
+    case "exposed_to":
+      // The label ends with the share: "lends to, 12.2% of loans", "holds reserves in, 84.9% of reserves".
+      if (l.weight !== null) return l.label.split(", ").at(-1) ?? "";
+      return l.label.startsWith("lends") ? "lends there" : l.label.split(",")[0];
+    case "provides_technology_to":
+    case "provides_business_service_to":
+      // What is provided, from "provides cloud services to": the word reads either way along the edge.
+      return l.label.replace(/^provides (.+) to$/, "$1");
+    case "provides_connectivity_to":
+      return "connectivity";
+    case "processes_transactions_for":
+      // "payments" or "transactions", from "processes payments for".
+      return l.label.replace(/^processes (.+) for$/, "$1");
+    case "distributes_products_for":
+      return "distribution";
+    case "participates_in":
+      return "takes part";
+    case "holds_stake_in":
+      // With no published share the stake may be controlling or minor, so the word stays neutral.
+      return l.weight === null ? "stake" : `${pct(l.weight)} owned`;
+    default:
+      return l.label.split(",")[0];
   }
-  return [...groups.values()].map((g) => {
-    const who = names([...new Set(g.map((i) => i.subject.name))]);
-    const many = g.length > 1;
-    const end = farEnd(g[0]).name;
-    const first = g[0].link;
-    // A provider serves the entity it reaches ("DBS uses Singtel"), read from the entity's end.
-    if (!outward(g[0]) && USED.has(first.type)) return `${who} ${many ? (g.length === 2 ? "both use" : "all use") : "uses"} ${end}`;
-    // Any other link reads from the far end ("Temasek holds a stake in DBS", reaching DBS): only the plain wording fits.
-    switch (outward(g[0]) ? first.type : null) {
-      case "exposed_to": {
-        // Reserves, revenue and the like: the label's head says how ("holds reserves in").
-        if (!first.label.startsWith("lends")) return `${who} ${many ? "are each exposed to" : first.label.split(",")[0]} ${end}`;
-        const shares = g.map((i) => i.link.weight);
-        if (shares.some((w) => w === null)) return `${who} ${many ? "lend" : "lends"} in ${end}`;
-        const low = Math.min(...(shares as number[]));
-        if (!many) return `${who} lends ${(low * 100).toFixed(1).replace(/\.0$/, "")}% of its loans in ${end}`;
-        return low >= 0.1 ? `${who} each lend over ${Math.floor(low * 10) * 10}% of their loans in ${end}` : `${who} each lend part of their loans in ${end}`;
-      }
-      case "participates_in":
-        return `${who} ${many ? (g.length === 2 ? "both take" : "all take") : "takes"} part in ${end}`;
-      default:
-        return `${who} ${many ? "are" : "is"} linked to ${end}`;
-    }
-  });
-}
-
-/** "Connections" under the impacts: the claims, then one snippet with every route. */
-export function ImpactGraph({ impacts }: { impacts: Impact[] }) {
-  const lines = claims(impacts);
-  const paths: SnippetPath[] = impacts.map((i) => ({ entityId: i.subject.id, entityName: i.subject.name, links: [i.link] }));
-  return (
-    <section className="dp-sec dp-graph" aria-labelledby="connections">
-      <h3 id="connections">Connections</h3>
-      {lines.length === 0 && <p className="muted">No stored link carries this news to another tracked entity.</p>}
-      {lines.map((c) => (
-        <p key={c} className="claim">
-          {c}.
-        </p>
-      ))}
-      {paths.length > 0 && <Snippet paths={paths} label={`${lines.join(". ")}.`} />}
-    </section>
-  );
 }

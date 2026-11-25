@@ -59,8 +59,10 @@ type Json = Any  # response bodies are checked field by field below
 
 class Check:
     def __init__(self, base: str) -> None:
+        # Portless serves .localhost with its own CA; any other host uses the system's.
         ca = Path.home() / ".portless" / "ca.pem"
-        verify = ssl.create_default_context(cafile=str(ca)) if ca.exists() else True
+        local = (httpx.URL(base).host or "").endswith(".localhost")
+        verify = ssl.create_default_context(cafile=str(ca)) if local and ca.exists() else True
         self.http = httpx.Client(base_url=base, verify=verify, timeout=600)
         self.results: list[dict[str, object]] = []
 

@@ -1,46 +1,46 @@
-// One development in a feed: the status column (priority, then New or Updated from the latest run,
-// and Unconfirmed when the feed lists unconfirmed ones), the headline with a visible "View sources"
-// cue under it, and the date. Who it impacts, the sources and the key points are in the popup. The
-// whole row opens the development's popup.
+// One development in a feed as a card, after the team's Citibank entity page draft: priority with
+// its definitions button, the category, New or Updated from the latest run and Unconfirmed when the
+// feed lists unconfirmed ones; the headline; one line of detail (its first key point, else its full
+// title); and the date beside the source count and its leading outlet. The whole card opens the
+// development's popup.
 import { Link } from "@tanstack/react-router";
 
 import type { Schema } from "@/lib/api/client";
-import { shortDate } from "@/lib/format";
-import { ChevronIcon } from "@/components/ui/icons";
+import { capitalize, plural, shortDate } from "@/lib/format";
+import { PriorityInfo } from "@/components/shell/SidebarDialogs";
 
 import { ChangeMark, dateSpan, PriorityBadge, UnconfirmedMark } from "./labels";
 import { developmentLink, type ViewScope } from "./link";
 
-/** The column names above a list of FeedRows, on the same grid; the rows carry their own labels, so screen readers skip it. */
-export function FeedHeader() {
-  return (
-    <div className="frow-head" aria-hidden="true">
-      <span>Priority</span>
-      <span>Finding</span>
-      <span>Date</span>
-    </div>
-  );
-}
-
 export function FeedRow({ development: d, scope }: { development: Schema<"DevelopmentSummary">; scope: ViewScope }) {
+  const detail = d.points[0] ?? (d.title !== d.headline ? d.title : null);
+  const [lead, ...others] = d.outlets;
   return (
     <li className="frow">
       <span className="fstat">
-        <PriorityBadge priority={d.priority} />
+        <span className="dp-prio">
+          <PriorityBadge priority={d.priority} />
+          <PriorityInfo />
+        </span>
+        <span className="chip chip-sm">{capitalize(d.category)}</span>
         <ChangeMark change={d.change} />
         {d.unconfirmed && <UnconfirmedMark />}
       </span>
-      <span className="fmain">
-        <Link {...developmentLink(d.id, scope)} className="ftitle" title={d.title}>
-          {d.headline}
-        </Link>
-        <span className="fopen" aria-hidden="true">
-          View sources
-          <ChevronIcon />
-        </span>
-      </span>
+      <Link {...developmentLink(d.id, scope)} className="ftitle" title={d.title}>
+        {d.headline}
+      </Link>
+      {detail && <span className="fdetail">{detail}</span>}
       <span className="fend">
         <span className="num">{dateSpan(d.first_published, d.last_published, shortDate)}</span>
+        <span className="fsrc">
+          {plural(d.source_count, "source")}
+          {lead && (
+            <span className="fsrc-chip" title={d.outlets.join(", ")}>
+              <span className="fsrc-name">{lead}</span>
+              {others.length > 0 && <span>+{others.length}</span>}
+            </span>
+          )}
+        </span>
       </span>
     </li>
   );

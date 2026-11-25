@@ -121,28 +121,15 @@
   color: var(--watch);
 }
 
-/* Feed: the period control and facet buttons on one wrapping line, then rows in the list-row grammar
-   with titles and lines in full. The title link covers the row; "View sources" is the visible cue. */
+/* Feed: the period control and facet buttons on one wrapping line, then a card per development:
+   labels, headline, one line of detail, then the date and the sources. The headline's link covers
+   the card; the priority's info button sits above it. */
 .feed-controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s-2) var(--s-3);
   padding: var(--s-3) 0;
-}
-.frow-head {
-  display: grid;
-  grid-template-columns: var(--stat) minmax(0, 1fr) auto;
-  column-gap: var(--s-3);
-  margin: 0 calc(-1 * var(--s-2));
-  padding: 0 var(--s-2) var(--s-2);
-  border-bottom: 1px solid var(--line-strong);
-  font-size: var(--fs-meta);
-  font-weight: 600;
-  color: var(--ink2);
-}
-.frow-head > :last-child {
-  text-align: right;
 }
 .frows {
   margin: 0;
@@ -151,11 +138,11 @@
 }
 .frow {
   position: relative;
-  display: grid;
-  grid-template-columns: var(--stat) minmax(0, 1fr) auto;
-  column-gap: var(--s-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
   margin: 0 calc(-1 * var(--s-2));
-  padding: var(--s-3) var(--s-2);
+  padding: var(--s-4) var(--s-2);
   border-top: 1px solid var(--line);
   border-radius: var(--r-ctl);
 }
@@ -167,19 +154,19 @@
 }
 .fstat {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--s-1);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-2);
 }
-.fmain {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+.fstat .prio-info {
+  position: relative;
+  z-index: 1;
 }
 .ftitle {
   color: var(--ink);
-  font-weight: 500;
+  font-size: var(--fs-lead);
+  line-height: var(--lh-lead);
+  font-weight: 600;
   text-wrap: pretty;
   overflow-wrap: anywhere;
 }
@@ -192,16 +179,42 @@
   text-decoration: underline;
   text-decoration-color: var(--line-field);
 }
+.fdetail {
+  max-width: 100ch;
+  color: var(--ink2);
+}
 .fend {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--s-1);
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-3);
   font-size: var(--fs-meta);
-  line-height: var(--lh-body);
+  line-height: var(--lh-meta);
   color: var(--ink2);
   white-space: nowrap;
 }
+.fsrc {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.fsrc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 180px;
+  padding: 1px 6px;
+  border-radius: var(--r-badge);
+  background: var(--new-bg);
+  color: var(--ink);
+  font-weight: 500;
+}
+.fsrc-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A visible "open" cue with a chevron (the Data tab's indicator rows). */
 .fopen {
   display: inline-flex;
   align-self: flex-start;
@@ -226,24 +239,6 @@
 .feed > .mon-empty {
   padding: 0 0 var(--s-3);
 }
-@container main (width < 640px) {
-  .frow-head {
-    display: none;
-  }
-  .frow {
-    grid-template-columns: minmax(0, 1fr);
-    row-gap: var(--s-1);
-  }
-  .fstat {
-    flex-direction: row;
-    align-items: center;
-  }
-  .fend {
-    flex-direction: row;
-    justify-content: space-between;
-  }
-}
-
 /* Development popup (DevelopmentPopup.tsx): the size of globals.css dialog.sheet.
    The head with the close button, then two columns that each scroll: who it impacts over
    connections, and the sources. Under 1024 px the popup fills the screen less a 16 px margin and the
@@ -309,69 +304,51 @@ p.dp-points {
 .dp-points li + li {
   margin-top: var(--s-1);
 }
-.dp-cols {
+/* The body scrolls as one: Summary, Affected entities, Sources. */
+.dp-body {
   flex-grow: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-}
-.dp-col {
-  min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  padding: var(--s-4) 20px var(--s-6);
-}
-.dp-col-src {
-  border-left: 1px solid var(--line);
-  padding-top: 0;
-}
-/* The left column is two boxes, as in the user's sketch: who it impacts over connections, each
-   scrolling on its own so both stay in view. */
-.dp-col.dp-col-left {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  padding: 0;
+  gap: var(--s-6);
+  padding: var(--s-4) 20px var(--s-6);
 }
-.dp-col-left > .dp-sec {
-  flex: 3 1 0;
-  min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-  margin: 0;
-  padding: var(--s-4) 20px var(--s-5);
+.dp-summary {
+  padding: var(--s-4);
+  border-radius: var(--r-widget);
+  background: var(--new-bg);
 }
-.dp-col-left > .dp-graph {
-  flex: 2 1 0;
-  border-top: 1px solid var(--line);
-}
-.dp-sec + .dp-sec {
-  margin-top: var(--s-6);
-}
-.dp-sec > h3 {
-  margin: 0;
-  padding-bottom: var(--s-2);
-  border-bottom: 1px solid var(--line-strong);
+.dp-summary h3 {
+  margin: 0 0 var(--s-2);
   font-size: var(--fs-lead);
   line-height: var(--lh-lead);
   font-weight: 600;
 }
-.dp-graph > h3 {
-  margin-bottom: var(--s-3);
+.dp-sec > h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0 0 var(--s-3);
+  font-size: var(--fs-lead);
+  line-height: var(--lh-lead);
+  font-weight: 600;
 }
-/* The sources column has no top padding, so its heading carries it, level with Who it impacts. */
-.dp-src > h3 {
-  padding-top: var(--s-4);
+/* A heading's count, as a small grey tag. */
+.dp-n {
+  padding: 0 6px;
+  border-radius: var(--r-badge);
+  background: var(--rail);
+  color: var(--ink2);
+  font: 500 var(--fs-meta) / var(--lh-meta) var(--font);
+  font-variant-numeric: tabular-nums;
 }
-.dp-graph > .muted {
-  margin: 0;
-}
-/* The heading stays at the top of the sources column as it scrolls. */
-.dp-src > h3 {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--surface);
+.dp-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-2);
+  margin: 0 0 var(--s-3);
 }
 @media (max-width: 1023px) {
   dialog.sheet.dp-pop {
@@ -380,67 +357,171 @@ p.dp-points {
     min-width: 0;
     max-width: none;
   }
-  dialog.dp-pop[open] {
-    overflow: auto;
-  }
-  .dp-cols {
-    display: block;
-  }
-  .dp-col,
-  .dp-col.dp-col-left,
-  .dp-col-left > .dp-sec {
-    overflow: visible;
-    padding: var(--s-4) var(--s-4) var(--s-5);
-  }
-  .dp-col.dp-col-left {
-    display: block;
-    padding: 0;
-  }
-  .dp-col-src {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-    padding-top: 0;
-  }
-  .dp-top {
+  .dp-top,
+  .dp-body {
     padding-left: var(--s-4);
+    padding-right: var(--s-4);
   }
 }
-.who-group h4 {
-  margin: var(--s-4) 0 var(--s-1);
-  font-size: var(--fs-meta);
-  line-height: var(--lh-meta);
-  font-weight: 600;
+
+/* Affected entities: the cards, and beside them the Connection tree when the news reaches a link. */
+.aff {
+  display: grid;
+  gap: var(--s-4);
+  align-items: start;
 }
-.who-direct {
+.aff-graph {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+}
+.aff-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.aff-card,
+.cx,
+.src-card {
+  min-width: 0;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-widget);
+  background: var(--surface);
+}
+.aff-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+.aff-card p {
+  margin: 0;
+}
+.aff-h {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s-1) var(--s-2);
+}
+.aff-h .subject-link {
+  font-weight: 600;
+}
+@media (max-width: 1023px) {
+  .aff-graph {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Connection: "This news", about the entities it names, down to the entities their links reach. */
+.cx {
+  padding-bottom: var(--s-5);
+}
+.cx h4 {
   margin: 0;
-  padding: var(--s-2) 0;
-}
-.who-names {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 600;
 }
-.who-names .subject-link,
-.imp-h .subject-link {
-  font-weight: 600;
+.cx > .meta {
+  margin: 0 0 var(--s-4);
 }
-.imp {
+.cx-tree,
+.cx-col,
+.cx-col li {
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
-  padding: var(--s-3) 0;
-  border-top: 1px solid var(--line);
+  align-items: center;
 }
-.who-group h4 + .imp {
-  border-top: 0;
-  padding-top: var(--s-2);
-}
-.imp p {
+.cx-tree ul {
   margin: 0;
-  max-width: 80ch;
+  padding: 0;
+  list-style: none;
 }
+.cx-cols {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-5);
+}
+/* The entities a head reaches hang off one line under it, each branch with its link's words. */
+.cx-col {
+  align-items: flex-start;
+}
+.cx-col > .cx-node {
+  align-self: flex-start;
+}
+.cx-col .cx-branches {
+  position: relative;
+  margin-top: var(--s-3);
+  padding-left: var(--s-5);
+}
+.cx-branches::before {
+  content: "";
+  position: absolute;
+  top: calc(-1 * var(--s-3));
+  bottom: 21px;
+  left: var(--s-4);
+  width: 1px;
+  background: var(--ink3);
+}
+.cx-col .cx-branches li {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-1) 0;
+}
+.cx-branches li::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc(var(--s-4) - var(--s-5));
+  width: var(--s-2);
+  height: 1px;
+  background: var(--ink3);
+}
+.cx-label {
+  min-width: 96px;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--ink2);
+}
+.cx-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-1);
+  max-width: 220px;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--ink2);
+  border-radius: var(--r-ctl);
+  text-align: center;
+  font-weight: 500;
+}
+.cx-news {
+  border-color: var(--line-strong);
+  background: var(--rail);
+}
+/* An edge: a short line with its label, ending in an arrowhead. */
+.cx-edge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--ink2);
+}
+.cx-edge::before {
+  content: "";
+  width: 1px;
+  height: 12px;
+  background: var(--ink3);
+}
+.cx-edge::after {
+  content: "";
+  border-top: 6px solid var(--ink3);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+
 .imp-route {
   font-weight: 500;
 }
@@ -454,55 +535,46 @@ p.dp-points {
   text-underline-offset: 2px;
   cursor: help;
 }
-.claim {
+/* Sources: two cards a row; a detector's series and the unconfirmed note take a full row. */
+.src-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  align-items: start;
+}
+.src-grid > .src-lead,
+.src-series {
+  grid-column: 1 / -1;
+}
+.src-lead {
   margin: 0;
-  font-weight: 600;
-}
-.snippet {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-.snippet .n {
-  fill: var(--surface);
-  stroke: var(--line-strong);
-}
-.snippet .n.ent {
-  stroke: var(--ink2);
-}
-.snippet .n.dev {
-  fill: var(--rail);
-  stroke-dasharray: 3 2;
-}
-.snippet .e {
-  fill: none;
-  stroke: var(--ink3);
-  stroke-width: 1.25;
-}
-.snippet .t {
-  fill: var(--ink);
-  font: 500 12px var(--font);
-}
-.snippet .t.b {
-  font-weight: 600;
-}
-.snippet .l {
-  fill: var(--ink2);
-  font: 400 11px var(--font);
-}
-
-.src-panel > .source:first-child,
-.src-panel > .src-lead + .source {
-  border-top: 0;
-}
-.src-panel > .source {
-  padding-left: 0;
-}
-.src-panel > .muted,
-.src-lead {
-  margin: var(--s-3) 0 0;
-}
-.src-lead {
   font-weight: 500;
+}
+.src-card.source {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  border-top: 1px solid var(--line-strong);
+}
+.src-card .src-outlet {
+  margin: 0;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  font-weight: 500;
+}
+.src-card > a {
+  font-size: var(--fs-lead);
+  line-height: var(--lh-lead);
+}
+.src-card blockquote {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+@media (max-width: 1023px) {
+  .src-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

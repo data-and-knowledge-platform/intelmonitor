@@ -12,7 +12,9 @@ article URL that is days earlier than the date found wins (The Register's 2016 a
 dated 2026).
 """
 
+import logging
 import re
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -20,6 +22,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, Field
 
+from intelmonitor.config import get_settings
 from intelmonitor.ingest.http import CachedHttp, FetchError, JSONValue
 from intelmonitor.ingest.models import MIN_TEXT_CHARS, RawDocument, Window
 from intelmonitor.ingest.parse import domain_of
@@ -219,9 +222,48 @@ class _ExaResponse(BaseModel):
     results: list[_ExaResult]
 
 
+class ExaRefused(RuntimeError):
+    """Exa refused every key: missing or revoked (401, 403) or out of credits (402). Not a
+    FetchError, so it stops the ingest instead of being logged as one failed query: every query
+    would fail alike and the week would look quiet."""
+
+
+log = logging.getLogger(__name__)
+
+
+class _ExaKeys:
+    """The Exa keys in order of use: EXA_API_KEY, then EXA_API_KEY_2. A key Exa refuses is set
+    aside for the rest of the process and the next one used, so a key that runs out of credits
+    mid-run hands over to the other."""
+
+    def __init__(self) -> None:
+        self._refused: set[str] = set()
+        self._lock = threading.Lock()
+
+    def _keys(self) -> list[str]:
+        s = get_settings()
+        return [k for k in (s.exa_api_key, s.exa_api_key_2) if k]
+
+    def current(self) -> str:
+        """The first key not refused, or "" when none is left (Exa answers that with 401)."""
+        with self._lock:
+            return next((k for k in self._keys() if k not in self._refused), "")
+
+    def refuse(self, key: str, status: int) -> bool:
+        """Set `key` aside; returns whether another key is left to try."""
+        with self._lock:
+            keys = self._keys()
+            if key in keys and key not in self._refused:
+                self._refused.add(key)
+                log.warning("Exa refused key %d (HTTP %d)", keys.index(key) + 1, status)
+            return any(k not in self._refused for k in keys)
+
+
+_exa_keys = _ExaKeys()
+
+
 def exa_search(
     http: CachedHttp,
-    api_key: str,
     query: str,
     window: Window,
     domains: list[str],
@@ -237,9 +279,20 @@ def exa_search(
         "endPublishedDate": f"{window.t0}T23:59:59.999Z",
         "contents": {"text": {"maxCharacters": _TEXT_MAX_CHARS}},
     }
-    response = http.post_json("exa", EXA_SEARCH, body, headers={"x-api-key": api_key})
+    while True:
+        key = _exa_keys.current()
+        # Errors are not cached, so a fixed key or a passing fault is asked again on a rerun.
+        response = http.post_json(
+            "exa", EXA_SEARCH, body, headers={"x-api-key": key}, cache_errors=False
+        )
+        if response.status not in (401, 402, 403):
+            break
+        if not _exa_keys.refuse(key, response.status):
+            raise ExaRefused(
+                f"Exa refused every key (HTTP {response.status}): {response.text()[:200]}"
+            )
     if not response.ok:
-        return []
+        raise FetchError(f"{EXA_SEARCH}: HTTP {response.status}: {response.text()[:200]}")
     docs: list[RawDocument] = []
     for r in _ExaResponse.model_validate_json(response.content).results:
         if r.published_date and r.text:

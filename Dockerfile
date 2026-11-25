@@ -1,5 +1,6 @@
-# The deployed demo: the web app built with the LLM features disabled, served with the API by
-# intelmonitor.server.site. Deploy with scripts/deploy.sh, which also ships the store on --data.
+# One image for both services (docs/deploy.md): `site`, the web app built with the LLM features
+# disabled and served with the API by intelmonitor.server.site, and `runner`, the weekly
+# `im weekly --publish`. Deploy both with scripts/deploy.sh.
 
 FROM node:22-slim AS web
 WORKDIR /app/web
@@ -16,8 +17,11 @@ COPY api/pyproject.toml api/uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY api/ ./
 RUN uv sync --frozen --no-dev
+# The embedding model, built in so runs never download it (a restricted network may block
+# Hugging Face).
+ENV INTELMONITOR_MODELS_DIR=/app/models
+RUN .venv/bin/python -c "from intelmonitor.pipeline.developments import _embedder; _embedder()"
 COPY --from=web /app/web/dist /app/web/dist
-# The store to start from: empty unless deploy.sh --data put one in deploy/seed.
 COPY deploy/ /app/deploy/
 ENV INTELMONITOR_DATA_DIR=/data
 CMD ["/app/deploy/start.sh"]

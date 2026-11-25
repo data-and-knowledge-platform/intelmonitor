@@ -114,9 +114,10 @@ class CachedHttp:
         body: dict[str, JSONValue],
         *,
         headers: dict[str, str] | None = None,
+        cache_errors: bool = True,
     ) -> CachedResponse:
         request = _Request("POST", url, {}, body)
-        return self._fetch(namespace, request, headers or {}, expect_json=True)
+        return self._fetch(namespace, request, headers or {}, True, cache_errors)
 
     def _fetch(
         self,
