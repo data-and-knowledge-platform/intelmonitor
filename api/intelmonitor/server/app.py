@@ -235,8 +235,7 @@ def get_related_graph(q: Q, subject_id: str, days: RelatedDays = RelatedDays.wee
 @app.get("/subjects/{subject_id}/trend")
 def get_subject_trend(q: Q, subject_id: str) -> trend_view.SubjectTrend:
     """The subject's series over the 12 months to the latest run with its High and Medium
-    developments, and each run's note on why the series moved with the developments it cites
-    and the facts it was given."""
+    developments, and the weeks of the runs in that span."""
     page_subject(subject_id)
     return trend_view.trend(q, subject_id)
 

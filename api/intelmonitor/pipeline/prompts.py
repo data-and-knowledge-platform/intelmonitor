@@ -40,7 +40,6 @@ PROMPT_NOTES: dict[str, str] = {
     "headline": "A development's display headline and key points, and the subjects, of its "
     "findings' actor and affected tags, that it is about; the instructions are part of the "
     "template.",
-    "note": "A subject's note on why its series moved in the week.",
     "brief": "A subject's brief: state, concerns and direction.",
 }
 

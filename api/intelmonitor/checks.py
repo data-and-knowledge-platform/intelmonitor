@@ -8,7 +8,7 @@ backfill adds and revises nothing, and the replayed observations match the app's
 one run) in a copy of the app's store, which holds the later weeks' documents, detections and
 observations, replaying only recorded model calls: nothing it stores may use what became known
 after its date, and it must match the stored run: developments and their sources, indicators,
-changes, indirect impacts, notes and briefs. Briefs written before `im impacts` rewrote the run's
+changes, indirect impacts and briefs. Briefs written before `im impacts` rewrote the run's
 inferred impacts (its impacts_recomputed mark) cannot replay: they are kept and not compared.
 
 `im check detector` fires a detector on fixture values. No stored loan-to-deposit ratio is near
@@ -330,8 +330,6 @@ def _run_rows(conn: sqlite3.Connection, run_id: str) -> dict[str, set[tuple[obje
         "WHERE run_id = ?",
         "impacts": "SELECT development_id, subject_id, source_id, relationship_id, region, "
         "strength, level, best, reason FROM development_impacts WHERE run_id = ?",
-        "notes": "SELECT subject_id, since, headline, body, development_ids, series_id, moves "
-        "FROM run_notes WHERE run_id = ?",
         "briefs": "SELECT subject_id, text, direction, direction_basis, developments_in_scope, "
         "needs_attention, adverse, model, direction_reason, direction_flagged, concerns, "
         "coming_up, latest_news, problems FROM run_summaries WHERE run_id = ?",

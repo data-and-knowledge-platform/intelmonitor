@@ -244,8 +244,8 @@ A "run" is one weekly pipeline pass, and "the store" is the SQLite database a ru
   Status: partly overtaken on 23 Nov 2026 (below); the full display is still open.
 - **23 Nov 2026.** The team's designs of 23 Nov are built over the current pages: a Home page with the watchlist at a glance and the week's developments per subject, cards defining each priority, development cards, a one-scroll popup, and a Related tree in place of the force graph.
 - **25 Nov 2026.** The note on why a subject's series moved leaves the deployed version.
-  It is one Sonnet call per subject with listed series on every run, about 55 calls and $0.58 a run (measured), and only the Data tab and one line of the brief read it.
-  Status: decided, not yet built.
+  It is one Sonnet call per subject with listed series on every run, about 25 calls and $0.47 a run (measured: 150 calls and $2.80 over the six runs of the 11 Nov rebuild), and only the Data tab and one line of the brief read it.
+  Status: built on 25 Nov 2026.
 - **25 Nov 2026.** The Related tab leaves the deployed version.
   It lists the developments that could affect the subject through a link; the development popup and the Overview's Related tree show inferred impact too.
   The owner's call; no reason was recorded.

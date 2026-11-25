@@ -320,20 +320,6 @@ CREATE TABLE IF NOT EXISTS run_indicators (
     PRIMARY KEY (run_id, series_id)
 );
 
--- Each run's note per subject on why its series moved in the week to the run (pipeline/notes.py),
--- with the facts code computed for it.
-CREATE TABLE IF NOT EXISTS run_notes (
-    run_id TEXT NOT NULL,
-    subject_id TEXT NOT NULL,
-    since TEXT NOT NULL,               -- the week's start: the previous run's date
-    headline TEXT NOT NULL,
-    body TEXT NOT NULL,                -- [n] cites development_ids[n - 1]
-    development_ids TEXT NOT NULL,     -- JSON, in citation order
-    series_id TEXT,                    -- the series the headline is about
-    moves TEXT NOT NULL,               -- JSON [SeriesMove], the facts the note was given
-    PRIMARY KEY (run_id, subject_id)
-);
-
 -- Each run's brief per subject for the top of its monitor page (pipeline/summaries.py; item B of
 -- phase1-plan.md). Claude writes the state, concerns and direction from the week's evidence and
 -- the subject's standing position; code checks them and computes the counts. Rows written before
@@ -529,8 +515,8 @@ def _drop_social(conn: sqlite3.Connection) -> None:
     """Stores made while social media was a source hold X posts and forum threads, X trends and
     X post-count series. They go with every row that refers to them: the social documents, the
     posts from subjects' own X accounts (stored as official) and the detections on X series, with
-    their tags, findings and development sources; the series' observations, indicators and notes;
-    and the social_posts table. A development left with no sources no longer passes the source
+    their tags, findings and development sources; the series' observations and indicators; and the
+    social_posts table. A development left with no sources no longer passes the source
     gate. Stores dropped before own-account posts were included still hold those, so either
     leftover triggers it."""
     exists = (
@@ -564,7 +550,6 @@ def _drop_social(conn: sqlite3.Connection) -> None:
         "observation_revisions",
         "observation_sources",
         "run_indicators",
-        "run_notes",
         "series_subjects",
     ]:
         conn.execute(f"DELETE FROM {table} WHERE series_id LIKE ?", (_X_SERIES,))  # noqa: S608
@@ -725,6 +710,21 @@ def _drop_graph(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _drop_notes(conn: sqlite3.Connection) -> None:
+    """Stores made before the note on why a subject's series moved was removed (25 Nov 2026) hold
+    each run's notes in run_notes; the table goes. The note stage's prompt versions and inference
+    records stay, as history and cost."""
+    exists = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'run_notes'"
+    if conn.execute(exists).fetchone() is None:
+        return
+    conn.execute("BEGIN IMMEDIATE")  # another connection may be dropping it too
+    if conn.execute(exists).fetchone() is None:
+        conn.rollback()
+        return
+    conn.execute("DROP TABLE run_notes")
+    conn.commit()
+
+
 def _drop_endpoints(conn: sqlite3.Connection) -> None:
     """Stores synced before every link joined two entities (16 Nov 2026, spec step 3b of
     link-types-and-inferred-impact) hold relationship_endpoints and links to endpoints. The table
@@ -828,6 +828,7 @@ def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     _drop_social(conn)
     _drop_removed_features(conn)
     _drop_graph(conn)
+    _drop_notes(conn)
     _drop_endpoints(conn)
     _relink(conn)
     _impacts_by_path(conn)

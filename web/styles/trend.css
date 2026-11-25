@@ -40,41 +40,6 @@
   margin-top: var(--s-3);
   flex-wrap: wrap;
 }
-.tr-lead {
-  max-width: 70ch;
-  margin: var(--s-3) 0 0;
-  font-size: var(--fs-lead);
-  line-height: var(--lh-lead);
-  font-weight: 600;
-}
-.tr-prose {
-  max-width: 72ch;
-  margin: 6px 0 0;
-}
-/* A citation: a superscript number linking its development, with a 32px tall hit area. */
-.tr-prose .cite,
-.tr-prose .cite-sep {
-  position: relative;
-  margin-left: 1px;
-  font-size: 11px;
-  line-height: 0;
-  vertical-align: super;
-  font-weight: 600;
-  color: var(--accent);
-}
-.tr-prose .cite::after {
-  content: "";
-  position: absolute;
-  left: -6px;
-  right: -6px;
-  top: 50%;
-  height: 32px;
-  transform: translateY(-50%);
-}
-.tr-prose .cite:hover {
-  text-decoration: underline;
-}
-
 .tr-bar {
   display: flex;
   align-items: center;
@@ -113,8 +78,7 @@
   background: var(--attn);
 }
 
-/* The chart: an SVG sized to the panel, with development ticks and numbered markers laid over it
-   as links. */
+/* The chart: an SVG sized to the panel, with development ticks laid over it as links. */
 .tr-chart {
   position: relative;
   margin-top: var(--s-3);
@@ -168,10 +132,6 @@
   stroke: var(--ink);
   stroke-width: 1.5;
 }
-.tr-leader {
-  stroke: var(--line-field);
-  stroke-width: 1;
-}
 .tr-xh {
   stroke: var(--ink3);
   stroke-width: 1;
@@ -206,45 +166,6 @@
 .tr-tk:focus-visible {
   background: var(--accent);
 }
-/* A cited development: its number in a 16px disc above the line, a 44px hit area. */
-.tr-mk {
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  transform: translate(-50%, -50%);
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--ink);
-  box-shadow: 0 0 0 2px var(--surface);
-  color: var(--surface);
-  font: 600 11px / 1 var(--font);
-  font-variant-numeric: tabular-nums;
-}
-.tr-mk.attn {
-  background: var(--attn);
-}
-.tr-mk::after {
-  content: "";
-  position: absolute;
-  inset: -14px;
-  border-radius: 50%;
-}
-.tr-mk:hover,
-.tr-mk:focus-visible {
-  background: var(--accent);
-}
-
-/* Cited: the number, the Needs attention badge, the title with its meta, the date it sits at. */
-.row.tr-cited {
-  grid-template-columns: 24px var(--stat) minmax(0, 1fr) auto;
-}
-.tr-n {
-  font-weight: 600;
-  color: var(--ink2);
-  font-variant-numeric: tabular-nums;
-}
-
 /* The rail's facts: label left, value right, hairlines between. */
 .tr-facts {
   margin: 0 0 var(--s-4);

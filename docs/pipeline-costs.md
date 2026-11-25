@@ -15,6 +15,10 @@ Noted 17 Nov 2026: the theme stage no longer runs.
 It labelled each development with a theme for the graph view, which was removed on 16 Nov 2026 (spec step 3b of link-types-and-inferred-impact).
 Its rows below are what it cost while it ran ($0.64 of the October rebuild, measured), and a weekly run now costs that much less.
 
+Noted 25 Nov 2026: the note stage no longer runs.
+It wrote each subject's note on why its measured series moved, for the Data tab, and the brief read its headline.
+Its rows below are what it cost while it ran: $2.80 over the six runs of the October rebuild (measured), about $0.47 a run, which a weekly run now saves.
+
 ## Totals
 
 | | Documents | Claude Haiku 5.5 | Claude Sonnet 5.5 | Total | Basis |
@@ -144,6 +148,7 @@ These counts are from the app's store; its 1,148, 283 and 1,366 match the baseli
 | priority_check, high check | Goes: priority is one Sonnet call per development and entity, with no check. |
 | impact | Indirect impact is a fixed table of the direct level by the link's strength (spec step 3a); it was $0.82 a week and $4.09 for the five-week seed. |
 | theme | Goes with the graph view, whose themes it labelled (16 Nov 2026); it cost $0.64 over the six runs of the October rebuild. |
+| note | Goes with the note on why a subject's series moved (25 Nov 2026); it cost $2.80 over the six runs of the October rebuild. |
 | custom_match, custom_draft, custom_answer | Custom questions are removed. |
 | answer | Standing questions are removed. |
 | materiality | Old name of priority; nothing calls it. |
@@ -155,7 +160,7 @@ These counts are from the app's store; its 1,148, 283 and 1,366 match the baseli
 - same_event is paid once per candidate pair.
 - headline is paid for each new development, and priority for each new development and entity, and again when a development gains findings, because its input changes.
 - link_types is paid for each new or updated development adverse for one of its entities at Medium or High, and again when an entity's level or reason changes.
-- brief and note are paid on every run, whatever arrived.
+- brief is paid on every run, whatever arrived.
 
 ## Method
 

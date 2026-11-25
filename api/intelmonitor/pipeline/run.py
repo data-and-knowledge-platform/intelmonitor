@@ -12,7 +12,7 @@ transaction, so the app keeps serving the run instead of falling back to an olde
 
 Order (phase1-plan.md, section 5): sync the relationship store, detectors, screen, extract, merge,
 headlines with the development's subjects, priority, the activated link types, inferred impact by
-table, upcoming dates, indicators and notes, diff, briefs.
+table, upcoming dates, indicators, diff, briefs.
 """
 
 import sqlite3
@@ -38,7 +38,6 @@ from intelmonitor.pipeline.impact import (
 )
 from intelmonitor.pipeline.indicators import store_run_indicators
 from intelmonitor.pipeline.inference import Inference
-from intelmonitor.pipeline.notes import write_notes
 from intelmonitor.pipeline.params import NEEDS_ATTENTION_LEVEL, PRIORITY_LABELS, RUN_SPACING_DAYS
 from intelmonitor.pipeline.screen import screen_documents
 from intelmonitor.pipeline.subjects import monitored_subjects
@@ -161,8 +160,6 @@ async def compute_run(
         previous_as_of = date.fromisoformat(base_id) if base_id else None
         states = store_run_indicators(conn, run_id, as_of, previous_as_of)
         step(f"{upcoming} upcoming dates; indicators {dict(states)}")
-        noted, unnoted, notes_refused = await write_notes(inf, conn, run_id, as_of, base_id)
-        step(f"{noted} notes, {unnoted} still breaking their rules, {notes_refused} refused")
         if base_id:
             step(f"{store_changes(conn, run_id, base_id, changes)} changes vs {base_id}")
         conn.execute("UPDATE runs SET previous_run_id = ? WHERE id = ?", (base_id, run_id))
