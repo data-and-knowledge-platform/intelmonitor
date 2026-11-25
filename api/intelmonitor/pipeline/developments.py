@@ -6,12 +6,14 @@ date; a development's id is its earliest finding's id, so the same event keeps i
 to the next. Its title is its lead finding's statement, or a detection's sentence when a detector
 measured the event.
 
-A development's subjects are those its findings say it happened to or that did it; they are
-topics or entities, never groups. It is adverse to a subject
-when one of those findings says so. Subjects that only comment on it or are mentioned in it are
-kept apart, as mentions, and are never rated. A topic takes the highest priority among the
-development's entities, and is rated itself only where the development names no entity. Its level
-(materiality_level, 0 Low to 2 High) is its highest priority over its subjects.
+A development's candidate subjects are those its findings say it happened to or that did it; they
+are topics or entities, never groups. Before priority, the headline call (pipeline/headlines.py)
+writes its headline and points and keeps the candidates the development is about; the others
+become mentions. It is adverse to a subject when one of the findings that tag it says so. Subjects
+that only comment on it or are mentioned in it are kept apart, as mentions, and are never rated. A
+topic takes the highest priority among the development's entities, and is rated itself only where
+the development names no entity. Its level (materiality_level, 0 Low to 2 High) is its highest
+priority over its subjects.
 
 After priority, one more Sonnet call per development with an entity at Medium or High (the
 link_types stage, deck of 16 Nov 2026, pages 9 and 10) picks for each such entity the relationship
@@ -38,6 +40,15 @@ from pydantic import BaseModel, Field, TypeAdapter
 from intelmonitor.config import DATA_DIR
 from intelmonitor.pipeline.detectors import materiality_level
 from intelmonitor.pipeline.extract import TONE_ORDER, FindingRole, Tone
+from intelmonitor.pipeline.headlines import (
+    HEADLINE_EFFORT,
+    HEADLINE_INSTRUCTIONS,
+    HEADLINE_SYSTEM,
+    Candidate,
+    Headline,
+    detection_headline,
+    headline_prompt,
+)
 from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
 from intelmonitor.pipeline.params import (
     EMBEDDING_MODEL,
@@ -274,6 +285,22 @@ class Development:
     findings: list[RunFinding]
     subjects: dict[str, DevelopmentSubject] = field(default_factory=dict[str, DevelopmentSubject])
     mentions: dict[str, Mention] = field(default_factory=dict[str, Mention])
+    # For display, from the headline call; None when it was refused, and the app shows the title.
+    headline: str | None = None
+    points: list[str] | None = None
+
+    def keep_subjects(self, ids: Iterable[str]) -> list[str]:
+        """Keeps the subjects in `ids`, and those a detection measured, and makes the rest
+        mentions; keeps every subject when `ids` names none of them. The subjects made mentions."""
+        keep = set(ids) & self.subjects.keys()
+        if not keep:
+            return []
+        keep |= {s for f in self.findings if f.rule_level is not None for s in f.subjects}
+        dropped = [sid for sid in self.subjects if sid not in keep]
+        for sid in dropped:
+            del self.subjects[sid]
+            self.mentions.setdefault(sid, "mentioned")
+        return dropped
 
     @property
     def top(self) -> DevelopmentSubject | None:
@@ -391,6 +418,84 @@ def link_subjects(conn: sqlite3.Connection, devs: list[Development]) -> None:
                 source=source,
             )
             dev.mentions.pop(sid, None)
+
+
+def candidates(dev: Development, names: Mapping[str, Subject]) -> list[Candidate]:
+    """The development's subjects as the headline call lists them, most findings first."""
+    counts = Counter(
+        sid
+        for f in dev.findings
+        for sid, r in f.roles.items()
+        if sid in dev.subjects and r.role in ("actor", "affected")
+    )
+    return [
+        Candidate(sid, names[sid].description, counts[sid])
+        for sid in sorted(dev.subjects, key=lambda s: -counts[s])
+    ]
+
+
+async def write_headline(inf: Inference, dev: Development, article: str) -> Headline | None:
+    """One Sonnet call: the development's headline, points and the subjects it is about, from its
+    findings, its candidates and `article`, the lead source's text. None when Claude refuses."""
+    try:
+        return await inf.claude(
+            "headline",
+            f"dev:{dev.id}:{len(dev.findings)}",
+            headline_prompt(dev.findings, article, candidates(dev, monitored_subjects())),
+            Headline,
+            HEADLINE_SYSTEM,
+            effort=HEADLINE_EFFORT,
+            template=f"{HEADLINE_SYSTEM}\n\n{HEADLINE_INSTRUCTIONS}",
+        )
+    except ClaudeRefused:
+        return None
+
+
+@dataclass
+class HeadlineStats:
+    written: int = 0
+    from_code: int = 0
+    refused: int = 0
+    narrowed: int = 0  # developments that lost a subject to the call
+    dropped: int = 0  # subjects made mentions
+
+
+async def write_headlines(
+    inf: Inference, conn: sqlite3.Connection, devs: list[Development]
+) -> HeadlineStats:
+    """The headline stage, after `link_subjects` and before priority: each development's headline
+    and points, and its subjects narrowed to those the call keeps. A development made only of
+    detections takes them from code and keeps its subjects. A refused call leaves the headline
+    unset and every subject in place."""
+    stats = HeadlineStats()
+    failures: list[str] = []
+
+    async def one(dev: Development) -> None:
+        if all(f.rule_level is not None for f in dev.findings):
+            stats.from_code += 1
+            dev.headline, dev.points = detection_headline(dev.lead.statement)
+            return
+        row = conn.execute(
+            "SELECT text FROM source_documents WHERE id = ?", (dev.lead.document_id,)
+        ).fetchone()
+        try:
+            h = await write_headline(inf, dev, row["text"] if row else "")
+        except Exception as error:
+            failures.append(f"{dev.id}: {type(error).__name__}: {error}")
+            return
+        if h is None:
+            stats.refused += 1
+            return
+        stats.written += 1
+        dev.headline, dev.points = h.headline.strip(), [p.strip() for p in h.points]
+        dropped = dev.keep_subjects(h.subjects)
+        stats.narrowed += bool(dropped)
+        stats.dropped += len(dropped)
+
+    await asyncio.gather(*(one(d) for d in devs))
+    if failures:
+        raise StepFailed("headline", failures)
+    return stats
 
 
 class PriorityRating(BaseModel):
@@ -626,6 +731,7 @@ class MergeStats:
     priority_refused: int = 0  # development and subject pairs Claude declined to rate
     link_types_asked: int = 0  # developments the link_types call asked about
     link_types_refused: int = 0  # of those, the calls Claude declined
+    headlines: HeadlineStats = field(default_factory=HeadlineStats)
 
 
 async def merge(inf: Inference, findings: list[RunFinding]) -> tuple[list[Development], MergeStats]:
@@ -671,6 +777,7 @@ async def build_developments(
     stats.promotional = sum(f.promotional for f in findings)
     stats.price_move = sum(f.price_move for f in findings)
     link_subjects(conn, devs)
+    stats.headlines = await write_headlines(inf, conn, devs)
     await score_priorities(inf, devs)
     stats.link_types_asked, stats.link_types_refused = await activate_link_types(inf, devs)
     store_developments(conn, run_id, devs)
@@ -692,8 +799,8 @@ def store_developments(conn: sqlite3.Connection, run_id: str, devs: list[Develop
         conn.execute(
             "INSERT INTO developments (run_id, id, title, category, stage, event_date, "
             "first_published, last_published, materiality_level, materiality_score, "
-            "materiality_confidence, needs_attention, materiality_rule) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "materiality_confidence, needs_attention, materiality_rule, headline, points) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 run_id,
                 d.id,
@@ -708,6 +815,8 @@ def store_developments(conn: sqlite3.Connection, run_id: str, devs: list[Develop
                 top.priority_confidence if top else 0.0,
                 int(d.materiality_level >= NEEDS_ATTENTION_LEVEL),
                 top.rule if top else None,
+                d.headline,
+                None if d.points is None else json.dumps(d.points),
             ),
         )
         conn.executemany(

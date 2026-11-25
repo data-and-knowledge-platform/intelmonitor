@@ -1,0 +1,52 @@
+[
+  {
+    "id": "mas-hold-with-ai-outlook",
+    "ok": true,
+    "kept": [
+      "mas",
+      "monetary-policy",
+      "singapore"
+    ],
+    "missing": [],
+    "wrongly_kept": [],
+    "headline": "MAS holds S$NEER policy band steady, defying tightening expectations"
+  },
+  {
+    "id": "ocbc-outage-with-paynow",
+    "ok": true,
+    "kept": [
+      "cyber-resilience",
+      "ocbc",
+      "payments-fintech",
+      "paynow"
+    ],
+    "missing": [],
+    "wrongly_kept": [],
+    "headline": "OCBC mobile and internet banking disrupted, hitting some payments"
+  },
+  {
+    "id": "fairfax-idbi-few-sources",
+    "ok": true,
+    "kept": [
+      "banking-lending",
+      "india",
+      "mergers-acquisitions"
+    ],
+    "missing": [],
+    "wrongly_kept": [],
+    "headline": "India approves sale of 60.7% IDBI Bank stake to Fairfax for 520 billion rupees"
+  },
+  {
+    "id": "mastercard-outage-one-source",
+    "ok": true,
+    "kept": [
+      "australia",
+      "cyber-resilience",
+      "mastercard",
+      "payments-fintech"
+    ],
+    "missing": [],
+    "wrongly_kept": [],
+    "headline": "Mastercard outage declines card payments across Australia"
+  }
+]

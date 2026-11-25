@@ -10,9 +10,9 @@ from those calls, so rerunning after a failure resumes where it stopped.
 Recomputing a complete run keeps it complete while it runs: each step swaps its tables in one
 transaction, so the app keeps serving the run instead of falling back to an older one.
 
-Order (phase1-plan.md, section 5): sync the relationship store, detectors, screen, extract, merge
-and priority, the activated link types, headlines, inferred impact by table, upcoming dates,
-indicators and notes, diff, briefs.
+Order (phase1-plan.md, section 5): sync the relationship store, detectors, screen, extract, merge,
+headlines with the development's subjects, priority, the activated link types, inferred impact by
+table, upcoming dates, indicators and notes, diff, briefs.
 """
 
 import sqlite3
@@ -28,7 +28,6 @@ from intelmonitor.pipeline.detectors import store_detections
 from intelmonitor.pipeline.developments import build_developments
 from intelmonitor.pipeline.diff import development_changes, previous_run, store_changes
 from intelmonitor.pipeline.extract import extract_documents
-from intelmonitor.pipeline.headlines import write_headlines
 from intelmonitor.pipeline.impact import (
     SETTINGS,
     STORED,
@@ -133,6 +132,12 @@ async def compute_run(
             f"{ex.quotes_verified}/{ex.quotes_proposed} quotes verified; merge"
         )
         devs, merge = await build_developments(inf, conn, run_id, as_of, start)
+        heads = merge.headlines
+        step(
+            f"headlines: {heads.written} written, {heads.from_code} from detectors, "
+            f"{heads.refused} refused; {heads.dropped} subjects of {heads.narrowed} developments "
+            "made mentions"
+        )
         step(
             f"{merge.developments} developments from {merge.findings} findings "
             f"({merge.merged_pairs}/{merge.pairs} candidate pairs merged), {merge.high} High; "
@@ -143,11 +148,6 @@ async def compute_run(
             f"link types: {merge.link_types_asked} developments with an entity at Medium or "
             f"High{' or Low' if STORED.from_low else ''} asked, {merge.link_types_refused} "
             "refused (their entities activate no type)"
-        )
-        heads = await write_headlines(inf, conn, run_id)
-        step(
-            f"headlines: {heads.written} written, {heads.from_code} from detectors, "
-            f"{heads.refused} refused"
         )
         impact = store_impacts(conn, run_id)
         step(impact_step(impact))

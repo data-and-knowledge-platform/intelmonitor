@@ -212,35 +212,6 @@ def clear_runs(
 
 
 @app.command()
-def headlines(
-    as_of: Annotated[str | None, typer.Option("--as-of", help="Run date, YYYY-MM-DD")] = None,
-    all_: Annotated[bool, typer.Option("--all", help="Every complete run, oldest first")] = False,
-) -> None:
-    """(Re)write the development headlines and key points of complete runs from their stored
-    findings, without recomputing the rest of the run."""
-    from intelmonitor.pipeline.headlines import write_headlines
-    from intelmonitor.pipeline.inference import Inference
-    from intelmonitor.store.db import connect
-
-    if all_ == (as_of is not None):
-        raise typer.BadParameter("pass either --as-of <date> or --all")
-    conn = connect()
-    complete = [
-        r["id"]
-        for r in conn.execute("SELECT id FROM runs WHERE status = 'complete' ORDER BY as_of")
-    ]
-    if as_of is not None and as_of not in complete:
-        raise typer.BadParameter(f"no complete run as of {as_of}")
-    for run_id in complete if all_ else [str(as_of)]:
-        inf = Inference(conn, run_id, rebuilds=True)  # every headline of the run
-        stats = asyncio.run(write_headlines(inf, conn, run_id))
-        typer.echo(
-            f"[{run_id}] {stats.written} written, {stats.from_code} from detectors, "
-            f"{stats.refused} refused"
-        )
-
-
-@app.command()
 def impacts(
     as_of: Annotated[str | None, typer.Option("--as-of", help="Run date, YYYY-MM-DD")] = None,
     all_: Annotated[bool, typer.Option("--all", help="Every complete run, oldest first")] = False,
