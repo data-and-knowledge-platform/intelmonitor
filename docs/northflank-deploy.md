@@ -176,6 +176,7 @@ The runner runs the complete weeks after the published store's latest run, at mo
 5. When the rerun is done, remove `--rerun` from the command.
 
 A new label starts a new rerun.
+A label is 1 to 64 letters, digits, dots, dashes or underscores, starting with a letter or digit; anything else is refused before the bucket is touched.
 Each publish of a rerun week also writes `reruns/<label>` in the bucket.
 If a run with `--rerun <label>` pulls a store without that label while `reruns/<label>` exists, it refuses with exit 2 before any paid call: the store is from before the rerun, as after a rollback.
 Remove `--rerun` to carry on from that store, or give a new label to rerun it again.
