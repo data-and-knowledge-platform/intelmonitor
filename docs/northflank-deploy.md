@@ -11,7 +11,7 @@ The test deployment in project `default` (set up 23 Nov 2026) has steps 1 to 4 d
 | `site` | `nf-compute-50` (0.5 vCPU, 1 GB) | 5 GB | On `nf-compute-20` (512 MB) it sits at 85% of memory and reaches 100% under the endpoint check. During a swap it holds two stores; the store is 536 MB now and about 1.7 GB after 13 weekly runs with 142 entities. |
 | `runner` | `nf-compute-100-2` (1 vCPU, 2 GB) | 5 GB | A one-day, one-entity test peaked at 483 MB. The merge alone peaked at 652 MB on a store's first run, measured before embedding went to one statement per batch (`EMBED_BATCH = 1`). A full week on a full store is not measured yet. The disk holds the store, its publish copy, a week of HTTP cache and the embedding model. |
 | Build | `nf-compute-400-16` | 16 GB | What the test deployment uses. |
-| Addon `stores` | MinIO | `STORE_KEEP` × store size, plus margin | 8 stores of 550 MB is 4.4 GB now; grow the disk or lower `STORE_KEEP` as the store grows. |
+| Addon `stores` | MinIO | (`STORE_KEEP` + 1) × store size, plus margin | 8 stores of 550 MB is 4.4 GB now, plus the store from before the latest rerun, which is never pruned; grow the disk or lower `STORE_KEEP` as the store grows. |
 
 The free plan allows at most 0.2 vCPU, 512 MB and 2 GB of disk per container, so the runner needs a paid plan for a real week.
 
@@ -49,6 +49,7 @@ The site will not start until step 5 has published a store.
 
 - Addon `stores`, MinIO, TLS on, not publicly accessible.
 - Create the bucket `stores` in it (through the tunnel in step 5, with `mc mb` or boto3 `create_bucket`).
+  The runner never creates a bucket, so a mistyped name fails at its first read.
 - The addon's internal certificate is trusted by the image, so no CA file is needed.
 
 ### 4. Secret groups
@@ -66,7 +67,8 @@ A read-only MinIO user for the site is better but not set up; [northflank.md](no
 
 ### 5. First publish
 
-The runner and the site both start from the store `latest.json` names, so the first one is uploaded by hand.
+The runner and the site both start from the store `latest.json` names.
+Either the runner starts a new store in the empty bucket and pays for every week ("First start" under "From the web UI"), with no tunnel, or an existing store is uploaded by hand:
 
 1. Take the store to publish with `sqlite3 data/intelmonitor.db ".backup <copy>"`, not `cp`, and never open the live store with the app's `connect()`.
 2. Open a tunnel: `northflank forward addon --projectId <project> --addonId stores --skipHostnames --portConflict random`.
@@ -90,7 +92,7 @@ A job deployed from the combined service's build.
 - Run on source change: Never, so a push does not start a paid run.
 - Retry limit (`backoffLimit`): 0.
 - Time limit (`activeDeadlineSeconds`): 15300 (4 h 15 min); the runner stops itself at 4 hours.
-- Command: custom, `/app/api/.venv/bin/im weekly --publish`.
+- Command: custom, `/app/api/.venv/bin/im weekly --publish`, with `--start-from` or `--rerun` added for a first start or a rerun ("From the web UI").
 - Plan and disk: see Sizes.
 - Secret groups `bucket` and `runner-keys`.
 
@@ -114,9 +116,68 @@ Push to `main` of the tracked repo: the combined service builds and rolls out th
 `scripts/deploy.sh` is for Railway only.
 Check the runner job's deployed commit matches the site's before a firing that spends.
 
+## From the web UI
+
+Everything here is done in the `runner` job's settings and with its Run button, with no CLI, shell or tunnel.
+`im weekly --help` describes the options.
+Concurrency Forbid does not cover runs started by hand, so wait for a run to end before starting another; a run that overlaps another fails at its publish instead of overwriting the other's week.
+
+### First start
+
+1. Check the bucket exists and holds nothing.
+2. Set the command to `/app/api/.venv/bin/im weekly --publish --start-from 2026-10-01 --max-weeks 8` and press Run.
+3. With nothing published, the runner starts a new store with 1 Oct 2026 as its corpus start and runs the complete weeks from it, oldest first, publishing after each.
+4. The site starts once the first week is published.
+5. If the log ends with "weeks still due", press Run again.
+
+Without `--start-from`, the runner refuses an empty bucket, so a wrong bucket name cannot start a paid rebuild.
+The date must be a past date, and its first week must have ended.
+Once a store is published, `--start-from` changes nothing, so it can stay on the command.
+If the published store's corpus start differs from the date, the log says so and the store's own is used.
+
+### A weekly run by hand
+
+Press Run.
+The runner runs the complete weeks after the published store's latest run, at most `--max-weeks`, and exits 0 when none is due.
+
+### Rerun every week
+
+1. Add `--rerun <label>` and `--max-weeks 8` to the command, for example `--rerun 2026-11-25`, and press Run.
+2. If the pulled store does not record that label, the runner deletes its runs as `im clear-runs` does and records the label.
+   Documents, findings, recorded model calls, series and the run log stay.
+   Every week from the corpus start is then due again.
+3. The label is recorded in the runner's local copy of the store, in the same transaction as the delete, and reaches the bucket only inside the first week published after it.
+   If the run stops before that publish (an error, a crash, the 4-hour stop), the bucket is unchanged and the next run deletes and starts again.
+4. Once a rerun week is published, runs with the same label delete nothing and carry on with the weeks still due.
+   Press Run until the log no longer says "weeks still due"; the 4-hour stop also ends a run early.
+5. When the rerun is done, remove `--rerun` from the command, so a later rollback to the store from before it does not start the rerun again.
+
+A new label starts a new rerun.
+Model calls whose input has not changed replay for free; Exa searches and series are fetched again, as the runner keeps no HTTP cache.
+
+### What the site shows meanwhile
+
+Until the first rerun week is published, the site shows the store from before the rerun.
+After that it shows only the weeks rerun so far, and gains one with each publish.
+The site picks up each publish within 10 minutes.
+
+### Roll back
+
+Every run's log names the store it pulled, and the run that starts a rerun logs "the store published before the rerun, `stores/<file>`, is kept".
+Pruning keeps that store, the one `latest.json` names and the `STORE_KEEP` newest; a rollback can only go to one of these.
+
+1. Remove `--rerun` from the command if it is there.
+2. Set the command to `/app/api/.venv/bin/im publish --key stores/<file>` and press Run.
+   It repoints `latest.json` at that file, and the site serves it within 10 minutes.
+   A weekly run still in progress then fails at its next publish instead of overwriting the rollback.
+3. Set the command back to `/app/api/.venv/bin/im weekly --publish`.
+
+If the Run dialog offers a per-run command override (not confirmed), use it for step 2 instead of editing the command.
+
 ## Rollback
 
 `uv run im publish --key stores/<file>` through the tunnel repoints `latest.json` at an older store; the site picks it up within 10 minutes.
+Without the CLI, see "Roll back" under "From the web UI".
 
 ## Test deployment: what is left
 
@@ -133,7 +194,7 @@ Project `default`, US Central, site `intelmontior` at `https://http--intelmontio
 | `runner` disk | 2 GB | 5 GB |
 | `runner` deployed commit | `b7c036b` | the site's commit |
 | `runner` secret groups | `runner-keys` | `runner-keys` and `bucket` |
-| Published store | `stores/intelmonitor-2026-11-08-d0346b1f.db` (89 entities, run 2026-11-08) | the store from the six-week rerun |
+| Published store | `stores/intelmonitor-2026-11-08-d0346b1f.db` (89 entities, run 2026-11-08) | the store from the rerun (`--rerun`) |
 | Failure alerts | none | step 7 |
 | Region | US Central | Singapore, if offered |
 

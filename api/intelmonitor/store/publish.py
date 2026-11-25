@@ -19,7 +19,7 @@ from botocore.exceptions import ClientError
 from pydantic import BaseModel
 
 from intelmonitor.config import get_settings
-from intelmonitor.store.db import connect
+from intelmonitor.store.db import RERUN_ROLLBACK, connect
 
 if TYPE_CHECKING:  # the stubs are a dev dependency, absent from the image
     from mypy_boto3_s3 import S3Client
@@ -105,9 +105,9 @@ class Bucket:
             raise ValueError(f"{latest.key}: sha256 {digest}, latest.json says {latest.sha256}")
         tmp.replace(dest)
 
-    def prune(self, keep: int | None = None) -> list[str]:
+    def prune(self, keep: int | None = None, *, also_keep: str | None = None) -> list[str]:
         """Delete all but the `keep` newest store files (STORE_KEEP by default), never the one
-        `latest.json` names. Returns the deleted keys."""
+        `latest.json` names nor `also_keep`. Returns the deleted keys."""
         keep = get_settings().store_keep if keep is None else keep
         pages = self.client.get_paginator("list_objects_v2").paginate(
             Bucket=self.name, Prefix=PREFIX
@@ -119,7 +119,7 @@ class Bucket:
         ]
         files.sort(reverse=True)
         current = (latest := self.latest()) and latest.key
-        old = [key for _, key in files[keep:] if key != current]
+        old = [key for _, key in files[keep:] if key not in (current, also_keep)]
         for key in old:
             self.client.delete_object(Bucket=self.name, Key=key)
         return old
@@ -143,7 +143,9 @@ def publish(bucket: Bucket, store: Path, *, replaces: str | None) -> Latest:
     `replaces` is the key latest.json named when the store was pulled (None before the first
     publish): if it names another now, two runs overlapped, and LatestMoved is raised before
     latest.json is touched; the uploaded file stays for a rollback. The copy is named by the
-    store's latest complete run; raises LookupError when it has none."""
+    store's latest complete run; raises LookupError when it has none. The prune keeps the store
+    the copy's meta RERUN_ROLLBACK names, the one published before its runs were rerun, however
+    many weeks the rerun publishes."""
     with tempfile.TemporaryDirectory(dir=store.parent) as tmp:
         copy = Path(tmp) / "store.db"
         source = sqlite3.connect(f"{store.resolve().as_uri()}?mode=ro", uri=True)
@@ -155,6 +157,9 @@ def publish(bucket: Bucket, store: Path, *, replaces: str | None) -> Latest:
         try:
             conn.execute("PRAGMA journal_mode=DELETE")
             row = conn.execute("SELECT max(id) FROM runs WHERE status = 'complete'").fetchone()
+            before = conn.execute(
+                "SELECT value FROM meta WHERE key = ?", (RERUN_ROLLBACK,)
+            ).fetchone()
         finally:
             conn.close()
         if row[0] is None:
@@ -175,7 +180,7 @@ def publish(bucket: Bucket, store: Path, *, replaces: str | None) -> Latest:
     if (found := (now := bucket.latest()) and now.key) != replaces:
         raise LatestMoved(f"latest.json names {found}, not {replaces}: another run published")
     bucket.point(latest)
-    bucket.prune()
+    bucket.prune(also_keep=before and before[0])
     return latest
 
 
