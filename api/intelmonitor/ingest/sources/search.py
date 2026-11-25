@@ -50,6 +50,7 @@ NEWS_DOMAINS = [
     "datacenterdynamics.com",
     "risk.net",
     "fintechnews.sg",
+    "pymnts.com",
     "asiaasset.com",
     "asianinvestor.net",
     "mondovisione.com",
