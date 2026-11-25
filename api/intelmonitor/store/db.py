@@ -96,6 +96,14 @@ CREATE TABLE IF NOT EXISTS document_subjects (
     PRIMARY KEY (document_id, subject_id)
 );
 
+-- The merge's embedding of each finding statement (pipeline/developments.py), so a run embeds
+-- only statements it has not seen. Keyed by the model and the text, so either changing embeds
+-- again.
+CREATE TABLE IF NOT EXISTS embeddings (
+    key TEXT PRIMARY KEY,              -- sha256 of the model name and the text
+    vector BLOB NOT NULL               -- float32, unit length
+);
+
 CREATE TABLE IF NOT EXISTS findings (
     id TEXT PRIMARY KEY,               -- <document_id>-<index>
     document_id TEXT NOT NULL REFERENCES source_documents (id),
