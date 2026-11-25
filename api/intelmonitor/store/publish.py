@@ -19,6 +19,7 @@ from botocore.exceptions import ClientError
 from pydantic import BaseModel
 
 from intelmonitor.config import get_settings
+from intelmonitor.store.db import connect
 
 if TYPE_CHECKING:  # the stubs are a dev dependency, absent from the image
     from mypy_boto3_s3 import S3Client
@@ -181,7 +182,9 @@ def publish(bucket: Bucket, store: Path, *, replaces: str | None) -> Latest:
 class PublishedStore:
     """The site's store: the file `latest.json` names, pulled into `directory` and opened
     read-only and immutable, so no request can write and none needs a lock. `refresh` swaps in a
-    newly published file; a request already holding a connection finishes on the old one."""
+    newly published file; a request already holding a connection finishes on the old one. The
+    pulled copy is brought to this code's schema before it is served, as a store published by
+    older code lacks tables and columns the API reads; the bucket's file is never changed."""
 
     def __init__(self, bucket: Bucket, directory: Path) -> None:
         self.bucket = bucket
@@ -203,6 +206,7 @@ class PublishedStore:
             path = self.directory / Path(latest.key).name
             if not path.exists() or sha256(path) != latest.sha256:
                 self.bucket.download(latest, path)
+            _migrate(path)
             previous = self._path
             self._path, self.latest = path, latest
             # Keep the file being replaced, which requests may be about to open, and delete older.
@@ -222,3 +226,13 @@ class PublishedStore:
         )
         conn.row_factory = sqlite3.Row
         return conn
+
+
+def _migrate(path: Path) -> None:
+    """Run the schema migrations on a pulled store, then leave it in rollback-journal mode with
+    no side files, so it opens read-only and immutable as one file."""
+    conn = connect(path)
+    try:
+        conn.execute("PRAGMA journal_mode=DELETE")
+    finally:
+        conn.close()

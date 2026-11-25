@@ -92,8 +92,9 @@ class Entity(BaseModel):
     covers: str | None = None
     logo: str | None = None  # small icon served by the web app, e.g. /logos/ocbc.svg
     logo_full: str | None = None  # full logo for the monitor page, e.g. /logos/full/ocbc.svg
-    # The country entity a bank is based in. Its loans there carry no indirect impact: news that
-    # matters to a bank at home names it (pipeline/impact.py).
+    # The country entity the entity is based in. That country's news passes it no inferred
+    # impact through any link: news that matters to a firm at home names it (params.HUB_KINDS,
+    # pipeline/impact.py).
     home: str | None = None
     # A region's member countries, each a country entity: a link into the region covers them
     # (relationships.py `reaches`). Empty for every other kind.

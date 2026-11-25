@@ -4,7 +4,8 @@ A version is a stage's prompt template, output schema, model and effort. Its id 
 hex characters of the SHA-256 of those and the stage, so nobody bumps a number: change any of them
 and the next call registers a new version, numbered up from 1 per stage. The template is what the
 call site passes as `template` to `Inference.claude` (the priority call passes PRIORITY_PROMPT
-before it is filled per entity); every other stage's system prompt is its template.
+before it is filled per entity, and the headline call its system prompt and the instructions its
+user prompt ends with); every other stage's system prompt is its template.
 
 `Inference` registers the version of every call and cache hit in `prompt_versions`, stamps the
 records it writes with it, and notes each run's use of it in `run_prompts`, which is what says
@@ -32,7 +33,13 @@ PROMPT_NOTES: dict[str, str] = {
     "same_event": "Haiku: whether two findings report the same event.",
     "priority": "The team's direct High, Medium, Low prompt (deck of 10 Nov 2026, slide 7), as "
     "built for the 11 Nov rebuild.",
-    "headline": "A development's display headline and key points.",
+    "link_types": "The relationship types a development activates for each direct entity at "
+    "Medium or High (deck of 16 Nov 2026, pages 9 and 10), with page 9's examples as complete "
+    "lists and our rule for when a consequence travels and when structural types apply; ends "
+    "with THINK_FIRST.",
+    "headline": "A development's display headline and key points, and the subjects, of its "
+    "findings' actor and affected tags, that it is about; the instructions are part of the "
+    "template.",
     "note": "A subject's note on why its series moved in the week.",
     "brief": "A subject's brief: state, concerns and direction.",
 }

@@ -140,6 +140,46 @@ def _singapore_phrase(entity: Entity | None) -> str:
     return SINGAPORE_BRANCH
 
 
+# Kinds whose High is anchored on their operations in Singapore (the team's subject guide of
+# 23 Nov 2026, its Singapore branch only); every other entity is anchored on itself.
+_SINGAPORE_OPERATIONS_KINDS: tuple[EntityKind, ...] = (
+    "bank",
+    "insurer",
+    "asset_manager",
+    "payment_institution",
+    "digital_asset_firm",
+    "stablecoin_issuer",
+)
+
+
+def _anchor_phrase(entity: Entity | None) -> str:
+    """What a finding must materially change to be High for a subject, by the team's subject
+    guide: MAS or Singapore's financial system for a topic (None); a country's or region's
+    financial system; a sector itself; a financial institution in Singapore; else the entity
+    itself."""
+    if entity is None:
+        return f"MAS or {SINGAPORE_SYSTEM}"
+    if entity.kind == "country":
+        return f"{entity.name}'{'' if entity.name.endswith('s') else 's'} financial system"
+    if entity.kind == "region":
+        return f"the financial systems of {entity.name}"
+    if entity.kind == "sector":
+        return f"the {entity.name[0].lower()}{entity.name[1:]} sector"
+    if entity.kind in _SINGAPORE_OPERATIONS_KINDS:
+        return f"{entity.name} in Singapore"
+    return entity.name
+
+
+def _local_anchor_phrase(entity: Entity | None) -> str:
+    """The anchor phrase (`_anchor_phrase`), except that a tech provider, payment system or market
+    infrastructure based in Singapore, such as Singtel, is anchored on itself in Singapore, as a
+    financial institution is, so its deals and events elsewhere are not High on their size
+    alone."""
+    if entity is not None and entity.kind in _SERVICE_KINDS and entity.home == "singapore":
+        return f"{entity.name} in Singapore"
+    return _anchor_phrase(entity)
+
+
 @dataclass(frozen=True)
 class PrioritySubject:
     """A topic or entity as the priority prompt names it. A frozen store keeps its subjects as
@@ -149,13 +189,37 @@ class PrioritySubject:
     name: str
     type: SubjectType
     singapore: str  # its Singapore phrase
+    # Its anchor phrases, which a template's {anchor} (`_anchor_phrase`) and {local_anchor}
+    # (`_local_anchor_phrase`) take. Empty in a seed frozen before anchors, which
+    # `seed_as_rated` fills from the working tree's seed.
+    anchor: str = ""
+    local_anchor: str = ""
 
 
 def priority_subjects_of(seed: SubjectsSeed) -> dict[str, PrioritySubject]:
-    """The seed's topics and entities, in seed order, with their names and Singapore phrases."""
-    topics = [PrioritySubject(t.id, t.name, "topic", _singapore_phrase(None)) for t in seed.topics]
+    """The seed's topics and entities, in seed order, with their names, Singapore phrases and
+    anchor phrases."""
+    topics = [
+        PrioritySubject(
+            t.id,
+            t.name,
+            "topic",
+            _singapore_phrase(None),
+            _anchor_phrase(None),
+            _local_anchor_phrase(None),
+        )
+        for t in seed.topics
+    ]
     entities = [
-        PrioritySubject(e.id, e.name, "entity", _singapore_phrase(e)) for e in seed.entities
+        PrioritySubject(
+            e.id,
+            e.name,
+            "entity",
+            _singapore_phrase(e),
+            _anchor_phrase(e),
+            _local_anchor_phrase(e),
+        )
+        for e in seed.entities
     ]
     return {s.id: s for s in [*topics, *entities]}
 

@@ -19,14 +19,14 @@ the corpus start to its date, so the latest run holds every development of the e
 
 import sqlite3
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
 from openpyxl import Workbook
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
-from openpyxl.styles import Font
+from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
 
 from intelmonitor.ingest.models import corpus_start
@@ -47,7 +47,6 @@ from intelmonitor.trial import (
     Labels,
     changed_developments,
     complete_runs,
-    count_table,
     run_pairs,
     version_row,
 )
@@ -60,6 +59,9 @@ class Sheet:
     name: str
     columns: list[tuple[str, int]]  # header and column width in characters
     rows: list[list[Cell]]
+    bold: tuple[int, ...] = ()  # rows after the header to set in bold, counted from 0
+    wrap: bool = False  # wrap long text in its cells
+    filter: bool = True  # filters on the header row
 
 
 def _names() -> dict[str, str]:
@@ -89,6 +91,26 @@ def _per_development(
     for r in conn.execute(sql, (run,)):
         out[r["development_id"]].append(r)
     return out
+
+
+SOURCES_SQL = (
+    "SELECT s.development_id, s.finding_id, s.document_id, d.collection, "
+    "d.published_at, d.url FROM development_sources s "
+    "JOIN source_documents d ON d.id = s.document_id WHERE s.run_id = ?"
+)
+
+
+def _lead(docs: list[sqlite3.Row]) -> sqlite3.Row | None:
+    """A development's lead source, as the pipeline ranks them: primary first, then earliest."""
+    return min(
+        docs,
+        key=lambda s: (
+            COLLECTION_RANK.get(s["collection"], len(COLLECTION_RANK)),
+            s["published_at"][:10],
+            s["finding_id"],
+        ),
+        default=None,
+    )
 
 
 DIRECT_COLUMNS = [
@@ -136,13 +158,7 @@ def direct_rows(
         "FROM development_subjects WHERE run_id = ? ORDER BY subject_id",
         run,
     )
-    sources = _per_development(
-        conn,
-        "SELECT s.development_id, s.finding_id, s.document_id, d.collection, "
-        "d.published_at, d.url FROM development_sources s "
-        "JOIN source_documents d ON d.id = s.document_id WHERE s.run_id = ?",
-        run,
-    )
+    sources = _per_development(conn, SOURCES_SQL, run)
     rows: list[list[Cell]] = []
     for d in devs:
         key = d["id"]
@@ -154,16 +170,7 @@ def direct_rows(
         ]
         entities = [s for s in tagged[key] if s not in topics]
         docs = sources[key]
-        # The development's lead source, as the pipeline ranks them: primary first, then earliest.
-        top = min(
-            docs,
-            key=lambda s: (
-                COLLECTION_RANK.get(s["collection"], len(COLLECTION_RANK)),
-                s["published_at"][:10],
-                s["finding_id"],
-            ),
-            default=None,
-        )
+        top = _lead(docs)
         for s in entities or topics:
             label = Label(s["priority_level"], s["priority_reason"])
             if given is not None:
@@ -206,7 +213,7 @@ def indirect_sheet(conn: sqlite3.Connection, names: dict[str, str]) -> Sheet:
         "LEFT JOIN development_subjects s ON s.run_id = i.run_id "
         "AND s.development_id = i.development_id AND s.subject_id = i.source_id "
         "LEFT JOIN relationships r ON r.id = i.relationship_id "
-        "WHERE i.run_id = ? ORDER BY i.development_id, i.subject_id",
+        "WHERE i.run_id = ? AND i.best = 1 ORDER BY i.development_id, i.subject_id",
         (_latest_run(conn),),
     ).fetchall()
     rows: list[list[Cell]] = []
@@ -357,10 +364,18 @@ def write_workbook(sheets: list[Sheet], out: Path) -> None:
             c.font = Font(bold=True)
         for row in s.rows:
             ws.append([_clean(v) for v in row])
+        for i in s.bold:
+            for c in ws[i + 2]:
+                c.font = Font(bold=True)
+        if s.wrap:
+            for row in ws.iter_rows(min_row=2):
+                for c in row:
+                    c.alignment = Alignment(wrap_text=True, vertical="top")
         for n, (_, width) in enumerate(s.columns, start=1):
             ws.column_dimensions[get_column_letter(n)].width = width
         ws.freeze_panes = "A2"
-        ws.auto_filter.ref = ws.dimensions
+        if s.filter:
+            ws.auto_filter.ref = ws.dimensions
     out.parent.mkdir(parents=True, exist_ok=True)
     wb.save(out)
 
@@ -515,37 +530,98 @@ def link_ratings_workbook(number: int, out: Path) -> dict[str, int]:
     return {sheet.name: len(rows)}
 
 
-def compare_workbook(c: Comparison, out: Path) -> dict[str, int]:
-    """Two versions compared: the count table of level under a against level under b, then a
-    sheet per run with the pairs whose level moved, both levels and both reasons."""
+def compare_workbook(conn: sqlite3.Connection, c: Comparison, out: Path) -> dict[str, int]:
+    """Two versions compared, from the store `c` was read from: Counts, each version's pairs by
+    level as two tables; Prompts, the two versions side by side; then a sheet per run with the
+    pairs whose level moved, the development's headline and sources, both levels and both
+    reasons. Each input is counted once, so Counts holds fewer pairs than the run sheets."""
     a, b = f"v{c.a['number']}", f"v{c.b['number']}"
-    table = count_table(c)
-    counts = Sheet("Counts", [(str(h), 12) for h in table[0]], [list(r) for r in table[1:]])
-    weeks = [
-        Sheet(
-            run,
-            [
-                ("Development id", 20),
-                ("Subject", 24),
-                (f"Level {a}", 9),
-                (f"Reason {a}", 70),
-                (f"Level {b}", 9),
-                (f"Reason {b}", 70),
-            ],
-            [
+    order = list(reversed(range(len(PRIORITY_LABELS))))  # High first
+
+    def table(name: str, level_of: Callable[[int, int], int]) -> list[list[Cell]]:
+        counts = {i: sum(n for k, n in c.counts.items() if level_of(*k) == i) for i in order}
+        return [
+            [name, "Pairs"],
+            *([PRIORITY_LABELS[i], counts[i]] for i in order),
+            ["Total", sum(counts.values())],
+        ]
+
+    first = table(a, lambda la, lb: la)[1:]
+    second = table(b, lambda la, lb: lb)
+    counts = Sheet(
+        "Counts",
+        [(a, 12), ("Pairs", 10)],
+        [*first, [None, None], *second],
+        bold=(len(first) + 1,),
+        filter=False,
+    )
+    prompts = Sheet(
+        "Prompts",
+        [("Field", 12), (a, 90), (b, 90)],
+        [
+            [field, c.a[key] or "", c.b[key] or ""]
+            for field, key in (
+                ("Id", "id"),
+                ("Note", "note"),
+                ("Model", "model"),
+                ("Effort", "effort"),
+                ("First used", "first_used"),
+                ("Prompt", "template"),
+            )
+        ],
+        wrap=True,
+        filter=False,
+    )
+    weeks: list[Sheet] = []
+    for run, moved in sorted(c.moved.items()):
+        devs = {
+            d["id"]: d
+            for d in conn.execute(
+                "SELECT id, coalesce(headline, title) AS headline, first_published, "
+                "last_published FROM developments WHERE run_id = ?",
+                (run,),
+            )
+        }
+        sources = _per_development(conn, SOURCES_SQL, run)
+        rows: list[list[Cell]] = []
+        for m in moved:
+            d = devs[m.pair.development_id]
+            docs = sources[m.pair.development_id]
+            top = _lead(docs)
+            rows.append(
                 [
                     m.pair.development_id,
+                    d["headline"],
                     c.names.get(m.pair.subject_id, m.pair.subject_id),
                     PRIORITY_LABELS[m.a.level],
                     m.a.reason,
                     PRIORITY_LABELS[m.b.level],
                     m.b.reason,
+                    len({x["document_id"] for x in docs}),
+                    _day(d["first_published"]),
+                    _day(d["last_published"]),
+                    top["url"] if top else None,
                 ]
-                for m in moved
-            ],
+            )
+        weeks.append(
+            Sheet(
+                run,
+                [
+                    ("Development id", 20),
+                    ("Headline", 60),
+                    ("Subject", 24),
+                    (f"Level {a}", 9),
+                    (f"Reason {a}", 70),
+                    (f"Level {b}", 9),
+                    (f"Reason {b}", 70),
+                    ("Sources", 8),
+                    ("First published", 11),
+                    ("Last published", 11),
+                    ("Top source URL", 50),
+                ],
+                rows,
+            )
         )
-        for run, moved in sorted(c.moved.items())
-    ]
-    sheets = [counts, *weeks]
+    sheets = [counts, prompts, *weeks]
     write_workbook(sheets, out)
     return {s.name: len(s.rows) for s in sheets}

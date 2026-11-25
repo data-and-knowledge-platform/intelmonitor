@@ -64,7 +64,8 @@ A development's priority for an entity it is about.
 _Avoid_: Primary impact
 
 **Indirect impact**:
-The level an adverse development passes through one link to an entity it is not about, read from a fixed table of the direct level and the link's strength in that direction: Medium or Low, never High.
+The level an adverse development passes through one link, of a type it activates, to an entity it is not about, read from a fixed table of the direct level and the link's strength in that direction: High only from High by a Strong link.
+A country, region, regulator, central bank, agency or international body passes nothing to an entity through that entity's operates_in, regulated_by, listed_on, member_of or participates_in link to it, nor to an entity based in it.
 _Avoid_: Knock-on effect, contagion, second-order impact
 
 **Prompt version**:

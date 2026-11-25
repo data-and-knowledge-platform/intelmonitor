@@ -341,14 +341,14 @@ def clear_runs(
 
 
 @app.command()
-def headlines(
+def impacts(
     as_of: Annotated[str | None, typer.Option("--as-of", help="Run date, YYYY-MM-DD")] = None,
     all_: Annotated[bool, typer.Option("--all", help="Every complete run, oldest first")] = False,
 ) -> None:
-    """(Re)write the development headlines and key points of complete runs from their stored
-    findings, without recomputing the rest of the run."""
-    from intelmonitor.pipeline.headlines import write_headlines
-    from intelmonitor.pipeline.inference import Inference
+    """(Re)compute the inferred impacts of complete runs from their stored rows and the links,
+    with no model call and no other stage, and mark each run recomputed. Briefs keep the impacts
+    they were written from until `im summarize`."""
+    from intelmonitor.pipeline.run import recompute_impacts
     from intelmonitor.store.db import connect
 
     if all_ == (as_of is not None):
@@ -360,13 +360,7 @@ def headlines(
     ]
     if as_of is not None and as_of not in complete:
         raise typer.BadParameter(f"no complete run as of {as_of}")
-    for run_id in complete if all_ else [str(as_of)]:
-        inf = Inference(conn, run_id, rebuilds=True)  # every headline of the run
-        stats = asyncio.run(write_headlines(inf, conn, run_id))
-        typer.echo(
-            f"[{run_id}] {stats.written} written, {stats.from_code} from detectors, "
-            f"{stats.refused} refused"
-        )
+    recompute_impacts(conn, complete if all_ else [str(as_of)], typer.echo)
 
 
 @app.command()
@@ -447,21 +441,25 @@ def export_labels(
 
 @export_app.command("version")
 def export_version(
-    stage: Annotated[str, typer.Option("--stage", help="priority, or link_rating")],
+    stage: Annotated[str, typer.Option("--stage", help="priority, link_types or link_rating")],
     version: Annotated[int, typer.Option("--version", help="The version's number")],
     out: Annotated[str, typer.Option("--out", help="The .xlsx file to write")],
     store: StoreOption = None,
 ) -> None:
-    """Write one prompt version's workbook. Priority: About, Summary and a sheet per run, from
-    the store opened read-only, with no migration, and its seed as rated. link_rating: the
-    review sheet of the ratings in transmission.yaml that the version made. Calls no model."""
+    """Write one prompt version's workbook. Priority and link_types: About, Summary and a sheet
+    per run, from the store opened read-only, with no migration, and its seed as rated.
+    link_rating: the review sheet of the ratings in transmission.yaml that the version made.
+    Calls no model."""
     from intelmonitor.export import link_ratings_workbook, version_workbook
+    from intelmonitor.link_type_trial import version_workbook as link_types_workbook
 
     if not out.endswith(".xlsx"):
         raise typer.BadParameter("--out must name an .xlsx file")
     try:
         if stage == "link_rating":
             counts = link_ratings_workbook(version, Path(out))
+        elif stage == "link_types":
+            counts = link_types_workbook(_store(store), version, Path(out))
         else:
             counts = version_workbook(_store(store), stage, version, Path(out))
     except LookupError as error:
@@ -480,7 +478,9 @@ def trial_priority(
         typer.Option(
             "--candidate",
             help="live (the current priority prompt) or a candidate of trial.py: medium, "
-            "medium-think, high, high-think, price-promo, high-think-price-promo",
+            "medium-think, high, high-think, price-promo, high-think-price-promo, "
+            "high-think-price-promo-fi, high-think-price-promo-fi-lower, anchored, "
+            "local-anchored",
         ),
     ] = "live",
 ) -> None:
@@ -520,6 +520,68 @@ def trial_priority(
     for failure in r.failed:
         typer.echo(f"failed: {failure}")
     _echo_unfound(r.unfound)
+
+
+@trial_app.command("link-types")
+def trial_link_types(
+    store: Annotated[str, typer.Option("--store", help="The store's .db file, the baseline")],
+    effort: Annotated[
+        str | None,
+        typer.Option(
+            "--effort", help="low, medium, high, xhigh or max; the stage's own by default"
+        ),
+    ] = None,
+) -> None:
+    """Ask the link_types call about a fixed sample of 100 of the store's developments with an
+    entity at Medium or High, with the live link_types prompt and schema at the effort given,
+    from the input the stage would have read in each development's run: its entities' levels
+    and reasons as stored, named by the store's seed as rated. Calls are recorded with their
+    prompt version, so a version already tried replays from the cache; no development_subjects
+    row is written, and the store is opened with no migration."""
+    from contextlib import closing
+    from typing import get_args
+
+    from claude_agent_sdk import EffortLevel
+
+    from intelmonitor.link_type_trial import trial_link_types as trial
+    from intelmonitor.pipeline.inference import Inference
+    from intelmonitor.pipeline.params import LINK_TYPES_EFFORT
+    from intelmonitor.relationships import REL_TYPES
+
+    levels: dict[str, EffortLevel] = {e: e for e in get_args(EffortLevel)}
+    if (chosen := levels.get(effort or LINK_TYPES_EFFORT)) is None:
+        raise typer.BadParameter(f"no effort {effort}; one of {', '.join(levels)}")
+    with closing(_open(store, write=True)) as conn:
+        try:
+            r = asyncio.run(trial(Inference(conn, None), effort=chosen))
+        except (LookupError, ValueError) as error:
+            raise typer.BadParameter(str(error)) from error
+    typer.echo(
+        f"link_types version {r.number} ({r.version}), effort {chosen}, on {r.developments} "
+        f"developments with {r.entities} entities at Medium or High: {r.calls} calls, "
+        f"{r.cache_hits} from the cache, ${r.cost_usd:.4f} (measured), {r.refused} refused, "
+        f"{len(r.failed)} failed"
+    )
+    answered = r.per_entity.total()
+    mean = sum(n * k for n, k in r.per_entity.items()) / answered if answered else 0.0
+    spread = ", ".join(f"{n} types {r.per_entity[n]}" for n in sorted(r.per_entity))
+    typer.echo(f"types per entity, {answered} entities answered: mean {mean:.2f}; {spread}")
+    typer.echo("entities each type was picked for:")
+    for t in sorted(REL_TYPES, key=lambda t: -r.by_type[t]):
+        typer.echo(f"  {t} {r.by_type[t]}")
+    v = r.recorded
+    refused = ", ".join(f"{n} {category}" for category, n in v.refused.items()) or "none"
+    typer.echo(
+        f"version {r.number}'s recorded calls: {v.calls} ({v.answered} answered, {v.cut_off} cut "
+        f"off, {v.errors} other errors, refused: {refused}); mean output tokens "
+        f"{v.mean_output_tokens:.0f}; ${v.cost_usd:.4f} in all, ${v.cost_per_call:.5f} a call "
+        "(measured)"
+    )
+    typer.echo("developments with an entity at Medium or High, per run (all, new or updated):")
+    for run, every, changed in r.per_run:
+        typer.echo(f"  {run} {every}, {changed}")
+    for failure in r.failed:
+        typer.echo(f"failed: {failure}")
 
 
 def _echo_unfound(pairs: "list[Pair]") -> None:
@@ -580,8 +642,9 @@ def prompts_compare(
     store: StoreOption = None,
 ) -> None:
     """Compare two versions on the pairs both rated, from the store opened read-only with no
-    migration and its seed as rated: write the count table of level under a against level under
-    b and, per run, the pairs that moved; print the table, the hand-set cases under each, and the
+    migration and its seed as rated: write each version's pairs by level, the two prompts and,
+    per run, the pairs that moved with their headlines and sources; print the table of level under
+    a against level under b, the hand-set cases under each, and the
     pairs version 1 rated whose record is not found. Calls no model."""
     from contextlib import closing
 
@@ -595,7 +658,7 @@ def prompts_compare(
             c = compare(conn, stage, a, b)
         except LookupError as error:
             raise typer.BadParameter(str(error)) from error
-    counts = compare_workbook(c, Path(out))
+        counts = compare_workbook(conn, c, Path(out))
     for row in count_table(c):
         typer.echo("".join(f"{v!s:>10}" for v in row))
     for case, outcome_a, outcome_b, detail_a, detail_b in c.cases:
@@ -603,6 +666,39 @@ def prompts_compare(
         for v, detail in ((a, detail_a), (b, detail_b)):
             typer.echo(f"  v{v}: {detail}")
     _echo_unfound(c.unfound)
+    typer.echo(f"wrote {out}: " + ", ".join(f"{n} {name}" for name, n in counts.items()))
+
+
+@prompts_app.command("compare-link-types")
+def prompts_compare_link_types(
+    a: int,
+    b: int,
+    out: Annotated[str, typer.Option("--out", help="The .xlsx file to write")],
+    store: StoreOption = None,
+) -> None:
+    """Compare two link_types versions on the developments both answered, from the store opened
+    read-only with no migration and its seed as rated: write the counts, the types added and
+    removed, both prompts and, per run, the entities whose types differ; print the counts and
+    the type table. Calls no model."""
+    from contextlib import closing
+
+    from intelmonitor.link_type_trial import compare_link_types, compare_workbook, type_table
+
+    if not out.endswith(".xlsx"):
+        raise typer.BadParameter("--out must name an .xlsx file")
+    with closing(_open(store)) as conn:
+        try:
+            c = compare_link_types(conn, a, b)
+        except LookupError as error:
+            raise typer.BadParameter(str(error)) from error
+    counts = compare_workbook(c, Path(out))
+    typer.echo(
+        f"{c.developments} developments both answered, {c.entities} entities; types differ for "
+        f"{c.changed_entities} entities in {c.changed_developments} developments; declined: "
+        f"v{a} {c.refused[0]}, v{b} {c.refused[1]}"
+    )
+    for row in type_table(c):
+        typer.echo(f"{row[0]!s:<34}" + "".join(f"{v!s:>14}" for v in row[1:]))
     typer.echo(f"wrote {out}: " + ", ".join(f"{n} {name}" for name, n in counts.items()))
 
 

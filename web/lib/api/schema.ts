@@ -1121,8 +1121,9 @@ export interface components {
         /**
          * IndirectImpact
          * @description An entity a development reaches through one stored link, at the level the fixed table
-         *     gives (pipeline/impact.py): the development is adverse for `source` at a direct level, and
-         *     the link's strength from the source's end turns that into `level`.
+         *     gives (pipeline/impact.py): the development activates the link's type for `source` at a
+         *     direct level, and the link's strength from the source's end turns that into `level`. Only the
+         *     entity's best path is served.
          */
         IndirectImpact: {
             /** Development Id */
@@ -1133,7 +1134,7 @@ export interface components {
              * Level
              * @enum {string}
              */
-            level: "Medium" | "Low";
+            level: "High" | "Medium" | "Low";
             /**
              * Strength
              * @description The link's strength from the source's end
@@ -1546,7 +1547,7 @@ export interface components {
             development_ids: string[];
             /**
              * Harmful
-             * @description How many of them are adverse for the entity they are about; every indirect impact is, so this equals the number of developments
+             * @description How many of them are adverse for the entity they reach the centre from
              */
             harmful: number;
         };
@@ -2102,7 +2103,7 @@ export interface components {
              * Level
              * @enum {string}
              */
-            level: "Medium" | "Low";
+            level: "High" | "Medium" | "Low";
             /**
              * Strength
              * @description The link's strength from the source's end

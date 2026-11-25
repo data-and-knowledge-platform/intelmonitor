@@ -2470,6 +2470,7 @@
           "level": {
             "type": "string",
             "enum": [
+              "High",
               "Medium",
               "Low"
             ],
@@ -2523,7 +2524,7 @@
           "link"
         ],
         "title": "IndirectImpact",
-        "description": "An entity a development reaches through one stored link, at the level the fixed table\ngives (pipeline/impact.py): the development is adverse for `source` at a direct level, and\nthe link's strength from the source's end turns that into `level`."
+        "description": "An entity a development reaches through one stored link, at the level the fixed table\ngives (pipeline/impact.py): the development activates the link's type for `source` at a\ndirect level, and the link's strength from the source's end turns that into `level`. Only the\nentity's best path is served."
       },
       "KeyData": {
         "properties": {
@@ -3360,7 +3361,7 @@
           "harmful": {
             "type": "integer",
             "title": "Harmful",
-            "description": "How many of them are adverse for the entity they are about; every indirect impact is, so this equals the number of developments"
+            "description": "How many of them are adverse for the entity they reach the centre from"
           }
         },
         "type": "object",
@@ -4733,6 +4734,7 @@
           "level": {
             "type": "string",
             "enum": [
+              "High",
               "Medium",
               "Low"
             ],

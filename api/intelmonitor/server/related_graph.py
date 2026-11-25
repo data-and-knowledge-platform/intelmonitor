@@ -63,6 +63,16 @@ def related_graph(q: Queries, subject_id: str, days: RelatedDays) -> RelatedGrap
         )
 
     impacts = subject_impacts(q, subject_id, days) if nodes else []  # in display order
+    # The developments adverse for the entity they reach the subject from: with the adverse gate
+    # off (INDIRECT_ADVERSE_ONLY), good news passes the table too.
+    adverse = {
+        (r["development_id"], r["subject_id"])
+        for r in q.conn.execute(
+            "SELECT development_id, subject_id FROM development_subjects "
+            "WHERE run_id = ? AND adverse = 1",
+            (q.run.id,),
+        )
+    }
     for i in impacts:
         through = i.link.to_id if i.link.from_id == subject_id else i.link.from_id
         if (n := nodes.get(through)) is None:
@@ -72,8 +82,7 @@ def related_graph(q: Queries, subject_id: str, days: RelatedDays) -> RelatedGrap
             link.development_ids.append(i.development_id)
         if i.development_id not in n.development_ids:
             n.development_ids.append(i.development_id)
-            # Only a development adverse for the entity it is about passes the table.
-            n.harmful += 1
+            n.harmful += (i.development_id, i.source.id) in adverse
 
     return RelatedGraph(
         run=q.run,

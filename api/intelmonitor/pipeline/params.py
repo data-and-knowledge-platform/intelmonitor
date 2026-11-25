@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Literal
 
-from intelmonitor.relationships import Strength
+from intelmonitor.pipeline.prompts import THINK_FIRST
+from intelmonitor.relationships import LINK_TYPES, RelType, Strength
+from intelmonitor.seed import EntityKind
 
 # Screen and same_event run on Claude Haiku 5.5 with thinking off; a Haiku
 # refusal is retried once on REFUSAL_FALLBACK_MODEL (pipeline/inference.py). The other stages run
@@ -78,15 +80,112 @@ SINGAPORE_SYSTEM = "Singapore's financial system"
 PRIORITY_EFFORT: Literal["medium"] = "medium"
 
 
-def priority_system(entity: str, singapore: str, template: str = PRIORITY_PROMPT) -> str:
-    """PRIORITY_PROMPT, or another priority version's template, for one subject. Where the phrase
-    is Singapore's financial system itself, "the phrase or (for) Singapore's financial system"
-    names it once."""
-    text = template.format(entity=entity, singapore=singapore)
+def priority_system(
+    entity: str,
+    singapore: str,
+    template: str = PRIORITY_PROMPT,
+    anchor: str = "",
+    local_anchor: str = "",
+) -> str:
+    """PRIORITY_PROMPT, or another priority version's template, for one subject: its name, its
+    Singapore phrase and, for a template with {anchor} or {local_anchor}, that anchor phrase
+    (pipeline/subjects.py), which must then be given. Where the phrase is Singapore's financial
+    system itself, "the phrase or (for) Singapore's financial system" names it once."""
+    phrases = {"anchor": anchor, "local_anchor": local_anchor}
+    fields = {"entity": entity, "singapore": singapore} | {k: v for k, v in phrases.items() if v}
+    text = template.format(**fields)
     if singapore == SINGAPORE_SYSTEM:
         for joiner in (" or for ", " or "):
             text = text.replace(f"{SINGAPORE_SYSTEM}{joiner}{SINGAPORE_SYSTEM}", SINGAPORE_SYSTEM)
     return text
+
+
+def _link_types_text() -> str:
+    """The 22 types in the deck's three groups, each with its meaning."""
+    lines: list[str] = []
+    group = ""
+    for t, lt in LINK_TYPES.items():
+        if lt.group != group:
+            group = lt.group
+            lines.append(f"{group}:")
+        lines.append(f"- {t}: {lt.meaning}")
+    return "\n".join(lines)
+
+
+# The activated relationship types (deck of 16 Nov 2026, pages 9 and 10; ticket 05 of
+# link-types-and-inferred-impact): the link_types call (pipeline/developments.py) reads a
+# development and its direct entities at Medium or High, and picks for each entity the types its
+# consequences could travel through. Page 9's selection rule and ten examples and page 10's rule
+# are the deck's words, the second person for page 10's "The LLM"; the types are LINK_TYPES (pages
+# 1 to 4); the framing (the entities given with their levels, a type counting at either end of a
+# link, what travelling through a relationship means, when the structural types apply, no broader
+# type beside a specific one, each example listing every type that applies) is ours, added for the
+# cases' rule that a type the example's row does not name must not be picked. The sentence on an
+# entity that is itself a jurisdiction, regulator or exchange is ours too (23 Nov 2026, the eval's
+# OUR_CASES): such an entity activates a structural type only for a measure, condition or
+# disruption of its own that bears on the entities in it as a class. No JSON shape: the
+# answer's fields are described in its schema (ticket 09).
+LINK_TYPES_PROMPT = f"""\
+You are a risk analyst at the Monetary Authority of Singapore. You will be given a news finding \
+and the entities it directly affects, each with its direct priority (High or Medium) and the \
+reason for it. For each entity, select the relationship types the finding could activate: the \
+types of relationship through which the consequences the finding describes could travel from \
+that entity to other entities. A type counts whichever end of the relationship the entity is \
+at: the entity may provide the service or receive it, hold the stake or be held.
+
+## Relationship types
+{_link_types_text()}
+
+## Selecting relationship types
+Select relationship types based on the consequences described in the finding, not merely the \
+finding's subject or every relationship connected to the direct entity. For example: an engine \
+defect can activate material_supplier_to; a maintenance failure can activate \
+provides_business_service_to; a KrisFlyer outage can activate provides_customer_benefits_with; \
+an engine problem should not activate airline-bank rewards relationships.
+You do not judge every possible indirect entity. Include a relationship type only where the \
+finding describes consequences that could plausibly travel through that pathway. Do not include \
+a type merely because the relationship exists.
+An entity for which the finding describes no such consequence gets no types.
+A consequence travels through a relationship when the entity at its other end would bear it \
+because of that relationship: a service, payment, data, product or supply it relies on fails, or \
+a loan, investment, stake, policy or joint arrangement it holds loses value. The structural \
+types (regulated_by, operates_in, exposed_to, member_of, participates_in, listed_on, \
+belongs_to_sector) apply only when the finding describes a consequence for the regulator, \
+jurisdiction, market, organisation, scheme, exchange or sector at the other end; that the entity \
+is regulated, operates somewhere or is listed is not such a consequence, and nor is a regulator's \
+investigation of it or penalty on it. Where the entity is itself a jurisdiction, regulator or \
+exchange, a structural type applies only when the finding is a measure, condition or disruption \
+of that jurisdiction, regulator or exchange that bears on the entities operating in it, regulated \
+by it or listed on it as a class, such as a rule or policy that binds them, an economic, monetary \
+or market-wide shock, or an outage; not when the finding is about one firm, including the \
+regulator's action against that firm, nor when it is a local event that merely happened there. \
+Work from the \
+consequences the finding states, not from ones you expect to follow from them. A failure of one \
+service is one pathway and takes one type, the most specific that fits it, even where that \
+service could also be described as technology or as a business service.
+
+## Examples
+Each example lists every type that applies to its finding; a type it does not list does not \
+apply.
+Finding: applicable relationship types
+- Singtel enterprise-connectivity outage: provides_connectivity_to
+- Singtel consumer-advertising fine: holds_stake_in, invests_in (not provides_connectivity_to)
+- MoneySmart bank-application data breach: shares_or_processes_data_with
+- MoneySmart misleading product comparison: distributes_products_for
+- Payment-processor outage: processes_transactions_for
+- Isolated engine defect affecting a specific engine model: material_supplier_to; potentially \
+provides_business_service_to if maintenance is implicated
+- Fleet-wide engine defect causing extensive grounding: material_supplier_to; potentially \
+provides_business_service_to, insures, holds_stake_in, invests_in and lends_to, where the stated \
+consequences support them
+- Aircraft-maintenance failure: provides_business_service_to
+- KrisFlyer redemption outage: provides_customer_benefits_with
+- General flight disruption unrelated to KrisFlyer: not provides_customer_benefits_with
+
+{THINK_FIRST}"""
+# The link_types call thinks at this effort on Sonnet 5.5. High follows the priority pick
+# (version 8); the spec has the user pick between medium and high from step 7's sweep.
+LINK_TYPES_EFFORT: Literal["high"] = "high"
 
 
 @dataclass(frozen=True)
@@ -126,18 +225,35 @@ PRIORITY_DEFINITIONS: list[PriorityDefinition] = [
 NEEDS_ATTENTION_LEVEL = 2
 MATERIAL_LEVEL = 1
 
-# Indirect impact (pipeline/impact.py; deck of 10 Nov 2026, slide 8; ticket 20): the level a
-# development adverse for a tagged entity passes through one link to a neighbour, by the entity's
-# direct level and the link's strength in that direction; None passes nothing, and nothing is High.
-# A Non-propagating direction (deck of 16 Nov 2026, page 6) passes nothing.
+# Inferred impact (pipeline/impact.py; deck of 16 Nov 2026, page 11; ticket 06 of
+# link-types-and-inferred-impact): the level a development passes through one link, of a type it
+# activates for a named entity, to a neighbour, by the entity's direct level and the link's
+# strength in that direction; None passes nothing. High by Strong gives High, with no further check
+# (page 12, P8). A Non-propagating direction (page 6) passes nothing.
 INDIRECT_TABLE: dict[int, dict[Strength, int | None]] = {
-    2: {"Strong": 1, "Moderate": 1, "Weak": 0, "Non-propagating": None},
+    2: {"Strong": 2, "Moderate": 1, "Weak": 0, "Non-propagating": None},
     1: {"Strong": 1, "Moderate": 0, "Weak": None, "Non-propagating": None},
     0: {"Strong": 0, "Moderate": None, "Weak": None, "Non-propagating": None},
 }
-# Whether a Low direct item passes, as the slide draws it (Low to a Strong link as Low). Off by
-# default; the run prints the row count under both settings for the first rebuilt week's pick.
+# Whether a Low direct item passes, as page 11 draws it (Low to a Strong link as Low). Off by
+# default (P7); the run prints the row counts under both settings for the pick.
 INDIRECT_FROM_LOW = False
+# Whether a named entity passes only developments adverse for it, the gate of the 10 Nov rules.
+# On: the product owner decided it (P6, 23 Nov 2026); the run prints the row counts under both.
+INDIRECT_ADVERSE_ONLY = True
+# Hubs: the kinds whose news is about a class of entities, not one firm. The product owner decided
+# (23 Nov 2026) that "Could affect" does not carry class-wide country and regulator news: a hub
+# passes nothing down a MEMBER_TYPES link to what operates in it, is regulated by it, is listed on
+# it or is a member of it (itself or through a region that covers it), nor to an entity whose
+# home it is. Its other links pass as any entity's do. Market infrastructures and payment systems
+# are not hubs: an exchange's outage still reaches what is listed on it.
+HUB_KINDS: frozenset[EntityKind] = frozenset(
+    {"country", "region", "regulator", "central_bank", "agency", "international_body"}
+)
+# The link types by which an entity belongs to a hub (decided 23 Nov 2026, with HUB_KINDS).
+MEMBER_TYPES: frozenset[RelType] = frozenset(
+    {"operates_in", "regulated_by", "listed_on", "member_of", "participates_in"}
+)
 
 
 def display_key(

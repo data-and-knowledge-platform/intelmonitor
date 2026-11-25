@@ -1,29 +1,42 @@
-"""Step 6b: a short headline and 2 or 3 key points for each development, for busy readers who
-scan the feed instead of opening sources. The title (the lead finding's statement) stays as it
-is for merging, priority, impact and briefs; the headline and points are for display only.
+"""The headline call: one Sonnet call per development, after the merge and before priority, writes
+a short headline and 2 or 3 key points for busy readers who scan the feed instead of opening
+sources, and says which of the development's candidate subjects it is about. The title (the lead
+finding's statement) stays as it is for merging, priority, impact and briefs; the headline and
+points are for display only.
 
-Claude writes them from the development's stored findings and the text of its lead source (most
-developments have one finding, a single sentence, too little for points that add anything). The
-prompt depends only on those, so a development whose findings did not change since an earlier run
-reuses the recorded reply. A development made only of detections gets them from code: the measured
-sentence cut at its value ("UOB share price down 5% on the week") and the sentence itself as the
-point."""
+A development's candidates are the union of its findings' actor and affected tags
+(`link_subjects`), so one side finding can bring a subject the event is not about: the MAS hold of
+14 Oct 2026 carried Artificial Intelligence & Quantum Computing from two findings on MAS's growth
+outlook. The call keeps the subjects the development is about; `Development.keep_subjects` makes
+the others mentions, which are never rated (spec step 8a of link-types-and-inferred-impact,
+decided 23 Nov 2026).
 
-import asyncio
-import json
+Claude writes from the development's findings and the text of its lead source (most developments
+have one finding, a single sentence, too little for points that add anything). The prompt depends
+only on those and the candidates, so a development whose findings did not change since an earlier
+run reuses the recorded reply. A development made only of detections gets its headline and points
+from code: the measured sentence cut at its value ("UOB share price down 5% on the week") and the
+sentence itself as the point; it keeps its subjects, the series the detector measured."""
+
 import re
-import sqlite3
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import date
+from typing import Protocol
 
+from claude_agent_sdk import EffortLevel
 from pydantic import BaseModel, Field
 
-from intelmonitor.pipeline.inference import ClaudeRefused, Inference, StepFailed
+from intelmonitor.pipeline.extract import FindingRole
 
 # The findings shown to Claude, primary sources first: a big merged development repeats itself.
+# Each candidate subject's first finding that tags it is shown as well, beyond these.
 MAX_FINDINGS = 8
 # The lead source's text shown, from its start: enough for the facts of a news story.
 ARTICLE_MAX_CHARS = 12_000
-_COLLECTION_RANK = {"dms": 0, "official": 1, "data": 2, "news": 3}
+# Low: the subject cases pass 3 of 3 at low and at medium (25 Nov 2026), and medium costs about
+# half as much again.
+HEADLINE_EFFORT: EffortLevel = "low"
 
 
 class Headline(BaseModel):
@@ -31,11 +44,15 @@ class Headline(BaseModel):
     points: list[str] = Field(
         description="2 or 3 key points, each one sentence of at most 20 words"
     )
+    subjects: list[str] = Field(
+        description="The ids, from <subjects>, of the subjects the development is about"
+    )
 
 
 HEADLINE_SYSTEM = """You are a senior news editor at a financial wire service. You write headlines \
 that sum up a story in a few words and catch the reader's eye with its key words, and short key \
-points that give the facts a professional reader needs.
+points that give the facts a professional reader needs. You also file each story under the \
+institutions, countries and topics it is about, so it reaches the desks that follow them.
 
 Your readers are supervisors at the Monetary Authority of Singapore (MAS). They scan dozens of \
 developments a day between other work. The headline is often all they read, and the points decide \
@@ -52,10 +69,16 @@ declined for Australian customers, including at Commonwealth Bank, before being 
 <finding source="abc.net.au" published="2026-08-15">Card payments failed for several hours \
 across Australia on 15 August 2026 as Mastercard's network suffered an outage.</finding>
 </findings>
+<subjects>
+<subject id="mastercard" findings="2 of 2">Mastercard, the payment system</subject>
+<subject id="australia" findings="2 of 2">the country Australia</subject>
+<subject id="payments-fintech" findings="1 of 2">the topic Payments & Financial Technology</subject>
+</subjects>
 <output>
 {"headline": "Mastercard outage declines card payments across Australia", "points": ["A \
 scheduled system update caused the failure, Mastercard said.", "Commonwealth Bank customers were \
-among those hit; payments failed for several hours.", "The issue was resolved the same day."]}
+among those hit; payments failed for several hours.", "The issue was resolved the same day."], \
+"subjects": ["mastercard", "australia", "payments-fintech"]}
 </output>
 </example>
 <example>
@@ -64,10 +87,18 @@ among those hit; payments failed for several hours.", "The issue was resolved th
 batch of five asset managers under the EQDP, placing S$1.45 billion to invest in Singapore \
 equities.</finding>
 </findings>
+<subjects>
+<subject id="mas" findings="1 of 1">MAS, the central bank and financial regulator</subject>
+<subject id="capital-markets-equities" findings="1 of 1">the topic Capital Markets & \
+Equities</subject>
+<subject id="asset-wealth-management" findings="1 of 1">the topic Asset & Wealth \
+Management</subject>
+</subjects>
 <output>
 {"headline": "MAS hands S$1.45 billion to five more EQDP fund managers", "points": ["This is \
 the third batch appointed under the Equity Market Development Programme.", "The funds go into \
-Singapore-listed equities."]}
+Singapore-listed equities."], "subjects": ["mas", "capital-markets-equities", \
+"asset-wealth-management"]}
 </output>
 </example>
 <example>
@@ -77,12 +108,22 @@ August 2026 for Bank Secrecy Act violations, with UBS Financial Services admitti
 violations, the largest civil fine against a broker-dealer under the law.</finding>
 <finding source="finra.org" published="2026-08-03">FINRA and FinCEN fined UBS Financial Services \
 for failing to report suspicious transactions over several years.</finding>
+<finding source="ft.com" published="2026-08-03">UBS shares closed 0.4% lower in Zurich after the \
+fine was announced.</finding>
 </findings>
+<subjects>
+<subject id="ubs" findings="3 of 3">UBS, the bank</subject>
+<subject id="united-states" findings="2 of 3">the country United States</subject>
+<subject id="aml-sanctions" findings="2 of 3">the topic Anti-Money Laundering & \
+Sanctions</subject>
+<subject id="capital-markets-equities" findings="1 of 3">the topic Capital Markets & \
+Equities</subject>
+</subjects>
 <output>
 {"headline": "UBS fined $125 million for US anti-money laundering failures", "points": ["UBS \
 Financial Services admitted willful Bank Secrecy Act violations.", "FINRA and FinCEN said it \
 failed to report suspicious transactions over several years.", "It is the largest civil fine \
-against a broker-dealer under the law."]}
+against a broker-dealer under the law."], "subjects": ["ubs", "united-states", "aml-sanctions"]}
 </output>
 </example>
 <example>
@@ -91,18 +132,25 @@ against a broker-dealer under the law."]}
 and the Securities Commission warned the public about deepfake videos impersonating their \
 officials to promote investment schemes.</finding>
 </findings>
+<subjects>
+<subject id="malaysia" findings="1 of 1">the country Malaysia</subject>
+<subject id="scams-fraud" findings="1 of 1">the topic Financial Crime & Scams</subject>
+<subject id="ai-quantum" findings="1 of 1">the topic Artificial Intelligence & Quantum \
+Computing</subject>
+</subjects>
 <output>
 {"headline": "Malaysian regulators warn of deepfake videos posing as officials", "points": ["Bank \
 Negara Malaysia and the Securities Commission issued the joint warning.", "The fake videos use \
-officials' likeness to promote investment schemes."]}
+officials' likeness to promote investment schemes."], "subjects": ["malaysia", "scams-fraud", \
+"ai-quantum"]}
 </output>
 </example>
 </examples>"""
 
 HEADLINE_INSTRUCTIONS = """Write the headline and key points for the development these findings \
-report. The findings are statements from different sources on the same event; the article is \
-the lead source's text, which may also cover other news. Write about the event in the findings, \
-taking details from the article where it gives them.
+report, and choose its subjects. The findings are statements from different sources on the same \
+event; the article is the lead source's text, which may also cover other news. Write about the \
+event in the findings, taking details from the article where it gives them.
 
 headline:
 - 6 to 12 words in present tense and active voice, like a wire headline: who did what, or what \
@@ -124,126 +172,99 @@ is affected and how many, figures, cause, status (proposed, in force, resolved, 
 effective dates and deadlines, and what the regulator or institution does next.
 - When sources disagree on a figure, give the official source's figure or say reports differ.
 
+subjects:
+- The ids, from <subjects>, of the subjects the development is about: the institutions, places \
+and markets the event happened to or that did it, and the topics the event falls under. An event \
+often falls under several topics; keep each one it does.
+- Judge a topic by its description in <subjects>: keep it when the event itself is within what the \
+topic covers and not in what it excludes, not because a finding names its subject matter.
+- Leave out only a subject that a side detail concerns and the event itself does not: an aside in \
+one finding, background, another story the article also covers, or an outlook or market reaction \
+mentioned in passing. It stays on the development as mentioned.
+- Do not leave a subject out because few findings name it or because the headline does not.
+- When unsure, keep it. Keep at least one.
+
 Keep the tone of a wire report: factual and neutral, the strongest word the facts support and \
 no stronger."""
 
 
-@dataclass(frozen=True)
-class StoredFinding:
-    statement: str
-    domain: str
-    published: str
-    collection: str
-    detector: bool
-    document_id: str
+class HeadlineFinding(Protocol):
+    """What the prompt reads of a finding (pipeline/developments.py's RunFinding)."""
 
     @property
-    def rank(self) -> tuple[int, str]:
-        return (_COLLECTION_RANK.get(self.collection, 4), self.published)
+    def statement(self) -> str: ...
+    @property
+    def domain(self) -> str: ...
+    @property
+    def published(self) -> date: ...
+    @property
+    def rank(self) -> tuple[int, date, str]: ...
+    @property
+    def roles(self) -> Mapping[str, FindingRole]: ...
 
 
-def lead(findings: list[StoredFinding]) -> StoredFinding:
-    """The finding whose source's text goes in the prompt: primary sources first, then earliest."""
-    return min(findings, key=lambda f: f.rank)
+@dataclass(frozen=True)
+class Candidate:
+    """A subject the call may keep: its id, what it covers, and how many of the development's
+    findings say the development happened to it or that it did it."""
+
+    id: str
+    description: str
+    findings: int
 
 
-def headline_prompt(findings: list[StoredFinding], article: str) -> str:
+def shown_findings[F: HeadlineFinding](
+    findings: Sequence[F], subject_ids: Sequence[str]
+) -> list[F]:
+    """The findings the call reads, by rank, each statement once from its best-ranked finding: the
+    first MAX_FINDINGS, and for each subject that none of those tags as actor or affected, its
+    first finding that does, so every candidate is judged on a finding about it."""
+    ranked = sorted(findings, key=lambda f: f.rank)
+    unique: dict[str, F] = {}
+    for f in ranked:
+        unique.setdefault(f.statement, f)
+    shown = list(unique.values())[:MAX_FINDINGS]
+
+    def tags(f: F, sid: str) -> bool:
+        r = f.roles.get(sid)
+        return r is not None and r.role in ("actor", "affected")
+
+    for sid in subject_ids:
+        if not any(tags(f, sid) for f in shown):
+            first = next((f for f in ranked if tags(f, sid)), None)
+            if first is not None and first.statement not in {f.statement for f in shown}:
+                shown.append(first)
+    return sorted(shown, key=lambda f: f.rank)
+
+
+def headline_prompt(
+    findings: Sequence[HeadlineFinding], article: str, candidates: Sequence[Candidate]
+) -> str:
     """The lead source's text first, as long inputs do best above the instructions, then the
-    findings, primary sources first, without repeats, then the instructions."""
-    shown = list({f.statement: f for f in sorted(findings, key=lambda f: f.rank)}.values())
+    findings `shown_findings` picks, then the candidate subjects, then the instructions. The lead
+    source is the first finding by rank."""
+    shown = shown_findings(findings, [c.id for c in candidates])
     lines = "\n".join(
         f'<finding source="{f.domain}" published="{f.published}">{f.statement}</finding>'
-        for f in shown[:MAX_FINDINGS]
+        for f in shown
     )
-    source = lead(findings)
+    subjects = "\n".join(
+        f'<subject id="{c.id}" findings="{c.findings} of {len(findings)}">{c.description}</subject>'
+        for c in candidates
+    )
+    source = min(findings, key=lambda f: f.rank)
     return (
         f'<article source="{source.domain}" published="{source.published}">\n'
         f"{article[:ARTICLE_MAX_CHARS]}\n</article>\n\n"
-        f"<findings>\n{lines}\n</findings>\n\n{HEADLINE_INSTRUCTIONS}"
+        f"<findings>\n{lines}\n</findings>\n\n<subjects>\n{subjects}\n</subjects>\n\n"
+        f"{HEADLINE_INSTRUCTIONS}"
     )
 
 
-def detection_headline(statement: str) -> Headline:
+def detection_headline(statement: str) -> tuple[str, list[str]]:
     """A detector's sentence names the move before its values: "UOB share price down 5.01% on the
-    week to SGD 41.13 ..., from ..." (pipeline/detectors.py). The headline is that part."""
+    week to SGD 41.13 ..., from ..." (pipeline/detectors.py). The headline is that part, and the
+    sentence is the one point."""
     head = re.split(r" to |, from ", statement, maxsplit=1)[0].rstrip(",. ")
     head = re.sub(r"\d+\.\d+(?=%)", lambda m: f"{float(m[0]):.1f}".removesuffix(".0"), head)
-    return Headline(headline=head, points=[statement])
-
-
-def run_findings(conn: sqlite3.Connection, run_id: str) -> dict[str, list[StoredFinding]]:
-    """Each development's findings in the run, by development id."""
-    out: dict[str, list[StoredFinding]] = {}
-    for r in conn.execute(
-        "SELECT s.development_id, f.statement, d.domain, substr(d.published_at, 1, 10) AS day, "
-        "d.collection, d.source = 'detector' AS detector, s.document_id "
-        "FROM development_sources s "
-        "JOIN findings f ON f.id = s.finding_id JOIN source_documents d ON d.id = s.document_id "
-        "WHERE s.run_id = ?",
-        (run_id,),
-    ):
-        out.setdefault(r["development_id"], []).append(
-            StoredFinding(
-                r["statement"],
-                r["domain"],
-                r["day"],
-                r["collection"],
-                bool(r["detector"]),
-                r["document_id"],
-            )
-        )
-    return out
-
-
-@dataclass
-class HeadlineStats:
-    written: int = 0
-    from_code: int = 0
-    refused: int = 0
-
-
-async def write_headlines(inf: Inference, conn: sqlite3.Connection, run_id: str) -> HeadlineStats:
-    """Headline and points for every development in the run, stored on its row. A refused
-    development keeps none, and the app shows its title instead."""
-    stats = HeadlineStats()
-    failures: list[str] = []
-
-    async def one(dev_id: str, findings: list[StoredFinding]) -> tuple[str, Headline | None]:
-        if all(f.detector for f in findings):
-            stats.from_code += 1
-            return dev_id, detection_headline(lead(findings).statement)
-        article = conn.execute(
-            "SELECT text FROM source_documents WHERE id = ?", (lead(findings).document_id,)
-        ).fetchone()["text"]
-        try:
-            h = await inf.claude(
-                "headline",
-                f"dev:{dev_id}:{len(findings)}",
-                headline_prompt(findings, article or ""),
-                Headline,
-                HEADLINE_SYSTEM,
-                effort="low",
-            )
-        except ClaudeRefused:
-            stats.refused += 1
-            return dev_id, None
-        except Exception as error:
-            failures.append(f"{dev_id}: {type(error).__name__}: {error}")
-            return dev_id, None
-        stats.written += 1
-        return dev_id, h
-
-    results = await asyncio.gather(*(one(i, f) for i, f in run_findings(conn, run_id).items()))
-    if failures:
-        raise StepFailed("headline", failures)
-    conn.executemany(
-        "UPDATE developments SET headline = ?, points = ? WHERE run_id = ? AND id = ?",
-        [
-            (h.headline.strip(), json.dumps([p.strip() for p in h.points]), run_id, dev_id)
-            if h
-            else (None, None, run_id, dev_id)
-            for dev_id, h in results
-        ],
-    )
-    conn.commit()
-    return stats
+    return head, [statement]

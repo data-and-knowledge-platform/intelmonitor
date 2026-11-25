@@ -8,7 +8,8 @@ backfill adds and revises nothing, and the replayed observations match the app's
 one run) in a copy of the app's store, which holds the later weeks' documents, detections and
 observations, replaying only recorded model calls: nothing it stores may use what became known
 after its date, and it must match the stored run: developments and their sources, indicators,
-changes, indirect impacts, notes and briefs.
+changes, indirect impacts, notes and briefs. Briefs written before `im impacts` rewrote the run's
+inferred impacts (its impacts_recomputed mark) cannot replay: they are kept and not compared.
 
 `im check detector` fires a detector on fixture values. No stored loan-to-deposit ratio is near
 its threshold (docs/archive/structured-data-plan.md, F3), so the walkthrough runs this to see the
@@ -68,7 +69,11 @@ class ModelCallError(RuntimeError):
 
 class NoModelCalls(Inference):
     """Fails the check on any model call: a development made only of a detection takes its rule's
-    level without one."""
+    level without one. A detection is never adverse, so with INDIRECT_ADVERSE_ONLY on the
+    link_types stage does not ask about it; with the rule off it does when that level is Medium or
+    High, or at any level with INDIRECT_FROM_LOW on (ticket 05 Q6 of
+    link-types-and-inferred-impact). The check does not read the types, so that call is answered
+    here with none and reaches no model."""
 
     async def claude[T: BaseModel](
         self,
@@ -81,6 +86,8 @@ class NoModelCalls(Inference):
         effort: EffortLevel | None = None,
         template: str | None = None,
     ) -> T:
+        if stage == "link_types":
+            return schema.model_validate({"entities": []})
         raise ModelCallError(f"the check made a Claude call: {stage} {input_ref}")
 
 
@@ -294,6 +301,14 @@ class PastRunCheck(BaseModel):
     later_documents: int = Field(description="Documents in the store published after the date")
     later_observations: int = Field(description="Observations available after the date")
     later_detections: int = Field(description="Detections in the store known after the date")
+    impacts_recomputed: datetime | None = Field(
+        description="When `im impacts` last rewrote the run's inferred impacts; null when the "
+        "run's own impact step wrote them"
+    )
+    briefs_compared: bool = Field(
+        description="False when the run's briefs predate its impacts_recomputed mark: written "
+        "from the impacts `im impacts` replaced, they cannot replay, so they are kept as stored"
+    )
     detections: int = Field(description="Detections among the run's development sources")
     developments: int
     indicators: int
@@ -314,7 +329,7 @@ def _run_rows(conn: sqlite3.Connection, run_id: str) -> dict[str, set[tuple[obje
         "changes": "SELECT base_run_id, kind, subject_id, ref_id, detail FROM run_changes "
         "WHERE run_id = ?",
         "impacts": "SELECT development_id, subject_id, source_id, relationship_id, region, "
-        "strength, level FROM development_impacts WHERE run_id = ?",
+        "strength, level, best, reason FROM development_impacts WHERE run_id = ?",
         "notes": "SELECT subject_id, since, headline, body, development_ids, series_id, moves "
         "FROM run_notes WHERE run_id = ?",
         "briefs": "SELECT subject_id, text, direction, direction_basis, developments_in_scope, "
@@ -362,14 +377,25 @@ async def _past_run_check(conn: sqlite3.Connection) -> PastRunCheck:
     as_of = _replayed_run(conn)
     run_id = day = as_of.isoformat()
     stored = _run_rows(conn, run_id)
+    mark = conn.execute("SELECT impacts_recomputed FROM runs WHERE id = ?", (run_id,)).fetchone()[0]
+    stale_briefs = (
+        mark is not None
+        and conn.execute(
+            "SELECT 1 FROM run_summaries WHERE run_id = ? AND created_at < ? LIMIT 1",
+            (run_id, mark),
+        ).fetchone()
+        is not None
+    )
     log: list[str] = []
-    await compute_run(as_of, log.append, conn=conn, recorded_only=True)
+    await compute_run(
+        as_of, log.append, conn=conn, recorded_only=True, write_briefs=not stale_briefs
+    )
     recomputed = _run_rows(conn, run_id)
     differences = [
         f"{name}: {len(stored[name] - rows)} stored rows not recomputed, "
         f"{len(rows - stored[name])} new"
         for name, rows in recomputed.items()
-        if rows != stored[name]
+        if rows != stored[name] and not (name == "briefs" and stale_briefs)
     ]
     return PastRunCheck(
         as_of=as_of,
@@ -385,6 +411,8 @@ async def _past_run_check(conn: sqlite3.Connection) -> PastRunCheck:
             "WHERE substr(d.published_at, 1, 10) > ?",
             (day,),
         ).fetchone()[0],
+        impacts_recomputed=mark,
+        briefs_compared=not stale_briefs,
         detections=conn.execute(
             "SELECT count(DISTINCT s.document_id) FROM development_sources s "
             "JOIN detections k ON k.document_id = s.document_id WHERE s.run_id = ?",

@@ -205,7 +205,7 @@ class BriefImpact:
     development_id: str
     title: str
     last_published: date
-    level: str  # Medium or Low
+    level: str  # High, Medium or Low
     route: str
     reason: str
     single_outlet: bool
@@ -296,14 +296,15 @@ def subject_impacts(
     since: date,
     gate: dict[str, Corroboration],
 ) -> list[BriefImpact]:
-    """The subject's indirect impacts from developments that pass the source gate (`gate`, by id)
-    with a source after `since`. An impact whose link left the store since the run is skipped."""
+    """The subject's indirect impacts, each development's best path to it, from developments that
+    pass the source gate (`gate`, by id) with a source after `since`. An impact whose link left the
+    store since the run is skipped."""
     rows = conn.execute(
         "SELECT i.development_id, d.title, d.last_published, i.source_id, i.level, r.data "
         "FROM development_impacts i JOIN developments d "
         "ON d.run_id = i.run_id AND d.id = i.development_id "
         "JOIN relationships r ON r.id = i.relationship_id "
-        "WHERE i.run_id = ? AND i.subject_id = ? AND d.last_published > ? "
+        "WHERE i.run_id = ? AND i.subject_id = ? AND i.best = 1 AND d.last_published > ? "
         "ORDER BY d.last_published DESC, i.development_id",
         (run_id, subject_id, since.isoformat()),
     ).fetchall()
@@ -674,9 +675,9 @@ def brief_prompt(inp: BriefInputs, fx: bool, problems: list[str]) -> str:
         parts.append(f"({hidden} more at lower priority not shown)")
     parts += [
         "",
-        "Indirect impacts: adverse developments about a linked entity that reach the subject "
-        "through one stored link, at the level a fixed table gives (Medium or Low), with the "
-        "link's reason:",
+        "Indirect impacts: developments about a linked entity that reach the subject through one "
+        "stored link of a type the development activates, at the level a fixed table gives from "
+        "the linked entity's priority and the link's strength, with the link's reason:",
     ]
     parts += [
         f"I:{i.development_id} | {i.title} | {i.level} | route: {i.route} | link: {i.reason}"

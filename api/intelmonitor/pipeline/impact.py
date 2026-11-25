@@ -1,30 +1,52 @@
-"""Indirect impact by the team's fixed table (deck of 10 Nov 2026, slide 8; ticket 20), with no
-model call.
+"""Inferred impact by the team's fixed table and the activated relationship types (deck of 16 Nov
+2026, pages 11 and 12; ticket 06 of link-types-and-inferred-impact), with no model call.
 
-For each development and each entity tagged on it (development_subjects) that the development is
-adverse for, every seed entity one link away (relationships.reaches) and not itself tagged gets a
-level from INDIRECT_TABLE (pipeline/params.py): the tagged entity's direct level by the link's
-strength in the direction from the tagged entity to the neighbour. High gives Medium, Medium,
-Low for a Strong, Moderate, Weak link; Medium gives Medium, Low, nothing; Low passes nothing
-unless INDIRECT_FROM_LOW; a Non-propagating direction passes nothing. Never High, and never a
-second hop; a link into a region entity counts for each member country. Where several routes reach
-the same entity, the highest level wins, then the stronger link, the larger share, the link id,
-the source id.
+For each development and each entity named on it (development_subjects), every link one hop away
+whose type the development activates for that entity (development_subjects.link_types, the
+link_types stage) is a path to the entity at its other end, unless that entity is named too. Its
+level comes from INDIRECT_TABLE (pipeline/params.py): the named entity's direct level by the
+link's strength in the direction from it. High gives High, Medium, Low for a Strong, Moderate,
+Weak link; Medium gives Medium, Low, nothing; Low passes nothing unless INDIRECT_FROM_LOW; a
+Non-propagating direction passes nothing. An entity whose types were not asked passes nothing.
+With INDIRECT_ADVERSE_ONLY (on, P6), only entities the development is adverse for pass
+(passes_adverse_rule), and the link_types stage does not ask a development that none of its
+entities would pass. A hub
+(HUB_KINDS: a country, region, regulator, central bank, agency or international body) passes
+nothing down a MEMBER_TYPES link to the entity that operates in it, is regulated by it, is listed
+on it or is a member of it, itself or through a region that covers it, nor to an entity whose
+home it is; its other links pass, and a firm's own news still reaches its regulator and country
+(decided 23 Nov 2026). Never a second hop; a link into a region entity counts for each member
+country.
 
-The rows go to development_impacts, apart from development_subjects, so an indirect impact is
+Every path is kept. Paths are never added together; each entity reached has one best path: the
+highest level, then the stronger link, the larger share, the link id, the source id.
+
+The rows go to development_impacts, apart from development_subjects, so an inferred impact is
 never shown as news about the entity itself. The wording helpers below write links in plain
 words for the Overview's Related graph, the briefs, the routes the API serves and the build's
 reasons.
 """
 
+import json
 import sqlite3
-from dataclasses import dataclass, field
+from dataclasses import dataclass, replace
+from functools import cache
+from typing import NamedTuple
 
-from intelmonitor.pipeline.params import INDIRECT_FROM_LOW, INDIRECT_TABLE
+from intelmonitor.pipeline.params import (
+    HUB_KINDS,
+    INDIRECT_ADVERSE_ONLY,
+    INDIRECT_FROM_LOW,
+    INDIRECT_TABLE,
+    MATERIAL_LEVEL,
+    MEMBER_TYPES,
+    PRIORITY_LABELS,
+)
 from intelmonitor.relationships import (
     LOAN_MEASURES,
     HeadlineMeasure,
     Node,
+    Reach,
     Relationship,
     RelType,
     Service,
@@ -32,6 +54,7 @@ from intelmonitor.relationships import (
     owns,
     reaches,
 )
+from intelmonitor.seed import Entity, load_subjects
 
 SERVICE_WORDS: dict[Service, str] = {
     "banking": "banking services",
@@ -286,17 +309,36 @@ def route_text(r: Relationship, source: str, reached: str, nodes: dict[str, Node
 
 @dataclass(frozen=True)
 class Tagged:
-    """An entity tagged on a development: the development's direct level for it (0 Low to 2
-    High) and whether it is adverse for it."""
+    """An entity named on a development: the development's direct level for it (0 Low to 2
+    High), whether it is adverse for it, and the relationship types the development activates for
+    it (the link_types stage); None when they were not asked (a topic, an entity at Low with
+    INDIRECT_FROM_LOW off, one of a development adverse for none of its entities with
+    INDIRECT_ADVERSE_ONLY on, or a run from before the stage), which passes nothing."""
 
     level: int
     adverse: bool
+    types: frozenset[RelType] | None
+
+
+class Setting(NamedTuple):
+    """The rules' two switches: INDIRECT_ADVERSE_ONLY and INDIRECT_FROM_LOW."""
+
+    adverse_only: bool
+    from_low: bool
+
+
+# Every setting, which the run counts rows under, and the one it stores.
+SETTINGS: tuple[Setting, ...] = tuple(
+    Setting(adverse_only, from_low) for adverse_only in (False, True) for from_low in (False, True)
+)
+STORED = Setting(INDIRECT_ADVERSE_ONLY, INDIRECT_FROM_LOW)
 
 
 @dataclass(frozen=True)
 class Reached:
-    """An entity a development reaches indirectly, as development_impacts stores it: the tagged
-    entity it comes from, the link, that link's strength from the source's end, and the level."""
+    """One path by which a development reaches an entity it does not name, as development_impacts
+    stores it: the named entity it comes from, the link, that link's strength from the source's
+    end, the level, whether it is the entity's best path, and the path in words."""
 
     subject_id: str
     source_id: str
@@ -304,6 +346,8 @@ class Reached:
     region: str | None
     strength: Strength
     level: int
+    best: bool
+    reason: str
 
 
 STRENGTHS: tuple[Strength, ...] = Strength.__args__  # strongest first
@@ -317,9 +361,17 @@ def indirect_level(direct: int, strength: Strength, *, from_low: bool) -> int | 
     return INDIRECT_TABLE[direct][strength]
 
 
-def _best(r: Reached) -> tuple[int, int, float, str, str]:
-    """Sort key among routes to one entity: the highest level, the stronger link, the larger
-    share (none last), the link id, the source id."""
+def passes_adverse_rule(adverse: bool, *, adverse_only: bool = INDIRECT_ADVERSE_ONLY) -> bool:
+    """Whether the adverse rule lets a named entity pass: any entity with `adverse_only`
+    (INDIRECT_ADVERSE_ONLY) off, else only one the development is adverse for. `reached` gates
+    each entity by it, and the link_types stage asks a development only when one of the
+    entities it would ask about passes it (developments.link_types_entities)."""
+    return adverse or not adverse_only
+
+
+def _rank(r: Reached) -> tuple[int, int, float, str, str]:
+    """Sort key among paths to one entity, best first: the highest level, the stronger link, the
+    larger share (none last), the link id, the source id."""
     return (
         -r.level,
         STRENGTHS.index(r.strength),
@@ -329,78 +381,162 @@ def _best(r: Reached) -> tuple[int, int, float, str, str]:
     )
 
 
+@cache
+def _names() -> dict[str, str]:
+    return {e.id: e.name for e in load_subjects().entities}
+
+
+@cache
+def _entities() -> dict[str, Entity]:
+    return {e.id: e for e in load_subjects().entities}
+
+
+def hub_blocks(reach: Reach) -> bool:
+    """Whether the hub rules (params.HUB_KINDS, decided 23 Nov 2026) stop a link from a named
+    entity: the source is a hub, and either the link is of a MEMBER_TYPES type with the source at
+    its `to` end or covered by the region there, so the source is what the entity reached
+    operates in, is regulated by, is listed on or is a member of; or the entity reached has the
+    source as its home."""
+    entities = _entities()
+    source = entities.get(reach.source)
+    if source is None or source.kind not in HUB_KINDS:
+        return False
+    r = reach.relationship
+    if r.type in MEMBER_TYPES and (r.to == reach.source or reach.region is not None):
+        return True
+    return entities[reach.reached].home == reach.source
+
+
+def _reason(direct: int, reach: Reach, level: int) -> str:
+    """A path in words: "High for Singtel by Strong through provides_connectivity_to gives High."
+    then the link's rating reason for that direction."""
+    source = _names().get(reach.source, reach.source)
+    return (
+        f"{PRIORITY_LABELS[direct]} for {source} by {reach.strength} through "
+        f"{reach.relationship.type} gives {PRIORITY_LABELS[level]}. {reach.reason}"
+    )
+
+
 def reached(
-    conn: sqlite3.Connection, tagged: dict[str, Tagged], *, from_low: bool = INDIRECT_FROM_LOW
+    conn: sqlite3.Connection,
+    tagged: dict[str, Tagged],
+    *,
+    from_low: bool = INDIRECT_FROM_LOW,
+    adverse_only: bool = INDIRECT_ADVERSE_ONLY,
+    links: dict[str, list[Reach]] | None = None,
 ) -> list[Reached]:
-    """The entities one development reaches through the table, one row each, by id. `tagged`
-    holds every subject tagged on it; only those it is adverse for pass, and none of them gets a
-    row."""
-    best: dict[str, Reached] = {}
+    """Every path by which one development reaches an entity it does not name, by entity, each
+    entity's best path first and marked best. `tagged` holds every subject named on it, and none
+    of them gets a row. A named entity passes a link only when the link's type is among its
+    activated types, its direction from that entity is not Non-propagating, the table gives its
+    level and strength a level (a Low level only `from_low`), with `adverse_only` the
+    development is adverse for it, and the hub rules do not stop it (hub_blocks). Paths are
+    never added together. `links` keeps each source's links (relationships.reaches) across calls
+    on one store."""
+    known = {} if links is None else links
+    found: dict[str, list[Reached]] = {}
     for source, tag in tagged.items():
-        if not tag.adverse:
+        if tag.types is None or not passes_adverse_rule(tag.adverse, adverse_only=adverse_only):
             continue
-        for reach in reaches(conn, source):
-            level = indirect_level(tag.level, reach.strength, from_low=from_low)
-            if level is None or reach.reached in tagged:
+        if source not in known:
+            known[source] = reaches(conn, source)
+        for reach in known[source]:
+            if reach.relationship.type not in tag.types or reach.reached in tagged:
                 continue
-            row = Reached(
-                subject_id=reach.reached,
-                source_id=source,
-                relationship=reach.relationship,
-                region=reach.region,
-                strength=reach.strength,
-                level=level,
+            if hub_blocks(reach):
+                continue
+            level = indirect_level(tag.level, reach.strength, from_low=from_low)
+            if level is None:
+                continue
+            found.setdefault(reach.reached, []).append(
+                Reached(
+                    subject_id=reach.reached,
+                    source_id=source,
+                    relationship=reach.relationship,
+                    region=reach.region,
+                    strength=reach.strength,
+                    level=level,
+                    best=False,
+                    reason=_reason(tag.level, reach, level),
+                )
             )
-            held = best.get(row.subject_id)
-            if held is None or _best(row) < _best(held):
-                best[row.subject_id] = row
-    return [best[s] for s in sorted(best)]
+    paths: list[Reached] = []
+    for subject in sorted(found):
+        first, *rest = sorted(found[subject], key=_rank)
+        paths += [replace(first, best=True), *rest]
+    return paths
 
 
 @dataclass
 class ImpactStats:
-    developments: int = 0  # with a row under INDIRECT_FROM_LOW
-    impacts: int = 0  # rows stored, under INDIRECT_FROM_LOW
-    without_low: int = 0  # rows with INDIRECT_FROM_LOW off
-    with_low: int = 0  # rows with it on
-    # (development id, reached entity) for every row, with INDIRECT_FROM_LOW off (False) and on
-    pairs: dict[bool, list[tuple[str, str]]] = field(
-        default_factory=lambda: {False: list[tuple[str, str]](), True: list[tuple[str, str]]()}
-    )
-    # (development id, row) for entities reached only with INDIRECT_FROM_LOW on, by development
-    low_only: list[tuple[str, Reached]] = field(default_factory=list[tuple[str, Reached]])
+    """What store_impacts found in a run: every path under each setting, with its development's
+    id; how many named entities at Low have their types asked; how many developments with types
+    the adverse rule would not have asked; and how many entities at Medium or High have their
+    types and have none asked, each a development and entity pair. The run stores the paths of
+    STORED. The link_types stage asks entities at Low only with INDIRECT_FROM_LOW on, so with
+    none at Low asked the Low row's paths equal those without it by construction, and its effect
+    is not measured. It asks a development adverse for none of its entities only with
+    INDIRECT_ADVERSE_ONLY off, so with none such asked the paths with the adverse rule off lack
+    those developments, and its effect is not measured either. A run whose entities were never
+    asked (one from before the stage) has none with types and finds no path."""
+
+    paths: dict[Setting, list[tuple[str, Reached]]]
+    low_asked: int = 0
+    calm_asked: int = 0  # developments with types, adverse for none of the entities with them
+    typed: int = 0  # entities at Medium or High with their types, [] included
+    unasked: int = 0  # entities at Medium or High whose types were not asked
+
+    @property
+    def stored(self) -> list[tuple[str, Reached]]:
+        return self.paths[STORED]
 
 
-def store_impacts(conn: sqlite3.Connection, run_id: str) -> ImpactStats:
-    """Replace the run's development_impacts with the table's rows, in one transaction, and count
-    the rows under both INDIRECT_FROM_LOW settings."""
+def _tags(conn: sqlite3.Connection, run_id: str) -> dict[str, dict[str, Tagged]]:
+    """Each development's named subjects in the run, with their level, adverse flag and
+    activated types."""
     tags: dict[str, dict[str, Tagged]] = {}
     for r in conn.execute(
-        "SELECT development_id, subject_id, priority_level, adverse FROM development_subjects "
-        "WHERE run_id = ? ORDER BY development_id, subject_id",
+        "SELECT development_id, subject_id, priority_level, adverse, link_types "
+        "FROM development_subjects WHERE run_id = ? ORDER BY development_id, subject_id",
         (run_id,),
     ):
+        types = None if r["link_types"] is None else frozenset[RelType](json.loads(r["link_types"]))
         tags.setdefault(r["development_id"], {})[r["subject_id"]] = Tagged(
-            level=int(r["priority_level"]), adverse=bool(r["adverse"])
+            level=int(r["priority_level"]), adverse=bool(r["adverse"]), types=types
         )
-    stats = ImpactStats()
-    rows: list[tuple[str, Reached]] = []
-    for dev_id, tagged in tags.items():
-        found = {low: reached(conn, tagged, from_low=low) for low in (False, True)}
-        stats.without_low += len(found[False])
-        stats.with_low += len(found[True])
-        for low, found_rows in found.items():
-            stats.pairs[low] += [(dev_id, r.subject_id) for r in found_rows]
-        reached_without = {r.subject_id for r in found[False]}
-        stats.low_only += [(dev_id, r) for r in found[True] if r.subject_id not in reached_without]
-        rows += [(dev_id, r) for r in found[INDIRECT_FROM_LOW]]
-        stats.developments += bool(found[INDIRECT_FROM_LOW])
-    stats.impacts = len(rows)
+    return tags
+
+
+def store_impacts(
+    conn: sqlite3.Connection, run_id: str, *, recomputed_at: str | None = None
+) -> ImpactStats:
+    """Replace the run's development_impacts with every path under STORED, in one transaction,
+    and find every path under each setting. The same transaction sets the run's
+    impacts_recomputed mark to `recomputed_at`: a time from `im impacts`, None from the run's own
+    impact step."""
+    known: dict[str, list[Reach]] = {}
+    stats = ImpactStats(paths={s: [] for s in SETTINGS})
+    entities = _names()
+    for dev_id, tagged in _tags(conn, run_id).items():
+        stats.low_asked += sum(t.level == 0 and t.types is not None for t in tagged.values())
+        asked = [t for t in tagged.values() if t.types is not None]
+        stats.calm_asked += bool(asked) and not any(
+            passes_adverse_rule(t.adverse, adverse_only=True) for t in asked
+        )
+        material = [t for sid, t in tagged.items() if sid in entities and t.level >= MATERIAL_LEVEL]
+        stats.typed += sum(t.types is not None for t in material)
+        stats.unasked += sum(t.types is None for t in material)
+        for s in SETTINGS:
+            found = reached(
+                conn, tagged, from_low=s.from_low, adverse_only=s.adverse_only, links=known
+            )
+            stats.paths[s] += [(dev_id, r) for r in found]
     with conn:
         conn.execute("DELETE FROM development_impacts WHERE run_id = ?", (run_id,))
         conn.executemany(
             "INSERT INTO development_impacts (run_id, development_id, subject_id, source_id, "
-            "relationship_id, region, strength, level) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "relationship_id, region, strength, level, best, reason) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 (
                     run_id,
@@ -411,8 +547,11 @@ def store_impacts(conn: sqlite3.Connection, run_id: str) -> ImpactStats:
                     r.region,
                     r.strength,
                     r.level,
+                    r.best,
+                    r.reason,
                 )
-                for dev_id, r in rows
+                for dev_id, r in stats.stored
             ],
         )
+        conn.execute("UPDATE runs SET impacts_recomputed = ? WHERE id = ?", (recomputed_at, run_id))
     return stats

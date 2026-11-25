@@ -17,7 +17,11 @@ type Direct = Schema<"DirectSubject">;
 type Link = Schema<"RelationshipLink">;
 
 /** The color of an indirect level, shown as a plain word. */
-export const LEVEL_CLASS: Record<Impact["level"], string> = { Medium: "c-watch", Low: "muted" };
+export const LEVEL_CLASS: Record<Impact["level"], string> = {
+  High: "c-attn",
+  Medium: "c-watch",
+  Low: "muted",
+};
 
 export const EVIDENCE: Record<Link["evidence"], { word: string; hint: string }> = {
   public: { word: "Public disclosure", hint: "Published by the institution or system itself." },
