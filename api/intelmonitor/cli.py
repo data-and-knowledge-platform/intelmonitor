@@ -350,7 +350,8 @@ def trial_priority(
             "--candidate",
             help="live (the current priority prompt) or a candidate of trial.py: medium, "
             "medium-think, high, high-think, price-promo, high-think-price-promo, "
-            "high-think-price-promo-fi, high-think-price-promo-fi-lower",
+            "high-think-price-promo-fi, high-think-price-promo-fi-lower, anchored, "
+            "local-anchored",
         ),
     ] = "live",
 ) -> None:

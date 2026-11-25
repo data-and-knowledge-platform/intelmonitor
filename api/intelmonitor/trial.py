@@ -34,7 +34,7 @@ import random
 import sqlite3
 from collections import Counter
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 
 from claude_agent_sdk import EffortLevel
@@ -150,12 +150,84 @@ Medium for that company, unless the finding shows it materially changes a financ
 in Singapore.
 Rules 6 and 7 cover only those two kinds of finding, and they only keep a finding from being \
 High; they never raise a level. Rate every other finding by the levels and rules 1 to 5."""
+# Version 11: the team's subject guide (23 Nov 2026). Each level is anchored on the subject's
+# {anchor} phrase (pipeline/subjects.py) rather than on Singapore, so an event that matters to a
+# foreign country or firm can be High for it; rules 4 and 6 are reworded to the anchor, rule 5 is
+# unchanged, and version 10's rule 7 is dropped.
+ANCHORED_PROMPT = f"""\
+You are a risk analyst at the Monetary Authority of Singapore. You will be given a news finding \
+about a subject: {{entity}}. Classify the finding's priority for {{anchor}} as High, Medium, or \
+Low using the definitions below.
+
+## Priority levels
+
+High (Significant or Critical)
+- Significant: a material change for {{anchor}}, whether a threat or an opportunity. Examples: an \
+incident, an enforcement action, a loss or failure at {{anchor}}, a binding decision that \
+changes what {{anchor}} must do, a major deal involving {{anchor}}, or a market shock {{anchor}} \
+is exposed to.
+- Critical: severe, urgent or systemic for {{anchor}}, and needs immediate attention.
+
+Medium (Notable)
+- Worth knowing: a moderate change for {{anchor}}. Examples: new guidance, a consultation, a \
+results update, or a larger event that reaches {{anchor}} only indirectly.
+- Also use Medium for a material event elsewhere in the subject's group that could plausibly \
+reach {{anchor}} but has not yet been shown to.
+
+Low (Minor or Trivial)
+- Minor: small or expected. Examples: routine statistics, speeches, FAQs, procedural notices, \
+product and promotional news, or an event elsewhere with little route to {{anchor}}.
+- Trivial: routine, promotional, or barely about the subject, with no consequence for {{anchor}}.
+
+## Rules
+1. High is reserved for findings that affect {{anchor}}. A serious event elsewhere in the \
+subject's group is High only if the finding shows it directly affects {{anchor}} (e.g. its \
+capital, liquidity, operations, staff, customers, or licence). For a financial system, an effect \
+on the economy, trade or people that the finding does not show reaching its financial \
+institutions, markets or payments is not High.
+2. If no link to {{anchor}} is stated or clearly implied, do not assume one.
+3. Judge only from the finding provided. Do not use outside knowledge.
+4. A finding that only reports a price move is never High, however large the move: a share price, \
+an index, a currency, a yield, a commodity, or a market's day or week. It is at most Medium when \
+the move is in the subject's own shares or in a market {{anchor}} is directly exposed to, and Low \
+otherwise. A finding that also reports what the move did to {{anchor}} is rated on that effect.
+5. Promotional and product news is Low: the launch of a product, service or campaign, an award, a \
+sponsorship, a customer offer, or a pilot or partnership with no material consequence yet.
+6. A general statistic is never High on that alone: economy-wide or market-wide statistics, or \
+deal or fee totals. Rate such a finding Medium or Low by the levels above, unless the finding \
+shows it materially changes {{anchor}}.
+Rules 4 to 6 cover only those kinds of finding, and rules 4 and 6 only keep a finding from being \
+High; they never raise a level. Rate every other finding by the levels and rules 1 to 3.
+
+{THINK_FIRST}"""
+
+
+# Version 13: version 11 with {local_anchor} in place of {anchor}, so a Singapore-based tech
+# provider, payment system or market infrastructure is rated on itself in Singapore rather than
+# as a whole. (Version 12 anchored them on their services to financial institutions in Singapore,
+# which kept their own incidents from High; it is retired.)
+LOCAL_ANCHORED_PROMPT = ANCHORED_PROMPT.replace("{anchor}", "{local_anchor}")
+
+
+# DescribedPriorityRating with a reason that cites the anchor rather than Singapore.
+class AnchoredPriorityRating(PriorityRating):
+    model_config = ConfigDict(title="PriorityRating")
+    priority: Priority = Field(
+        description="The finding's priority for the subject, by the priority levels and rules."
+    )
+    reason: str = Field(
+        description="One sentence explaining the priority, citing what the finding changes for "
+        "the subject if High."
+    )
+
+
 # The sweep of ticket 09: the tidied prompt at medium and high effort, each with and without
 # THINK_FIRST as its last line. The levels and rules are the live prompt's, unchanged. "live" is
 # the current PRIORITY_PROMPT, PriorityRating and PRIORITY_EFFORT. "price-promo" is the live
 # prompt with PRICE_AND_PROMO_RULES added and nothing else changed, and "high-think-price-promo"
 # is "high-think" with them added; "high-think-price-promo-fi" adds rules 6 and 7 to that, and
-# "high-think-price-promo-fi-lower" adds their version 10 wording instead.
+# "high-think-price-promo-fi-lower" adds their version 10 wording instead. "anchored" is
+# ANCHORED_PROMPT (version 11) and "local-anchored" LOCAL_ANCHORED_PROMPT (version 13).
 CANDIDATES: dict[str, Candidate] = {
     "live": Candidate(PRIORITY_PROMPT, PriorityRating, PRIORITY_EFFORT, None),
     "medium": Candidate(_TIDY, DescribedPriorityRating, "medium", f"{_TIDY_NOTE}; medium effort."),
@@ -204,6 +276,23 @@ CANDIDATES: dict[str, Candidate] = {
         "Singapore is never High alone, unless a named financial institution in Singapore is "
         "materially changed, and a non-financial company's deal is at most Medium unless it "
         "changes one; high effort; ends with THINK_FIRST.",
+    ),
+    "anchored": Candidate(
+        ANCHORED_PROMPT,
+        AnchoredPriorityRating,
+        "high",
+        "Version 10 anchored on the subject, by the team's subject guide of 23 Nov 2026: High is a "
+        "material change for a topic's MAS or Singapore financial system, a country's or region's "
+        "financial system, a sector, a financial institution in Singapore, or else the entity "
+        "itself; rules 4 and 6 reworded to that anchor and rule 7 dropped; high effort; ends with "
+        "THINK_FIRST.",
+    ),
+    "local-anchored": Candidate(
+        LOCAL_ANCHORED_PROMPT,
+        AnchoredPriorityRating,
+        "high",
+        "Version 11 with a Singapore-based tech provider, payment system or market infrastructure "
+        "(such as Singtel) anchored on itself in Singapore; high effort; ends with THINK_FIRST.",
     ),
 }
 
@@ -255,7 +344,15 @@ def seed_as_rated(conn: sqlite3.Connection) -> dict[str, PrioritySubject]:
     it."""
     if (value := get_meta(conn, SEED_KEY)) is None:
         return priority_subjects()
-    return {s.id: s for s in SeedAsRated.model_validate_json(value).subjects}
+    # The baseline's seed was frozen before anchor phrases, which follow from each entity's kind
+    # (not frozen); its kinds are the working tree's, so the anchors are taken from there.
+    current = priority_subjects()
+    return {
+        s.id: replace(s, anchor=current[s.id].anchor, local_anchor=current[s.id].local_anchor)
+        if not s.anchor and s.id in current
+        else s
+        for s in SeedAsRated.model_validate_json(value).subjects
+    }
 
 
 def complete_runs(conn: sqlite3.Connection) -> list[str]:
@@ -359,7 +456,11 @@ class Labels:
             if (subject := self.inputs.subjects.get(subject_id)) is None:
                 return None  # not in the seed as rated, so no call can be found
             system = self._systems[subject_id] = priority_system(
-                subject.name, subject.singapore, self.version["template"]
+                subject.name,
+                subject.singapore,
+                self.version["template"],
+                subject.anchor,
+                subject.local_anchor,
             )
         key = cache_key(self.version["model"], system, prompt, self._schema, self.version["effort"])
         return self._by_key.get(key)

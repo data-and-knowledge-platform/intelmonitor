@@ -538,7 +538,9 @@ async def rate_subject(
             f"dev:{dev.id}:{len(dev.findings)}:{subject.id}",
             priority_prompt(dev),
             schema,
-            priority_system(subject.name, subject.singapore, template),
+            priority_system(
+                subject.name, subject.singapore, template, subject.anchor, subject.local_anchor
+            ),
             effort=effort,
             template=template,
         )
