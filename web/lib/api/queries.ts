@@ -148,7 +148,7 @@ export const useRelatedGraph = (id: string, days: RelatedDays) =>
 
 /**
  * A subject's Trend view: its series over the 12 months to the latest run with its marked
- * developments, and each run's note on why they moved.
+ * developments, and the weeks of the runs in that span.
  */
 export const trendOptions = (id: string) =>
   queryOptions({
