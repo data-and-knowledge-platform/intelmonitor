@@ -320,7 +320,7 @@
     "/subjects/{subject_id}/trend": {
       "get": {
         "summary": "Get Subject Trend",
-        "description": "The subject's series over the 12 months to the latest run with its High and Medium\ndevelopments, and each run's note on why the series moved with the developments it cites\nand the facts it was given.",
+        "description": "The subject's series over the 12 months to the latest run with its High and Medium\ndevelopments, and the weeks of the runs in that span.",
         "operationId": "get_subject_trend",
         "parameters": [
           {
@@ -1152,57 +1152,6 @@
           "sources"
         ],
         "title": "DataSources"
-      },
-      "DatedDevelopment": {
-        "properties": {
-          "development": {
-            "$ref": "#/components/schemas/DevelopmentSummary",
-            "description": "As it stood in the note's run"
-          },
-          "on": {
-            "type": "string",
-            "format": "date",
-            "title": "On",
-            "description": "Where it sits on the chart: its event date when within the chart's 12 months, else its first publication"
-          }
-        },
-        "type": "object",
-        "required": [
-          "development",
-          "on"
-        ],
-        "title": "DatedDevelopment"
-      },
-      "DayMove": {
-        "properties": {
-          "period": {
-            "type": "string",
-            "format": "date",
-            "title": "Period"
-          },
-          "from_value": {
-            "type": "number",
-            "title": "From Value"
-          },
-          "value": {
-            "type": "number",
-            "title": "Value"
-          },
-          "change": {
-            "type": "number",
-            "title": "Change",
-            "description": "In the series' change basis: points for %, else percent"
-          }
-        },
-        "type": "object",
-        "required": [
-          "period",
-          "from_value",
-          "value",
-          "change"
-        ],
-        "title": "DayMove",
-        "description": "A daily series' largest move from one point to the next within the week."
       },
       "DevelopmentDetail": {
         "properties": {
@@ -3109,35 +3058,6 @@
         ],
         "title": "Quote"
       },
-      "Record": {
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "high",
-              "low"
-            ],
-            "title": "Kind"
-          },
-          "since": {
-            "type": "string",
-            "format": "date",
-            "title": "Since"
-          },
-          "whole_history": {
-            "type": "boolean",
-            "title": "Whole History"
-          }
-        },
-        "type": "object",
-        "required": [
-          "kind",
-          "since",
-          "whole_history"
-        ],
-        "title": "Record",
-        "description": "The latest value is the highest (or lowest) since `since`: the last earlier period with a\nvalue at least as high (as low), or the start of the stored history."
-      },
       "RelatedDays": {
         "type": "integer",
         "enum": [
@@ -3933,57 +3853,6 @@
         "title": "RunInfo",
         "description": "One execution of a run. A recomputed run appears once per execution."
       },
-      "RunNote": {
-        "properties": {
-          "headline": {
-            "type": "string",
-            "title": "Headline"
-          },
-          "body": {
-            "type": "string",
-            "title": "Body",
-            "description": "[n] cites developments[n - 1]"
-          },
-          "series_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Series Id",
-            "description": "The series the headline is about"
-          },
-          "developments": {
-            "items": {
-              "$ref": "#/components/schemas/DatedDevelopment"
-            },
-            "type": "array",
-            "title": "Developments",
-            "description": "Cited, in citation order"
-          },
-          "facts": {
-            "items": {
-              "$ref": "#/components/schemas/SeriesMove"
-            },
-            "type": "array",
-            "title": "Facts",
-            "description": "What code computed for the note, per series"
-          }
-        },
-        "type": "object",
-        "required": [
-          "headline",
-          "body",
-          "series_id",
-          "developments",
-          "facts"
-        ],
-        "title": "RunNote",
-        "description": "A run's note on why the subject's series moved in the week to the run."
-      },
       "RunRef": {
         "properties": {
           "id": {
@@ -4336,126 +4205,6 @@
           "source_url"
         ],
         "title": "SeriesInfo"
-      },
-      "SeriesMove": {
-        "properties": {
-          "series_id": {
-            "type": "string",
-            "title": "Series Id"
-          },
-          "since": {
-            "type": "string",
-            "format": "date",
-            "title": "Since",
-            "description": "The week's start: the previous run's date"
-          },
-          "latest": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Observation"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "start": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Observation"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The latest value known by the end of `since`"
-          },
-          "base": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Observation"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "What change compares latest with: start, or for a year-to-date total the same period a year earlier; null in notes stored before it was kept"
-          },
-          "change": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Change",
-            "description": "Latest against base, in the change basis"
-          },
-          "largest_day": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/DayMove"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Daily series other than pegs"
-          },
-          "record": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Record"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "widest": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Observation"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Peg series: furthest from the peg in the week"
-          },
-          "released": {
-            "type": "boolean",
-            "title": "Released",
-            "description": "Monthly and quarterly: a new period came out in the week"
-          },
-          "rule": {
-            "type": "null",
-            "title": "Rule",
-            "description": "Always null"
-          },
-          "text": {
-            "type": "string",
-            "title": "Text",
-            "description": "The sentence the note prompt gets"
-          }
-        },
-        "type": "object",
-        "required": [
-          "series_id",
-          "since",
-          "latest",
-          "start",
-          "change",
-          "largest_day",
-          "record",
-          "widest",
-          "released",
-          "text"
-        ],
-        "title": "SeriesMove",
-        "description": "What one series did in the week to a run, as code computed it for the run's note."
       },
       "SeriesSubject": {
         "properties": {
@@ -5441,24 +5190,12 @@
             "format": "date",
             "title": "Since",
             "description": "The week's start: the previous run's date"
-          },
-          "note": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RunNote"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "None when the run wrote no note for the subject"
           }
         },
         "type": "object",
         "required": [
           "run",
-          "since",
-          "note"
+          "since"
         ],
         "title": "TrendRun"
       },

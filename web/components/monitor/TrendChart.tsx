@@ -1,10 +1,9 @@
 // The Trend view's chart (docs/archive/structured-data-plan.md, F6; mocks/trend-series.html, B "Brief"): one
 // series on a fixed time axis ending on the window's last day, so a monthly or quarterly line
 // stops at its last release. The stretch before the first document is shaded and named, the
-// selected week is banded, the subject's High and Medium developments are ticks at
-// their event dates along the bottom, and the note's cited developments are numbered markers on
-// the line. The pointer snaps a crosshair to the nearest observation with its value, date and
-// the developments marked that day.
+// selected week is banded, and the subject's High and Medium developments are ticks at
+// their event dates along the bottom. The pointer snaps a crosshair to the nearest observation
+// with its value, date and the developments marked that day.
 import { Link } from "@tanstack/react-router";
 import { useCallback, useState, type PointerEvent } from "react";
 
@@ -15,7 +14,6 @@ import { niceTicks } from "@/components/shell/SeriesSource";
 
 type Series = Schema<"TrendSeries">;
 type Marked = Schema<"MarkedDevelopment">;
-type Dated = Schema<"DatedDevelopment">;
 
 const H = 240;
 const TOP = 28;
@@ -23,8 +21,6 @@ const BOTTOM = 22;
 const RIGHT = 8;
 // Width of one tabular digit at the meta size, for the scale's gutter.
 const CHAR = 8.1;
-// Markers closer than this share one x and stack.
-const STACK = 18;
 // A tooltip opens to the left of the point with less room than this to its right.
 const TIP_ROOM = 320;
 const DAY_MS = 86_400_000;
@@ -37,16 +33,6 @@ const BADGE_LABEL: Record<Marked["badge"], string> = { needs_attention: "High", 
 const iso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-/** The last point on or before `on`, else the first after it. */
-function valueAt(line: Series["line"], on: string) {
-  let found = line[0];
-  for (const p of line) {
-    if (p.period > on) break;
-    found = p;
-  }
-  return found;
-}
-
 export function TrendChart({
   series: { series: s, line },
   from,
@@ -54,7 +40,6 @@ export function TrendChart({
   documentsFrom,
   band,
   marks,
-  cited,
 }: {
   series: Series;
   /** The window, YYYY-MM-DD. */
@@ -63,7 +48,6 @@ export function TrendChart({
   documentsFrom: string;
   band: [string, string] | null;
   marks: Marked[];
-  cited: Dated[];
 }) {
   const [width, setWidth] = useState(0);
   const [hover, setHover] = useState<{ i: number; x: number; y: number } | null>(null);
@@ -86,7 +70,7 @@ export function TrendChart({
     if (values.length === 0) values.push(0);
     const lo = Math.min(...values);
     const hi = Math.max(...values);
-    // Room above the line for the numbered markers.
+    // Room above the line.
     const pad = (hi - lo) * 0.25 || Math.abs(hi) * 0.01 || 1;
     scale = niceTicks(lo - pad * 0.4, hi + pad, true);
   }
@@ -122,21 +106,6 @@ export function TrendChart({
   const days = new Map<string, Marked[]>();
   for (const m of marks) if (inView(m.on)) days.set(m.on, [...(days.get(m.on) ?? []), m]);
   for (const list of days.values()) list.sort((a, b) => Number(b.badge === "needs_attention") - Number(a.badge === "needs_attention"));
-
-  // Numbered markers above the line at each cited development's date, stacked where close.
-  const stacks: { at: number; top: number; items: { n: number; d: Dated }[] }[] = [];
-  if (pts.length) {
-    cited.forEach((d, i) => {
-      if (!inView(d.on)) return;
-      const at = x(d.on);
-      const top = y(valueAt(pts, d.on).value);
-      const stack = stacks.find((g) => Math.abs(g.at - at) < STACK);
-      if (stack) {
-        stack.items.push({ n: i + 1, d });
-        stack.top = Math.min(stack.top, top);
-      } else stacks.push({ at, top, items: [{ n: i + 1, d }] });
-    });
-  }
 
   const onMove = (e: PointerEvent<SVGSVGElement>) => {
     const box = e.currentTarget.getBoundingClientRect();
@@ -207,9 +176,6 @@ export function TrendChart({
             ))}
             {tail > 1 && <polyline className="tr-line" points={path(pts.slice(0, tail))} />}
             {pts.length - tail > 0 && <polyline className="tr-line pre" points={path(pts.slice(Math.max(0, tail - 1)))} />}
-            {stacks.map((g) => (
-              <line key={g.at} className="tr-leader" x1={g.at} x2={g.at} y1={g.top} y2={g.top - 14} />
-            ))}
             {last && <circle className={`tr-end${last.preliminary ? " pre" : ""}`} cx={x(last.period)} cy={y(last.value)} r={4} />}
             {at && (
               <>
@@ -231,20 +197,6 @@ export function TrendChart({
               title={list.map((m) => `${BADGE_LABEL[m.badge]}: ${m.development.title} (published ${shortDate(m.development.first_published)})`).join("\n")}
             />
           ))}
-          {stacks.flatMap((g) =>
-            g.items.map(({ n, d }, k) => (
-              <Link
-                key={n}
-                {...developmentLink(d.development.id)}
-                className={`tr-mk${d.development.needs_attention ? " attn" : ""}`}
-                style={{ left: g.at, top: Math.max(8, g.top - 22 - k * 20) }}
-                aria-label={`Cited ${n}: ${d.development.title}`}
-                title={`${d.development.title} (${shortDate(d.on)})`}
-              >
-                {n}
-              </Link>
-            )),
-          )}
           {hover && at && (
             <span className={`chart-tip${atMarks.length ? " wrap" : ""}${hover.x + TIP_ROOM > window.innerWidth ? " before" : ""}`} role="tooltip" style={{ left: hover.x, top: hover.y }}>
               <b>{seriesValue(s, at.value)}</b>

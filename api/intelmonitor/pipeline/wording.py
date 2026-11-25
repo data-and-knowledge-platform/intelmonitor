@@ -2,7 +2,7 @@
 and which way an FX change moved the SGD. Key data (key_data.py) and detections (detectors.py)
 share them, so a brief and a detected development state a value the same way.
 
-`answer_problems` checks text Claude wrote (briefs, Trend notes) against those rules: numbers it
+`answer_problems` checks text Claude wrote (briefs) against those rules: numbers it
 was not given, currency pair names and rates said to go up or down."""
 
 import re
@@ -88,7 +88,7 @@ def peg_side(s: SeriesDef, source: Deviation, by_id: dict[str, SeriesDef], v: fl
     return f"{num(price, target.decimals)} {target.unit} ({side})"
 
 
-# Numbers a brief or note could invent: decimals and percentages. Whole numbers ("30 days") pass.
+# Numbers a brief could invent: decimals and percentages. Whole numbers ("30 days") pass.
 _NUMBER = re.compile(r"\d[\d,]*\.\d+%?|\d[\d,]*%")
 _PER_CENT = re.compile(r"\s*(?:per ?cent|percent)\b", re.IGNORECASE)
 
@@ -104,7 +104,7 @@ def unsupported_numbers(summary: str, allowed: str) -> list[str]:
 # Currency pair names (SGD/MYR, USD-SGD, SGDMYR), and a rate said to go up or down: after a rate
 # or a counter currency ("SGD per USD up 0.23%", "against the MYR, up 0.55%", "vs MYR, up 0.03%",
 # "SGD/MYR rose"), or before one with no SGD before the verb ("up 0.03% vs MYR"). Readers take a
-# pair or a rate's rise either way round, so briefs and Trend notes tell FX moves
+# pair or a rate's rise either way round, so briefs tell FX moves
 # only by the SGD's side, as the facts do: "SGD weakened 0.23% against the USD" or "vs the USD".
 # Codes are upper case even where the rest of a pattern ignores case.
 _PAIR = r"(?-i:SGD ?[/:\-–] ?[A-Z]{3}|[A-Z]{3} ?[/:\-–] ?SGD|SGD[A-Z]{3}|[A-Z]{3}SGD)"

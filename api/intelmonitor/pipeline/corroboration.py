@@ -7,10 +7,9 @@ A development is shown when any of these holds, and unconfirmed otherwise:
 - a reputable outlet (REPUTABLE_DOMAINS, matched on parent domain) reports it;
 - an official, research or data source backs it (the entity's own site, careers and docs pages
   included, is stored as official).
-This module owns the rule. The API (server/queries.py), the briefs (pipeline/summaries.py), the
-Data tab notes (pipeline/notes.py) and the run log (pipeline/runlog.py) call it; none
-re-implements it. Unconfirmed developments stay in the store and the API can list them on
-request.
+This module owns the rule. The API (server/queries.py), the briefs (pipeline/summaries.py) and
+the run log (pipeline/runlog.py) call it; none re-implements it. Unconfirmed developments stay in
+the store and the API can list them on request.
 """
 
 import sqlite3

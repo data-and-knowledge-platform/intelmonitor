@@ -8,7 +8,7 @@ summaries:
   affected by or acted in; new or updated, with their finding statements, the subject's priority,
   adverse flag and tone, and a mark on those reported by one outlet alone), most serious first as
   the feed orders them, its indirect impacts from development_impacts, detector events on its
-  series with the Data tab note's headline, and its upcoming dates;
+  series, and its upcoming dates;
 - its standing position: the latest values and recent moves of its Key data series, its main
   stored relationships, and open High or adverse matters from earlier weeks;
 - the previous run's brief, so the brief continues rather than restarts.
@@ -511,7 +511,6 @@ class BriefInputs:
     developments: list[BriefDevelopment]  # every one in the window; the prompt gets the first
     impacts: list[BriefImpact]
     events: list[str]
-    headline: str | None
     upcoming: list[UpcomingDate]
     key_data: list[str]  # code's sentence per Key data series
     links: list[str]  # its main stored relationships in plain words
@@ -581,9 +580,6 @@ def brief_inputs(
     )
     series = [s.id for s in mapped_series(subject.id)]
     live = live_events(conn, series, as_of, base or since)
-    note = conn.execute(
-        "SELECT headline FROM run_notes WHERE run_id = ? AND subject_id = ?", (run_id, subject.id)
-    ).fetchone()
     latest = max(
         (
             r["last_published"]
@@ -605,7 +601,6 @@ def brief_inputs(
         developments=devs,
         impacts=subject_impacts(conn, run_id, subject.id, since, gate),
         events=[e.statement for e in live],
-        headline=note["headline"] if note else None,
         upcoming=subject_upcoming(conn, run_id, subject.id, as_of, shown),
         key_data=key_data_lines(conn, subject.id, as_of, live),
         links=main_links(conn, subject),
@@ -686,8 +681,6 @@ def brief_prompt(inp: BriefInputs, fx: bool, problems: list[str]) -> str:
     ] or ["none"]
     parts += ["", "Events flagged on the subject's measured series:"]
     parts += [f"- {e}" for e in inp.events] or ["none"]
-    if inp.headline:
-        parts += ["", f"Why its series moved this week: {inp.headline}"]
     parts += ["", "Upcoming dates:"]
     parts += [f"{u.id} | {_short(u.date)} | {u.label}" for u in inp.upcoming] or ["none"]
     if problems:
@@ -787,7 +780,7 @@ def allowed_text(inp: BriefInputs) -> str:
         lines += [d.title, *d.findings]
     for i in inp.impacts:
         lines += [i.title, i.route, i.reason]
-    lines += inp.events + ([inp.headline] if inp.headline else [])
+    lines += inp.events
     lines += [u.label for u in inp.upcoming] + inp.key_data + inp.links
     lines += [m.title for m in inp.earlier]
     if inp.previous:

@@ -178,8 +178,7 @@ export interface paths {
         /**
          * Get Subject Trend
          * @description The subject's series over the 12 months to the latest run with its High and Medium
-         *     developments, and each run's note on why the series moved with the developments it cites
-         *     and the facts it was given.
+         *     developments, and the weeks of the runs in that span.
          */
         get: operations["get_subject_trend"];
         put?: never;
@@ -457,37 +456,6 @@ export interface components {
             total_documents: number;
             /** Sources */
             sources: components["schemas"]["DataSourceStats"][];
-        };
-        /** DatedDevelopment */
-        DatedDevelopment: {
-            /** @description As it stood in the note's run */
-            development: components["schemas"]["DevelopmentSummary"];
-            /**
-             * On
-             * Format: date
-             * @description Where it sits on the chart: its event date when within the chart's 12 months, else its first publication
-             */
-            on: string;
-        };
-        /**
-         * DayMove
-         * @description A daily series' largest move from one point to the next within the week.
-         */
-        DayMove: {
-            /**
-             * Period
-             * Format: date
-             */
-            period: string;
-            /** From Value */
-            from_value: number;
-            /** Value */
-            value: number;
-            /**
-             * Change
-             * @description In the series' change basis: points for %, else percent
-             */
-            change: number;
         };
         /** DevelopmentDetail */
         DevelopmentDetail: {
@@ -1426,25 +1394,6 @@ export interface components {
             text: string;
         };
         /**
-         * Record
-         * @description The latest value is the highest (or lowest) since `since`: the last earlier period with a
-         *     value at least as high (as low), or the start of the stored history.
-         */
-        Record: {
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "high" | "low";
-            /**
-             * Since
-             * Format: date
-             */
-            since: string;
-            /** Whole History */
-            whole_history: boolean;
-        };
-        /**
          * RelatedDays
          * @description The Related graph's windows in days: the brief's week, a month and a quarter. An enum, not
          *     a Literal, so a query string's "7" validates.
@@ -1767,34 +1716,6 @@ export interface components {
             /** Duration Seconds */
             duration_seconds: number | null;
         };
-        /**
-         * RunNote
-         * @description A run's note on why the subject's series moved in the week to the run.
-         */
-        RunNote: {
-            /** Headline */
-            headline: string;
-            /**
-             * Body
-             * @description [n] cites developments[n - 1]
-             */
-            body: string;
-            /**
-             * Series Id
-             * @description The series the headline is about
-             */
-            series_id: string | null;
-            /**
-             * Developments
-             * @description Cited, in citation order
-             */
-            developments: components["schemas"]["DatedDevelopment"][];
-            /**
-             * Facts
-             * @description What code computed for the note, per series
-             */
-            facts: components["schemas"]["SeriesMove"][];
-        };
         /** RunRef */
         RunRef: {
             /** Id */
@@ -1963,50 +1884,6 @@ export interface components {
             providers: string[];
             /** Source Url */
             source_url: string;
-        };
-        /**
-         * SeriesMove
-         * @description What one series did in the week to a run, as code computed it for the run's note.
-         */
-        SeriesMove: {
-            /** Series Id */
-            series_id: string;
-            /**
-             * Since
-             * Format: date
-             * @description The week's start: the previous run's date
-             */
-            since: string;
-            latest: components["schemas"]["Observation"] | null;
-            /** @description The latest value known by the end of `since` */
-            start: components["schemas"]["Observation"] | null;
-            /** @description What change compares latest with: start, or for a year-to-date total the same period a year earlier; null in notes stored before it was kept */
-            base?: components["schemas"]["Observation"] | null;
-            /**
-             * Change
-             * @description Latest against base, in the change basis
-             */
-            change: number | null;
-            /** @description Daily series other than pegs */
-            largest_day: components["schemas"]["DayMove"] | null;
-            record: components["schemas"]["Record"] | null;
-            /** @description Peg series: furthest from the peg in the week */
-            widest: components["schemas"]["Observation"] | null;
-            /**
-             * Released
-             * @description Monthly and quarterly: a new period came out in the week
-             */
-            released: boolean;
-            /**
-             * Rule
-             * @description Always null
-             */
-            rule?: null;
-            /**
-             * Text
-             * @description The sentence the note prompt gets
-             */
-            text: string;
         };
         /** SeriesSubject */
         SeriesSubject: {
@@ -2372,8 +2249,6 @@ export interface components {
              * @description The week's start: the previous run's date
              */
             since: string;
-            /** @description None when the run wrote no note for the subject */
-            note: components["schemas"]["RunNote"] | null;
         };
         /** TrendSeries */
         TrendSeries: {

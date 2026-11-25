@@ -181,8 +181,6 @@ def judge_prompt(inp: BriefInputs, brief: Brief) -> str:
         for i in inp.impacts
     ] or ["none"]
     parts += ["", "Series events:"] + ([f"- {e}" for e in inp.events] or ["none"])
-    if inp.headline:
-        parts.append(f"Why its series moved this week: {inp.headline}")
     parts += ["", "Upcoming dates:"]
     parts += [f"- {u.date} {u.label}" for u in inp.upcoming] or ["none"]
     # The brief is told to build on the previous one and not repeat what it covered.

@@ -1,8 +1,7 @@
 """An entity or topic page's Data tab (docs/archive/structured-data-plan.md, F6): the subject's
 series over the 12 months to the latest run, the High and Medium developments marked on them, and
-each run's note on why they moved."""
+the weeks of the runs in that span."""
 
-import json
 from datetime import date, timedelta
 from typing import Literal
 
@@ -10,8 +9,9 @@ from pydantic import BaseModel, Field
 
 from intelmonitor.pipeline.detectors import corpus_start
 from intelmonitor.pipeline.indicators import months_before
-from intelmonitor.pipeline.notes import SeriesMove, note_series
+from intelmonitor.pipeline.key_data import mapped_series
 from intelmonitor.pipeline.params import MATERIAL_LEVEL, RUN_SPACING_DAYS
+from intelmonitor.seed import SeriesDef
 from intelmonitor.server.models import (
     DevelopmentSummary,
     LinePoint,
@@ -19,7 +19,7 @@ from intelmonitor.server.models import (
     SeriesInfo,
     SubjectRef,
 )
-from intelmonitor.server.queries import Queries, expand, load_developments, subject, subject_ref
+from intelmonitor.server.queries import Queries, subject, subject_ref
 from intelmonitor.server.series import series_info
 from intelmonitor.store.documents import first_document_day
 from intelmonitor.store.series import read_observations
@@ -37,28 +37,9 @@ class TrendSeries(BaseModel):
     )
 
 
-class DatedDevelopment(BaseModel):
-    development: DevelopmentSummary = Field(description="As it stood in the note's run")
-    on: date = Field(
-        description="Where it sits on the chart: its event date when within the chart's 12 "
-        "months, else its first publication"
-    )
-
-
-class RunNote(BaseModel):
-    """A run's note on why the subject's series moved in the week to the run."""
-
-    headline: str
-    body: str = Field(description="[n] cites developments[n - 1]")
-    series_id: str | None = Field(description="The series the headline is about")
-    developments: list[DatedDevelopment] = Field(description="Cited, in citation order")
-    facts: list[SeriesMove] = Field(description="What code computed for the note, per series")
-
-
 class TrendRun(BaseModel):
     run: RunRef
     since: date = Field(description="The week's start: the previous run's date")
-    note: RunNote | None = Field(description="None when the run wrote no note for the subject")
 
 
 class MarkedDevelopment(BaseModel):
@@ -90,8 +71,16 @@ class SubjectTrend(BaseModel):
     )
 
 
+def trend_series(subject_id: str) -> list[SeriesDef]:
+    """The series a subject's Trend view covers: its own listed series, else the listed series it
+    has as context (a bank's system-wide figures), in catalogue order."""
+    listed = [s for s in mapped_series(subject_id) if s.listed]
+    own = [s for s in listed if subject_id in s.subjects.primary]
+    return own or listed
+
+
 def has_trend(subject_id: str) -> bool:
-    return bool(note_series(subject_id))
+    return bool(trend_series(subject_id))
 
 
 def documents_from(q: Queries, as_of: date) -> date:
@@ -115,11 +104,6 @@ def marked(q: Queries, subject_id: str, as_of: date) -> list[MarkedDevelopment]:
     return sorted(out, key=lambda m: m.on, reverse=True)
 
 
-def _dated(d: DevelopmentSummary, start: date, end: date) -> DatedDevelopment:
-    on = d.event_date if d.event_date and start <= d.event_date <= end else d.first_published
-    return DatedDevelopment(development=d, on=on)
-
-
 def trend(q: Queries, subject_id: str) -> SubjectTrend:
     """The Trend view as of the latest run."""
     subject(subject_id)
@@ -133,39 +117,15 @@ def trend(q: Queries, subject_id: str) -> SubjectTrend:
             (start.isoformat(), as_of.isoformat()),
         )
     ]
-    notes = {
-        r["run_id"]: r
-        for r in q.conn.execute("SELECT * FROM run_notes WHERE subject_id = ?", (subject_id,))
-    }
-    scope = expand([subject_id])
-    trend_runs: list[TrendRun] = []
-    for run in runs:
-        row = notes.get(run.id)
-        note: RunNote | None = None
-        if row is not None:
-            cited: list[str] = json.loads(row["development_ids"])
-            devs = q.devs if run.id == q.run.id else load_developments(q.conn, run)
-            note = RunNote(
-                headline=row["headline"],
-                body=row["body"],
-                series_id=row["series_id"],
-                # Each at its priority for this subject, as its feed shows it.
-                developments=[
-                    _dated(devs.scoped(devs.by_id[i], scope), start, as_of)
-                    for i in cited
-                    if i in devs.by_id
-                ],
-                facts=[SeriesMove.model_validate(m) for m in json.loads(row["moves"])],
-            )
-        previous = run.previous_run_id
-        since = (
-            date.fromisoformat(row["since"])
-            if row
-            else date.fromisoformat(previous)
-            if previous
-            else run.as_of - timedelta(days=RUN_SPACING_DAYS)
+    trend_runs = [
+        TrendRun(
+            run=run,
+            since=date.fromisoformat(run.previous_run_id)
+            if run.previous_run_id
+            else run.as_of - timedelta(days=RUN_SPACING_DAYS),
         )
-        trend_runs.append(TrendRun(run=run, since=since, note=note))
+        for run in runs
+    ]
     return SubjectTrend(
         subject=subject_ref(subject_id),
         run=q.run,
@@ -180,7 +140,7 @@ def trend(q: Queries, subject_id: str) -> SubjectTrend:
                     if o.period >= start
                 ],
             )
-            for s in note_series(subject_id)
+            for s in trend_series(subject_id)
         ],
         developments=marked(q, subject_id, as_of),
         runs=trend_runs,

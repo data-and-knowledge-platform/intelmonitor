@@ -54,7 +54,7 @@ Walk top to bottom for a broad regression, or run `pnpm -C web e2e`, which cover
 
 - [list-pages](list-pages.md): the Entities and Topics lists: bands, columns, search, priority, group or function, period, ranking, row actions.
 - [entity-and-topic-pages](entity-and-topic-pages.md): an entity's or topic's page at `/entities/<id>` or `/topics/<id>`: the head with Add to watchlist, Overview (the summary band, the top 5, the Related card), Developments, Related (Could affect) and Data; old `/monitors` URLs and group links.
-- [data](data.md): Data tab for subjects with series: indicators, weekly notes, the series chart, the facts behind each note.
+- [data](data.md): Data tab for subjects with series: indicators, the series chart by week, the series' source.
 
 ## Developments
 
