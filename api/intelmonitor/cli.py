@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -165,6 +166,9 @@ RUNNER_TIMEOUT_HOURS = 4
 # mistyped date (a wrong year or a swapped day and month), as each week is paid. Raise it here to
 # start further back.
 MAX_START_WEEKS = 26
+# A `--rerun` label: it names an object in the bucket (`reruns/<label>`, store/publish.py), so it
+# is kept to characters every S3-compatible store reads and writes alike.
+RERUN_LABEL = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
 
 @app.command()
@@ -200,7 +204,8 @@ def weekly(
             "week from the corpus start is due again. The label reaches the bucket with the "
             "first week published after, so the same label later changes nothing and a new "
             "label reruns again. Refused when the bucket records this label as published but "
-            "the pulled store lacks it, as after a rollback",
+            "the pulled store lacks it, as after a rollback. A label is 1 to 64 letters, "
+            "digits, dots, dashes or underscores, starting with a letter or digit",
         ),
     ] = None,
 ) -> None:
@@ -235,8 +240,11 @@ def weekly(
     today = datetime.now(UTC).date()
     if not publish and (start_from is not None or rerun is not None):
         raise typer.BadParameter("--start-from and --rerun only apply with --publish")
-    if rerun is not None and not rerun.strip():
-        raise typer.BadParameter("--rerun needs a label, such as the date it was asked for")
+    if rerun is not None and not RERUN_LABEL.fullmatch(rerun):
+        raise typer.BadParameter(
+            f"--rerun {rerun!r}: a label is 1 to 64 letters, digits, dots, dashes or underscores, "
+            "starting with a letter or digit, such as the date it was asked for (2026-11-25)"
+        )
     start = start_from.date() if start_from is not None else None
     if start is not None:
         first = start + timedelta(days=(6 - start.weekday()) % 7)
